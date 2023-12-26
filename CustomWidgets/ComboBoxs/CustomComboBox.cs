@@ -9,7 +9,7 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace CustomLibrary.ComboBoxs {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
-    public class CustomComboBox<T>: UserControl where T: class {
+    public class CustomComboBox<T>: UserControl {
         private readonly int _collapseStep = 20; // How many pixels increase/decrease each interval
         private readonly int _collapseSpend = 30; // How many milliseconds will the collapse cost
         private readonly int _maxItemsShown = 5; // Maximum of shown items, will has scroll bar if greater than this number
@@ -69,6 +69,8 @@ namespace CustomLibrary.ComboBoxs {
                 Invalidate();
             }
         }
+        public bool ShowRealValue { get => _selectButton.ShowRealValue; set => _selectButton.ShowRealValue = value; }
+
         public event Action ItemSelected { 
             add => _itemSelected += value; 
             remove {
@@ -88,7 +90,6 @@ namespace CustomLibrary.ComboBoxs {
             _itemButtons = new() {
                 new("-无-"),
             };
-            // _itemSelected = new(OnItemSelected);
             _itemSelected += OnItemSelected;
 
             _collapseTimer = new();
@@ -157,7 +158,7 @@ namespace CustomLibrary.ComboBoxs {
                 // Clear <none> item first
                 _itemButtons.Clear();
                 // Add a default item at the top to provide a null option
-                AddItem(_defaultLabel, null);
+                AddItem(_defaultLabel, default(T));
             }
             // Add new option button according to item
             _itemButtons.Add(new(itemName, obj, _selectButton) {
@@ -175,7 +176,6 @@ namespace CustomLibrary.ComboBoxs {
             if (_selectButton.SelectedItem == _itemButtons[index + 1]) {
                 _selectButton.SelectedItem = _itemButtons[0];
                 _selectButton.SelectedItem.SetToggle(true);
-                _selectButton.Label = _selectButton.SelectedItem.Name;
             }
             _itemButtons.RemoveAt(index + 1);
             _selectButton.Invalidate();
@@ -184,11 +184,14 @@ namespace CustomLibrary.ComboBoxs {
         public void SetDefault(int index) {
             _selectButton.SelectedItem = _itemButtons[index + 1];
             _selectButton.SelectedItem.SetToggle(true);
-            _selectButton.Label = _selectButton.SelectedItem.Name;
         }
 
         public T? GetChosenItem() {
-            return _selectButton.SelectedItem?.Object;
+            T? t = default(T);
+            if (_selectButton.SelectedItem != null) {
+                t = _selectButton.SelectedItem.Object;
+            }
+            return t;
         }
 
         private void TimerTick(object? sender, EventArgs eventArgs) {
@@ -216,12 +219,33 @@ namespace CustomLibrary.ComboBoxs {
                     if (_itemsPanel != null) {
                         _itemsPanel.Visible = true;
                     }
+                    // Do this method
+                    ResetWidthOfItemScrollPanelByItemProperWidth();
                     _collapseTimer.Stop();
                 } else {
                     _itemsScrollPanel.Height += _collapseStep;
                 }
                 _itemsScrollPanel.InvokeResizing();
                 _itemsScrollPanel.Invalidate();
+            }
+        }
+
+        private void ResetWidthOfItemScrollPanelByItemProperWidth() {
+            if (_itemsScrollPanel != null) {
+                _itemsScrollPanel.InvokeResizing();
+                int properWidth = 0;
+                foreach (ComboBoxItem<T> item in _itemButtons) {
+                    if (item.ProperWidth > properWidth) {
+                        properWidth = item.ProperWidth;
+                    }
+                }
+                if (properWidth > 0) {
+                    if (_itemsScrollPanel.VScrollBar.Visible) {
+                        _itemsScrollPanel.Width = properWidth + _itemsScrollPanel.VScrollBar.Width;
+                    } else {
+                        _itemsScrollPanel.Width = properWidth;
+                    }
+                }
             }
         }
 
@@ -242,12 +266,13 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            InvokeResizing();
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            SizeChanged += InvokeResizing;
+            InvokeResizing(this, e);
         }
 
-        private void InvokeResizing() {
+        private void InvokeResizing(object? sender, EventArgs eventArgs) {
             _itemHeight = (int) (Height * .95);
             if (_itemButtons.Count >= _maxItemsShown) {
                 _itemsPanelHeight = _itemHeight * _maxItemsShown;
@@ -299,7 +324,7 @@ namespace CustomLibrary.ComboBoxs {
 
         // Select button
         public class ComboBoxSelectButton<I>: CommonButton {
-            private CustomComboBox<T> _parentControl;
+            private CustomComboBox<I> _parentControl;
             private bool _isCollapsed;
             private Image _iconExpand;
             private Image? _iconExpandShowing;
@@ -308,11 +333,25 @@ namespace CustomLibrary.ComboBoxs {
             private Image? _iconShowing;
             private Point _iconPosition;
             private ComboBoxItem<I>? _selectedItem;
+            private bool _showRealValue;
 
             public bool IsCollapsed { get => _isCollapsed; set => _isCollapsed = value; }
-            public ComboBoxItem<I>? SelectedItem { get => _selectedItem; set => _selectedItem = value; }
+            public ComboBoxItem<I>? SelectedItem { 
+                get => _selectedItem; 
+                set {
+                    _selectedItem = value; 
+                    RefreshLabel();
+                }
+            }
+            public bool ShowRealValue { 
+                get => _showRealValue; 
+                set {
+                    _showRealValue = value; 
+                    RefreshLabel();
+                }
+            }
 
-            public ComboBoxSelectButton(CustomComboBox<T> parentControl) {
+            public ComboBoxSelectButton(CustomComboBox<I> parentControl) {
                 _parentControl = parentControl;
                 BlockHoverUp = true;
                 BlockHoverDown = true;
@@ -322,6 +361,22 @@ namespace CustomLibrary.ComboBoxs {
                 _iconPosition = new(0, 0);
                 // Need to register this first to make sure this 'Clicking' is fired before others
                 Click += Clicking;
+            }
+
+            private void RefreshLabel() {
+                if (_selectedItem != null) {
+                    if (_showRealValue) {
+                        I? obj = _selectedItem.Object;
+                        if (obj == null || obj.Equals(default(I))) {
+                            Label = _selectedItem?.Name;
+                        } else {
+                            Label = obj.ToString();
+                        }
+                    } else {
+                        Label = _selectedItem.Name;
+                    }
+                    ResizeTextLabel();
+                }
             }
 
             protected override void OnHandleCreated(EventArgs e) {
@@ -359,8 +414,8 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .4), FontStyle.Regular, GraphicsUnit.Pixel);
-                    this.LabelX = (int) (Width / 20);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .475), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.LabelX = (int) (Height / 3.5);
                     this.LabelY = (this.Height - this.Font.Height) / 2;
                 }
             }
@@ -427,6 +482,12 @@ namespace CustomLibrary.ComboBoxs {
                     if (_borderColor != null) {
                         _borderRect = new(0, 0, Width - 1, Height - 1);
                     }
+                    // Resize item buttons if width of item label grater than this.Width
+                    foreach (Control control in Controls) {
+                        if (control is ComboBoxItem<T>) {
+                            control.Width = Width;
+                        }
+                    }
                 }
             }
 
@@ -444,15 +505,12 @@ namespace CustomLibrary.ComboBoxs {
         public class ComboBoxItem<I>: CommonButton {
             private I? _object;
             private ComboBoxSelectButton<I>? _selectButton;
+            private int _properWidth;
 
-            public new string? Name {
-                get => Label; 
-                set {
-                    Label = value;
-                }
-            }
+            public new string? Name { get => Label; set => Label = value; }
             public I? Object { get => _object; set => _object = value; }
             public ComboBoxSelectButton<I>? SelectButton { get => _selectButton; }
+            public int ProperWidth { get => _properWidth; }
 
             public ComboBoxItem(string name) {
                 Initialize(name);
@@ -479,7 +537,6 @@ namespace CustomLibrary.ComboBoxs {
                         _selectButton.SelectedItem.SetToggle(false);
                     }
                     SetToggle(true);
-                    _selectButton.Label = Name;
                     _selectButton.SelectedItem = this;
                     _selectButton.TriggerClick();
                 }
@@ -487,8 +544,15 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .4), FontStyle.Regular, GraphicsUnit.Pixel);
-                    this.LabelX = (int) (Width / 20);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .475), FontStyle.Regular, GraphicsUnit.Pixel);
+                    int hPadding = (int) (Height / 3.5);
+                    using (Graphics g = CreateGraphics()) {
+                        float labelWidth = g.MeasureString(Label, Font).Width;
+                        if (labelWidth >= (Width * .975) - hPadding * 2) {
+                            _properWidth = (int) (labelWidth * .975 + hPadding * 2);
+                        }
+                    }
+                    this.LabelX = hPadding;
                     this.LabelY = (this.Height - this.Font.Height) / 2;
                 }
             }

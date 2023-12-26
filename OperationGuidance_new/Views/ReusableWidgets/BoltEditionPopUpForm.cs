@@ -21,7 +21,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets
             DescriptionBox.Enabled = true;
             SpecificationBox.Enabled = true;
             ToolIdBox.Enabled = true;
-            ToolDescriptionBox.Enabled = true;
+            // ToolDescriptionBox.Enabled = true; // tool_description will be filling in automatically after filling in tool_id
             BitSpecificationBox.Enabled = true;
             ProcedureSetBox.Enabled = true;
             TorqueBox.Enabled = true;

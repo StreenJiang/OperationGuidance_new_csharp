@@ -79,13 +79,18 @@ namespace CustomLibrary.TextBoxes {
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
 
-        public CustomTextBox() : base() {
+        public CustomTextBox(ErrorProvider? errorProvider = null) : base() {
             Margin = new(0);
             _enabled = true;
-            _errorProvider = new() {
-                DataMember = null,
-                ContainerControl = this,
-            };
+            // If current widget is using in a group, probably not just one, all widgets can share one error provider to save sources
+            if (errorProvider == null) {
+                _errorProvider = new() {
+                    DataMember = null,
+                    ContainerControl = this,
+                };
+            } else {
+                _errorProvider = errorProvider;
+            }
             _originalBackColor = BackColor;
             _disabledBackColor = WidgetUtils.ChangeColor(BackColor, .975);
 
