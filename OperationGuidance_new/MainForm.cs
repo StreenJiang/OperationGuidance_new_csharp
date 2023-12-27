@@ -11,7 +11,13 @@ namespace OperationGuidance_new {
             log.Info("测试一下日志");
         }
 
-        private void MainForm_Resize(object sender, EventArgs e) {
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            SizeChanged += InvokeResizing;
+            InvokeResizing(this, e);
+        }
+
+        private void InvokeResizing(object? sender, EventArgs e) {
             if (this.WindowState == FormWindowState.Minimized) {
                 return;
             }

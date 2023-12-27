@@ -210,7 +210,7 @@ namespace CustomLibrary.ComboBoxs {
                     _collapseTimer.Stop();
                 } else {
                     _itemsScrollPanel.Height -= _collapseStep;
-                    _itemsScrollPanel.InvokeResizing();
+                    _itemsScrollPanel.InvokeResizing(eventArgs);
                     _itemsScrollPanel.Invalidate();
                 }
             } else {
@@ -225,7 +225,7 @@ namespace CustomLibrary.ComboBoxs {
                 } else {
                     _itemsScrollPanel.Height += _collapseStep;
                 }
-                _itemsScrollPanel.InvokeResizing();
+                _itemsScrollPanel.InvokeResizing(eventArgs);
                 _itemsScrollPanel.Invalidate();
             }
         }
@@ -473,9 +473,9 @@ namespace CustomLibrary.ComboBoxs {
 
             public ItemsScrollPanel(CustomContentPanel contentPanel) : base(null, contentPanel) {}
 
-            public override void InvokeResizing() {
+            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
                 if (IsHandleCreated) {
-                    base.InvokeResizing();
+                    base.InvokeResizing(sender, eventArgs);
                     OuterPanel.Size = new(OuterPanel.Width - Padding.Size.Width, OuterPanel.Height - Padding.Size.Height);
                     VScrollBar.Height -= Padding.Size.Height;
                     // Create border rectangle if border color is not null

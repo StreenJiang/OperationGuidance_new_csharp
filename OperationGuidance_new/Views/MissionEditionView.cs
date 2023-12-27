@@ -41,10 +41,9 @@ namespace OperationGuidance_new.Views {
             Controls.Clear();
             // Create a new page according to missionbody and show
             _editionPage = new(this, missionDTO);
-            InvokeResizing();
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             if (_editionPage != null) {
                 _editionPage.Size = Size;
             }
@@ -52,6 +51,12 @@ namespace OperationGuidance_new.Views {
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             return false;
+        }
+
+        public override void VisibleToTrue() {
+            if (OuterVScrollPanel != null) {
+                OuterVScrollPanel.InvokeResizing();
+            }
         }
 
         // Class: inner page panel
@@ -595,7 +600,7 @@ namespace OperationGuidance_new.Views {
                     Margin = new(1, 1, 0, 0),
                     BackColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
-                _rightContentPanel = new() {
+                _rightContentPanel = new(_sideButtons) {
                     Padding = new(0),
                 };
                 _autoScrollContentOuterPanel = new(null, _rightContentPanel) {
@@ -673,7 +678,7 @@ namespace OperationGuidance_new.Views {
                 return boltEditionButton;
             }
 
-            public override void InvokeResizing() {
+            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
                 Padding outerPadding = Parent.Parent.Parent.Padding;
                 ResizeContent(outerPadding);
                 ResizeSideButtons();
@@ -801,14 +806,6 @@ namespace OperationGuidance_new.Views {
 
                 _rightContentPanel.NewHeight = (boltButtonHeight + boltButtonMargin) * _currentSideButton.BoltEditionButtons.Count;
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
-
-                int boltButtonWidth = _rightContentPanel.Width - boltButtonMargin * 2;
-                foreach (SideButton sideButton in _sideButtons) {
-                    foreach (BoltEditionButton boltEditionButton in sideButton.BoltEditionButtons.Values) {
-                        boltEditionButton.Size = new(boltButtonWidth, boltButtonHeight);
-                        boltEditionButton.Margin = new(boltButtonMargin, boltButtonMargin, boltButtonMargin, 0);
-                    }
-                }
             }
 
             private void ForceResizeRight() {
@@ -1019,7 +1016,7 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ChangeFontStyle() {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .5), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
             }
 
             protected override void OnMouseUp(MouseEventArgs mevent) {
@@ -1184,6 +1181,26 @@ namespace OperationGuidance_new.Views {
         }
 
         public class RightContentPanel: CustomContentPanel {
+            private List<SideButton> _sideButtons;
+
+            public RightContentPanel(List<SideButton> sideButtons) {
+                _sideButtons = sideButtons;
+            }
+
+            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+                if (OuterVScrollPanel != null) {
+                    int boltButtonHeight = (int) (OuterVScrollPanel.Height * .06);
+                    int boltButtonMargin = boltButtonHeight / 7;
+                    int boltButtonWidth = Width - boltButtonMargin * 2;
+                    foreach (SideButton sideButton in _sideButtons) {
+                        foreach (BoltEditionButton boltEditionButton in sideButton.BoltEditionButtons.Values) {
+                            boltEditionButton.Size = new(boltButtonWidth, boltButtonHeight);
+                            boltEditionButton.Margin = new(boltButtonMargin, boltButtonMargin, boltButtonMargin, 0);
+                        }
+                    }
+                }
+            }
+
             public override bool CheckNeedsScrollBar(int parentNewHeight) {
                 return NewHeight > parentNewHeight;
             }

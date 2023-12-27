@@ -75,7 +75,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             this.AlwaysShowScrollBar = alwaysShowScrollBar;
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             // Recalculate all inner controls
             this._vScrollBar.Height = this.Height;
 

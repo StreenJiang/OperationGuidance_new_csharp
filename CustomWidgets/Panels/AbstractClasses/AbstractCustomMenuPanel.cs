@@ -35,7 +35,7 @@ namespace CustomLibrary.Panels.AbstractClasses
                         button.ShowLabel();
                     }
                 }
-                ((CustomContentPanelBase) this.Parent).InvokeResizing();
+                ((CustomContentPanelBase) Parent).InvokeResizing();
             }
         }
 
@@ -158,7 +158,7 @@ namespace CustomLibrary.Panels.AbstractClasses
                     _enumerator.MoveNext();
                 }
             }
-            ((CustomContentPanelBase) this.Parent).InvokeResizing();
+            ((CustomContentPanelBase) Parent).InvokeResizing(eventArgs);
         }
 
         // Change position

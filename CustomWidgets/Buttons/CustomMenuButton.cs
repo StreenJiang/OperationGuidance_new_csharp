@@ -31,7 +31,7 @@ namespace CustomLibrary.Buttons
                 } else if (!this.ToggledButton) {
                     throw new NullReferenceException("A non-toggle menu button must have a OnMenuButtonClick method.");
                 }
-                if (_correspondingContentPanel != null) {
+                if (_correspondingContentPanel != null && _correspondingContentPanel.IsHandleCreated) {
                     _correspondingContentPanel.VisibleToTrue();
                 }
             };

@@ -84,7 +84,9 @@ namespace OperationGuidance_new.Views
             // Check and display view
             CheckAndDisplay();
             // Trigger resize
-            InvokeResizing();
+            if (IsHandleCreated) {
+                InvokeResizing(this, EventArgs.Empty);
+            }
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
@@ -104,11 +106,7 @@ namespace OperationGuidance_new.Views
             return this.NewHeight > parentNewHeight;
         }
 
-        public override void InvokeResizing() {
-            CustomMenuButton correspondingButton = CommonUtils.CannotBeNull(CorrespondingMenuButton);
-            CustomContentPanelBase correspondingPanel = CommonUtils.CannotBeNull(correspondingButton.CorrespondingContentPanel);
-            correspondingPanel.InvokeResizing();
-
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             // Resize big button panel
             _bigButtonPanel.Size = new(Parent.Width, Parent.Height);
             if (_bigButtonPanel.Visible) {
@@ -125,7 +123,7 @@ namespace OperationGuidance_new.Views
             _missionListPanel.CellVerticalMargin = _cellVerticalMargin;
             // Resize mission list panel
             _missionListPanel.Size = new(this.Width, this.Height);
-            _missionListPanel.InvokeResizing();
+            _missionListPanel.InvokeResizing(eventArgs);
             if (_missionListPanel.Visible) {
                 _missionListPanel.Invalidate();
             }
@@ -688,8 +686,8 @@ namespace OperationGuidance_new.Views
             }
         }
 
-        public override void InvokeResizing() {
-            base.InvokeResizing();
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+            base.InvokeResizing(sender, eventArgs);
             ReSizeContents();
             ResizeleftTop();
             ResizeLeftBottom();

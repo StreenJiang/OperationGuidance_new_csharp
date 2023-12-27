@@ -61,7 +61,7 @@ namespace OperationGuidance_new.Views {
             _comboBoxGroup.AddItem("3（三号工具）", 3);
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             _textBox.Size = new(Width / 4, Height / 16);
             _comboBox.Size = new(Width / 4, Height / 16);
             _comboBoxGroup.Size = new(Width / 2, Height / 16);

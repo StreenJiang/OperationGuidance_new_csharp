@@ -10,7 +10,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             set => _outerPenBorderColor = value;
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             if (OuterPenBorderColor != null) {
                 // Recalcuate rectangle
                 _borderRect = new(0, 0, Width - 1, Height - 1);

@@ -138,7 +138,6 @@ namespace CustomLibrary.TextBoxes {
             InvokeResizing(this, e);
         }
 
-
         private void InvokeResizing(object? sender, EventArgs eventArgs) {
             Font = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .5F, 
                     _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);

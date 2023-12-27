@@ -68,7 +68,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             // Resize title panel
             _titlePanel.Size = new(Width, _titleHeight);
             // Resize table panel
@@ -97,18 +97,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _underlineColor = underlineColor;
             }
 
-            protected override void OnPaint(PaintEventArgs e) {
-                base.OnPaint(e);
-                int penBorder = (int)Math.Ceiling((double)((Parent.Width + Parent.Height) / 400D));
-                e.Graphics.DrawLine(new(_underlineColor, penBorder), new(0, Height), new(Width, Height));
+            protected override void OnHandleCreated(EventArgs e) {
+                base.OnHandleCreated(e);
+                SizeChanged += InvokeResizing;
             }
 
-            protected override void OnSizeChanged(EventArgs e) {
+            private void InvokeResizing(object? sender, EventArgs eventArgs) {
                 // Resize title and right button
                 using (Graphics g = CreateGraphics()) {
                     // Resize title label
                     _title.Height = (int) (Height * .7);
-                    _title.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (_title.Height * .6), FontStyle.Bold, GraphicsUnit.Pixel);
+                    _title.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (_title.Height * .65), FontStyle.Regular, GraphicsUnit.Pixel);
                     int labelWidth = (int)(g.MeasureString(_title.Text, _title.Font).Width * 1.2);
                     _title.Width = labelWidth;
                     _title.Location = new(0, (int) ((Height - _title.Height) / 1.25));
@@ -122,6 +121,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _rightButton.Width = (int) (btnLabelWidth + rightButtonHeight * 1.2);
                     _rightButton.Location = new(Width - _rightButton.Width, (Height - rightButtonHeight) / 2);
                 }
+            }
+
+            protected override void OnPaint(PaintEventArgs e) {
+                base.OnPaint(e);
+                int penBorder = (int)Math.Ceiling((double)((Parent.Width + Parent.Height) / 400D));
+                e.Graphics.DrawLine(new(_underlineColor, penBorder), new(0, Height), new(Width, Height));
             }
 
             public class RightButton: CommonButton {

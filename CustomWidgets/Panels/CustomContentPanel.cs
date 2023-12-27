@@ -11,7 +11,7 @@ namespace CustomLibrary.Panels {
             set => _penBorderColor = value;
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             if (_penBorderColor != null) {
                 int padding = WidgetUtils.ContentPadding(this.TopLevelControl.Width, this.TopLevelControl.Height);
                 // Recalcuate rectangle

@@ -11,6 +11,15 @@ namespace CustomLibrary.Panels.BaseClasses {
             set => this._newHeight = value;
         }
         public CustomMenuButton? CorrespondingMenuButton { get => _correspondingMenuButton; set => _correspondingMenuButton = value; }
+        public CustomVScrollingContentPanel? OuterVScrollPanel {
+            get {
+                if (base.Parent is Panel && base.Parent.Parent is CustomContentPanel && base.Parent.Parent.Parent is CustomVScrollingContentPanel) {
+                    return (CustomVScrollingContentPanel) base.Parent.Parent.Parent;
+                } else {
+                    return null;
+                }
+            }
+        }
         public new Control Parent {
             get {
                 if (base.Parent is Panel && base.Parent.Parent is CustomContentPanel && base.Parent.Parent.Parent is CustomVScrollingContentPanel) {
@@ -32,22 +41,44 @@ namespace CustomLibrary.Panels.BaseClasses {
 
         public virtual void VisibleToTrue() {}
 
-        protected sealed override void OnSizeChanged(EventArgs e) {
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            SizeChanged += SizeChangedExtra;
+            SizeChangedExtra(this, e);
+        }
+
+        private void SizeChangedExtra(object? sender, EventArgs eventArgs) {
             if (!this.Visible && this.IsHandleCreated) {
                 // 开始异步调用，提升性能
                 new Thread(() => {
                     this.BeginInvoke(new(() => {
-                        base.OnSizeChanged(e);
-                        this.InvokeResizing();
+                        this.InvokeResizing(this, eventArgs);
+                        if (_correspondingMenuButton != null) {
+                            CustomContentPanelBase? correspondingPanel = _correspondingMenuButton.CorrespondingContentPanel;
+                            if (correspondingPanel != null) {
+                                correspondingPanel.InvokeResizing(eventArgs);
+                            }
+                        }
                     }));
                 }).Start();
             } else {
-                base.OnSizeChanged(e);
-                this.InvokeResizing();
+                this.InvokeResizing(this, eventArgs);
+                if (_correspondingMenuButton != null) {
+                    CustomContentPanelBase? correspondingPanel = _correspondingMenuButton.CorrespondingContentPanel;
+                    if (correspondingPanel != null) {
+                        correspondingPanel.InvokeResizing(eventArgs);
+                    }
+                }
             }
         }
 
-        public virtual void InvokeResizing() {}
+        protected sealed override void OnSizeChanged(EventArgs e) {
+            base.OnSizeChanged(e);
+        }
+
+        protected virtual void InvokeResizing(object? sender, EventArgs eventArgs) {}
+        public void InvokeResizing(EventArgs eventArgs) => InvokeResizing(this, eventArgs);
+        public void InvokeResizing() => InvokeResizing(EventArgs.Empty);
 
         // public void TriggerResizeManually(EventArgs e) {
         //     OnSizeChanged(e);

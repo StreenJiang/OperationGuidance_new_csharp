@@ -35,7 +35,7 @@ namespace CustomLibrary.Panels {
             }
         }
 
-        public override void InvokeResizing() {
+        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
             if (_menuPanel != null && _contentPanel != null) {
                 // Repositoin menu panel
                 _menuPanel.ChangePosition();
