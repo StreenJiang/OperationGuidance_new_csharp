@@ -75,7 +75,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             this.AlwaysShowScrollBar = alwaysShowScrollBar;
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Recalculate all inner controls
             this._vScrollBar.Height = this.Height;
 
@@ -124,8 +124,8 @@ namespace CustomLibrary.Panels.BaseClasses {
             }
         }
 
-        public override void VisibleToTrue() {
-            _contentPanel.VisibleToTrue();
-        }
+        // public override void VisibleToTrue() {
+        //     _contentPanel.VisibleToTrue();
+        // }
     }
 }

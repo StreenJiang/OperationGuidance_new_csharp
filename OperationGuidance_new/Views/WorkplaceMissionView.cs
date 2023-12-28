@@ -83,10 +83,8 @@ namespace OperationGuidance_new.Views
         public override void VisibleToTrue() {
             // Check and display view
             CheckAndDisplay();
-            // Trigger resize
-            if (IsHandleCreated) {
-                InvokeResizing(this, EventArgs.Empty);
-            }
+            // Invoke base, it will resize all children
+            base.VisibleToTrue();
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
@@ -106,7 +104,7 @@ namespace OperationGuidance_new.Views
             return this.NewHeight > parentNewHeight;
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Resize big button panel
             _bigButtonPanel.Size = new(Parent.Width, Parent.Height);
             if (_bigButtonPanel.Visible) {
@@ -123,7 +121,7 @@ namespace OperationGuidance_new.Views
             _missionListPanel.CellVerticalMargin = _cellVerticalMargin;
             // Resize mission list panel
             _missionListPanel.Size = new(this.Width, this.Height);
-            _missionListPanel.InvokeResizing(eventArgs);
+            _missionListPanel.ResizeChildren(eventArgs);
             if (_missionListPanel.Visible) {
                 _missionListPanel.Invalidate();
             }
@@ -149,7 +147,7 @@ namespace OperationGuidance_new.Views
                 Margin = new Padding(0),
                 PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
-            page.InvokeResizing();
+            page.ResizeChildren();
             // Hide main panel
             WidgetUtils.MainPanel.Visible = false;
         }
@@ -194,11 +192,6 @@ namespace OperationGuidance_new.Views
             };
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            this.RecalculateTitle();
-        }
-
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             if (this._title != null) {
@@ -206,7 +199,8 @@ namespace OperationGuidance_new.Views
             }
         }
 
-        private void RecalculateTitle() {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
             // Recalculate the font of title
             this.Font = new(WidgetsConfigs.SystemFontFamily, Height * .625f, FontStyle.Bold, GraphicsUnit.Pixel);
             // Recalculate label location
@@ -437,7 +431,7 @@ namespace OperationGuidance_new.Views
                             BoltButton boltBtn = new(boltDTO) {
                                 Parent = _productImageDisplayPanel,
                                 Label = boltDTO.serial_num + "",
-                                Visible = false,
+                                // Visible = false,
                             };
                             boltBtn.Click += (s, e) => {
                                 _boltPopUpForm = new(boltDTO) {
@@ -461,8 +455,11 @@ namespace OperationGuidance_new.Views
                                 closeBtn.Click += (s, e) => {
                                     _boltPopUpForm.HideForm();
                                 };
-                                // Resize and show
+                                // Show form but make it transparent to create handles for its children
+                                _boltPopUpForm.FakeShowToCreateHandlesForChildren();
+                                // Resize all widgets
                                 ResizePopUpForm();
+                                // Real show
                                 _boltPopUpForm.Show();
                                 // Set current pop up form
                                 EventFuncs.CurrentPopUpForm = _boltPopUpForm;
@@ -479,6 +476,30 @@ namespace OperationGuidance_new.Views
                 boltBtn.Visible = true;
             }
             _currentBoltButtons = _boltButtons[_productSideIndex];
+        }
+
+        private void ResizePopUpForm() {
+            if (_boltPopUpForm != null) {
+                TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
+                MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
+
+                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxMargin = boxHeight / 7;
+                int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                int tableVMargin = (int) (mainForm.Height * .02);
+                Size contentHeight = new((int) (mainForm.Width * .75), tableHeight + tableVMargin * 2);
+                _boltPopUpForm.BoxHeight = boxHeight;
+                _boltPopUpForm.BoxMargin = boxMargin;
+                _boltPopUpForm.ContentSize = contentHeight;
+                _boltPopUpForm.TablePanel.Size = contentHeight;
+                _boltPopUpForm.TablePanel.Padding = new(0, tableVMargin, 0, tableVMargin);
+
+                int formHeight = tableHeight + _boltPopUpForm.TitleHeight + _boltPopUpForm.ButtonPanelHeight + _boltPopUpForm.VirtualVerticalPadding * 2 + tableVMargin * 2;
+                _boltPopUpForm.Size = new(contentHeight.Width + _boltPopUpForm.VirtualHorizontalPadding * 2, formHeight);
+                if (_boltPopUpForm.Visible) {
+                    _boltPopUpForm.Invalidate();
+                }
+            }
         }
 
         private void InitializeRightTop() {
@@ -686,8 +707,8 @@ namespace OperationGuidance_new.Views
             }
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
-            base.InvokeResizing(sender, eventArgs);
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
             ReSizeContents();
             ResizeleftTop();
             ResizeLeftBottom();
@@ -774,16 +795,6 @@ namespace OperationGuidance_new.Views
 
             // 重新计算弹框的大小和位置
             ResizePopUpForm();
-        }
-
-        private void ResizePopUpForm() {
-            if (_boltPopUpForm != null) {
-                MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
-                _boltPopUpForm.Size = new((int) (mainForm.Width * .65), (int) (mainForm.Height * .26 + mainForm.Width * .03));
-                if (_boltPopUpForm.Visible) {
-                    _boltPopUpForm.Invalidate();
-                }
-            }
         }
 
         private void ResizeRightTop() {
@@ -1243,7 +1254,7 @@ namespace OperationGuidance_new.Views
                 int count = _deviceDTOs.Count;
                 int mainW = WidgetUtils.MainPanel.Parent.Width;
                 int mainH = WidgetUtils.MainPanel.Parent.Height;
-                int extraH = _popUpForm.HasTitleExtraHeight + _popUpForm.HasButtonExtraHeight;
+                int extraH = _popUpForm.TitleHeight + _popUpForm.ButtonPanelHeight;
                 int popUpW = (int) (mainW * .4);
                 int hGap = (int) (mainH * .02);
                 int popUpContentH = (int) (mainH * .05 + mainW * .0165 - extraH) * count + hGap * (count + 1);
@@ -1332,7 +1343,7 @@ namespace OperationGuidance_new.Views
 
                 int btnH = (int) (_iconHeight * 1.15);
                 button.Size = new((int) (btnH * 2.15), btnH);
-                button.Location = new((int) ((Width - button.Width) * .95), HeightGap * (i + 1) + _iconHeight * i + HasTitleExtraHeight - (btnH - _iconHeight) / 2);
+                button.Location = new((int) ((Width - button.Width) * .95), HeightGap * (i + 1) + _iconHeight * i + TitleHeight - (btnH - _iconHeight) / 2);
             }
 
             this.ResizeSecondPopUpForm();
@@ -1357,7 +1368,7 @@ namespace OperationGuidance_new.Views
                     if (i == 0) {
                         imagePoint = new(this._firstImageX, this._firstImageY);
                     } else {
-                        imagePoint = new(this._firstImageX, this.HeightGap * (i + 1) + this._iconHeight * i + this.HasTitleExtraHeight);
+                        imagePoint = new(this._firstImageX, this.HeightGap * (i + 1) + this._iconHeight * i + this.TitleHeight);
                     }
                     textPoint = new((int) (imagePoint.X * 1.2) + this._connectedShowing.Width, imagePoint.Y + (this._connectedShowing.Height - this.Font.Height) / 2);
 
@@ -1374,12 +1385,12 @@ namespace OperationGuidance_new.Views
 
         protected void ResizeIconImage() {
             int count = this.DeviceDTOs.Count;
-            this._iconHeight = (Height - HasTitleExtraHeight - HeightGap * (count + 1)) / count;
+            this._iconHeight = (Height - TitleHeight - HeightGap * (count + 1)) / count;
             this._connectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, _iconHeight, _iconHeight);
             this._disconnectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, _iconHeight, _iconHeight);
             // Recalculate image location
             this._firstImageX = (int) (Width * .075);
-            this._firstImageY = HeightGap + HasTitleExtraHeight;
+            this._firstImageY = HeightGap + TitleHeight;
         }
 
         protected void ResizeText() {
@@ -1392,8 +1403,8 @@ namespace OperationGuidance_new.Views
         private CustomPopUpForm _upperForm;
 
         private TableLayoutPanel _tablePanel;
-        private CustomTextBoxGroup _stationTextBox;
-        private CustomTextBoxGroup _procedureTextBox;
+        private CustomTextBoxGroupOld _stationTextBox;
+        private CustomTextBoxGroupOld _procedureTextBox;
 
         public DeviceOperationPopUpForm(CustomPopUpForm upperForm, string titleInfo) : base() {
             this.BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
@@ -1456,11 +1467,11 @@ namespace OperationGuidance_new.Views
             int tableW = this.Width - this.VirtualHorizontalPadding * 2;
             int horizontalGap = (int) (tableW * .015F);
             _tablePanel.Size = new(tableW, tableH);
-            _tablePanel.Location = new(this.VirtualHorizontalPadding, this.HasTitleExtraHeight + this.VirtualVerticalPadding + verticalGap);
+            _tablePanel.Location = new(this.VirtualHorizontalPadding, this.TitleHeight + this.VirtualVerticalPadding + verticalGap);
 
             int controlW = _tablePanel.Width / _tablePanel.ColumnCount;
             foreach (Control control in _tablePanel.Controls) {
-                CustomTextBoxGroup box = control as CustomTextBoxGroup;
+                CustomTextBoxGroupOld box = control as CustomTextBoxGroupOld;
                 box.Padding = new Padding(horizontalGap, verticalGap, horizontalGap, verticalGap);
                 box.GapBetweenNameNBoxes = horizontalGap;
                 box.Size = new(controlW, tableH);

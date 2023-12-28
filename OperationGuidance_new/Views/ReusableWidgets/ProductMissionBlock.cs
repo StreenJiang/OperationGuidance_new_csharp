@@ -77,7 +77,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             e.Graphics.DrawRectangle(new Pen(_borderColor, _borderSize), _innerBorderRect);
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Recalculate the border size
             _borderSize = (int) Math.Ceiling((double) ((Width + Height) / 400D));
             _innerButton.Size = Size - new Size(_borderSize * 2, _borderSize * 2);

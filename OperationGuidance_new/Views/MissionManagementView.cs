@@ -82,10 +82,8 @@ namespace OperationGuidance_new.Views {
         public override void VisibleToTrue() {
             // Check and display view
             CheckAndDisplay();
-            // Trigger resize
-            if (IsHandleCreated) {
-                InvokeResizing(this, EventArgs.Empty);
-            }
+            // Invoke base, it will resize all children
+            base.VisibleToTrue();
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
@@ -105,7 +103,7 @@ namespace OperationGuidance_new.Views {
             return this.NewHeight > parentNewHeight;
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Resize big button panel
             _bigButtonPanel.Size = new(Parent.Width, Parent.Height);
             if (_bigButtonPanel.Visible) {
@@ -122,7 +120,7 @@ namespace OperationGuidance_new.Views {
             _missionListPanel.CellVerticalMargin = _cellVerticalMargin;
             // Resize mission list panel
             _missionListPanel.Size = new(this.Width, this.Height);
-            _missionListPanel.InvokeResizing(eventArgs);
+            _missionListPanel.ResizeChildren(eventArgs);
             if (_missionListPanel.Visible) {
                 _missionListPanel.Invalidate();
             }

@@ -43,7 +43,7 @@ namespace OperationGuidance_new.Views {
             _editionPage = new(this, missionDTO);
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             if (_editionPage != null) {
                 _editionPage.Size = Size;
             }
@@ -51,12 +51,6 @@ namespace OperationGuidance_new.Views {
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             return false;
-        }
-
-        public override void VisibleToTrue() {
-            if (OuterVScrollPanel != null) {
-                OuterVScrollPanel.InvokeResizing();
-            }
         }
 
         // Class: inner page panel
@@ -73,7 +67,7 @@ namespace OperationGuidance_new.Views {
             private WorkplacePiece _right;
 
             // Left top
-            private CustomTextBoxGroup _missionName;
+            private CustomTextBoxGroupOld _missionName;
             private CommonButton _buttonSave;
             private CommonButton _buttonNew;
             private CommonButton _buttonDelete;
@@ -577,8 +571,13 @@ namespace OperationGuidance_new.Views {
                 cancelButton.Click += (s, e) => {
                     _boltPopUpForm.HideForm();
                 };
+                // Show form but make it transparent to create handles for its children
+                _boltPopUpForm.FakeShowToCreateHandlesForChildren();
+                // Resize all widgets
                 ResizePopUpForm();
+                // Real show
                 _boltPopUpForm.Show();
+                // Set current pop up form
                 EventFuncs.CurrentPopUpForm = _boltPopUpForm;
             }
 
@@ -678,7 +677,7 @@ namespace OperationGuidance_new.Views {
                 return boltEditionButton;
             }
 
-            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 Padding outerPadding = Parent.Parent.Parent.Padding;
                 ResizeContent(outerPadding);
                 ResizeSideButtons();
@@ -786,8 +785,18 @@ namespace OperationGuidance_new.Views {
 
             private void ResizePopUpForm() {
                 if (_boltPopUpForm != null) {
+                    TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
                     MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
-                    _boltPopUpForm.Size = new((int) (mainForm.Width * .65), (int) (mainForm.Height * .35 + mainForm.Width * .03));
+
+                    int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * boxHeight;
+                    Size contentHeight = new((int) (mainForm.Width * .75), tableHeight);
+                    _boltPopUpForm.BoxHeight = boxHeight;
+                    _boltPopUpForm.ContentSize = contentHeight;
+                    _boltPopUpForm.TablePanel.Size = contentHeight;
+
+                    int formHeight = tableHeight + _boltPopUpForm.TitleHeight + _boltPopUpForm.ButtonPanelHeight + _boltPopUpForm.VirtualVerticalPadding * 2;
+                    _boltPopUpForm.Size = new(contentHeight.Width + _boltPopUpForm.VirtualHorizontalPadding * 2, formHeight);
                     if (_boltPopUpForm.Visible) {
                         _boltPopUpForm.Invalidate();
                     }
@@ -1187,7 +1196,7 @@ namespace OperationGuidance_new.Views {
                 _sideButtons = sideButtons;
             }
 
-            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (OuterVScrollPanel != null) {
                     int boltButtonHeight = (int) (OuterVScrollPanel.Height * .06);
                     int boltButtonMargin = boltButtonHeight / 7;

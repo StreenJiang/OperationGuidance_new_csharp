@@ -20,6 +20,7 @@ namespace CustomLibrary.TextBoxes {
         private int _boxOriginalWidth;
         private int _boxErrorWidth;
         private ErrorProvider _errorProvider;
+        private Image? _iconShowing;
         private Color? _borderColorError;
 
         public new bool Enabled {
@@ -41,7 +42,7 @@ namespace CustomLibrary.TextBoxes {
         public override Color BackColor {
             get => base.BackColor;
             set {
-                _disabledBackColor = WidgetUtils.ChangeColor(value, .975);
+                _disabledBackColor = WidgetUtils.ChangeColor(value, .9);
                 if (!_enabled) {
                     base.BackColor = _disabledBackColor;
                     _box.BackColor = _disabledBackColor;
@@ -78,6 +79,7 @@ namespace CustomLibrary.TextBoxes {
         public Color DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
+        public bool IsError { get => _isError; set => _isError = value; }
 
         public CustomTextBox(ErrorProvider? errorProvider = null) : base() {
             Margin = new(0);
@@ -126,34 +128,37 @@ namespace CustomLibrary.TextBoxes {
 
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
-            Image image = WidgetUtils.ResizeImageWithoutLosingQuality(CustomResources.input_error, newIconSize);
-            _errorProvider.Icon = Icon.FromHandle(new Bitmap(image).GetHicon());
-            _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
-            _boxErrorWidth = _boxOriginalWidth - newIconSize.Width;
+            if (_iconShowing == null || _iconShowing.Size != newIconSize) {
+                _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(CustomResources.input_error, newIconSize);
+                _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
+                _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
+                _boxErrorWidth = _boxOriginalWidth - newIconSize.Width;
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            SizeChanged += InvokeResizing;
-            InvokeResizing(this, e);
+            SizeChanged += ResizeChildren;
         }
 
-        private void InvokeResizing(object? sender, EventArgs eventArgs) {
-            Font = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .5F, 
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        public void ResizeChildren(object? sender, EventArgs eventArgs) {
+            Font = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .47F, 
                     _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
-            int boxWidth = Width - Padding.Size.Width;
+            int boxWidthTemp = Width - Padding.Size.Width;
             // Recalculate size and location of box
             _box.Font = Font;
-            int padding = (int) (_box.Height * .3) + Margin.Top;
-            _boxOriginalWidth = boxWidth - padding * 2;
+            int hPadding = (int) (Height / 2.6);
+            int vPadding = Margin.Top;
+            _boxOriginalWidth = boxWidthTemp - hPadding * 2;
             ResetErrorIcon();
             if (_isError) {
                 _box.Width = _boxErrorWidth;
             } else {
                 _box.Width = _boxOriginalWidth;
             }
-            _box.Padding = new(padding);
-            _box.Location = new(padding, (Height - _box.Height) / 2);
+            _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
+            _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {

@@ -9,10 +9,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private ProductBoltDTO _originalBoltDTO;
         private ProductBoltDTO _modifiedBoltDTO;
 
+        private int _boxHeight;
+        private int _boxMargin;
         private TableLayoutPanel _tablePanel;
         private CustomTextBoxGroup _descriptionBox;
         private CustomTextBoxGroup _specificationBox;
-        private CustomTextBoxGroup _toolIdBox;
+        private CustomComboBoxGroup<int> _toolIdComboBox;
         private CustomTextBoxGroup _toolDescriptionBox;
         private CustomTextBoxGroup _bitSpecificationBox;
         private CustomTextBoxGroup _procedureSetBox;
@@ -22,10 +24,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public ProductBoltDTO OriginalBoltDTO { get => _originalBoltDTO; set => _originalBoltDTO = value; }
         public ProductBoltDTO ModifiedBoltDTO { get => _modifiedBoltDTO; set => _modifiedBoltDTO = value; }
 
-        protected TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
+        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
+        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         protected CustomTextBoxGroup DescriptionBox { get => _descriptionBox; set => _descriptionBox = value; }
         protected CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
-        protected CustomTextBoxGroup ToolIdBox { get => _toolIdBox; set => _toolIdBox = value; }
+        protected CustomComboBoxGroup<int> ToolIdComboBox { get => _toolIdComboBox; set => _toolIdComboBox = value; }
         protected CustomTextBoxGroup ToolDescriptionBox { get => _toolDescriptionBox; set => _toolDescriptionBox = value; }
         protected CustomTextBoxGroup BitSpecificationBox { get => _bitSpecificationBox; set => _bitSpecificationBox = value; }
         protected CustomTextBoxGroup ProcedureSetBox { get => _procedureSetBox; set => _procedureSetBox = value; }
@@ -43,94 +47,112 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Padding = new(0),
                 ColumnCount = 2,
             };
-            _descriptionBox = new("螺栓点位描述", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _descriptionBox = new("螺栓点位描述") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
-            _specificationBox = new("螺栓规格", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _specificationBox = new("螺栓规格") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
-            _specificationBox.SetNumberValidate(0, true);
-            _toolIdBox = new("工具ID", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _specificationBox.GetTextBox(0).NumberValidate = true;
+            _toolIdComboBox = new("工具ID") {
+                Parent = _tablePanel,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                Ratio = 6.5,
+                NameAlignment = HorizontalAlignment.Right,
+                ShowRealValue = true,
+                Enabled = false,
+            };
+            _toolDescriptionBox = new("工具描述") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
-            _toolIdBox.SetNumberValidate(0, true);
-            _toolDescriptionBox = new("工具描述", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _bitSpecificationBox = new("批头规格") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
-            _bitSpecificationBox = new("批头规格", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _bitSpecificationBox.GetTextBox(0).NumberValidate = true;
+            _procedureSetBox = new("Pset") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
-            _bitSpecificationBox.SetNumberValidate(0, true);
-            _procedureSetBox = new("Pset", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _procedureSetBox.GetTextBox(0).NumberValidate = true;
+            _torqueBox = new("扭矩范围") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                Ratio = 6.5,
-                NameAlignment = HorizontalAlignment.Right,
-                Enabled = false,
-            };
-            _procedureSetBox.SetNumberValidate(0, true);
-            _torqueBox = new("扭矩范围", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
-                Parent = _tablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
             _torqueBox.Separator = "~";
-            _torqueBox.AddBoxes();
-            _torqueBox.SetNumberValidate(0, true);
-            _torqueBox.SetNumberValidate(1, true);
-            _angleBox = new("角度范围", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _torqueBox.GetTextBox(0).NumberValidate = true;
+            _torqueBox.AddTextBox().NumberValidate = true;
+            _angleBox = new("角度范围") {
                 Parent = _tablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
             _angleBox.Separator = "~";
-            _angleBox.AddBoxes();
-            _angleBox.SetNumberValidate(0, true);
-            _angleBox.SetNumberValidate(1, true);
+            _angleBox.GetTextBox(0).NumberValidate = true;
+            _angleBox.AddTextBox().NumberValidate = true;
 
             _descriptionBox.SetValue(0, boltDTO.description);
             _specificationBox.SetValue(0, boltDTO.specification + "");
-            _toolIdBox.SetValue(0, boltDTO.tool_id + "");
+            List<DeviceDTO> list = new() {
+                new() {
+                    id = 1,
+                    name = "啥啥啥力臂",
+                },
+                new() {
+                    id = 2,
+                    name = "啥啥啥工具",
+                },
+            };
+            _toolIdComboBox.AddItem(list[0].id + "（" + list[0].name + "）", list[0].id);
+            _toolIdComboBox.AddItem(list[1].id + "（" + list[1].name + "）", list[1].id);
+            _toolIdComboBox.SetDefault(0);
             _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
             _procedureSetBox.SetValue(0, boltDTO.procedure_set + "");
             _torqueBox.SetValue(0, boltDTO.torque_min + "");
@@ -139,33 +161,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _angleBox.SetValue(1, boltDTO.angle_max + "");
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            InvokeResizing();
-        }
+        public override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
+            _tablePanel.Location = new(VirtualHorizontalPadding, TitleHeight + VirtualVerticalPadding);
 
-        private void InvokeResizing() {
-            int contentH = ContentSize.Height - this.VirtualVerticalPadding * 2;
-            int verticalGap = (int) (contentH * .05);
-            int tableH = contentH - verticalGap * 2;
-            int tableW = this.Width - this.VirtualHorizontalPadding * 2;
-            int horizontalGap = (int) (tableW * .01F);
-            int boxHGap = (int) (tableH * .04);
-            _tablePanel.Size = new(tableW, tableH);
-            _tablePanel.Location = new(this.VirtualHorizontalPadding, this.HasTitleExtraHeight + this.VirtualVerticalPadding + verticalGap);
-
-            int boxW = _tablePanel.Width / _tablePanel.ColumnCount;
-            int boxH = tableH / (_tablePanel.Controls.Count / _tablePanel.ColumnCount);
+            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
             IList list = _tablePanel.Controls;
             for (int i = 0; i < list.Count; i++) {
                 Control? control = (Control?) list[i];
                 if (control != null) {
-                    CustomTextBoxGroup? box = control as CustomTextBoxGroup;
-                    if (box != null) {
-                        box.Padding = new Padding(horizontalGap, boxHGap, horizontalGap, boxHGap);
-                        box.GapBetweenNameNBoxes = horizontalGap;
-                        box.Size = new(boxW, boxH);
-                    }
+                    control.Margin = new(_boxMargin);
+                    control.Size = new(boxW, _boxHeight);
                 }
             }
         }

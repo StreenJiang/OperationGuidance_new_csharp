@@ -55,13 +55,13 @@
             get => COLOR_E86C10;
         }
         public static Color COLOR_TEXT_BOX_BORDER {
-            get => COLOR_DDDDDD;
+            get => COLOR_CCCCCC;
         }
         public static Color COLOR_TEXT_BOX_BORDER_ERROR {
             get => COLOR_F01414;
         }
         public static Color COLOR_TEXT_BOX_FOREGROUND {
-            get => COLOR_666666;
+            get => COLOR_444444;
         }
         public static Color COLOR_TEXT_BOX_BACKGROUND {
             get => COLOR_FEFEFE;

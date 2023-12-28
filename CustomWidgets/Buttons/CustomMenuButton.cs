@@ -1,4 +1,5 @@
 ﻿using CustomLibrary.Buttons.BaseClasses;
+using CustomLibrary.Panels.AbstractClasses;
 using CustomLibrary.Panels.BaseClasses;
 
 namespace CustomLibrary.Buttons
@@ -30,9 +31,6 @@ namespace CustomLibrary.Buttons
                     _onMenuButtonClick(sender, eventArgs);
                 } else if (!this.ToggledButton) {
                     throw new NullReferenceException("A non-toggle menu button must have a OnMenuButtonClick method.");
-                }
-                if (_correspondingContentPanel != null && _correspondingContentPanel.IsHandleCreated) {
-                    _correspondingContentPanel.VisibleToTrue();
                 }
             };
         }

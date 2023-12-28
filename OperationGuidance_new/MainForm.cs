@@ -5,16 +5,24 @@ namespace OperationGuidance_new {
     public partial class MainForm: Form {
         ILog log = LogManager.GetLogger(typeof(MainForm));
 
+        protected override CreateParams CreateParams {
+            get {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // 用双缓冲绘制窗口的所有子控件
+                return cp;
+            }
+        }
+
         public MainForm() {
-            this.FormBorderStyle = FormBorderStyle.None;
             InitializeComponentManually();
             log.Info("测试一下日志");
+            this.FormBorderStyle = FormBorderStyle.None; // 这一句注释掉之后就不会触发下面的 InvokeResizing了，好奇怪
         }
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += InvokeResizing;
-            InvokeResizing(this, e);
+            // InvokeResizing(this, EventArgs.Empty); // 上面那句注释掉后暂时用这个触发一下
         }
 
         private void InvokeResizing(object? sender, EventArgs e) {
@@ -22,22 +30,7 @@ namespace OperationGuidance_new {
                 return;
             }
             foreach (Control control in Controls) {
-                if (!control.Visible && this.IsHandleCreated) {
-                    // 开始异步调用，提升性能
-                    //IAsyncResult asyncResult = this.BeginInvoke(new(() => {
-                    //    control.Size = this.ClientSize;
-                    //}));
-                    new Thread(() => {
-                        this.BeginInvoke(new(() => {
-                            if (control is not Form) {
-                                control.Size = this.ClientSize;
-                            }
-                        }));
-                    }).Start();
-
-                    //// 结束异步调用
-                    //this.EndInvoke(asyncResult);
-                } else {
+                if (this.IsHandleCreated) {
                     control.Size = this.ClientSize;
                 }
             }

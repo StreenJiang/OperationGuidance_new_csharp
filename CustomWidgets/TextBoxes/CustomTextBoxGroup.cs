@@ -1,87 +1,69 @@
-﻿using CustomLibrary.Configs;
-using CustomLibrary.Events;
-using CustomLibrary.Resources;
-using CustomLibrary.Utils;
+using CustomLibrary.Configs;
 using System.ComponentModel;
 
 namespace CustomLibrary.TextBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomTextBoxGroup: UserControl {
         private bool _enabled;
-        private string? _textName;
-        private Font? _textFont;
-        private FontStyle? _textFontStyle;
+        private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;
+        private int _gapNameAndBox;
+        private int _gapBoxes;
+        private string _separator;
+        private List<SeparatorControl> _separators;
 
         private double? _ratio;
-        private Font? _boxFont;
-        private FontStyle? _boxFontStyle;
-        private List<TextBox> _textBoxes;
-        private List<Rectangle> _borderRects;
-        private Color? _boxForeColor;
-        private Color? _boxBackColor;
-        private Color? _boxDisabledBackColor;
+        private FlowLayoutPanel _textBoxesPanel;
+        private List<CustomTextBox> _textBoxes;
+        private Color _boxBackColor;
+        private Color? _disabledBackColor;
         private Color? _borderColor;
+        private Color? _borderColorError;
 
-        private string? _separator;
-        private int _separatorWidth;
-        private int _gapBetweenNameNBoxes;
-        private int _gapBetweenBoxes;
-
-        private List<bool> _numberValidate;
-        private ErrorProvider _errorProvider;
-        private int? _currentErrorBoxIndex;
-        private Color _borderColorError;
-
-        public string? TextName {
-            get => this._textName;
-            set => this._textName = value;
+        public new bool Enabled {
+            get => _textBoxes[0].Enabled;
+            set => SetTextBoxesProperties((textBox) => textBox.Enabled = value);
         }
-        public double? Ratio {
-            get => this._ratio;
-            set => this._ratio = value;
-        }
-        public Color? BoxBackColor {
-            get => this._boxBackColor;
+        public string TextName { get => this._textName; set => this._textName = value; }
+        public string Separator { 
+            get => _separator; 
             set {
-                this._boxBackColor = value;
-                if (value != null) {
-                    _boxDisabledBackColor = WidgetUtils.ChangeColor(value.Value, .975);
-                }
-                if (value != null && _textBoxes.Count > 0) {
-                    foreach (TextBox textBox in _textBoxes) {
-                        textBox.BackColor = value.Value;
-                    }
-                }
+                _separator = value; 
+                SetSeparatorsProperties((separator) => separator.Text = value );
             }
         }
-        public Color? BorderColor {
-            get => this._borderColor;
+        public double? Ratio { get => this._ratio; set => this._ratio = value; }
+        public new Color BackColor { get; private set; }
+        public new Control Parent { 
+            get => base.Parent; 
             set {
-                this._borderColor = value;
-                if (value != null) {
-                    Padding newP = Padding;
-                    newP.Left += 1;
-                    newP.Right += 1;
-                    newP.Top += 1;
-                    newP.Bottom += 1;
-                    Padding = newP;
-                } else {
-                    Padding newP = Padding;
-                    newP.Left -= 1;
-                    newP.Right -= 1;
-                    newP.Top -= 1;
-                    newP.Bottom -= 1;
-                    Padding = newP;
-
-                }
+                base.Parent = value;
+                BackColor = value.BackColor;
+            } 
+        }
+        public Color BoxBackColor { 
+            get => _boxBackColor;
+            set {
+                _boxBackColor = value;
+                SetTextBoxesProperties((textBox) => textBox.BackColor = value);
             }
         }
-        public int GapBetweenNameNBoxes {
-            get => this._gapBetweenNameNBoxes;
-            set => this._gapBetweenNameNBoxes = value;
+        public Color? BorderColor { 
+            get => _borderColor;
+            set {
+                _borderColor = value;
+                SetTextBoxesProperties((textBox) => textBox.BorderColor = value);
+            }
         }
+        public Color? BorderColorError { 
+            get => _borderColorError; 
+            set {
+                _borderColorError = value;
+                SetTextBoxesProperties((textBox) => textBox.BorderColorError = value);
+            }
+        }
+        public int GapNameAndBox { get => this._gapNameAndBox; set => this._gapNameAndBox = value; }
         public HorizontalAlignment NameAlignment {
             get => this._nameAlignment;
             set {
@@ -91,210 +73,145 @@ namespace CustomLibrary.TextBoxes {
                 this._nameAlignment = value;
             }
         }
-        public string? Separator {
-            get => this._separator;
-            set => this._separator = value;
-        }
-        public Color? BoxForeColor {
-            get => this._boxForeColor;
-            set {
-                this._boxForeColor = value;
-                if (value != null) {
-                    foreach (TextBox textBox in _textBoxes) {
-                        textBox.ForeColor = value.Value;
+        public bool HasError {
+            get {
+                foreach (CustomTextBox textBox in _textBoxes) {
+                    if (textBox.IsError) {
+                        return textBox.IsError;
                     }
                 }
+                return false;
             }
         }
 
-        public new bool Enabled {
-            get => this._enabled;
-            set {
-                this._enabled = value;
-                foreach (TextBox box in _textBoxes) {
-                    box.Enabled = value;
-                }
+        private void SetTextBoxesProperties(Action<CustomTextBox> setProperty) {
+            foreach (CustomTextBox textBox in _textBoxes) {
+                setProperty(textBox);
+            }
+        }
+        private void SetSeparatorsProperties(Action<SeparatorControl> setProperty) {
+            foreach (SeparatorControl separator in _separators) {
+                setProperty(separator);
             }
         }
 
-        public FontStyle? TextFontStyle { get => _textFontStyle; set => _textFontStyle = value; }
-        public FontStyle? BoxFontStyle { get => _boxFontStyle; set => _boxFontStyle = value; }
-        public int? CurrentErrorBoxIndex { get => _currentErrorBoxIndex; }
-
-        public CustomTextBoxGroup(string? textName, Color borderColorError) : base() {
+        public CustomTextBoxGroup(string textName) : base() {
             Margin = new(0);
-
-            _enabled = true;
+            // Initialize fields
             _textName = textName;
             _nameWidth = 0;
             _nameAlignment = HorizontalAlignment.Left;
-            _separatorWidth = 0;
-            _errorProvider = new() {
-                DataMember = null,
-                ContainerControl = this,
+            // Initialize text boxes
+            _textBoxesPanel = new() {
+                Parent = this,
+                Margin = new(0),
             };
-            _borderColorError = borderColorError;
-
             _textBoxes = new();
-            _borderRects = new();
-            _numberValidate = new() {
-                false,
-            };
+            _separator = "";
+            _separators = new();
             // Add a default box
-            AddBoxes();
+            AddTextBox();
         }
 
-        public void AddBoxes(int num = 1) {
-            for (int i = 0; i < num; i++) {
-                TextBox box = new() {
-                    Parent = this,
-                    BorderStyle = BorderStyle.None,
-                    Multiline = false,
-                    Enabled = _enabled,
-                };
-                box.GotFocus += (sender, eventArgs) => {
-                    EventFuncs.CurrentActiveControl = sender as Control;
-                };
-                int count = _textBoxes.Count;
-                box.TextChanged += (sender, eventArgs) => {
-                    if (_numberValidate[count]) {
-                        foreach (char c in box.Text) {
-                            if (!char.IsDigit(c) && c != '.') {
-                                SetError(count, "请输入数字");
-                                return;
-                            }
-                        }
-                        SetError(count, "");
-                    }
-                };
-                if (_boxBackColor != null) {
-                    box.BackColor = _boxBackColor.Value;
-                }
-                _textBoxes.Add(box);
-                _numberValidate.Add(false);
+        public CustomTextBox AddTextBox() {
+            if (_textBoxes.Count >= 1) {
+                _separators.Add(new() {
+                    Parent = _textBoxesPanel,
+                    Text = _separator,
+                });
             }
-            // Resize amnually
-            InvokeResizing();
+            CustomTextBox box = new() {
+                Parent = _textBoxesPanel,
+                BorderStyle = BorderStyle.None,
+                BackColor = _boxBackColor,
+                BorderColor = _borderColor,
+                BorderColorError = _borderColorError,
+                Enabled = _enabled,
+            };
+            box.BackColor = _boxBackColor;
+            _textBoxes.Add(box);
+            if (IsHandleCreated) {
+                ResizeChildren(this, EventArgs.Empty);
+            }
+            return box;
         }
 
-        public void SetValue(int index, string? value) {
-            _textBoxes[index].Text = value;
-        }
-
-        public string GetValue(int index) {
-            return _textBoxes[index].Text;
-        }
-
-        public TextBox GetBox(int index) {
+        public CustomTextBox GetTextBox(int index) {
             return _textBoxes[index];
         }
 
-        public void SetNumberValidate(int index, bool flag) {
-            _numberValidate[index] = flag;
+        public void SetValue(int index, string? value) {
+            _textBoxes[index].Text = value != null ? value : "";
         }
 
-        public void SetError(int? index, string errorMessage) {
-            _currentErrorBoxIndex = index;
-            if (_currentErrorBoxIndex != null) {
-                _errorProvider.SetError(_textBoxes[_currentErrorBoxIndex.Value], errorMessage);
-                if (errorMessage == null || errorMessage == string.Empty || errorMessage == "") {
-                    _currentErrorBoxIndex = null;
-                }
-            }
-            ResetErrorIcon();
-            Invalidate();
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            SizeChanged += ResizeChildren;
         }
 
-        private void ResetErrorIcon() {
-            if (_currentErrorBoxIndex != null) {
-                Size newIconSize = new((int) (Height / 2.5), (int) (Height / 2.5));
-                Image image = WidgetUtils.ResizeImageWithoutLosingQuality(CustomResources.input_error, newIconSize);
-                _errorProvider.Icon = Icon.FromHandle(new Bitmap(image).GetHicon());
-                _errorProvider.SetIconPadding(_textBoxes[_currentErrorBoxIndex.Value], (int) (-Padding.Right * 1.8));
-            }
-        }
-
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            InvokeResizing();
-        }
-
-        private void InvokeResizing() {
-            // Calculate font
-            _textFont = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .7F, 
-                    _textFontStyle == null ? FontStyle.Regular : _textFontStyle.Value, GraphicsUnit.Pixel);
-            this.Font = _textFont;
-            _boxFont = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .65F, 
-                    _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        public void ResizeChildren(object? sender, EventArgs eventArgs) {
+            // Set Font
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .5f, FontStyle.Regular, GraphicsUnit.Pixel);
+            // Calculate gap between name and box
+            _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
-            if (_textName != null) {
-                using (Graphics g = CreateGraphics()) {
-                    _nameWidth = (int) g.MeasureString(_textName, _textFont).Width;
+            Size separatorSize = new(0, Height - Padding.Size.Height);
+            using (Graphics g = CreateGraphics()) {
+                _nameWidth = (int) g.MeasureString(_textName, Font).Width;
+                if (_separator.Length > 0) {
+                    separatorSize.Width = (int) g.MeasureString(_separator, Font).Width;
                 }
             }
-            // Get Width of separator
-            if (_separator != null) {
-                using (Graphics g = CreateGraphics()) {
-                    _separatorWidth = (int) g.MeasureString(_separator, _boxFont).Width;
-                }
-            }
-
-            // Boexes count
-            int boxesCount = _textBoxes.Count;
-            // Gap num
-            int boxGapNum = boxesCount - 1;
-
-            // Calculate width of text box
+            SetSeparatorsProperties((separator) => {
+                separator.Size = separatorSize;
+                separator.Font = Font;
+            });
+            // Calculate width of combo box
             int boxesRange;
             if (_ratio != null) {
                 boxesRange = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
             } else {
-                boxesRange = Width - _nameWidth - Padding.Size.Width;
+                boxesRange = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
             }
-            if (_nameWidth > 0) {
-                boxesRange -= _gapBetweenNameNBoxes;
-            }
+            _textBoxesPanel.Size = new(boxesRange, Height - Padding.Size.Height);
+            _textBoxesPanel.Location = new(Width - Padding.Right - boxesRange, Padding.Top);
             // Find a optimal gap pixels
+            int boxesCount = _textBoxes.Count;
+            int separatorCount = _separators.Count;
             int pixels = 0;
             int curr = 0;
+            int hMarginTemp = 0;
             while (true) {
-                if ((boxesRange - pixels * boxGapNum - _separatorWidth * boxGapNum) % boxesCount == 0) {
+                if ((boxesRange - (separatorSize.Width + pixels) * separatorCount) % boxesCount == 0) {
                     int prev = curr;
                     curr = pixels;
-                    if (curr > _gapBetweenNameNBoxes) {
-                        if (Math.Abs(curr - _gapBetweenNameNBoxes) > Math.Abs(prev - _gapBetweenNameNBoxes)) {
-                            _gapBetweenBoxes = prev;
+                    if (curr > _gapNameAndBox / 2) {
+                        if (Math.Abs(curr - _gapNameAndBox / 2) > Math.Abs(prev - _gapNameAndBox / 2)) {
+                            hMarginTemp = prev;
                         } else {
-                            _gapBetweenBoxes = curr;
+                            hMarginTemp = curr;
                         }
                         break;
                     }
                 }
                 pixels++;
             }
-            int boxBorderWidth = (boxesRange - _gapBetweenBoxes * boxGapNum - _separatorWidth * boxGapNum) / boxesCount;
-            int nameRange = Width - boxesRange - Padding.Right;
+            int vMarginTemp = (Height - separatorSize.Height) / 2;
+            SetSeparatorsProperties((separator) => separator.Margin = new(hMarginTemp, vMarginTemp, hMarginTemp, vMarginTemp));
 
             // Recalculate size and location of boxes
-            for (int i = 0; i < _textBoxes.Count; i++) {
-                TextBox box = _textBoxes[i];
-                box.Font = _boxFont;
-                int vPadding = (int) (box.Height * .3) + Margin.Top;
-                box.Width = boxBorderWidth - vPadding * 2;
-                box.Padding = new(vPadding);
-                box.Location = new(nameRange + vPadding + i * (_gapBetweenBoxes + box.Width + vPadding * 2) + _separatorWidth * i, (Height - box.Height) / 2);
-            }
+            int boxWidth = (boxesRange - ((separatorSize.Width + hMarginTemp * 2) * separatorCount)) / boxesCount;
+            SetTextBoxesProperties((textBox) => textBox.Size = new(boxWidth, _textBoxesPanel.Height));
 
-            // Create border rectangle if border color is not null
-            if (_borderColor != null) {
-                _borderRects.Clear();
-                for (int i = 0; i < _textBoxes.Count; i++) {
-                    Point borderLocation = new(nameRange + i * (_gapBetweenBoxes + boxBorderWidth) + _separatorWidth * i - 1, Padding.Top);
-                    Size borderSize = new(boxBorderWidth + 1, Height - Padding.Top * 2);
-                    _borderRects.Add(new(borderLocation, borderSize));
-                }
+            // If there are any remaining pixels, split them into separate separators
+            int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
+            int indexTemp = 0;
+            while (remainingWidth > 0) {
+                _separators[indexTemp].Width += 1;
+                indexTemp++;
+                remainingWidth--;
             }
-            ResetErrorIcon();
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -302,59 +219,30 @@ namespace CustomLibrary.TextBoxes {
             base.OnPaint(e);
 
             // Draw name
-            if (_textName != null && _textFont != null) {
+            int x = Padding.Left;
+            if (_nameAlignment == HorizontalAlignment.Right) {
+                x = _textBoxesPanel.Location.X - _nameWidth - _gapNameAndBox;
+            }
+            e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
+        }
+
+        protected override void OnForeColorChanged(EventArgs e) {
+            base.OnForeColorChanged(e);
+            SetTextBoxesProperties((textBox) => textBox.ForeColor = ForeColor);
+            SetSeparatorsProperties((separator) => separator.ForeColor = ForeColor);
+        }
+
+        protected override void OnParentBackColorChanged(EventArgs e) {
+            base.OnParentBackColorChanged(e);
+            BackColor = Parent.BackColor;
+        }
+
+        private class SeparatorControl: UserControl {
+            protected override void OnPaint(PaintEventArgs e) {
+                e.Graphics.Clear(BackColor);
+                base.OnPaint(e);
                 int x = Padding.Left;
-                if (_nameAlignment == HorizontalAlignment.Right) {
-                    x = _textBoxes[0].Location.X - _nameWidth - _gapBetweenNameNBoxes - _textBoxes[0].Padding.Left;
-                }
-                e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - _textFont.Height) / 2));
-            }
-
-            // Draw separator
-            if (_separator != null && _textFont != null) {
-                for (int i = 1; i < _textBoxes.Count; i++) {
-                    int x = _textBoxes[i].Location.X - _separatorWidth - _gapBetweenBoxes / 2 - _textBoxes[i].Padding.Left;
-                    e.Graphics.DrawString(_separator, Font, new SolidBrush(ForeColor), new Point(x, (Height - _textFont.Height) / 2));
-                }
-            }
-
-            // Change color if disabled
-            foreach (TextBox box in _textBoxes) {
-                if (_enabled) {
-                    if (_boxBackColor != null) {
-                        box.BackColor = _boxBackColor.Value;
-                    }
-                } else {
-                    if (_boxDisabledBackColor != null) {
-                        box.BackColor = _boxDisabledBackColor.Value;
-                    }
-                }
-            }
-
-            // Draw border if border color is not null
-            if (_borderColor != null && _borderRects.Count > 0) {
-                for (int i = 0; i < _borderRects.Count; i++) {
-                    Rectangle rect = _borderRects[i];
-                    if (_currentErrorBoxIndex != null && i == _currentErrorBoxIndex) {
-                        e.Graphics.DrawRectangle(new(_borderColorError, 1), rect);
-                    } else {
-                        e.Graphics.DrawRectangle(new(_borderColor.Value, 1), rect);
-                    }
-                }
-            }
-
-            // Draw backColor
-            if (_enabled && _boxBackColor != null && _borderRects.Count > 0) {
-                foreach (Rectangle rect in _borderRects) {
-                    Rectangle rectFill = new(rect.X + 1, rect.Y + 1, rect.Width - 1, rect.Height - 1);
-                    e.Graphics.FillRectangle(new SolidBrush(_boxBackColor.Value), rectFill);
-                }
-            }
-            if (!_enabled && _boxDisabledBackColor != null && _borderRects.Count > 0) {
-                foreach (Rectangle rect in _borderRects) {
-                    Rectangle rectFill = new(rect.X + 1, rect.Y + 1, rect.Width - 1, rect.Height - 1);
-                    e.Graphics.FillRectangle(new SolidBrush(_boxDisabledBackColor.Value), rectFill);
-                }
+                e.Graphics.DrawString(Text, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
             }
         }
     }

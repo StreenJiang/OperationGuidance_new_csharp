@@ -8,9 +8,14 @@ namespace CustomLibrary.Forms {
 
     [System.ComponentModel.DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomPopUpForm: Form {
-        private Form _deviceDetailBackground;
+        private Form _popUpFormBackboard;
         private Rectangle? _borderRect;
         private Color? _borderColor;
+
+        private FlowLayoutPanel _titlePanel;
+        private Panel _contentPanel;
+        private FlowLayoutPanel _buttonsPanel;
+
         private int _titleHeight;
         private Size _contentSize;
         private CloseButton _closeButton = new();
@@ -20,69 +25,25 @@ namespace CustomLibrary.Forms {
         private int _virtualHorizontalPadding;
         private int _virtualVerticalPadding;
 
-        private List<CommonButton> _buttons;
+        private List<FunctionButton> _buttons;
         private HorizontalAlignment _buttonAlignment;
         private int _buttonPanelHeight;
 
-        public Color? BorderColor {
-            get => this._borderColor;
-            set => this._borderColor = value;
-        }
-        public Size ContentSize {
-            get => this._contentSize;
-            set {
-                this._contentSize = value;
-                this.Size = new Size(value.Width, value.Height + HasTitleExtraHeight + HasButtonExtraHeight);
-            }
-        }
-
+        public Color? BorderColor { get => this._borderColor; set => this._borderColor = value; }
+        public Size ContentSize { get => this._contentSize; set => this._contentSize = value; }
         public bool HasTitleBar {
-            get => this._hasTitleBar;
+            get => _hasTitleBar;
             set {
-                this._hasTitleBar = value;
-                if (value) {
-                    this._closeButton.Show();
-                } else {
-                    this._closeButton.Hide();
-                }
+                _hasTitleBar = value;
+                _closeButton.Visible = value;
             }
         }
-
-        public Form BackForm {
-            get => this._deviceDetailBackground;
-            set => this._deviceDetailBackground = value;
-        }
-
-        public int TitleHeight {
-            get {
-                this._titleHeight = this.CalculateTitleHeight();
-                return this._titleHeight;
-            }
-        }
-        private int CalculateTitleHeight() {
-            if (!this._hasTitleBar) {
-                return 0;
-            }
-            Control mainParent = WidgetUtils.MainPanel.Parent;
-            return (int) (mainParent.Height * .0415) + (int) (Math.Abs(mainParent.Width - mainParent.Height) * .0035);
-        }
-        public int HasTitleExtraHeight {
-            get {
-                return this.TitleHeight;
-            }
-        }
-        public string? Title {
-            get => this._title;
-            set => this._title = value;
-        }
-        public int VirtualHorizontalPadding {
-            get => this._virtualHorizontalPadding;
-            set => this._virtualHorizontalPadding = value;
-        }
-        public int VirtualVerticalPadding {
-            get => this._virtualVerticalPadding;
-            set => this._virtualVerticalPadding = value;
-        }
+        public Form BackForm { get => this._popUpFormBackboard; set => this._popUpFormBackboard = value; }
+        public int TitleHeight { get => this._titleHeight; }
+        public int ButtonPanelHeight { get => _buttonPanelHeight; }
+        public string? Title { get => this._title; set => this._title = value; }
+        public int VirtualHorizontalPadding { get => this._virtualHorizontalPadding; set => this._virtualHorizontalPadding = value; }
+        public int VirtualVerticalPadding { get => this._virtualVerticalPadding; set => this._virtualVerticalPadding = value; }
         public HorizontalAlignment ButtonAlignment {
             get => this._buttonAlignment;
             set {
@@ -90,34 +51,22 @@ namespace CustomLibrary.Forms {
                 this._buttonAlignment = value;
             }
         }
-        public int HasButtonExtraHeight {
-            get {
-                return ButtonPanelHeight;
-            }
-        }
-
-        public int ButtonPanelHeight {
-            get {
-                _buttonPanelHeight = CalculateButtonPanelHeight();
-                return this._buttonPanelHeight;
-            }
-        }
 
         public CustomPopUpForm() : base() {
-            _deviceDetailBackground = new() {
+            _popUpFormBackboard = new() {
                 Owner = (Form) WidgetUtils.MainPanel.Parent,
                 StartPosition = FormStartPosition.Manual,
                 FormBorderStyle = FormBorderStyle.None,
-                Opacity = .25D,
+                Opacity = .5D,
                 BackColor = Color.Black,
                 ShowInTaskbar = false
             };
-            _deviceDetailBackground.Owner.LocationChanged += (s, e) => {
-                this.ChangeLocation();
+            _popUpFormBackboard.Owner.LocationChanged += (s, e) => {
+                ChangeLocationAfterSizeChanged(this, EventArgs.Empty);
             };
-            _deviceDetailBackground.Hide();
+            _popUpFormBackboard.Hide();
 
-            this.Owner = _deviceDetailBackground;
+            this.Owner = _popUpFormBackboard;
             this.StartPosition = FormStartPosition.Manual;
             this.FormBorderStyle = FormBorderStyle.None;
             this.ShowInTaskbar = false;
@@ -136,32 +85,47 @@ namespace CustomLibrary.Forms {
             _buttonAlignment = HorizontalAlignment.Right;
         }
 
-        public virtual void HideForm() {
-            this.Hide();
-            _deviceDetailBackground.Owner.Focus();
-            _deviceDetailBackground.Hide();
+        public virtual void FakeShowToCreateHandlesForChildren() {
+            base.Show();
+            Opacity = 0D;
         }
 
-        public CommonButton AddButton(string label) {
-            CommonButton button = new() {
+        public virtual void HideForm() {
+            this.Hide();
+            _popUpFormBackboard.Owner.Focus();
+            _popUpFormBackboard.Hide();
+        }
+
+        public new void Show() {
+            base.Show();
+            Opacity = 1D;
+        }
+
+        public FunctionButton AddButton(string label) {
+            FunctionButton button = new() {
                 Label = label,
                 Parent = this,
             };
             _buttons.Add(button);
-            InvokeResizing();
+            // ResizeChildren();
             return button;
         }
 
-        public void RemoveButton(CommonButton button) {
+        public void RemoveButton(FunctionButton button) {
             _buttons.Remove(button);
         }
 
-        public int CalculateButtonPanelHeight() {
-            if (_buttons.Count == 0) {
-                return 0;
-            }
+        public void CalculateDetailProperties() {
             Control mainParent = WidgetUtils.MainPanel.Parent;
-            return (int) (mainParent.Height * .0415) + (int) (Math.Abs(mainParent.Width - mainParent.Height) * .0035);
+            _popUpFormBackboard.Size = mainParent.ClientSize;
+            if (this._hasTitleBar) {
+                _titleHeight = (int) (mainParent.Height * .0475) + (int) (Math.Abs(mainParent.Width - mainParent.Height) * .0035);
+            }
+            if (_buttons.Count >= 0) {
+               _buttonPanelHeight = (int) (mainParent.Height * .0415) + (int) (Math.Abs(mainParent.Width - mainParent.Height) * .0035);
+            }
+            this._virtualHorizontalPadding = (int) (mainParent.Width * .01);
+            this._virtualVerticalPadding = (int) (mainParent.Height * .01);
         }
 
         public void RelocateButtons() {
@@ -173,7 +137,7 @@ namespace CustomLibrary.Forms {
                 case HorizontalAlignment.Left:
                     int leftFirst = _virtualHorizontalPadding;
                     for (int i = 0; i < _buttons.Count; i++) {
-                        CommonButton btn = _buttons[i];
+                        FunctionButton btn = _buttons[i];
                         if (i == 0) {
                             btn.Location = new(leftFirst, y);
                         } else {
@@ -186,7 +150,7 @@ namespace CustomLibrary.Forms {
                     int counting = 0;
                     int rightLast = Width - _virtualHorizontalPadding;
                     for (int i = _buttons.Count - 1; i >= 0; i--) {
-                        CommonButton btn = _buttons[i];
+                        FunctionButton btn = _buttons[i];
                         if (counting == 0) {
                             btn.Location = new(rightLast - btn.Width, y);
                         } else {
@@ -198,13 +162,13 @@ namespace CustomLibrary.Forms {
                     break;
                 case HorizontalAlignment.Center:
                     int sumBtnW = 0;
-                    foreach (CommonButton btn in _buttons) {
+                    foreach (FunctionButton btn in _buttons) {
                         sumBtnW += btn.Width;
                     }
                     int sumGap = btnGap * _buttons.Count;
                     int centerStart = (Width - sumBtnW - sumGap) / 2 + _virtualHorizontalPadding;
                     for (int i = 0; i < _buttons.Count; i++) {
-                        CommonButton btn = _buttons[i];
+                        FunctionButton btn = _buttons[i];
                         if (i == 0) {
                             btn.Location = new(centerStart, y);
                         } else {
@@ -216,24 +180,21 @@ namespace CustomLibrary.Forms {
             }
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            InvokeResizing();
-            ChangeLocation();
-            Invalidate();
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            CalculateDetailProperties();
+            SizeChanged += ResizeChildren;
+            SizeChanged += ChangeLocationAfterSizeChanged;
         }
 
-        private void InvokeResizing() {
-            Control mainParent = WidgetUtils.MainPanel.Parent;
-            _deviceDetailBackground.Size = mainParent.ClientSize;
-            this._virtualHorizontalPadding = (int) (mainParent.Width * .006);
-            this._virtualVerticalPadding = (int) (mainParent.Height * .00775);
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        public virtual void ResizeChildren(object? sender, EventArgs eventArgs) {
+            CalculateDetailProperties();
 
             if (this._hasTitleBar) {
-                this._titleHeight = this.CalculateTitleHeight();
                 this._closeButton.Size = new((int) (this._titleHeight * 1.25), this._titleHeight - 1);
                 // 标题字体
-                this._titleFont = new Font(WidgetsConfigs.SystemFontFamily, this._titleHeight * .47F, FontStyle.Regular);
+                this._titleFont = new Font(WidgetsConfigs.SystemFontFamily, this._titleHeight * .425F, FontStyle.Regular);
                 this._closeButton.Location = new(this.Width - this._closeButton.Width - 1, 1);
             }
 
@@ -246,29 +207,32 @@ namespace CustomLibrary.Forms {
                 width -= 1;
                 height -= _titleHeight;
             }
+            // First to check if height of button panel is exist
             if (_buttons.Count > 0) {
-                _buttonPanelHeight = CalculateButtonPanelHeight();
-                foreach (CommonButton button in _buttons) {
+                height -= _buttonPanelHeight;
+            }
+            // _contentSize = new(width, height);
+            // Then change the size of buttons after _contentSize has been set, because measure text will interrupt size change, don't know why
+            if (_buttons.Count > 0) {
+                foreach (FunctionButton button in _buttons) {
                     // Height must be set first then ResizeTextLabel can be invoked, then the Font can be set
                     button.Height = _buttonPanelHeight;
-                    using (Graphics g = CreateGraphics()) {
-                        int btnLabelWidth = (int) g.MeasureString(button.Label, button.Font).Width;
-                        button.Width = btnLabelWidth + _buttonPanelHeight;
-                    }
+                    int btnLabelWidth = TextRenderer.MeasureText(button.Label, button.Font).Width;
+                    button.Width = btnLabelWidth + _buttonPanelHeight;
                 }
                 RelocateButtons();
                 height -= _buttonPanelHeight;
             }
-            _contentSize = new(width, height);
         }
 
-        private void ChangeLocation() {
-            this._deviceDetailBackground.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
-            int x = this._deviceDetailBackground.Location.X;
-            int y = this._deviceDetailBackground.Location.Y;
-            int width = this._deviceDetailBackground.Width;
-            int height = this._deviceDetailBackground.Height;
-            this.Location = new(x + (width - this.Width) / 2, y + (height - this.Height) / 2);
+        private void ChangeLocationAfterSizeChanged(object? sender, EventArgs eventArgs) {
+            _popUpFormBackboard.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
+            int x = _popUpFormBackboard.Location.X;
+            int y = _popUpFormBackboard.Location.Y;
+            int width = _popUpFormBackboard.Width;
+            int height = _popUpFormBackboard.Height;
+            Location = new(x + (width - Width) / 2, y + (height - Height) / 2);
+            _popUpFormBackboard.Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -291,7 +255,9 @@ namespace CustomLibrary.Forms {
         protected override void OnVisibleChanged(EventArgs e) {
             base.OnVisibleChanged(e);
             if (this.Visible) {
-                this._deviceDetailBackground.Show();
+                this._popUpFormBackboard.Show();
+            } else {
+                HideForm();
             }
         }
 
@@ -315,6 +281,18 @@ namespace CustomLibrary.Forms {
             }
 
             protected override void ResizeTextLabel() {
+            }
+        }
+
+        public class FunctionButton: CommonButton {
+            protected override void ResizeTextLabel() {
+                if (Label != null) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
+                    using (Graphics g = CreateGraphics()) {
+                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                    }
+                    LabelY = (Height - Font.Height) / 2;
+                }
             }
         }
     }

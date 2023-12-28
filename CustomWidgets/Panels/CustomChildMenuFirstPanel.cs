@@ -52,25 +52,8 @@ namespace CustomLibrary.Panels
             _allMenuButtonHeight = 0;
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            //if (!this.Visible && this.Created) {
-            //    // 开始异步调用，提升性能
-            //    IAsyncResult asyncResult = this.BeginInvoke(new(() => {
-            //        base.OnSizeChanged(e);
-            //        this.InvokeResizing();
-            //    }));
-
-            //    // 结束异步调用
-            //    this.EndInvoke(asyncResult);
-            //} else {
-            //    base.OnSizeChanged(e);
-            //    this.InvokeResizing();
-            //}
-            base.OnSizeChanged(e);
-            this.InvokeResizing();
-        }
-
-        private void InvokeResizing() {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
             if (CheckFoldButtonPanel() && CheckFoldButton()) {
                 _foldButtonPanel.Size = new(this.Width, this.Height - _allMenuButtonHeight);
                 _foldButton.Location = new(_foldButtonPanel.Width - _foldButton.Width, _foldButtonPanel.Height - _foldButton.Height);

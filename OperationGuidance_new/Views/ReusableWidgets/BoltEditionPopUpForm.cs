@@ -20,41 +20,42 @@ namespace OperationGuidance_new.Views.ReusableWidgets
             
             DescriptionBox.Enabled = true;
             SpecificationBox.Enabled = true;
-            ToolIdBox.Enabled = true;
+            ToolIdComboBox.Enabled = true;
             // ToolDescriptionBox.Enabled = true; // tool_description will be filling in automatically after filling in tool_id
             BitSpecificationBox.Enabled = true;
             ProcedureSetBox.Enabled = true;
             TorqueBox.Enabled = true;
             AngleBox.Enabled = true;
-            _positionX = new("点位X坐标", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _positionX = new("点位X坐标") {
                 Parent = TablePanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                Ratio = 6.5,
+                NameAlignment = HorizontalAlignment.Right,
+            };
+            _positionX.GetTextBox(0).NumberValidate = true;
+            _positionY = new("点位Y坐标") {
+                Parent = TablePanel,
+                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 Ratio = 6.5,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            _positionX.SetNumberValidate(0, true);
-            _positionY = new("点位Y坐标", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
-                Parent = TablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                Ratio = 6.5,
-                NameAlignment = HorizontalAlignment.Right,
-            };
-            _positionY.SetNumberValidate(0, true);
+            _positionY.GetTextBox(0).NumberValidate = true;
 
-            TextBox descriptionBox = DescriptionBox.GetBox(0);
+            CustomTextBox descriptionBox = DescriptionBox.GetTextBox(0);
             descriptionBox.TextChanged += (s, e) => {
-                if (DescriptionBox.CurrentErrorBoxIndex == null) {
+                if (!DescriptionBox.HasError) {
                     ModifiedBoltDTO.description = descriptionBox.Text;
                 }
             };
 
-            TextBox specificationBox = SpecificationBox.GetBox(0);
+            CustomTextBox specificationBox = SpecificationBox.GetTextBox(0);
             specificationBox.TextChanged += (s, e) => {
-                if (SpecificationBox.CurrentErrorBoxIndex == null) {
+                if (!SpecificationBox.HasError) {
                     if (specificationBox.Text != "" && specificationBox.Text != string.Empty) {
                         ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
                     } else {
@@ -63,20 +64,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 }
             };
 
-            TextBox toolIdBox = ToolIdBox.GetBox(0);
-            toolIdBox.TextChanged += (s, e) => {
-                if (ToolIdBox.CurrentErrorBoxIndex == null) {
-                    if (toolIdBox.Text != "" && toolIdBox.Text != string.Empty) {
-                        ModifiedBoltDTO.tool_id = int.Parse(toolIdBox.Text);
-                    } else {
-                        ModifiedBoltDTO.tool_id = 0;
-                    }
-                }
+            ToolIdComboBox.ItemSelected += () => {
+                ModifiedBoltDTO.tool_id = ToolIdComboBox.Value;
+                // TODO: query tool info (device maybe) to set tool description
+                // ModifiedBoltDTO.description = "";
             };
 
-            TextBox bitSpecificationBox = BitSpecificationBox.GetBox(0);
+            CustomTextBox bitSpecificationBox = BitSpecificationBox.GetTextBox(0);
             bitSpecificationBox.TextChanged += (s, e) => {
-                if (BitSpecificationBox.CurrentErrorBoxIndex == null) {
+                if (!BitSpecificationBox.HasError) {
                     if (bitSpecificationBox.Text != "" && bitSpecificationBox.Text != string.Empty) {
                         ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
                     } else {
@@ -85,9 +81,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 }
             };
 
-            TextBox procedureSetBox = ProcedureSetBox.GetBox(0);
+            CustomTextBox procedureSetBox = ProcedureSetBox.GetTextBox(0);
             procedureSetBox.TextChanged += (s, e) => {
-                if (ProcedureSetBox.CurrentErrorBoxIndex == null) {
+                if (!ProcedureSetBox.HasError) {
                     if (procedureSetBox.Text != "" && procedureSetBox.Text != string.Empty) {
                         ModifiedBoltDTO.procedure_set = int.Parse(procedureSetBox.Text);
                     } else {
@@ -96,9 +92,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 }
             };
 
-            TextBox torqueMinBox = TorqueBox.GetBox(0);
+            CustomTextBox torqueMinBox = TorqueBox.GetTextBox(0);
             torqueMinBox.TextChanged += (s, e) => {
-                if (TorqueBox.CurrentErrorBoxIndex == null) {
+                if (!TorqueBox.HasError) {
                     if (torqueMinBox.Text != "" && torqueMinBox.Text != string.Empty) {
                         ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
                     } else {
@@ -106,9 +102,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                     }
                 }
             };
-            TextBox torqueMaxBox = TorqueBox.GetBox(1);
+            CustomTextBox torqueMaxBox = TorqueBox.GetTextBox(1);
             torqueMaxBox.TextChanged += (s, e) => {
-                if (TorqueBox.CurrentErrorBoxIndex == null) {
+                if (!TorqueBox.HasError) {
                     if (torqueMaxBox.Text != "" && torqueMaxBox.Text != string.Empty) {
                         ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
                     } else {
@@ -117,9 +113,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 }
             };
 
-            TextBox angleMinBox = AngleBox.GetBox(0);
+            CustomTextBox angleMinBox = AngleBox.GetTextBox(0);
             angleMinBox.TextChanged += (s, e) => {
-                if (AngleBox.CurrentErrorBoxIndex == null) {
+                if (!AngleBox.HasError) {
                     if (angleMinBox.Text != "" && angleMinBox.Text != string.Empty) {
                         ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
                     } else {
@@ -127,9 +123,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                     }
                 }
             };
-            TextBox angleMaxBox = AngleBox.GetBox(1);
+            CustomTextBox angleMaxBox = AngleBox.GetTextBox(1);
             angleMaxBox.TextChanged += (s, e) => {
-                if (AngleBox.CurrentErrorBoxIndex == null) {
+                if (!AngleBox.HasError) {
                     if (angleMaxBox.Text != "" && angleMaxBox.Text != string.Empty) {
                         ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
                     } else {
@@ -139,10 +135,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets
             };
 
             Point position = CommonUtils.PointStringToPoint(boltDTO.position);
-            TextBox positionX = _positionX.GetBox(0);
+            CustomTextBox positionX = _positionX.GetTextBox(0);
             positionX.Text = position.X + "";
             positionX.TextChanged += (s, e) => {
-                if (_positionX.CurrentErrorBoxIndex == null) {
+                if (!_positionX.HasError) {
                     if (positionX.Text != "" && positionX.Text != string.Empty) {
                         position.X = int.Parse(positionX.Text);
                     } else {
@@ -151,10 +147,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                     ModifiedBoltDTO.position = position.ToString();
                 }
             };
-            TextBox positionY = _positionY.GetBox(0);
+            CustomTextBox positionY = _positionY.GetTextBox(0);
             positionY.Text = position.Y + "";
             positionY.TextChanged += (s, e) => {
-                if (_positionY.CurrentErrorBoxIndex == null) {
+                if (!_positionY.HasError) {
                     if (positionY.Text != "" && positionY.Text != string.Empty) {
                         position.Y = int.Parse(positionY.Text);
                     } else {
@@ -166,16 +162,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets
         }
 
         public bool ConfirmSave() {
-            return DescriptionBox.CurrentErrorBoxIndex == null 
-                && SpecificationBox.CurrentErrorBoxIndex == null
-                && ToolIdBox.CurrentErrorBoxIndex == null
-                && ToolDescriptionBox.CurrentErrorBoxIndex == null
-                && BitSpecificationBox.CurrentErrorBoxIndex == null
-                && ProcedureSetBox.CurrentErrorBoxIndex == null
-                && TorqueBox.CurrentErrorBoxIndex == null
-                && AngleBox.CurrentErrorBoxIndex == null
-                && _positionX.CurrentErrorBoxIndex == null
-                && _positionY.CurrentErrorBoxIndex == null;
+            return DescriptionBox.HasError 
+                && SpecificationBox.HasError
+                && !ToolIdComboBox.IsError
+                && ToolDescriptionBox.HasError
+                && BitSpecificationBox.HasError
+                && ProcedureSetBox.HasError
+                && TorqueBox.HasError
+                && AngleBox.HasError
+                && _positionX.HasError
+                && _positionY.HasError;
         }
 
     }

@@ -35,7 +35,7 @@ namespace CustomLibrary.Panels.AbstractClasses
                         button.ShowLabel();
                     }
                 }
-                ((CustomContentPanelBase) Parent).InvokeResizing();
+                ((AbstractCustomPanel) Parent).ResizeChildren();
             }
         }
 
@@ -88,8 +88,7 @@ namespace CustomLibrary.Panels.AbstractClasses
             }
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             ResizeButtons();
         }
 
@@ -158,7 +157,7 @@ namespace CustomLibrary.Panels.AbstractClasses
                     _enumerator.MoveNext();
                 }
             }
-            ((CustomContentPanelBase) Parent).InvokeResizing(eventArgs);
+            ((AbstractCustomPanel) Parent).ResizeChildren(eventArgs);
         }
 
         // Change position

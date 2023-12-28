@@ -17,13 +17,7 @@ namespace CustomLibrary.TextBoxes {
         private Color? _disabledBackColor;
         private Color? _borderColor;
 
-        public new bool Enabled {
-            get => base.Enabled;
-            set {
-                base.Enabled = value;
-                _comboBox.Enabled = value;
-            }
-        }
+        public new bool Enabled { get => _comboBox.Enabled; set => _comboBox.Enabled = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
@@ -38,6 +32,7 @@ namespace CustomLibrary.TextBoxes {
             get => _comboBox.BackColor; 
             set => _comboBox.BackColor = value; 
         }
+        public Color? DisabledBackColor { get => _comboBox.DisabledBackColor; set => _comboBox.DisabledBackColor = value; }
         public Color? BorderColor { get => _comboBox.BorderColor; set => _comboBox.BorderColor = value; }
         public Color? BorderColorError { get => _comboBox.BorderColorError; set => _comboBox.BorderColorError = value; }
         public int GapBetweenNameNBoxes { get => this._gapNameAndBox; set => this._gapNameAndBox = value; }
@@ -51,6 +46,9 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         public bool ShowRealValue { get => _comboBox.ShowRealValue; set => _comboBox.ShowRealValue = value; }
+        public bool IsError { get => _comboBox.IsError; }
+        public event Action ItemSelected { add => _comboBox.ItemSelected += value; remove => _comboBox.ItemSelected -= value; }
+        public T? Value { get => _comboBox.Value; }
 
         public CustomComboBoxGroup(string textName) : base() {
             Margin = new(0);
@@ -71,20 +69,21 @@ namespace CustomLibrary.TextBoxes {
             _comboBox.RemoveItem(index);
         }
 
-        protected override void OnHandleCreated(EventArgs e) {
-            base.OnHandleCreated(e);
-            SizeChanged += InvokeResizing;
-            InvokeResizing(this, e);
+        public void SetDefault(int index) {
+            _comboBox.SetDefault(index);
         }
 
-        private void InvokeResizing(object? sender, EventArgs eventArgs) {
-            int hPadding = (int) (Height / 3.5);
-            int vPadding = 0;
-            Padding = new(hPadding, vPadding, hPadding, vPadding);
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            SizeChanged += ResizeChildren;
+        }
+
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        public void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
             Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .5f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
-            _gapNameAndBox = hPadding;
+            _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
             using (Graphics g = CreateGraphics()) {
                 _nameWidth = (int) g.MeasureString(_textName, Font).Width;
@@ -111,7 +110,7 @@ namespace CustomLibrary.TextBoxes {
             // Draw name
             int x = Padding.Left;
             if (_nameAlignment == HorizontalAlignment.Right) {
-                x = _comboBox.Location.X - _nameWidth - _gapNameAndBox - _comboBox.Padding.Left;
+                x = _comboBox.Location.X - _nameWidth - _gapNameAndBox;
             }
             e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
         }

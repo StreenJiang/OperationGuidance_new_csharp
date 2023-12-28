@@ -23,7 +23,8 @@ namespace CustomLibrary.ComboBoxs {
         private Timer _collapseTimer;
         private Rectangle _borderRect;
         private Color _backColorSaved;
-        private Color _disabledBackColor;
+        private Color _independentBackColor;
+        private Color? _disabledBackColor;
         private Color? _borderColor;
         private Color? _borderColorError;
         private bool _isError;
@@ -32,6 +33,27 @@ namespace CustomLibrary.ComboBoxs {
         private bool _noItem;
         private Action _itemSelected;
 
+        public new bool Enabled {
+            get => base.Enabled;
+            set {
+                base.Enabled = value;
+                _selectButton.Enabled = value;
+            }
+        }
+        public new Color BackColor {
+            get => _independentBackColor;
+            set {
+                _independentBackColor = value;
+                // Don't use OnBackColorChanged for bellow because if Disable will Change BackColor automatically 
+                _selectButton.BackColor = value;
+                foreach (ComboBoxItem<T> itemButton in _itemButtons) {
+                    itemButton.BackColor = value;
+                }
+                _backColorSaved = value;
+                _disabledBackColor = WidgetUtils.ChangeColor(value, .9);
+                _selectButton.DisabledBackColor = _disabledBackColor;
+                }
+        }
         public new Color ForeColor {
             get => base.ForeColor;
             set {
@@ -39,6 +61,7 @@ namespace CustomLibrary.ComboBoxs {
                 _selectButton.ForeColor = value;
             }
         }
+        public Color? DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
         public Color? BorderColor {
             get => this._borderColor;
             set {
@@ -70,7 +93,6 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
         public bool ShowRealValue { get => _selectButton.ShowRealValue; set => _selectButton.ShowRealValue = value; }
-
         public event Action ItemSelected { 
             add => _itemSelected += value; 
             remove {
@@ -79,6 +101,7 @@ namespace CustomLibrary.ComboBoxs {
                 }
             }
         }
+        public T? Value { get => GetChosenItem(); }
 
         public CustomComboBox() {
             Margin = new(0);
@@ -114,11 +137,15 @@ namespace CustomLibrary.ComboBoxs {
                         _itemsScrollPanel = new(_itemsPanel) {
                             Margin = new(0), 
                             Size = new(Width, 0),
-                            Parent = WidgetUtils.MainPanel.Parent,
                             BorderColor = this.BorderColor,
                             NeedsPadding = false,
                             Visible = false,
                         };
+                        if (EventFuncs.CurrentPopUpForm != null) {
+                            _itemsScrollPanel.Parent = EventFuncs.CurrentPopUpForm;
+                        } else {
+                            _itemsScrollPanel.Parent = WidgetUtils.MainPanel.Parent;
+                        }
                         _itemsScrollPanel.BringToFront();
                         _itemsScrollPanel.Location = _itemsScrollPanel.PointToClient(new(point.X, point.Y + Height));
                         _itemsScrollPanel.Visible = true;
@@ -210,7 +237,7 @@ namespace CustomLibrary.ComboBoxs {
                     _collapseTimer.Stop();
                 } else {
                     _itemsScrollPanel.Height -= _collapseStep;
-                    _itemsScrollPanel.InvokeResizing(eventArgs);
+                    _itemsScrollPanel.ResizeChildren(eventArgs);
                     _itemsScrollPanel.Invalidate();
                 }
             } else {
@@ -225,14 +252,14 @@ namespace CustomLibrary.ComboBoxs {
                 } else {
                     _itemsScrollPanel.Height += _collapseStep;
                 }
-                _itemsScrollPanel.InvokeResizing(eventArgs);
+                _itemsScrollPanel.ResizeChildren(eventArgs);
                 _itemsScrollPanel.Invalidate();
             }
         }
 
         private void ResetWidthOfItemScrollPanelByItemProperWidth() {
             if (_itemsScrollPanel != null) {
-                _itemsScrollPanel.InvokeResizing();
+                _itemsScrollPanel.ResizeChildren();
                 int properWidth = 0;
                 foreach (ComboBoxItem<T> item in _itemButtons) {
                     if (item.ProperWidth > properWidth) {
@@ -268,11 +295,11 @@ namespace CustomLibrary.ComboBoxs {
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            SizeChanged += InvokeResizing;
-            InvokeResizing(this, e);
+            SizeChanged += ResizeChildren;
         }
 
-        private void InvokeResizing(object? sender, EventArgs eventArgs) {
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        public void ResizeChildren(object? sender, EventArgs eventArgs) {
             _itemHeight = (int) (Height * .95);
             if (_itemButtons.Count >= _maxItemsShown) {
                 _itemsPanelHeight = _itemHeight * _maxItemsShown;
@@ -311,14 +338,6 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
 
-        protected override void OnBackColorChanged(EventArgs e) {
-            base.OnBackColorChanged(e);
-            _selectButton.BackColor = BackColor;
-            foreach (ComboBoxItem<T> itemButton in _itemButtons) {
-                itemButton.BackColor = BackColor;
-            }
-        }
-
         protected void OnItemSelected() {}
 
 
@@ -334,6 +353,7 @@ namespace CustomLibrary.ComboBoxs {
             private Point _iconPosition;
             private ComboBoxItem<I>? _selectedItem;
             private bool _showRealValue;
+            private Color? _disabledBackColor;
 
             public bool IsCollapsed { get => _isCollapsed; set => _isCollapsed = value; }
             public ComboBoxItem<I>? SelectedItem { 
@@ -350,6 +370,7 @@ namespace CustomLibrary.ComboBoxs {
                     RefreshLabel();
                 }
             }
+            public Color? DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
 
             public ComboBoxSelectButton(CustomComboBox<I> parentControl) {
                 _parentControl = parentControl;
@@ -414,15 +435,18 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .475), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .485), FontStyle.Regular, GraphicsUnit.Pixel);
                     this.LabelX = (int) (Height / 3.5);
                     this.LabelY = (this.Height - this.Font.Height) / 2;
                 }
             }
 
             protected override void PaintAfter(PaintEventArgs e) {
-                base.PaintAfter(e);
                 Graphics g = e.Graphics;
+                if (!Enabled && _disabledBackColor != null) {
+                    g.Clear(_disabledBackColor.Value);
+                }
+                base.PaintAfter(e);
                 if (_iconShowing != null) {
                     g.DrawImage(_iconShowing, _iconPosition);
                 }
@@ -473,9 +497,9 @@ namespace CustomLibrary.ComboBoxs {
 
             public ItemsScrollPanel(CustomContentPanel contentPanel) : base(null, contentPanel) {}
 
-            protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (IsHandleCreated) {
-                    base.InvokeResizing(sender, eventArgs);
+                    base.ResizeChildren(sender, eventArgs);
                     OuterPanel.Size = new(OuterPanel.Width - Padding.Size.Width, OuterPanel.Height - Padding.Size.Height);
                     VScrollBar.Height -= Padding.Size.Height;
                     // Create border rectangle if border color is not null
@@ -544,7 +568,7 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .475), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .485), FontStyle.Regular, GraphicsUnit.Pixel);
                     int hPadding = (int) (Height / 3.5);
                     using (Graphics g = CreateGraphics()) {
                         float labelWidth = g.MeasureString(Label, Font).Width;

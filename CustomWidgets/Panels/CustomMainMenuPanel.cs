@@ -16,25 +16,8 @@ namespace CustomLibrary.Panels
             set => _mainMenuLogo = value;
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            //if (!this.Visible && this.Created) {
-            //    // 开始异步调用，提升性能
-            //    IAsyncResult asyncResult = this.BeginInvoke(new(() => {
-            //        base.OnSizeChanged(e);
-            //        this.InvokeResizing();
-            //    }));
-
-            //    // 结束异步调用
-            //    this.EndInvoke(asyncResult);
-            //} else {
-            //    base.OnSizeChanged(e);
-            //    this.InvokeResizing();
-            //}
-            base.OnSizeChanged(e);
-            this.InvokeResizing();
-        }
-
-        private void InvokeResizing() {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
             // Calculate the size of logo image
             if (_mainMenuLogo != null) {
                 Size _mainMenuLogoSize = (_mainMenuLogo.Size * this.Height * this.GetLogoZoomingRatio() / _mainMenuLogo.Height).ToSize();
@@ -42,9 +25,6 @@ namespace CustomLibrary.Panels
                 _mainMenuLogoShowing = WidgetUtils.ResizeImageWithoutLosingQuality(
                     _mainMenuLogo, _mainMenuLogoSize.Width, _mainMenuLogoSize.Height
                 );
-            }
-            if (this.Visible) {
-                this.Invalidate();
             }
         }
 

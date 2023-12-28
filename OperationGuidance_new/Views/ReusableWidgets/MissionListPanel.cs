@@ -68,7 +68,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        protected override void InvokeResizing(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Resize title panel
             _titlePanel.Size = new(Width, _titleHeight);
             // Resize table panel
@@ -103,6 +103,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
 
             private void InvokeResizing(object? sender, EventArgs eventArgs) {
+                if (Width <= 0 || Height <= 0) {
+                    return;
+                }
                 // Resize title and right button
                 using (Graphics g = CreateGraphics()) {
                     // Resize title label

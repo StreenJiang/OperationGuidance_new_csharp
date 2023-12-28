@@ -152,6 +152,10 @@ namespace CustomLibrary.Utils {
             return (width + height) / 350;
         }
 
+        public static int TextOrComboBoxHeight() {
+            return (int) (MainPanel.Parent.Height * .049);
+        }
+
         /// <summary>
         /// 得到一个等差数列
         /// 等差数列求和公式: S = (a1 + an) * n / 2
