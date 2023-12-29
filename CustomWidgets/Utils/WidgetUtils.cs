@@ -153,7 +153,11 @@ namespace CustomLibrary.Utils {
         }
 
         public static int TextOrComboBoxHeight() {
-            return (int) (MainPanel.Parent.Height * .049);
+            return (int) (MainPanel.Parent.Height * .042);
+        }
+
+        public static int CommonButtonHeight() {
+            return (int) (MainPanel.Parent.Height * .042);
         }
 
         /// <summary>

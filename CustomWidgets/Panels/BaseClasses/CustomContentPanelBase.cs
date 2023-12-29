@@ -34,19 +34,9 @@ namespace CustomLibrary.Panels.BaseClasses {
         }
 
         public CustomContentPanelBase() {
-            //DoubleBuffered = true;
             Margin = new Padding(0);
             _newHeight = 0;
         }
-
-        // protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-        //     if (_correspondingMenuButton != null) {
-        //         CustomContentPanelBase? correspondingPanel = _correspondingMenuButton.CorrespondingContentPanel;
-        //         if (correspondingPanel != null) {
-        //             correspondingPanel.ResizeChildren(eventArgs);
-        //         }
-        //     }
-        // }
 
         public override void VisibleToTrue() => ResizeChildren();
         public override void VisibleToFalse() {}

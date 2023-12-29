@@ -1,4 +1,5 @@
-﻿using System.Drawing.Drawing2D;
+﻿using System.Collections;
+using System.Drawing.Drawing2D;
 using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
@@ -89,9 +90,9 @@ namespace OperationGuidance_new.Views
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             // Calculate height of title panel
-            _titleHeight = (int) (this.TopLevelControl.Height * _titleHeightRatio);
+            _titleHeight = (int) (TopLevelControl.Height * _titleHeightRatio);
             // Calculate height of cells: use height of top level control is because self height will automatically change because of scroll bar
-            _cellSize = new(0, (int) (this.TopLevelControl.Height * _cellHightRatio));
+            _cellSize = new(0, (int) (TopLevelControl.Height * _cellHightRatio));
             _cellVerticalMargin = _cellSize.Height / 15;
             // If there is no any mission, then don't need scroll bar
             if (_productMissionDTOs.Count == 0) {
@@ -101,7 +102,7 @@ namespace OperationGuidance_new.Views
             // Calculate table's size, depends on all cells
             int rowsCount = (int) Math.Ceiling(_productMissionDTOs.Count / (double) _tableColumns);
             NewHeight = _titleHeight + (rowsCount + 1) * _cellVerticalMargin + rowsCount * _cellSize.Height;
-            return this.NewHeight > parentNewHeight;
+            return NewHeight > parentNewHeight;
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
@@ -111,16 +112,16 @@ namespace OperationGuidance_new.Views
                 _bigButtonPanel.Invalidate();
             }
             // Calculate width of cells
-            _cellHorizontalMargin = (int) (this.Width * _cellGapRatio);
+            _cellHorizontalMargin = (int) (Width * _cellGapRatio);
             int gapNum = _tableColumns + 1; // Including outer margin
-            _cellSize.Width = (this.Width - _cellHorizontalMargin * gapNum) / _tableColumns;
+            _cellSize.Width = (Width - _cellHorizontalMargin * gapNum) / _tableColumns;
             // Set properties before resize mission list panel
             _missionListPanel.TitleHeight = _titleHeight;
             _missionListPanel.CellSize = _cellSize;
             _missionListPanel.CellHorizontalMargin = _cellHorizontalMargin;
             _missionListPanel.CellVerticalMargin = _cellVerticalMargin;
             // Resize mission list panel
-            _missionListPanel.Size = new(this.Width, this.Height);
+            _missionListPanel.Size = new(Width, Height);
             _missionListPanel.ResizeChildren(eventArgs);
             if (_missionListPanel.Visible) {
                 _missionListPanel.Invalidate();
@@ -130,8 +131,8 @@ namespace OperationGuidance_new.Views
         private void OpenWorkplaceView(ProductMissionDTO missionDTO) {
             // Create a new view
             CustomTabPanel page = new() {
-                Parent = this.TopLevelControl,
-                Size = this.TopLevelControl.ClientSize,
+                Parent = TopLevelControl,
+                Size = TopLevelControl.ClientSize,
             };
             TopBar topBar = new(missionDTO.name) {
                 Parent = page,
@@ -168,16 +169,16 @@ namespace OperationGuidance_new.Views
         private int _titleY;
 
         public BackCommonButton BackButton {
-            get => this._backButton;
-            set => this._backButton = value;
+            get => _backButton;
+            set => _backButton = value;
         }
         public string Title {
-            get => this._title;
-            set => this._title = value;
+            get => _title;
+            set => _title = value;
         }
         public Color TitleColor {
-            get => this._titleColor;
-            set => this._titleColor = value;
+            get => _titleColor;
+            set => _titleColor = value;
         }
 
         public TopBar(string title) : base() {
@@ -188,33 +189,33 @@ namespace OperationGuidance_new.Views
             };
             _backButton.Click += (sender, eventArgs) => {
                 WidgetUtils.MainPanel.Visible = true;
-                this.Parent.Visible = false;
+                Parent.Visible = false;
             };
         }
 
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
-            if (this._title != null) {
-                e.Graphics.DrawString(this._title, this.Font, new SolidBrush(this._titleColor), new Point(this._titleX, this._titleY));
+            if (_title != null) {
+                e.Graphics.DrawString(_title, Font, new SolidBrush(_titleColor), new Point(_titleX, _titleY));
             }
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
             // Recalculate the font of title
-            this.Font = new(WidgetsConfigs.SystemFontFamily, Height * .625f, FontStyle.Bold, GraphicsUnit.Pixel);
+            Font = new(WidgetsConfigs.SystemFontFamily, Height * .625f, FontStyle.Bold, GraphicsUnit.Pixel);
             // Recalculate label location
             using (Graphics g = CreateGraphics()) {
-                this._titleX = (int) ((this.Width - g.MeasureString(this._title, this.Font).Width) / 2);
+                _titleX = (int) ((Width - g.MeasureString(_title, Font).Width) / 2);
             }
-            this._titleY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
+            _titleY = (int) ((Height - Font.Height * 1.1) / 2);
         }
 
         protected override void ResizeButtons() {
-            int newHeight = (int) (this.Height * .7);
+            int newHeight = (int) (Height * .7);
             int newWidth = (int) (newHeight * 2.25);
             _backButton.Size = new(newWidth, newHeight);
-            _backButton.Margin = new((this.Height - newHeight) / 2);
+            _backButton.Margin = new((Height - newHeight) / 2);
         }
 
         protected override float GetResizeRatio() => .05F;
@@ -223,8 +224,8 @@ namespace OperationGuidance_new.Views
 
         protected override Point GetLogoLocation(Size logoSize) {
             return new(
-                this.Width - logoSize.Width - (int) Math.Ceiling(this.Width / 400D),
-                (int) Math.Ceiling((this.Height - logoSize.Height) / 2D)
+                Width - logoSize.Width - (int) Math.Ceiling(Width / 400D),
+                (int) Math.Ceiling((Height - logoSize.Height) / 2D)
             );
         }
 
@@ -300,8 +301,8 @@ namespace OperationGuidance_new.Views
         private Dictionary<int, DeviceBlock> _deviceBlocks;
 
         public BoltButton CurrentWorkingButton {
-            get => this._currentChosenButton;
-            set => this._currentChosenButton = value;
+            get => _currentChosenButton;
+            set => _currentChosenButton = value;
         }
 
         public WorkplaceContent(ProductMissionDTO mission) : base() {
@@ -394,7 +395,15 @@ namespace OperationGuidance_new.Views
                         Title = "录入条码",
                         BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
                     };
-                    ResizeleftTop();
+                    _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
+                        if (!_barCodePopUpForm.TextBox.IsError) {
+                            _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
+                            _barCodePopUpForm.HideForm();
+                        }
+                    };
+                    _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.HideForm();
+                    _barCodePopUpForm.FakeShowToCreateHandlesForChildren();
+                    ResizeBarCodePopUpForm();
                 }
                 if (_barCodeTextBox.Text != note) {
                     _barCodePopUpForm.TextBox.Text = _barCodeTextBox.Text;
@@ -431,7 +440,7 @@ namespace OperationGuidance_new.Views
                             BoltButton boltBtn = new(boltDTO) {
                                 Parent = _productImageDisplayPanel,
                                 Label = boltDTO.serial_num + "",
-                                // Visible = false,
+                                Visible = false,
                             };
                             boltBtn.Click += (s, e) => {
                                 _boltPopUpForm = new(boltDTO) {
@@ -480,22 +489,21 @@ namespace OperationGuidance_new.Views
 
         private void ResizePopUpForm() {
             if (_boltPopUpForm != null) {
-                TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
-                MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
+                Control mainForm = WidgetUtils.MainPanel.Parent;
+                _boltPopUpForm.CalculateDetailProperties(mainForm);
 
+                TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
+                Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                 int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxMargin = boxHeight / 7;
+                int boxMargin = boxHeight / 8;
                 int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                int tableVMargin = (int) (mainForm.Height * .02);
-                Size contentHeight = new((int) (mainForm.Width * .75), tableHeight + tableVMargin * 2);
+                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
+                int tableWidth = contentSize.Width - contentPadding.Size.Width;
                 _boltPopUpForm.BoxHeight = boxHeight;
                 _boltPopUpForm.BoxMargin = boxMargin;
-                _boltPopUpForm.ContentSize = contentHeight;
-                _boltPopUpForm.TablePanel.Size = contentHeight;
-                _boltPopUpForm.TablePanel.Padding = new(0, tableVMargin, 0, tableVMargin);
+                _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
-                int formHeight = tableHeight + _boltPopUpForm.TitleHeight + _boltPopUpForm.ButtonPanelHeight + _boltPopUpForm.VirtualVerticalPadding * 2 + tableVMargin * 2;
-                _boltPopUpForm.Size = new(contentHeight.Width + _boltPopUpForm.VirtualHorizontalPadding * 2, formHeight);
+                _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
                 if (_boltPopUpForm.Visible) {
                     _boltPopUpForm.Invalidate();
                 }
@@ -662,7 +670,7 @@ namespace OperationGuidance_new.Views
                 }
                 _productImageDisplayPanel.SetImage(_productImageFiles[_productSideIndex].Image, _productImageFiles[_productSideIndex].CenterLocation);
                 _productImageFiles[_productSideIndex].RefreshImage();
-                _smallSideImage.Image = _smallSideImagesForShowing[_productSideIndex];
+                ResizeSmallSideImageBox(_smallSideImagesForShowing[_productSideIndex]);
                 _pageInfo.Text = newCurrentPage + "/" + totalPages;
                 _productSideTitle.Text = _productImageFiles[_productSideIndex].SideDTO.name;
                 ResetRightBottomTitleFont();
@@ -670,23 +678,23 @@ namespace OperationGuidance_new.Views
         }
 
         private void InitializeBottom() {
-            this._deviceBlocks = new();
+            _deviceBlocks = new();
             // 查询所有设备信息
-            QueryDeviceListRsp rsp = this.apis.QueryDeviceList(new() {
+            QueryDeviceListRsp rsp = apis.QueryDeviceList(new() {
                 UserId = SystemUtils.LoggedUserId()
             });
-            this._deviceDTOs = rsp.DeviceDTOs;
+            _deviceDTOs = rsp.DeviceDTOs;
             // Create device blocks
-            foreach (DeviceDTO deviceDTO in this._deviceDTOs) {
+            foreach (DeviceDTO deviceDTO in _deviceDTOs) {
                 DeviceBlock deviceBlock;
-                if (this._deviceBlocks.ContainsKey(deviceDTO.device_category_id)) {
-                    deviceBlock = this._deviceBlocks[deviceDTO.device_category_id];
+                if (_deviceBlocks.ContainsKey(deviceDTO.device_category_id)) {
+                    deviceBlock = _deviceBlocks[deviceDTO.device_category_id];
                 } else {
                     deviceBlock = new DeviceBlock(
                         ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
                     ) {
                         Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
-                        Parent = this._bottom,
+                        Parent = _bottom,
                         Margin = new(0),
                         Padding = new(0),
                         ToggledButton = true,
@@ -700,7 +708,7 @@ namespace OperationGuidance_new.Views
                             deviceBlock.SetToggle(false);
                         }
                     };
-                    this._deviceBlocks.Add(deviceDTO.device_category_id, deviceBlock);
+                    _deviceBlocks.Add(deviceDTO.device_category_id, deviceBlock);
                 }
                 deviceBlock.DeviceDTOs.Add(deviceDTO.id, deviceDTO);
                 deviceBlock.PopUpForm.DeviceDTOs.Add(deviceDTO);
@@ -735,13 +743,13 @@ namespace OperationGuidance_new.Views
             Size mainSize = WidgetUtils.MainPanel.Parent.Size;
             double ratio = mainSize.Width / (double) mainSize.Height;
             _leftBottom.Size = new(_left.Width, (int) (_left.Width / ratio));
-            _leftBottom.Margin = new(0, this.Padding.Top / 2, 0, 0);
-            _leftTop.Size = new(_left.Width, _left.Height - _leftBottom.Height - this.Padding.Top / 2);
+            _leftBottom.Margin = new(0, Padding.Top / 2, 0, 0);
+            _leftTop.Size = new(_left.Width, _left.Height - _leftBottom.Height - Padding.Top / 2);
 
             _rightTop.Size = new(_right.Width, (int) (_right.Height * .4));
             _rightMiddle.Size = new(_right.Width, (int) (_right.Height * .3));
-            _rightBottom.Size = new(_right.Width, _right.Height - _rightTop.Height - _rightMiddle.Height - this.Padding.Top / 2 * 2);
-            _rightMiddle.Margin = new(0, this.Padding.Top / 2, 0, this.Padding.Top / 2);
+            _rightBottom.Size = new(_right.Width, _right.Height - _rightTop.Height - _rightMiddle.Height - Padding.Top / 2 * 2);
+            _rightMiddle.Margin = new(0, Padding.Top / 2, 0, Padding.Top / 2);
         }
 
         private void ResizeleftTop() {
@@ -759,13 +767,23 @@ namespace OperationGuidance_new.Views
 
             // 重新计算弹框的大小
             if (_barCodePopUpForm != null) {
-                Control mainParent = WidgetUtils.MainPanel.Parent;
-                int mainW = mainParent.Width;
-                int mainH = mainParent.Height;
-                int popUpW = (int) (mainW * .75);
-                int popUpH = (int) (mainH * .13 + mainW * .03);
-                _barCodePopUpForm.Size = new(popUpW, popUpH);
+                ResizeBarCodePopUpForm();
             }
+        }
+
+        private void ResizeBarCodePopUpForm() {
+            Control mainForm = WidgetUtils.MainPanel.Parent;
+            _barCodePopUpForm.CalculateDetailProperties(mainForm);
+
+            Padding contentPadding = _barCodePopUpForm.ContentPanel.Padding;
+            int boxHeight = (int) (mainForm.Height * .05);
+            Size contentSize = new((int) (mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
+            int boxWidth = contentSize.Width - contentPadding.Size.Width;
+            _barCodePopUpForm.TextBox.Size = new(boxWidth, boxHeight);
+
+            _barCodePopUpForm.SetContentSizeAndSelfSize(contentSize);
+            System.Console.WriteLine("_barCodePopUpForm.ButtonsPanel.Height: " + _barCodePopUpForm.ButtonsPanel.Height);
+            System.Console.WriteLine("_barCodePopUpForm.ButtonsPanel.Visible: " + _barCodePopUpForm.ButtonsPanel.Visible);
         }
 
         private void ResizeLeftBottom() {
@@ -836,12 +854,10 @@ namespace OperationGuidance_new.Views
                         _smallSideImagesForShowing[i] = WidgetUtils.ResizeImageWithoutLosingQuality(_defaultImage, newISize);
                     }
                     newISize = new((int) (imageHeight / (decimal) image.Height * image.Width), imageHeight);
-                    _smallSideImagesForShowing[i] = WidgetUtils.ResizeImageWithoutLosingQuality(image, newISize);
+                    Image imageNew = WidgetUtils.ResizeImageWithoutLosingQuality(image, newISize);
+                    _smallSideImagesForShowing[i] = imageNew;
                     if (i == _productSideIndex) {
-                        int hPadding = (_rightBottom.Width - 2 - newISize.Width) / 2;
-                        _smallSideImage.Size = newISize;
-                        _smallSideImage.Image = _smallSideImagesForShowing[_productSideIndex];
-                        _smallSideImage.Margin = new(hPadding, vPadding, hPadding, vPadding);
+                        ResizeSmallSideImageBox(imageNew);
                     }
                 }
             }
@@ -867,6 +883,17 @@ namespace OperationGuidance_new.Views
             _pageInfo.Size = new(_buttonPanel.Width - 4 * buttonSide - buttonHPdding * 8, tablePanelHeight);
             _pageInfo.Margin = new(0, 0, 0, 0);
             _pageInfo.Font = new(WidgetsConfigs.SystemFontFamily, _pageInfo.Height * .675F, FontStyle.Bold, GraphicsUnit.Pixel);
+        }
+
+        private void ResizeSmallSideImageBox(Image? newImage) {
+            if (newImage != null) {
+                int imageWholeHeight = (int) ((_rightBottom.Height - 2 - _productSideTitle.Height) * .8);
+                int vPadding = (int) (imageWholeHeight * .1);
+                int hPadding = (_rightBottom.Width - 2 - newImage.Width) / 2;
+                _smallSideImage.Size = newImage.Size;
+                _smallSideImage.Image = newImage;
+                _smallSideImage.Margin = new(hPadding, vPadding, hPadding, vPadding);
+            }
         }
 
         private void ResetRightBottomTitleFont(float fontRatio = .55f) {
@@ -930,19 +957,17 @@ namespace OperationGuidance_new.Views
         private CustomTextBox _textBox;
         private string _initStr;
 
-        public CustomTextBox TextBox {
-            get => this._textBox;
-            set => this._textBox = value;
-        }
+        public CustomTextBox TextBox { get => _textBox; set => _textBox = value; }
 
         public BarCodeInputPopUpForm(string initStr, CustomTextBox upperBox) : base() {
             _initStr = initStr;
             _textBox = new() {
-                Parent = this,
+                Parent = ContentPanel,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
                 BackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                NumberValidate = true,
             };
             _textBox.GotFocus += (s, e) => {
                 EventFuncs.CurrentActiveControl = _textBox;
@@ -956,31 +981,7 @@ namespace OperationGuidance_new.Views
                 }
             };
             _textBox.Focus();
-
-            CommonButton btnConfirm = AddButton("确定");
-            btnConfirm.Click += (s, e) => {
-                upperBox.Text = _textBox.Text;
-                this.HideForm();
-            };
-            CommonButton btnClose = AddButton("关闭");
-            btnClose.Click += (s, e) => {
-                this.HideForm();
-            };
         }
-
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            InvokeResizing();
-            Invalidate();
-        }
-
-        private void InvokeResizing() {
-            int hPadding = (int) (Width * .015);
-            int vPadding = (int) (ContentSize.Height * .25);
-            _textBox.Size = new(Width - hPadding * 2, ContentSize.Height - vPadding * 2);
-            _textBox.Location = new(hPadding, Height - TitleHeight - ContentSize.Height + vPadding);
-        }
-
     }
 
     public class WorkingProcessPanel: Panel {
@@ -1006,9 +1007,9 @@ namespace OperationGuidance_new.Views
         private System.Windows.Forms.Timer _processingTimer;
 
         public ProductMissionStatus Status {
-            get => this._missionStatus;
+            get => _missionStatus;
             set {
-                this._missionStatus = value;
+                _missionStatus = value;
                 InvokePainting();
                 switch (value) {
                     case ProductMissionStatus.READY:
@@ -1034,9 +1035,9 @@ namespace OperationGuidance_new.Views
         }
 
         public BoltStatus BoltStatus {
-            get => this._boltStatus;
+            get => _boltStatus;
             set {
-                this._boltStatus = value;
+                _boltStatus = value;
                 InvokeResizing();
                 InvokePainting();
                 switch (value) {
@@ -1068,8 +1069,8 @@ namespace OperationGuidance_new.Views
         }
 
         public ProductBoltDTO? BoltDTO {
-            get => this._boltDTO;
-            set => this._boltDTO = value;
+            get => _boltDTO;
+            set => _boltDTO = value;
         }
 
         public WorkingProcessPanel() : base() {
@@ -1212,11 +1213,11 @@ namespace OperationGuidance_new.Views
         }
 
         protected override void ResizeIconImage() {
-            if (this.Icon != null) {
-                this.ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(this.Icon, new(Height, Height));
+            if (Icon != null) {
+                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, new(Height, Height));
                 // Recalculate image location
-                this.ImageX = 0;
-                this.ImageY = 0;
+                ImageX = 0;
+                ImageY = 0;
             }
         }
 
@@ -1233,10 +1234,10 @@ namespace OperationGuidance_new.Views
         private DeviceDetailPopUpForm _popUpForm;
 
         public Dictionary<int, DeviceDTO> DeviceDTOs {
-            get => this._deviceDTOs;
+            get => _deviceDTOs;
         }
         public DeviceDetailPopUpForm PopUpForm {
-            get => this._popUpForm;
+            get => _popUpForm;
         }
 
         public DeviceBlock(Color borderColor, string categoryName) : base() {
@@ -1247,19 +1248,19 @@ namespace OperationGuidance_new.Views
 
         protected override void OnSizeChanged(EventArgs e) {
             base.OnSizeChanged(e);
-            _borderRect = new(0, 0, this.Width, this.Height);
+            _borderRect = new(0, 0, Width, Height);
 
             // 计算以及弹出窗口的size
-            if (this._popUpForm != null) {
+            if (_popUpForm != null) {
                 int count = _deviceDTOs.Count;
                 int mainW = WidgetUtils.MainPanel.Parent.Width;
                 int mainH = WidgetUtils.MainPanel.Parent.Height;
-                int extraH = _popUpForm.TitleHeight + _popUpForm.ButtonPanelHeight;
+                int extraH = _popUpForm.TitlePanel.Height + _popUpForm.ButtonsPanel.Height;
                 int popUpW = (int) (mainW * .4);
                 int hGap = (int) (mainH * .02);
                 int popUpContentH = (int) (mainH * .05 + mainW * .0165 - extraH) * count + hGap * (count + 1);
-                this._popUpForm.HeightGap = hGap;
-                this._popUpForm.ContentSize = new(popUpW, popUpContentH);
+                _popUpForm.HeightGap = hGap;
+                _popUpForm.ContentPanel.Size = new(popUpW, popUpContentH);
             }
         }
 
@@ -1296,43 +1297,43 @@ namespace OperationGuidance_new.Views
         private DeviceOperationPopUpForm? _currentPopUpForm;
 
         public List<DeviceDTO> DeviceDTOs {
-            get => this._deviceDTOs;
+            get => _deviceDTOs;
         }
         public int HeightGap {
-            get => this._heightGap;
-            set => this._heightGap = value;
+            get => _heightGap;
+            set => _heightGap = value;
         }
 
         public DeviceDetailPopUpForm(string categoryName) : base() {
-            this.BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
-            this.Title = "设备连接信息 - " + categoryName;
+            BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
+            Title = "设备连接信息 - " + categoryName;
 
-            this._statusIconConnected = Properties.Resources.device_connected;
-            this._statusIconDisconnected = Properties.Resources.device_connected;
-            this._deviceDTOs = new();
-            this._operateButtons = new();
+            _statusIconConnected = Properties.Resources.device_connected;
+            _statusIconDisconnected = Properties.Resources.device_connected;
+            _deviceDTOs = new();
+            _operateButtons = new();
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            this.ResizeIconImage();
-            this.ResizeText();
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
+            ResizeIconImage();
+            ResizeText();
 
-            for (int i = 0; i < this.DeviceDTOs.Count; i++) {
-                DeviceDTO deviceDTO = this._deviceDTOs[i];
+            for (int i = 0; i < DeviceDTOs.Count; i++) {
+                DeviceDTO deviceDTO = _deviceDTOs[i];
                 CommonButton button;
-                if (this._operateButtons.ContainsKey(deviceDTO.id)) {
-                    button = this._operateButtons[deviceDTO.id];
+                if (_operateButtons.ContainsKey(deviceDTO.id)) {
+                    button = _operateButtons[deviceDTO.id];
                 } else {
                     button = new();
                     button.Label = "操作";
                     button.Parent = this;
                     button.Enabled = deviceDTO.can_manipulate == (int) (YesOrNo.YES);
-                    this._operateButtons.Add(deviceDTO.id, button);
+                    _operateButtons.Add(deviceDTO.id, button);
                     button.Click += (s, e) => {
-                        this.HideForm();
+                        HideForm();
                         _currentPopUpForm = new(this, deviceDTO.ip + "-" + deviceDTO.port);
-                        this.ResizeSecondPopUpForm();
+                        ResizeSecondPopUpForm();
                         _currentPopUpForm.Show();
                         EventFuncs.CurrentPopUpForm = _currentPopUpForm;
                     };
@@ -1343,58 +1344,71 @@ namespace OperationGuidance_new.Views
 
                 int btnH = (int) (_iconHeight * 1.15);
                 button.Size = new((int) (btnH * 2.15), btnH);
-                button.Location = new((int) ((Width - button.Width) * .95), HeightGap * (i + 1) + _iconHeight * i + TitleHeight - (btnH - _iconHeight) / 2);
+                button.Location = new((int) ((Width - button.Width) * .95), HeightGap * (i + 1) + _iconHeight * i + TitlePanel.Height - (btnH - _iconHeight) / 2);
             }
 
-            this.ResizeSecondPopUpForm();
+            ResizeSecondPopUpForm();
         }
 
         private void ResizeSecondPopUpForm() {
-            if (this._currentPopUpForm != null) {
-                Control mainParent = WidgetUtils.MainPanel.Parent;
-                this._currentPopUpForm.Size = new((int) (mainParent.Width * .55), (int) (mainParent.Height * .1175 + mainParent.Width * .03));
+            if (_currentPopUpForm != null) {
+                Control mainForm = WidgetUtils.MainPanel.Parent;
+                _currentPopUpForm.CalculateDetailProperties(mainForm);
+
+                TableLayoutPanel tablePanel = _currentPopUpForm.TablePanel;
+                Panel contentPanel = _currentPopUpForm.ContentPanel;
+                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxMargin = boxHeight / 7;
+                int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPanel.Padding.Size.Height);
+                int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
+                _currentPopUpForm.BoxHeight = boxHeight;
+                _currentPopUpForm.BoxMargin = boxMargin;
+                _currentPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+
+                _currentPopUpForm.SetContentSizeAndSelfSize(contentSize);
             }
         }
 
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
 
-            if (this._connectedShowing != null && this._disconnectedShowing != null) {
-                for (int i = 0; i < this._deviceDTOs.Count; i++) {
-                    DeviceDTO deviceDTO = this._deviceDTOs[i];
+            if (_connectedShowing != null && _disconnectedShowing != null) {
+                for (int i = 0; i < _deviceDTOs.Count; i++) {
+                    DeviceDTO deviceDTO = _deviceDTOs[i];
 
                     Point imagePoint;
                     Point textPoint;
                     if (i == 0) {
-                        imagePoint = new(this._firstImageX, this._firstImageY);
+                        imagePoint = new(_firstImageX, _firstImageY);
                     } else {
-                        imagePoint = new(this._firstImageX, this.HeightGap * (i + 1) + this._iconHeight * i + this.TitleHeight);
+                        imagePoint = new(_firstImageX, HeightGap * (i + 1) + _iconHeight * i + TitlePanel.Height);
                     }
-                    textPoint = new((int) (imagePoint.X * 1.2) + this._connectedShowing.Width, imagePoint.Y + (this._connectedShowing.Height - this.Font.Height) / 2);
+                    textPoint = new((int) (imagePoint.X * 1.2) + _connectedShowing.Width, imagePoint.Y + (_connectedShowing.Height - Font.Height) / 2);
 
                     ConnectionStatus status = ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port);
                     if (status == ConnectionStatus.CONNECTED) {
-                        e.Graphics.DrawImage(this._connectedShowing, imagePoint);
+                        e.Graphics.DrawImage(_connectedShowing, imagePoint);
                     } else {
-                        e.Graphics.DrawImage(this._disconnectedShowing, imagePoint);
+                        e.Graphics.DrawImage(_disconnectedShowing, imagePoint);
                     }
-                    e.Graphics.DrawString(deviceDTO.ip + "-" + deviceDTO.port, this.Font, new SolidBrush(Color.Black), textPoint);
+                    e.Graphics.DrawString(deviceDTO.ip + "-" + deviceDTO.port, Font, new SolidBrush(Color.Black), textPoint);
                 }
             }
         }
 
         protected void ResizeIconImage() {
-            int count = this.DeviceDTOs.Count;
-            this._iconHeight = (Height - TitleHeight - HeightGap * (count + 1)) / count;
-            this._connectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, _iconHeight, _iconHeight);
-            this._disconnectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, _iconHeight, _iconHeight);
+            int count = DeviceDTOs.Count;
+            _iconHeight = (Height - TitlePanel.Height - HeightGap * (count + 1)) / count;
+            _connectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, _iconHeight, _iconHeight);
+            _disconnectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, _iconHeight, _iconHeight);
             // Recalculate image location
-            this._firstImageX = (int) (Width * .075);
-            this._firstImageY = HeightGap + TitleHeight;
+            _firstImageX = (int) (Width * .075);
+            _firstImageY = HeightGap + TitlePanel.Height;
         }
 
         protected void ResizeText() {
-            this.Font = new Font(WidgetsConfigs.SystemFontFamily, this._iconHeight * .55F, FontStyle.Regular);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, _iconHeight * .55F, FontStyle.Regular);
         }
 
     }
@@ -1403,14 +1417,20 @@ namespace OperationGuidance_new.Views
         private CustomPopUpForm _upperForm;
 
         private TableLayoutPanel _tablePanel;
+        private int _boxHeight;
+        private int _boxMargin;
         private CustomTextBoxGroupOld _stationTextBox;
         private CustomTextBoxGroupOld _procedureTextBox;
 
-        public DeviceOperationPopUpForm(CustomPopUpForm upperForm, string titleInfo) : base() {
-            this.BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
-            this.Title = "手动操作工具（" + titleInfo + "）";
+        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
+        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
-            this._upperForm = upperForm;
+        public DeviceOperationPopUpForm(CustomPopUpForm upperForm, string titleInfo) : base() {
+            BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
+            Title = "手动操作工具（" + titleInfo + "）";
+
+            _upperForm = upperForm;
             _tablePanel = new() {
                 Margin = new(0),
                 Padding = new(0),
@@ -1449,32 +1469,28 @@ namespace OperationGuidance_new.Views
             };
             CommonButton btnClose = AddButton("关闭");
             btnClose.Click += (s, e) => {
-                this.HideForm();
+                HideForm();
             };
         }
 
         public override void HideForm() {
             base.HideForm();
-            this._upperForm.Show();
-            EventFuncs.CurrentPopUpForm = this._upperForm;
+            _upperForm.Show();
+            EventFuncs.CurrentPopUpForm = _upperForm;
         }
 
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            int contentH = ContentSize.Height - this.VirtualVerticalPadding * 2;
-            int verticalGap = (int) (contentH * .115);
-            int tableH = contentH - verticalGap * 2;
-            int tableW = this.Width - this.VirtualHorizontalPadding * 2;
-            int horizontalGap = (int) (tableW * .015F);
-            _tablePanel.Size = new(tableW, tableH);
-            _tablePanel.Location = new(this.VirtualHorizontalPadding, this.TitleHeight + this.VirtualVerticalPadding + verticalGap);
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
+            _tablePanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
 
-            int controlW = _tablePanel.Width / _tablePanel.ColumnCount;
-            foreach (Control control in _tablePanel.Controls) {
-                CustomTextBoxGroupOld box = control as CustomTextBoxGroupOld;
-                box.Padding = new Padding(horizontalGap, verticalGap, horizontalGap, verticalGap);
-                box.GapBetweenNameNBoxes = horizontalGap;
-                box.Size = new(controlW, tableH);
+            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
+            IList list = _tablePanel.Controls;
+            for (int i = 0; i < list.Count; i++) {
+                Control? control = (Control?) list[i];
+                if (control != null) {
+                    control.Margin = new(_boxMargin);
+                    control.Size = new(boxW, _boxHeight);
+                }
             }
         }
     }

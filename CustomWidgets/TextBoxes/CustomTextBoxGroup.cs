@@ -152,7 +152,7 @@ namespace CustomLibrary.TextBoxes {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         public void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
-            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .5f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
             _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text

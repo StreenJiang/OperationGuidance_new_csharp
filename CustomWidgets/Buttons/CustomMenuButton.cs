@@ -1,5 +1,4 @@
 ﻿using CustomLibrary.Buttons.BaseClasses;
-using CustomLibrary.Panels.AbstractClasses;
 using CustomLibrary.Panels.BaseClasses;
 
 namespace CustomLibrary.Buttons

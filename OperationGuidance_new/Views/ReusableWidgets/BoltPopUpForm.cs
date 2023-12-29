@@ -42,7 +42,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             // 添加文本框显示信息
             _tablePanel = new() {
-                Parent = this,
+                Parent = ContentPanel,
                 Margin = new(0),
                 Padding = new(0),
                 ColumnCount = 2,
@@ -53,7 +53,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -63,7 +63,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -74,7 +74,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 ShowRealValue = true,
                 Enabled = false,
@@ -85,7 +85,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -95,7 +95,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -106,7 +106,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -117,7 +117,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -130,7 +130,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
@@ -161,10 +161,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _angleBox.SetValue(1, boltDTO.angle_max + "");
         }
 
-        public override void ResizeChildren(object? sender, EventArgs eventArgs) {
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
-            _tablePanel.Location = new(VirtualHorizontalPadding, TitleHeight + VirtualVerticalPadding);
-
             int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
             IList list = _tablePanel.Controls;
             for (int i = 0; i < list.Count; i++) {

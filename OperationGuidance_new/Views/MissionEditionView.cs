@@ -65,9 +65,10 @@ namespace OperationGuidance_new.Views {
             private CustomContentPanel _leftTop;
             private WorkplacePiece _leftBottom;
             private WorkplacePiece _right;
+            private int? _littleTitleHeight;
 
             // Left top
-            private CustomTextBoxGroupOld _missionName;
+            private CustomTextBoxGroup _missionName;
             private CommonButton _buttonSave;
             private CommonButton _buttonNew;
             private CommonButton _buttonDelete;
@@ -150,19 +151,21 @@ namespace OperationGuidance_new.Views {
             }
 
             private void InitializeLeftTop() {
-                _missionName = new("任务名称", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+                _missionName = new("任务名称") {
                     Parent = _leftTop,
                     BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                    BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                    ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                     BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                    BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                     NameAlignment = HorizontalAlignment.Left,
                 };
-                _missionName.GetBox(0).TextChanged += (s, e) => {
-                    if (_missionName.CurrentErrorBoxIndex == null) {
-                        _missionDTO.name = _missionName.GetBox(0).Text;
+                CustomTextBox textBox = _missionName.GetTextBox(0);
+                textBox.TextChanged += (sender, eventArgs) => {
+                    if (!_missionName.HasError) {
+                        _missionDTO.name = textBox.Text;
                     }
                 };
-                _missionName.SetValue(0, _missionDTO.name);
+                textBox.Text = _missionDTO.name;
 
                 _buttonSave = new() {
                     Parent = _leftTop,
@@ -678,6 +681,10 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+                if (Size == new Size(200, 100)) {
+                    // TODO: have to figure out why this happen
+                    return;
+                }
                 Padding outerPadding = Parent.Parent.Parent.Padding;
                 ResizeContent(outerPadding);
                 ResizeSideButtons();
@@ -687,10 +694,8 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ResizeContent(Padding outerPadding) {
-                int leftBottomHeight = (int) (Height * .825);
-                Size mainSize = WidgetUtils.MainPanel.Parent.Size;
-                double ratio = mainSize.Height / (double) mainSize.Width;
-                int leftWidth = (int) (leftBottomHeight / ratio);
+                int leftBottomHeight = (int) (Height * .805);
+                int leftWidth = (int) (Width * .8);
                 int rightWidth = Width - leftWidth - (outerPadding.Left - 1) / 2;
 
                 _left.Size = new(leftWidth, Height);
@@ -698,7 +703,8 @@ namespace OperationGuidance_new.Views {
 
                 _leftBottom.Size = new(_left.Width, leftBottomHeight);
                 _leftTop.Size = new(_left.Width, (int) ((_left.Height - _leftBottom.Height) * .76));
-                _sideTitlePanel.Size = new(_leftTop.Width, _left.Height - _leftBottom.Height - _leftTop.Height);
+                _littleTitleHeight = _left.Height - _leftBottom.Height - _leftTop.Height;
+                _sideTitlePanel.Size = new(_leftTop.Width, _littleTitleHeight.Value);
 
                 _right.Size = new(rightWidth, Height);
             }
@@ -720,14 +726,11 @@ namespace OperationGuidance_new.Views {
                 // Recalculate some variables
                 int missionNameWidth = _leftTop.Width / 2;
                 int buttonsWidth = missionNameWidth;
-                int buttonsHeight = (int) (_leftTop.Height * .325);
-                int textBoxVerticalMargin = (int) (buttonsHeight * .05);
+                int buttonsHeight = WidgetUtils.CommonButtonHeight();
                 int hGap = (int) (buttonsHeight * .5);
 
                 // Resize mission name box
-                _missionName.GapBetweenNameNBoxes = hGap;
-                _missionName.Size = new(missionNameWidth, buttonsHeight - textBoxVerticalMargin * 2);
-                _missionName.Margin = new(0, textBoxVerticalMargin, 0, textBoxVerticalMargin);
+                _missionName.Size = new(missionNameWidth, WidgetUtils.TextOrComboBoxHeight());
 
                 // Resize common buttons
                 Size buttonSize =  new((int) ((buttonsWidth - hGap * 4) / 4), buttonsHeight);
@@ -785,18 +788,21 @@ namespace OperationGuidance_new.Views {
 
             private void ResizePopUpForm() {
                 if (_boltPopUpForm != null) {
+                    Control mainForm = WidgetUtils.MainPanel.Parent;
+                    _boltPopUpForm.CalculateDetailProperties(mainForm);
+
                     TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
-                    MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
-
+                    Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                     int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * boxHeight;
-                    Size contentHeight = new((int) (mainForm.Width * .75), tableHeight);
+                    int boxMargin = boxHeight / 8;
+                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                    Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
+                    int tableWidth = contentSize.Width - contentPadding.Size.Width;
                     _boltPopUpForm.BoxHeight = boxHeight;
-                    _boltPopUpForm.ContentSize = contentHeight;
-                    _boltPopUpForm.TablePanel.Size = contentHeight;
+                    _boltPopUpForm.BoxMargin = boxMargin;
+                    _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
-                    int formHeight = tableHeight + _boltPopUpForm.TitleHeight + _boltPopUpForm.ButtonPanelHeight + _boltPopUpForm.VirtualVerticalPadding * 2;
-                    _boltPopUpForm.Size = new(contentHeight.Width + _boltPopUpForm.VirtualHorizontalPadding * 2, formHeight);
+                    _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
                     if (_boltPopUpForm.Visible) {
                         _boltPopUpForm.Invalidate();
                     }
@@ -805,7 +811,7 @@ namespace OperationGuidance_new.Views {
 
             private void ResizeRight() {
                 int controlWidth = _right.Width - 2;
-                _boltTitlePanel.Size = new(controlWidth, (int) (_right.Height * .045));
+                _boltTitlePanel.Size = new(controlWidth, _littleTitleHeight.Value);
                 _boltTitleLabel.Size = _boltTitlePanel.Size;
                 _boltTitleLabel.Font = new Font(WidgetsConfigs.SystemFontFamily, _boltTitleLabel.Height * .55F, FontStyle.Bold, GraphicsUnit.Pixel);
 
@@ -1100,7 +1106,7 @@ namespace OperationGuidance_new.Views {
 
             protected override void InvokeResizing() {
                 // Make maximum width equals to 85% of parent width to ensure all retangles can be seen
-                MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByWidth(Width);
+                MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByWidth((int) (Width * .9));
                 MaxRectWidth = MaxRectSize.Width;
                 MaxRectHeight = MaxRectSize.Height;
                 // Calculate location of max rectangle depends on size

@@ -14,6 +14,7 @@ namespace CustomLibrary.TextBoxes {
         private Color _disabledBackColor;
         private Color? _borderColor;
         private FontStyle? _boxFontStyle;
+        private readonly int _borderThickness = 1;
 
         private bool _numberValidate;
         private bool _isError;
@@ -60,17 +61,17 @@ namespace CustomLibrary.TextBoxes {
                 this._borderColor = value;
                 if (value != null) {
                     Padding newP = Padding;
-                    newP.Left += 1;
-                    newP.Right += 1;
-                    newP.Top += 1;
-                    newP.Bottom += 1;
+                    newP.Left += _borderThickness;
+                    newP.Right += _borderThickness;
+                    newP.Top += _borderThickness;
+                    newP.Bottom += _borderThickness;
                     Padding = newP;
                 } else {
                     Padding newP = Padding;
-                    newP.Left -= 1;
-                    newP.Right -= 1;
-                    newP.Top -= 1;
-                    newP.Bottom -= 1;
+                    newP.Left -= _borderThickness;
+                    newP.Right -= _borderThickness;
+                    newP.Top -= _borderThickness;
+                    newP.Bottom -= _borderThickness;
                     Padding = newP;
 
                 }
@@ -143,7 +144,7 @@ namespace CustomLibrary.TextBoxes {
 
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         public void ResizeChildren(object? sender, EventArgs eventArgs) {
-            Font = new(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .47F, 
+            Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
                     _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
             int boxWidthTemp = Width - Padding.Size.Width;
             // Recalculate size and location of box
@@ -162,7 +163,7 @@ namespace CustomLibrary.TextBoxes {
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(0, 0, Width - 1, Height - 1);
+                _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
             }
         }
 
@@ -179,9 +180,9 @@ namespace CustomLibrary.TextBoxes {
 
             // Draw border if border color is not null
             if (_borderColorError != null && _isError) {
-                e.Graphics.DrawRectangle(new(_borderColorError.Value, 1), _borderRect);
+                e.Graphics.DrawRectangle(new(_borderColorError.Value, _borderThickness), _borderRect);
             } else if (_borderColor != null) {
-                e.Graphics.DrawRectangle(new(_borderColor.Value, 1), _borderRect);
+                e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
             }
         }
 

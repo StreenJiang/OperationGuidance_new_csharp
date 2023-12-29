@@ -32,7 +32,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
             };
             _positionX.GetTextBox(0).NumberValidate = true;
@@ -41,7 +41,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                Ratio = 6.5,
+                Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
             };
             _positionY.GetTextBox(0).NumberValidate = true;

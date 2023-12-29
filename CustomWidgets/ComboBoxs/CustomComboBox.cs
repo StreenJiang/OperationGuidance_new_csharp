@@ -13,6 +13,7 @@ namespace CustomLibrary.ComboBoxs {
         private readonly int _collapseStep = 20; // How many pixels increase/decrease each interval
         private readonly int _collapseSpend = 30; // How many milliseconds will the collapse cost
         private readonly int _maxItemsShown = 5; // Maximum of shown items, will has scroll bar if greater than this number
+        private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
         private ItemsScrollPanel? _itemsScrollPanel;
         private ItemsPanel? _itemsPanel;
@@ -68,17 +69,17 @@ namespace CustomLibrary.ComboBoxs {
                 this._borderColor = value;
                 if (value != null) {
                     Padding newP = Padding;
-                    newP.Left += 1;
-                    newP.Right += 1;
-                    newP.Top += 1;
-                    newP.Bottom += 1;
+                    newP.Left += _borderThickness;
+                    newP.Right += _borderThickness;
+                    newP.Top += _borderThickness;
+                    newP.Bottom += _borderThickness;
                     Padding = newP;
                 } else {
                     Padding newP = Padding;
-                    newP.Left -= 1;
-                    newP.Right -= 1;
-                    newP.Top -= 1;
-                    newP.Bottom -= 1;
+                    newP.Left -= _borderThickness;
+                    newP.Right -= _borderThickness;
+                    newP.Top -= _borderThickness;
+                    newP.Bottom -= _borderThickness;
                     Padding = newP;
 
                 }
@@ -314,7 +315,7 @@ namespace CustomLibrary.ComboBoxs {
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(0, 0, Width - 1, Height - 1);
+                _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
             }
         }
 
@@ -435,7 +436,7 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .485), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .53F, FontStyle.Regular, GraphicsUnit.Pixel);
                     this.LabelX = (int) (Height / 3.5);
                     this.LabelY = (this.Height - this.Font.Height) / 2;
                 }
@@ -568,7 +569,7 @@ namespace CustomLibrary.ComboBoxs {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .485), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .53F, FontStyle.Regular, GraphicsUnit.Pixel);
                     int hPadding = (int) (Height / 3.5);
                     using (Graphics g = CreateGraphics()) {
                         float labelWidth = g.MeasureString(Label, Font).Width;

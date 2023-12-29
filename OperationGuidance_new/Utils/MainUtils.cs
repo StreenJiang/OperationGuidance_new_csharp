@@ -101,7 +101,7 @@ namespace OperationGuidance_new.Utils {
             int maxHeightRatio = 0;
             GetMaxSizeOfSizeRatio(out maxWidthRatio, out maxHeightRatio);
 
-            int maxWidth = (int) (contentWidth * .85);
+            int maxWidth = contentWidth;
             int maxHeight = (int) (maxWidth / (decimal) maxWidthRatio * maxHeightRatio);
             return new(maxWidth, maxHeight);
         }
