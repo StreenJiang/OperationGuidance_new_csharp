@@ -395,6 +395,7 @@ namespace OperationGuidance_new.Views
                         Title = "录入条码",
                         BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
                     };
+<<<<<<< HEAD
                     _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
                         if (!_barCodePopUpForm.TextBox.IsError) {
                             _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
@@ -402,6 +403,17 @@ namespace OperationGuidance_new.Views
                         }
                     };
                     _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.HideForm();
+=======
+                    CommonButton btnConfirm = _barCodePopUpForm.AddButton("确定");
+                    btnConfirm.Click += (s, e) => {
+                        _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
+                        _barCodePopUpForm.HideForm();
+                    };
+                    CommonButton btnClose = _barCodePopUpForm.AddButton("关闭");
+                    btnClose.Click += (s, e) => {
+                        _barCodePopUpForm.HideForm();
+                    };
+>>>>>>> 7177d2a30eb42a4b1f1cbd839771342af36c361f
                     _barCodePopUpForm.FakeShowToCreateHandlesForChildren();
                     ResizeBarCodePopUpForm();
                 }
@@ -776,7 +788,11 @@ namespace OperationGuidance_new.Views
             _barCodePopUpForm.CalculateDetailProperties(mainForm);
 
             Padding contentPadding = _barCodePopUpForm.ContentPanel.Padding;
+<<<<<<< HEAD
             int boxHeight = (int) (mainForm.Height * .05);
+=======
+            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+>>>>>>> 7177d2a30eb42a4b1f1cbd839771342af36c361f
             Size contentSize = new((int) (mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
             int boxWidth = contentSize.Width - contentPadding.Size.Width;
             _barCodePopUpForm.TextBox.Size = new(boxWidth, boxHeight);

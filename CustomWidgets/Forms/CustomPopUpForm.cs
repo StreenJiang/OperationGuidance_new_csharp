@@ -216,7 +216,11 @@ namespace CustomLibrary.Forms {
         private Padding GetButtonsPanelPadding(Control mainParent) {
             int hPadding = (int) (mainParent.Width * .008);
             int vPadding = (int) (mainParent.Height * .008);
+<<<<<<< HEAD
             return new(hPadding, 0, hPadding, vPadding);
+=======
+            return new(hPadding, vPadding, hPadding, vPadding);
+>>>>>>> 7177d2a30eb42a4b1f1cbd839771342af36c361f
         }
         private int GetButtonsPanelHeight(Control mainParent) => GetButtonsPanelPadding(mainParent).Size.Height + WidgetUtils.CommonButtonHeight();
         private Padding GetContentPadding(Control mainParent) {
