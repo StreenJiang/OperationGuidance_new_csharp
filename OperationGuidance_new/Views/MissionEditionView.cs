@@ -785,18 +785,21 @@ namespace OperationGuidance_new.Views {
 
             private void ResizePopUpForm() {
                 if (_boltPopUpForm != null) {
+                    Control mainForm = WidgetUtils.MainPanel.Parent;
+                    _boltPopUpForm.CalculateDetailProperties(mainForm);
+
                     TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
-                    MainForm mainForm = (MainForm) (WidgetUtils.MainPanel.Parent);
-
+                    Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                     int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * boxHeight;
-                    Size contentHeight = new((int) (mainForm.Width * .75), tableHeight);
+                    int boxMargin = boxHeight / 8;
+                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                    Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
+                    int tableWidth = contentSize.Width - contentPadding.Size.Width;
                     _boltPopUpForm.BoxHeight = boxHeight;
-                    _boltPopUpForm.ContentSize = contentHeight;
-                    _boltPopUpForm.TablePanel.Size = contentHeight;
+                    _boltPopUpForm.BoxMargin = boxMargin;
+                    _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
-                    int formHeight = tableHeight + _boltPopUpForm.TitleHeight + _boltPopUpForm.ButtonPanelHeight + _boltPopUpForm.VirtualVerticalPadding * 2;
-                    _boltPopUpForm.Size = new(contentHeight.Width + _boltPopUpForm.VirtualHorizontalPadding * 2, formHeight);
+                    _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
                     if (_boltPopUpForm.Visible) {
                         _boltPopUpForm.Invalidate();
                     }

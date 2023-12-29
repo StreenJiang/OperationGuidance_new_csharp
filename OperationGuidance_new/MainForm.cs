@@ -15,6 +15,7 @@ namespace OperationGuidance_new {
 
         public MainForm() {
             InitializeComponentManually();
+            StartPosition = FormStartPosition.CenterScreen;
             log.Info("测试一下日志");
             this.FormBorderStyle = FormBorderStyle.None; // 这一句注释掉之后就不会触发下面的 InvokeResizing了，好奇怪
         }

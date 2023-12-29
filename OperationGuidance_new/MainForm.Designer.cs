@@ -213,9 +213,10 @@ namespace OperationGuidance_new {
             BackColor = ConfigsVariables.COLOR_MAIN_FORM_BACKGROUND;
             Controls.Add(mainPanel);
             Size = new(800, 600);
+            ClientSize = new(800, 600);
             MinimumSize = new Size(400, 300);
             Name = "MainForm";
-            Text = "Form1";
+            Text = "MainForm";
 
 
             // Test
