@@ -1,6 +1,4 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Panels;
-using CustomLibrary.Panels.BaseClasses;
+﻿using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Apis;
@@ -43,19 +41,21 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
                 Visible = false,
             };
-            MissionListPanel.TitlePanel.RightButton toWorkplaceButton = new();
-            toWorkplaceButton.Label = "新建任务";
-            toWorkplaceButton.Click += (sender, eventArgs) => {
-                OpenEditionPageView(new ProductMissionDTO() {
-                    name = "新建任务",
-                    ProductSides = new() {
-                        new() {
-                            name = "产品面1",
+            _missionListPanel = new(
+                "任务列表", 
+                _tableColumns, 
+                "新建任务", 
+                (sender, eventArgs) => {
+                    OpenEditionPageView(new ProductMissionDTO() {
+                        name = "新建任务",
+                        ProductSides = new() {
+                            new() {
+                                name = "产品面1",
+                            },
                         },
-                    },
-                });
-            };
-            _missionListPanel = new("任务清单", toWorkplaceButton, _tableColumns) {
+                    });
+                }
+            ) {
                 Margin = new Padding(0),
                 Parent = this,
                 Visible = false,

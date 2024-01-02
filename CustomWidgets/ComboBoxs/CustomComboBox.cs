@@ -102,7 +102,19 @@ namespace CustomLibrary.ComboBoxs {
                 }
             }
         }
-        public T? Value { get => GetChosenItem(); }
+        public List<T?> Items { 
+            get {
+                List<T?> items = new();
+                foreach (ComboBoxItem<T> item in _itemButtons) {
+                    if (item.Label == _defaultLabel) {
+                        continue;
+                    }
+                    items.Add(item.Object);
+                } 
+                return items;
+            }
+        }
+        public T? Value { get => GetChosenValue(); }
 
         public CustomComboBox() {
             Margin = new(0);
@@ -209,17 +221,24 @@ namespace CustomLibrary.ComboBoxs {
             _selectButton.Invalidate();
         }
 
-        public void SetDefault(int index) {
+        public void SetCurrent(int index) {
+            if (_selectButton.SelectedItem != null) {
+                _selectButton.SelectedItem.SetToggle(false);
+            }
             _selectButton.SelectedItem = _itemButtons[index + 1];
             _selectButton.SelectedItem.SetToggle(true);
         }
 
-        public T? GetChosenItem() {
+        public T? GetChosenValue() {
             T? t = default(T);
             if (_selectButton.SelectedItem != null) {
                 t = _selectButton.SelectedItem.Object;
             }
             return t;
+        }
+
+        public ComboBoxItem<T>? GetChosenItem() {
+            return _selectButton.SelectedItem;
         }
 
         private void TimerTick(object? sender, EventArgs eventArgs) {
@@ -532,7 +551,7 @@ namespace CustomLibrary.ComboBoxs {
             private ComboBoxSelectButton<I>? _selectButton;
             private int _properWidth;
 
-            public new string? Name { get => Label; set => Label = value; }
+            public new string Name { get => Label != null ? Label : ""; set => Label = value; }
             public I? Object { get => _object; set => _object = value; }
             public ComboBoxSelectButton<I>? SelectButton { get => _selectButton; }
             public int ProperWidth { get => _properWidth; }

@@ -40,6 +40,7 @@ namespace CustomLibrary.TextBoxes {
         }
         public TextBox Box { get => _box; }
         public override string Text { get => _box.Text; set => _box.Text = value; }
+        public bool Multiline { get => _box.Multiline; set => _box.Multiline = value; }
         public override Color BackColor {
             get => base.BackColor;
             set {

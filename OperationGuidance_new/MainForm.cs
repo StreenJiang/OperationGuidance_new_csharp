@@ -5,14 +5,6 @@ namespace OperationGuidance_new {
     public partial class MainForm: Form {
         ILog log = LogManager.GetLogger(typeof(MainForm));
 
-        protected override CreateParams CreateParams {
-            get {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // 用双缓冲绘制窗口的所有子控件
-                return cp;
-            }
-        }
-
         public MainForm() {
             InitializeComponentManually();
             StartPosition = FormStartPosition.CenterScreen;
@@ -22,11 +14,12 @@ namespace OperationGuidance_new {
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            SizeChanged += InvokeResizing;
+            SizeChanged += ResizeChildren;
             // InvokeResizing(this, EventArgs.Empty); // 上面那句注释掉后暂时用这个触发一下
         }
 
-        private void InvokeResizing(object? sender, EventArgs e) {
+        public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
+        private void ResizeChildren(object? sender, EventArgs eventArgs) {
             if (this.WindowState == FormWindowState.Minimized) {
                 return;
             }

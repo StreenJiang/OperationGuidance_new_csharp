@@ -48,6 +48,7 @@ namespace CustomLibrary.TextBoxes {
         public bool ShowRealValue { get => _comboBox.ShowRealValue; set => _comboBox.ShowRealValue = value; }
         public bool IsError { get => _comboBox.IsError; }
         public event Action ItemSelected { add => _comboBox.ItemSelected += value; remove => _comboBox.ItemSelected -= value; }
+        public List<T?> Items { get => _comboBox.Items; }
         public T? Value { get => _comboBox.Value; }
 
         public CustomComboBoxGroup(string textName) : base() {
@@ -69,8 +70,16 @@ namespace CustomLibrary.TextBoxes {
             _comboBox.RemoveItem(index);
         }
 
+        public CustomComboBox<T>.ComboBoxItem<T>? GetChosenItem() {
+            return _comboBox.GetChosenItem();
+        }
+
         public void SetDefault(int index) {
-            _comboBox.SetDefault(index);
+            _comboBox.SetCurrent(index);
+        }
+
+        public void SetError(bool isError) {
+            _comboBox.IsError = isError;
         }
 
         protected override void OnHandleCreated(EventArgs e) {

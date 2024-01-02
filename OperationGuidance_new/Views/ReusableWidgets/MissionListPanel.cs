@@ -1,6 +1,4 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Configs;
-using CustomLibrary.Panels;
+﻿using CustomLibrary.Panels;
 using OperationGuidance_new.Configs;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
@@ -19,12 +17,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int CellHorizontalMargin { get => _cellHorizontalMargin; set => _cellHorizontalMargin = value; }
         public int CellVerticalMargin { get => _cellVerticalMargin; set => _cellVerticalMargin = value; }
 
-        public MissionListPanel(string title, TitlePanel.RightButton rightButton, int tableColumns) {
+        public MissionListPanel(string title, int tableColumns, string buttonLabel, EventHandler rightButtonClick) {
             FlowDirection = FlowDirection.TopDown;
-            _titlePanel = new(title, rightButton, ConfigsVariables.COLOR_TITLE_UNDERLINE) {
-                Margin = new(0),
+            _titlePanel = new(title) {
                 Parent = this,
             };
+            TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton(buttonLabel);
+            rightButton.Click += rightButtonClick;
 
             _missionsTable = new() {
                 Margin = new(0),
@@ -77,71 +76,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             foreach (Control control in _missionsTable.Controls) {
                 control.Size = _cellSize;
                 control.Margin = new(_cellHorizontalMargin, _cellVerticalMargin, 0, 0);
-            }
-        }
-
-        public class TitlePanel: Panel {
-            private Label _title;
-            private RightButton _rightButton;
-            private Color _underlineColor;
-            public Color UnderlineColor { get => _underlineColor; set => _underlineColor = value; }
-
-            public TitlePanel(string title, RightButton rightButton, Color underlineColor) {
-                _title = new() {
-                    Text = title,
-                    Parent = this,
-                    BackColor = Color.Transparent,
-                };
-                _rightButton = rightButton;
-                _rightButton.Parent = this;
-                _underlineColor = underlineColor;
-            }
-
-            protected override void OnHandleCreated(EventArgs e) {
-                base.OnHandleCreated(e);
-                SizeChanged += InvokeResizing;
-            }
-
-            private void InvokeResizing(object? sender, EventArgs eventArgs) {
-                if (Width <= 0 || Height <= 0) {
-                    return;
-                }
-                // Resize title and right button
-                using (Graphics g = CreateGraphics()) {
-                    // Resize title label
-                    _title.Height = (int) (Height * .7);
-                    _title.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (_title.Height * .65), FontStyle.Regular, GraphicsUnit.Pixel);
-                    int labelWidth = (int)(g.MeasureString(_title.Text, _title.Font).Width * 1.2);
-                    _title.Width = labelWidth;
-                    _title.Location = new(0, (int) ((Height - _title.Height) / 1.25));
-
-                    // Resize and location right button
-                    int rightButtonHeight = (int)(Height * .65);
-                    // Set height first to get new Font
-                    _rightButton.Height = rightButtonHeight;
-                    // Calculate new width
-                    int btnLabelWidth = (int)g.MeasureString(_rightButton.Label, _rightButton.Font).Width;
-                    _rightButton.Width = (int) (btnLabelWidth + rightButtonHeight * 1.2);
-                    _rightButton.Location = new(Width - _rightButton.Width, (Height - rightButtonHeight) / 2);
-                }
-            }
-
-            protected override void OnPaint(PaintEventArgs e) {
-                base.OnPaint(e);
-                int penBorder = (int)Math.Ceiling((double)((Parent.Width + Parent.Height) / 400D));
-                e.Graphics.DrawLine(new(_underlineColor, penBorder), new(0, Height), new(Width, Height));
-            }
-
-            public class RightButton: CommonButton {
-                protected override void ResizeTextLabel() {
-                    if (Label != null) {
-                        Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
-                        using (Graphics g = CreateGraphics()) {
-                            LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                        }
-                        LabelY = (Height - Font.Height) / 2;
-                    }
-                }
             }
         }
     }

@@ -38,6 +38,10 @@ namespace CustomLibrary.Utils {
             throw new NullReferenceException("Can not find main menu by key <" + menuKey + ">, please check system config.");
         }
 
+        public static Size GetScreenResolution() {
+            return Screen.PrimaryScreen.Bounds.Size;
+        }
+
         /// <summary>
         /// Rescale image without losing quality
         /// </summary>

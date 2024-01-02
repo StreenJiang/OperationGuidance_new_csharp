@@ -7,7 +7,6 @@ using CustomLibrary.Constants;
 using CustomLibrary.Events;
 using CustomLibrary.Forms;
 using CustomLibrary.Panels;
-using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
@@ -45,19 +44,21 @@ namespace OperationGuidance_new.Views
                 Parent = this,
                 Visible = false,
             };
-            MissionListPanel.TitlePanel.RightButton toWorkplaceButton = new();
-            toWorkplaceButton.Label = "直接进入工作台";
-            toWorkplaceButton.Click += (sender, eventArgs) => {
-                OpenWorkplaceView(new ProductMissionDTO() {
-                    name = "工作台 - 未选择任务",
-                    ProductSides = new() {
-                        new() {
-                            name = "-",
+            _missionListPanel = new(
+                "选择任务", 
+                _tableColumns, 
+                "直接进入工作台", 
+                (sender, eventArgs) => {
+                    OpenWorkplaceView(new ProductMissionDTO() {
+                        name = "工作台 - 未选择任务",
+                        ProductSides = new() {
+                            new() {
+                                name = "-",
+                            },
                         },
-                    },
-                });
-            };
-            _missionListPanel = new("任务清单", toWorkplaceButton, _tableColumns) {
+                    });
+                }
+            ) {
                 Margin = new Padding(0),
                 Parent = this,
                 Visible = false,
@@ -1417,8 +1418,8 @@ namespace OperationGuidance_new.Views
         private TableLayoutPanel _tablePanel;
         private int _boxHeight;
         private int _boxMargin;
-        private CustomTextBoxGroupOld _stationTextBox;
-        private CustomTextBoxGroupOld _procedureTextBox;
+        private CustomTextBoxGroup _stationTextBox;
+        private CustomTextBoxGroup _procedureTextBox;
 
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
@@ -1436,15 +1437,17 @@ namespace OperationGuidance_new.Views
                 Parent = this,
             };
 
-            _stationTextBox = new("站点", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _stationTextBox = new("站点") {
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
             };
-            _procedureTextBox = new("程序", ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR) {
+            _procedureTextBox = new("程序") {
                 BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BoxForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             _stationTextBox.SetValue(0, "1");
             _procedureTextBox.SetValue(0, "1");
@@ -1462,8 +1465,8 @@ namespace OperationGuidance_new.Views
             };
             CommonButton btnPSet = AddButton("下发");
             btnPSet.Click += (s, e) => {
-                string station = _stationTextBox.GetValue(0);
-                string procedure = _procedureTextBox.GetValue(0);
+                string station = _stationTextBox.GetTextBox(0).Text;
+                string procedure = _procedureTextBox.GetTextBox(0).Text;
             };
             CommonButton btnClose = AddButton("关闭");
             btnClose.Click += (s, e) => {

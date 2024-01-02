@@ -1,7 +1,7 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels.BaseClasses;
+using CustomLibrary.Panels;
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 
@@ -14,11 +14,11 @@ namespace CustomLibrary.Forms {
         private Rectangle? _borderRect;
         private readonly int _borderThickness = 1;
         // All containers
-        private CustomContentPanelBase _outerPanel;
-        private CustomContentPanelBase _titlePanel;
-        private CustomContentPanelBase _contentPanel;
+        private CustomContentPanel _outerPanel;
+        private CustomContentPanel _titlePanel;
+        private CustomContentPanel _contentPanel;
         private Panel _buttonsPanel;
-        private CustomContentPanelBase _buttonsInnerPanel;
+        private CustomContentPanel _buttonsInnerPanel;
         
         // Outer panel
         // Title panel
@@ -45,13 +45,13 @@ namespace CustomLibrary.Forms {
             }
         }
         // Outer panel
-        public CustomContentPanelBase OuterPanel { get => _outerPanel; set => _outerPanel = value; }
+        public CustomContentPanel OuterPanel { get => _outerPanel; set => _outerPanel = value; }
         // Title panel
-        public CustomContentPanelBase TitlePanel { get => _titlePanel; set => _titlePanel = value; }
+        public CustomContentPanel TitlePanel { get => _titlePanel; set => _titlePanel = value; }
         public string Title { get => _title; set => _title = value; }
         public bool HasTitleBar { get => TitlePanel.Visible; set => TitlePanel.Visible = value; }
         // Content panel
-        public CustomContentPanelBase ContentPanel { get => _contentPanel; set => _contentPanel = value; }
+        public CustomContentPanel ContentPanel { get => _contentPanel; set => _contentPanel = value; }
         // Buttons panel
         public Panel ButtonsPanel { get => _buttonsPanel; set => _buttonsPanel = value; }
         public HorizontalAlignment ButtonAlignment {
