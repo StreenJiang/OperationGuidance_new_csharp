@@ -22,7 +22,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _titlePanel = new(title) {
                 Parent = this,
             };
-            TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton(buttonLabel);
+            TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
             rightButton.Click += rightButtonClick;
 
             _missionsTable = new() {

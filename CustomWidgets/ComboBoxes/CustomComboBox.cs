@@ -450,7 +450,7 @@ namespace CustomLibrary.ComboBoxs {
                 _iconCollapseShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_iconCollapse, iconSide, iconSide);
                 _iconExpandShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_iconExpand, iconSide, iconSide);
                 SetIcon();
-                _iconPosition = new(Width - (int) (iconSide + (Width / 20)), (Height - iconSide) / 2);
+                _iconPosition = new(Width - (int) (iconSide + (Height / 3.5)), (Height - iconSide) / 2);
             }
 
             protected override void ResizeTextLabel() {
@@ -479,6 +479,8 @@ namespace CustomLibrary.ComboBoxs {
 
         // Items panel
         public class ItemsPanel: CustomContentPanel {
+            public ItemsPanel() => DoubleBuffered = true;
+
             public override bool CheckNeedsScrollBar(int parentNewHeight) {
                 if (!Visible) {
                     return false;
@@ -515,7 +517,7 @@ namespace CustomLibrary.ComboBoxs {
                 }
             }
 
-            public ItemsScrollPanel(CustomContentPanel contentPanel) : base(null, contentPanel) {}
+            public ItemsScrollPanel(CustomContentPanel contentPanel) : base(null, contentPanel) => DoubleBuffered = true;
 
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (IsHandleCreated) {

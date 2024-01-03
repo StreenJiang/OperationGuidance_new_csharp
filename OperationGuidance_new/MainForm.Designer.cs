@@ -53,6 +53,7 @@ namespace OperationGuidance_new {
 
             // Main panel
             mainPanel = new();
+            mainPanel.Parent = this;
             // Store this mainPanel incase wherever needs to reach it
             WidgetUtils.MainPanel = mainPanel;
             mainMenuPanel = new();
@@ -211,7 +212,7 @@ namespace OperationGuidance_new {
 
             // MainForm
             BackColor = ConfigsVariables.COLOR_MAIN_FORM_BACKGROUND;
-            Controls.Add(mainPanel);
+            // Controls.Add(mainPanel);
             Size = new(800, 600);
             ClientSize = new(800, 600);
             MinimumSize = new Size(400, 300);

@@ -7,6 +7,7 @@ using System.ComponentModel;
 namespace CustomLibrary.TextBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomTextBox: UserControl {
+        #region Fields
         private bool _enabled;
         private TextBox _box;
         private Rectangle _borderRect;
@@ -23,7 +24,9 @@ namespace CustomLibrary.TextBoxes {
         private ErrorProvider _errorProvider;
         private Image? _iconShowing;
         private Color? _borderColorError;
+        #endregion
 
+        #region Properties
         public new bool Enabled {
             get => this._enabled;
             set {
@@ -82,7 +85,9 @@ namespace CustomLibrary.TextBoxes {
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
         public bool IsError { get => _isError; set => _isError = value; }
+        #endregion
 
+        #region Constructors
         public CustomTextBox(ErrorProvider? errorProvider = null) : base() {
             Margin = new(0);
             _enabled = true;
@@ -127,6 +132,7 @@ namespace CustomLibrary.TextBoxes {
             _borderRect = new();
             _numberValidate = false;
         }
+        #endregion
 
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
@@ -144,7 +150,7 @@ namespace CustomLibrary.TextBoxes {
         }
 
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
-        public void ResizeChildren(object? sender, EventArgs eventArgs) {
+        private void ResizeChildren(object? sender, EventArgs eventArgs) {
             Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
                     _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
             int boxWidthTemp = Width - Padding.Size.Width;

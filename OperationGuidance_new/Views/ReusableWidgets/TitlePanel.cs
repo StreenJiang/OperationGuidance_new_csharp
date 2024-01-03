@@ -1,13 +1,16 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_service.Utils;
 
 public class TitlePanel: Panel {
     private Label _title;
     private CustomContentPanel _buttonsPanel;
-    private List<RightButton> _rightButtons;
+    private List<Control> _rightButtons;
     private Color? _underlineColor;
+    private int _underlineThickness;
 
     public Color? UnderlineColor { get => _underlineColor; set => _underlineColor = value; }
 
@@ -26,21 +29,29 @@ public class TitlePanel: Panel {
         _rightButtons = new();
     }
 
-    public RightButton AddRightButton(string label) {
-        RightButton button = new() {
+    public T AddRightButton<T>(string label) where T : Control, new() {
+        T control = new() {
             Parent = _buttonsPanel,
-            Label = label,
         };
-        _rightButtons.Add(button);
+        if (control.GetType() == typeof(RightButton)) {
+            CommonUtils.CannotBeNull(control as RightButton).Label = label;
+        } else if (control.GetType() == typeof(ToggleButton)) {
+            ToggleButton toggleButton = CommonUtils.CannotBeNull(control as ToggleButton);
+            // toggleButton.OnBackColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OnToggleColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OffBackColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OffToggleColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+        }
+        _rightButtons.Add(control);
         if (!_buttonsPanel.Visible) {
             _buttonsPanel.Visible = true;
         }
         ResizeChildren();
-        return button;
+        return control;
     }
 
-    public RightButton GetRightButton(int index) {
-        return _rightButtons[index];
+    public T GetRightButton<T>(int index) where T : Control {
+        return (T) _rightButtons[index];
     }
 
     protected override void OnHandleCreated(EventArgs e) {
@@ -61,29 +72,41 @@ public class TitlePanel: Panel {
             int labelWidth = (int) (g.MeasureString(_title.Text, _title.Font).Width * 1.2);
             _title.Width = labelWidth;
             _title.Location = new(0, (int) ((Height - _title.Height) / 1.25));
+            _underlineThickness = WidgetUtils.BorderThickness();
 
             // Resize and right buttons
             if (_rightButtons.Count > 0) {
-                int buttonHeight = (int) (Height * .65);
-                _buttonsPanel.Height = buttonHeight;
-                int buttonGap = buttonHeight / 3;
+                _buttonsPanel.Height = Height - _underlineThickness;
+                int rightButtonHeight = (int) (Height * .65);
+                int toggleButtonHeight = (int) (rightButtonHeight * .9);
+                int buttonGap = rightButtonHeight / 3;
                 int buttonsPanelWidth = 0;
                 // Set height first to get new Font
                 for (int i = 0; i < _rightButtons.Count; i++) {
-                    RightButton button = _rightButtons[i];
-                    // Height must be set first then ResizeTextLabel can be invoked, then the Font can be set
-                    button.Height = buttonHeight;
-                    // Calculate new width
-                    int btnLabelWidth = (int) g.MeasureString(button.Label, button.Font).Width;
-                    button.Width = (int) (btnLabelWidth + buttonHeight * 1.2);
-                    buttonsPanelWidth += button.Width;
+                    Control control = _rightButtons[i];
+                    Type controlType = control.GetType();
+                    if (controlType == typeof(RightButton)) {
+                        RightButton button = CommonUtils.CannotBeNull(control as RightButton);
+                        // Height must be set first then ResizeTextLabel can be invoked, then the Font can be set
+                        button.Height = rightButtonHeight;
+                        // Calculate new width
+                        int btnLabelWidth = (int) g.MeasureString(button.Label, button.Font).Width;
+                        button.Width = (int) (btnLabelWidth + rightButtonHeight * 1.2);
+                    } else if (controlType == typeof(ToggleButton)) {
+                        ToggleButton button = CommonUtils.CannotBeNull(control as ToggleButton);
+                        button.Size = new(toggleButtonHeight * 3, toggleButtonHeight);
+                    }
+                    // Add the width of all buttons to get the width of panel
+                    buttonsPanelWidth += control.Width;
+                    Padding controlMargin = new(0, (int) ((_buttonsPanel.Height - control.Height) / 1.5) - _underlineThickness, 0, 0);
                     if (i != 0) {
-                        button.Margin = new(buttonGap, 0, 0, 0);
+                        controlMargin.Left = buttonGap;
                         buttonsPanelWidth += buttonGap;
                     }
+                    control.Margin = controlMargin;
                 }
                 _buttonsPanel.Width = buttonsPanelWidth;
-                _buttonsPanel.Location = new(Width - buttonsPanelWidth, (Height - buttonHeight) / 2);
+                _buttonsPanel.Location = new(Width - buttonsPanelWidth, 0);
             }
         }
     }
@@ -91,8 +114,7 @@ public class TitlePanel: Panel {
     protected override void OnPaint(PaintEventArgs e) {
         base.OnPaint(e);
         if (_underlineColor != null) {
-            int penBorder = (int) Math.Ceiling((double)((Parent.Width + Parent.Height) / 400D));
-            e.Graphics.DrawLine(new(_underlineColor.Value, penBorder), new(0, Height), new(Width, Height));
+            e.Graphics.DrawLine(new(_underlineColor.Value, _underlineThickness), new(0, Height - 1), new(Width, Height - 1));
         }
     }
 
