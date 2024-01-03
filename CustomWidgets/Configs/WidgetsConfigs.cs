@@ -30,8 +30,8 @@ namespace CustomLibrary.Configs {
             { new Size(1280, 1024), WidthHeightRatio.FiveFour }, // SXGA
             // 16 : 9
             { new Size(1280, 720), WidthHeightRatio.SixteenNine }, // 720P
-            { new Size(1366, 768), WidthHeightRatio.SixtennTen }, // WXGA
-            { new Size(1360, 768), WidthHeightRatio.SixtennTen },
+            { new Size(1366, 768), WidthHeightRatio.SixteenNine }, // WXGA
+            { new Size(1360, 768), WidthHeightRatio.SixteenNine },
             { new Size(1600, 900), WidthHeightRatio.SixteenNine },
             { new Size(1920, 1080), WidthHeightRatio.SixteenNine }, // 1080P
             // 16 : 10

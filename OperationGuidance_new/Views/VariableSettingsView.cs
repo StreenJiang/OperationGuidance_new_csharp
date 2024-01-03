@@ -8,7 +8,7 @@ using OperationGuidance_new.Configs;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
-        private readonly float _titleHeightRatio = 0.06F;
+        private readonly float _titleHeightRatio = 0.059F;
         private readonly float _contentHGapRatio = 0.025F;
         private readonly float _contentVGapRatio = 0.05F;
         private readonly float _contentHPaddingRatio = 0.15F;

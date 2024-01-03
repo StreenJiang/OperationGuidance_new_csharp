@@ -1107,8 +1107,8 @@ namespace OperationGuidance_new.Views {
             protected override void InvokeResizing() {
                 // Make maximum width equals to 85% of parent width to ensure all retangles can be seen
                 MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByWidth((int) (Width * .95));
-                if (MaxRectSize.Height > Height) {
-                    MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByHeight((int) (Height * .95));
+                if (MaxRectSize.Height > Height * .9) {
+                    MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByHeight((int) (Height * .9));
                 }
                 MaxRectWidth = MaxRectSize.Width;
                 MaxRectHeight = MaxRectSize.Height;
