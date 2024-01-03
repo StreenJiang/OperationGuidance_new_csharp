@@ -29,6 +29,7 @@ public class TitlePanel: Panel {
         _rightButtons = new();
     }
 
+<<<<<<< HEAD
     public T AddRightButton<T>(string? label = null) where T : Control, new() {
         T control = new() {
             Parent = _buttonsPanel,
@@ -37,6 +38,20 @@ public class TitlePanel: Panel {
             CommonUtils.CannotBeNull(control as RightButton).Label = label;
         } else if (control.GetType() == typeof(ToggleButton)) {
             // ToggleButton toggleButton = CommonUtils.CannotBeNull(control as ToggleButton);
+=======
+    public T AddRightButton<T>(string label) where T : Control, new() {
+        T control = new() {
+            Parent = _buttonsPanel,
+        };
+        if (control.GetType() == typeof(RightButton)) {
+            CommonUtils.CannotBeNull(control as RightButton).Label = label;
+        } else if (control.GetType() == typeof(ToggleButton)) {
+            ToggleButton toggleButton = CommonUtils.CannotBeNull(control as ToggleButton);
+            // toggleButton.OnBackColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OnToggleColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OffBackColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+            // toggleButton.OffToggleColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
         }
         _rightButtons.Add(control);
         if (!_buttonsPanel.Visible) {

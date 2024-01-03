@@ -17,6 +17,7 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
             };
             _titlePanel.UnderlineColor = Color.Gray;
+<<<<<<< HEAD
             ToggleButton toggleButton = _titlePanel.AddRightButton<ToggleButton>();
             toggleButton.CheckedChanged += (sender, eventArgs) => {
                 if (toggleButton.Checked) {
@@ -25,11 +26,17 @@ namespace OperationGuidance_new.Views {
                     System.Console.WriteLine("我关喽~");
                 }
             };
+=======
+            _titlePanel.AddRightButton<ToggleButton>("");
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
             // _titlePanel.AddRightButton<TitlePanel.RightButton>("111");
             _toggleButton = new() {
                 Parent = this,
                        Margin = new(10),
+<<<<<<< HEAD
                        ShowText = false,
+=======
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
             };
             _toggleButton2 = new() {
                 Parent = this,

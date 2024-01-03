@@ -7,7 +7,10 @@ namespace CustomLibrary.Buttons {
         #region Fields
         private string _onText;
         private string _offText;
+<<<<<<< HEAD
         private bool _showText;
+=======
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
         private Point _textLocation;
         private Color _onBackColor;
         private Color _onToggleColor;
@@ -23,7 +26,10 @@ namespace CustomLibrary.Buttons {
         #endregion
 
         #region Properteis
+<<<<<<< HEAD
         public bool ShowText { get => _showText; set => _showText = value; }
+=======
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
         public Color OnBackColor { get => _onBackColor; set => _onBackColor = value; }
         public Color OnToggleColor { get => _onToggleColor; set => _onToggleColor = value; }
         public Color OffBackColor { get => _offBackColor; set => _offBackColor = value; }
@@ -35,7 +41,10 @@ namespace CustomLibrary.Buttons {
         public ToggleButton() {
             // Default values
             DoubleBuffered = true;
+<<<<<<< HEAD
             _showText = true;
+=======
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
             _onText = "ON";
             _offText = "OFF";
             _onBackColor = ColorTranslator.FromHtml("#E86C10");
@@ -46,7 +55,10 @@ namespace CustomLibrary.Buttons {
             _slideStep = 5;
             Margin = new(0);
             Size = new(60, 20);
+<<<<<<< HEAD
             // Invoke initialization methods
+=======
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
             CalcToggleSize();
             CalcToggleLocation();
             CalcFontAndTextLocation();
@@ -74,6 +86,7 @@ namespace CustomLibrary.Buttons {
             }
         }
         private void CalcFontAndTextLocation() {
+<<<<<<< HEAD
             if (_showText) {
                 Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
                 using (Graphics g = CreateGraphics()) {
@@ -88,6 +101,20 @@ namespace CustomLibrary.Buttons {
                 }
                 _textLocation.Y = (int) ((Height - Font.Height - _toggleBorderThickness) / 1.5);
             }
+=======
+            Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
+            using (Graphics g = CreateGraphics()) {
+                int textRangeWidth = Width - _toggleRectSize.Width - _toggleBorderThickness;
+                int x;
+                if (Checked) {
+                    x = (int) ((textRangeWidth - g.MeasureString(_onText, Font).Width) / 2 + _toggleBorderThickness);
+                } else {
+                    x = (int) ((textRangeWidth - g.MeasureString(_onText, Font).Width) / 2 + _toggleBorderThickness + _toggleRectSize.Width);
+                }
+                _textLocation = new(x, 0);
+            }
+            _textLocation.Y = (int) ((Height - Font.Height - _toggleBorderThickness) / 1.5);
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
         }
         private void CalcInterval() {
             int interval = (int) (_slideSpend / ((decimal) (Width - _toggleBorderThickness) / _slideStep));
@@ -141,33 +168,49 @@ namespace CustomLibrary.Buttons {
             if (Checked) {
                 if (_isSolid) {
                     g.Clear(_onBackColor);
+<<<<<<< HEAD
                     if (_showText) {
                         g.DrawString(_onText, Font, new SolidBrush(_onToggleColor), _textLocation);
                     }
+=======
+                    g.DrawString(_onText, Font, new SolidBrush(_onToggleColor), _textLocation);
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
                 } else {
                     g.Clear(Parent.BackColor);
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(_onBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+<<<<<<< HEAD
                     if (_showText) {
                         g.DrawString(_onText, Font, new SolidBrush(_onBackColor), _textLocation);
                     }
+=======
+                    g.DrawString(_onText, Font, new SolidBrush(_onBackColor), _textLocation);
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
                 }
                 g.FillRectangle(new SolidBrush(_onToggleColor), new(_toggleRectLocation, _toggleRectSize));
             } else {
                 if (_isSolid) {
                     g.Clear(_offBackColor);
+<<<<<<< HEAD
                     if (_showText) {
                         g.DrawString(_offText, Font, new SolidBrush(_offToggleColor), _textLocation);
                     }
+=======
+                    g.DrawString(_offText, Font, new SolidBrush(_offToggleColor), _textLocation);
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
                 } else {
                     g.Clear(Parent.BackColor);
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(_offBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+<<<<<<< HEAD
                     if (_showText) {
                         g.DrawString(_offText, Font, new SolidBrush(_offBackColor), _textLocation);
                     }
+=======
+                    g.DrawString(_offText, Font, new SolidBrush(_offBackColor), _textLocation);
+>>>>>>> 6b187e5e6096d2f8441247118013644007768858
                 }
                 g.FillRectangle(new SolidBrush(_offToggleColor), new(_toggleRectLocation, _toggleRectSize));
             }
