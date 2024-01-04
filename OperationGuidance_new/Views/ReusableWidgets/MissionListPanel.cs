@@ -21,6 +21,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             FlowDirection = FlowDirection.TopDown;
             _titlePanel = new(title) {
                 Parent = this,
+                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
             };
             TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
             rightButton.Click += rightButtonClick;

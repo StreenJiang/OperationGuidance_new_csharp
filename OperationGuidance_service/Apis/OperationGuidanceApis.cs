@@ -165,7 +165,6 @@ namespace OperationGuidance_service.Apis
             }
             return rsp;
         }
-
         private List<ProductSideDTO> AddOrUpdateProductSides(int missionId, List<ProductSideDTO> sideDTOsReq) {
             List<ProductSideDTO> sideDTOsRsp = new();
             foreach (ProductSideDTO sideDTOReq in sideDTOsReq) {
@@ -194,7 +193,6 @@ namespace OperationGuidance_service.Apis
             }
             return sideDTOsRsp;
         }
-
         private List<ProductBoltDTO> AddOrUpdateProductBolts(int sideId, List<ProductBoltDTO> boltDTOsReq) {
             List<ProductBoltDTO> boltDTOsRsp = new();
             foreach (ProductBoltDTO boltDTOReq in boltDTOsReq) {

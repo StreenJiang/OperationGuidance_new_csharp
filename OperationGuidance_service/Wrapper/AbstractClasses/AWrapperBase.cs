@@ -141,7 +141,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             T temp = new();
             string tableName = GetTableName();
             // Handle fields
-            List<string> fields = GetFiedsAndValues();
+            List<string> fields = GetFiedsList();
             // Generate sql
             string insertSql = $"insert into {tableName}(";
             int count = 0;
@@ -177,11 +177,12 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private string GenerateUpdateSql(T entity) {
             string tableName = GetTableName();
             // Handle fields
-            List<string> fields = GetFiedsAndValues();
+            List<string> fields = GetFiedsList();
             // Generate sql
             string updateSql = $"update {tableName} set ";
             int count = 0;
             foreach (string field in fields) {
+                // Skip field<id>, because it can not be modified
                 if (field != nameof(entity.id)) {
                     if (count != 0) {
                         updateSql += ", ";
@@ -202,7 +203,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return $"{nameof(entity.deleted)} <> {(int) YesOrNo.YES} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
         }
 
-        private List<string> GetFiedsAndValues() {
+        private List<string> GetFiedsList() {
             List<string> fields = new();
             foreach (PropertyInfo property in typeof(T).GetProperties()) {
                 string fieldsName = property.Name;

@@ -48,6 +48,7 @@ namespace OperationGuidance_new.Views {
             };
             _resolutionTitlePanel = new("分辨率") {
                 Parent = _resolutionPanel,
+                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
             };
             _resolutionContentPanel = new() {
                 Parent = _resolutionPanel,

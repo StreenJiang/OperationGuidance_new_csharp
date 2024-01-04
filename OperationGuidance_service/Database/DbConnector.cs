@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
 using OperationGuidance_service.Models;
+using System.Reflection;
 
 namespace OperationGuidance_service.Database {
     public class DbConnector {
@@ -13,7 +14,11 @@ namespace OperationGuidance_service.Database {
         public static string? CustomDatabasePath { get => _customDatabasePath; set => _customDatabasePath = value; }
 
         public static SqliteConnection GetConnection() {
-            SqliteConnection conn = new SqliteConnection($"Data source={(_customDatabasePath == null ? _defaultDatabasePath : _customDatabasePath) + _databaseName}");
+            string dataSource = (_customDatabasePath == null ? _defaultDatabasePath : _customDatabasePath) + _databaseName;
+            SqliteConnection conn = new SqliteConnection($"Data source={dataSource}");
+            Console.WriteLine("dataSource: " + dataSource);
+            Console.WriteLine("current directory: " + Directory.GetCurrentDirectory());
+            Console.WriteLine("current project name: " + Assembly.GetCallingAssembly());
             conn.Open();
             return conn;
         }

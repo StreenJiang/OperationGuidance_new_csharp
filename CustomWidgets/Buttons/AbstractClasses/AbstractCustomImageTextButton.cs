@@ -6,7 +6,7 @@
         private int _imageX;
         private int _imageY;
         private bool _onlyIcon;
-        private ToolTip? _toolTip;
+        private ToolTip _toolTip;
 
         public Image? Icon {
             get => _icon;
@@ -62,15 +62,6 @@
             if (Label != null) {
                 e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point(LabelX, LabelY) + ExtraSize);
             }
-        }
-
-        protected override void OnMouseHover(EventArgs e) {
-            base.OnMouseHover(e);
-
-            //// 设置提示信息
-            //if (_onlyIcon) {
-            //    this._toolTip.SetToolTip(this, _cacheText);
-            //}
         }
 
         public void HideLabel() {

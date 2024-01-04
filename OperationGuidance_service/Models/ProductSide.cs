@@ -5,8 +5,10 @@ namespace OperationGuidance_service.Models {
     [Table("product_side")]
     public class ProductSide: AEntityBase {
         public string name { get; set; } = "product_side";
+        [Column("mission_id")]
         public int mission_id { get; set; }
         public string? image { get; set; }
+        [Column("max_rectangle_width")]
         public int? max_rectangle_width { get; set; }
         public int? max_rectangle_height { get; set; }
         public string? max_rectangle_location { get; set; }

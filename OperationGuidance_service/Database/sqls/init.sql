@@ -32,10 +32,6 @@ CREATE TABLE "brand" (
 );
 
 -- ----------------------------
--- Records of brand
--- ----------------------------
-
--- ----------------------------
 -- Table structure for device
 -- ----------------------------
 DROP TABLE IF EXISTS "device";
@@ -53,10 +49,6 @@ CREATE TABLE "device" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
-
--- ----------------------------
--- Records of device
--- ----------------------------
 
 -- ----------------------------
 -- Table structure for device_category
@@ -78,10 +70,6 @@ CREATE TABLE "device_category" (
 );
 
 -- ----------------------------
--- Records of device_category
--- ----------------------------
-
--- ----------------------------
 -- Table structure for device_model
 -- ----------------------------
 DROP TABLE IF EXISTS "device_model";
@@ -100,10 +88,6 @@ CREATE TABLE "device_model" (
 );
 
 -- ----------------------------
--- Records of device_model
--- ----------------------------
-
--- ----------------------------
 -- Table structure for product
 -- ----------------------------
 DROP TABLE IF EXISTS "product";
@@ -119,10 +103,6 @@ CREATE TABLE "product" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
-
--- ----------------------------
--- Records of product
--- ----------------------------
 
 -- ----------------------------
 -- Table structure for product_bolt
@@ -155,10 +135,6 @@ CREATE TABLE "product_bolt" (
 );
 
 -- ----------------------------
--- Records of product_bolt
--- ----------------------------
-
--- ----------------------------
 -- Table structure for product_mission
 -- ----------------------------
 DROP TABLE IF EXISTS "product_mission";
@@ -176,10 +152,6 @@ CREATE TABLE "product_mission" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
-
--- ----------------------------
--- Records of product_mission
--- ----------------------------
 
 -- ----------------------------
 -- Table structure for product_side
@@ -208,8 +180,23 @@ CREATE TABLE "product_side" (
 );
 
 -- ----------------------------
--- Records of product_side
+-- Table structure for workstation
 -- ----------------------------
+DROP TABLE IF EXISTS "workstation";
+CREATE TABLE "workstation" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "name" text(128),
+  "tool_id" integer,
+  "arm_id" integer,
+  "enable" integer(1),
+  "user_id" integer NOT NULL,
+  "enabled" i(1) NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
 
 -- ----------------------------
 -- Table structure for user_account_info
@@ -233,7 +220,7 @@ CREATE TABLE "user_account_info" (
 -- ----------------------------
 -- Records of user_account_info
 -- ----------------------------
-INSERT INTO "user_account_info" VALUES (1, NULL, 'StreenJ', NULL, 'root', 'root', -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO "user_account_info" VALUES (1, NULL, 'Admin', NULL, 'root', 'root', -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
 
 -- ----------------------------
 -- Auto increment value for brand

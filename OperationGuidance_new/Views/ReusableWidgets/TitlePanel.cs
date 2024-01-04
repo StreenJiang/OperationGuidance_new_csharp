@@ -2,7 +2,6 @@ using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Configs;
 using OperationGuidance_service.Utils;
 
 public class TitlePanel: Panel {
@@ -15,7 +14,6 @@ public class TitlePanel: Panel {
     public Color? UnderlineColor { get => _underlineColor; set => _underlineColor = value; }
 
     public TitlePanel(string title) {
-        UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE;
         Margin = new(0);
         _title = new() {
             Text = title,
@@ -74,7 +72,7 @@ public class TitlePanel: Panel {
             if (_rightButtons.Count > 0) {
                 _buttonsPanel.Height = Height - _underlineThickness;
                 int rightButtonHeight = (int) (Height * .65);
-                int toggleButtonHeight = (int) (rightButtonHeight * .9);
+                int toggleButtonHeight = (int) (rightButtonHeight * .7);
                 int buttonGap = rightButtonHeight / 3;
                 int buttonsPanelWidth = 0;
                 // Set height first to get new Font

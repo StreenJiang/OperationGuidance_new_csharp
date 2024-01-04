@@ -22,8 +22,11 @@ namespace CustomLibrary.TextBoxes {
         private Color? _borderColorError;
 
         public new bool Enabled {
-            get => _textBoxes[0].Enabled;
-            set => SetTextBoxesProperties((textBox) => textBox.Enabled = value);
+            get => _enabled;
+            set {
+                _enabled = value;
+                SetTextBoxesProperties((textBox) => textBox.Enabled = value);
+            }
         }
         public string TextName { get => this._textName; set => this._textName = value; }
         public string Separator { 
@@ -98,6 +101,7 @@ namespace CustomLibrary.TextBoxes {
         public CustomTextBoxGroup(string textName) : base() {
             Margin = new(0);
             // Initialize fields
+            _enabled = true;
             _textName = textName;
             _nameWidth = 0;
             _nameAlignment = HorizontalAlignment.Left;
@@ -150,7 +154,7 @@ namespace CustomLibrary.TextBoxes {
         }
 
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
-        public void ResizeChildren(object? sender, EventArgs eventArgs) {
+        private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
             Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box

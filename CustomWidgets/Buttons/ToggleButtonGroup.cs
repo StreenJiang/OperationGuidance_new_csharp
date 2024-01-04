@@ -1,19 +1,19 @@
-using CustomLibrary.ComboBoxs;
 using CustomLibrary.Configs;
 using System.ComponentModel;
 
-namespace CustomLibrary.TextBoxes {
+namespace CustomLibrary.Buttons {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
-    public class CustomComboBoxGroup<T>: UserControl {
+    public class ToggleButtonGroup: UserControl {
+        private bool _enabled;
         private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;
-        private int _gapNameAndBox;
+        private int _gapNameAndButton;
 
         private double? _ratio;
-        private CustomComboBox<T> _comboBox;
+        private ToggleButton _toggleButton;
 
-        public new bool Enabled { get => _comboBox.Enabled; set => _comboBox.Enabled = value; }
+        public new bool Enabled { get => _toggleButton.Enabled; set => _toggleButton.Enabled = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
@@ -25,13 +25,10 @@ namespace CustomLibrary.TextBoxes {
             } 
         }
         public Color BoxBackColor { 
-            get => _comboBox.BackColor; 
-            set => _comboBox.BackColor = value; 
+            get => _toggleButton.BackColor; 
+            set => _toggleButton.BackColor = value; 
         }
-        public Color? DisabledBackColor { get => _comboBox.DisabledBackColor; set => _comboBox.DisabledBackColor = value; }
-        public Color? BorderColor { get => _comboBox.BorderColor; set => _comboBox.BorderColor = value; }
-        public Color? BorderColorError { get => _comboBox.BorderColorError; set => _comboBox.BorderColorError = value; }
-        public int GapBetweenNameNBoxes { get => this._gapNameAndBox; set => this._gapNameAndBox = value; }
+        public int GapBetweenNameNBoxes { get => this._gapNameAndButton; set => this._gapNameAndButton = value; }
         public HorizontalAlignment NameAlignment {
             get => this._nameAlignment;
             set {
@@ -41,41 +38,18 @@ namespace CustomLibrary.TextBoxes {
                 this._nameAlignment = value;
             }
         }
-        public bool ShowRealValue { get => _comboBox.ShowRealValue; set => _comboBox.ShowRealValue = value; }
-        public bool IsError { get => _comboBox.IsError; }
-        public event Action ItemSelected { add => _comboBox.ItemSelected += value; remove => _comboBox.ItemSelected -= value; }
-        public List<T?> Items { get => _comboBox.Items; }
-        public T? Value { get => _comboBox.Value; }
+        public bool Checked { get => _toggleButton.Checked; set => _toggleButton.Checked= value; }
+        public event EventHandler CheckedChanged { add => _toggleButton.CheckedChanged += value; remove => _toggleButton.CheckedChanged -= value; }
 
-        public CustomComboBoxGroup(string textName) : base() {
+        public ToggleButtonGroup(string textName) : base() {
             Margin = new(0);
             // Initialize fields
             _textName = textName;
             _nameWidth = 0;
             _nameAlignment = HorizontalAlignment.Left;
             // Initialize combo box
-            _comboBox = new();
-            _comboBox.Parent = this;
-        }
-
-        public int AddItem(string itemName, T? obj) {
-            return _comboBox.AddItem(itemName, obj);
-        }
-
-        public void RemoveItem(int index) {
-            _comboBox.RemoveItem(index);
-        }
-
-        public CustomComboBox<T>.ComboBoxItem<T>? GetChosenItem() {
-            return _comboBox.GetChosenItem();
-        }
-
-        public void SetDefault(int index) {
-            _comboBox.SetCurrent(index);
-        }
-
-        public void SetError(bool isError) {
-            _comboBox.IsError = isError;
+            _toggleButton = new();
+            _toggleButton.Parent = this;
         }
 
         protected override void OnHandleCreated(EventArgs e) {
@@ -88,22 +62,23 @@ namespace CustomLibrary.TextBoxes {
             // Set Font
             Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
-            _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
+            _gapNameAndButton = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
             using (Graphics g = CreateGraphics()) {
                 _nameWidth = (int) g.MeasureString(_textName, Font).Width;
             }
             // Calculate width of combo box
-            int boxWidth;
+            int buttonX;
             if (_ratio != null) {
-                boxWidth = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
+                buttonX = Width - (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
             } else {
-                boxWidth = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
+                buttonX = _nameWidth + Padding.Size.Width + _gapNameAndButton;
             }
             // Resize combo box first to get font of it
-            _comboBox.Size = new(boxWidth, Height - Padding.Size.Height);
-            // Relocate combo box
-            _comboBox.Location = new(Width - boxWidth - Padding.Right, (Height - _comboBox.Height) / 2);
+            int buttonH = (int) ((Height - Padding.Size.Height) * .65);
+            _toggleButton.Size = new(buttonH * 3, buttonH);
+            // Relocate combo box (height plus extra 1 makes better display)
+            _toggleButton.Location = new(buttonX, (Height - _toggleButton.Height) / 2 + 1);
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -113,14 +88,14 @@ namespace CustomLibrary.TextBoxes {
             // Draw name
             int x = Padding.Left;
             if (_nameAlignment == HorizontalAlignment.Right) {
-                x = _comboBox.Location.X - _nameWidth - _gapNameAndBox;
+                x = _toggleButton.Location.X - _nameWidth - _gapNameAndButton;
             }
             e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
         }
 
         protected override void OnForeColorChanged(EventArgs e) {
             base.OnForeColorChanged(e);
-            _comboBox.ForeColor = ForeColor;
+            _toggleButton.ForeColor = ForeColor;
         }
 
         protected override void OnParentBackColorChanged(EventArgs e) {
