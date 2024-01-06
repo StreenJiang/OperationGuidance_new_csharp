@@ -208,13 +208,15 @@ namespace CustomLibrary.TextBoxes {
             int boxWidth = (boxesRange - ((separatorSize.Width + hMarginTemp * 2) * separatorCount)) / boxesCount;
             SetTextBoxesProperties((textBox) => textBox.Size = new(boxWidth, _textBoxesPanel.Height));
 
-            // If there are any remaining pixels, split them into separate separators
-            int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
-            int indexTemp = 0;
-            while (remainingWidth > 0) {
-                _separators[indexTemp].Width += 1;
-                indexTemp++;
-                remainingWidth--;
+            if (_separators.Count > 0) {
+                // If there are any remaining pixels, split them into separate separators
+                int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
+                int indexTemp = 0;
+                while (remainingWidth > 0) {
+                    _separators[indexTemp].Width += 1;
+                    indexTemp++;
+                    remainingWidth--;
+                }
             }
         }
 

@@ -160,6 +160,9 @@ namespace CustomLibrary.Utils {
         public static int ContentPadding(int width, int height) => (width + height) / 350;
         public static int TextOrComboBoxHeight() => (int) (MainPanel.Parent.Height * .042);
         public static int CommonButtonHeight() => (int) (MainPanel.Parent.Height * .042);
+        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Parent.Height * .042);
+        public static int GridViewContentRowHeight() => (int) (MainPanel.Parent.Height * .04);
+        public static int GridViewPageInfoHeight() => (int) (MainPanel.Parent.Height * .05);
 
         /// <summary>
         /// 得到一个等差数列

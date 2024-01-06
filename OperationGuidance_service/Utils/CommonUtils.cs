@@ -49,8 +49,8 @@ namespace OperationGuidance_service.Utils {
         /// <summary>
         /// 根据对象对应的属性名将值赋予新对象，参数用 object 是想同时支持List和object
         /// </summary>
-        /// <param name="objFrom">base对象</param>
-        /// <param name="objTo">新对象</param>
+        /// <param name="objFrom">base对象（使用object就可以传入List对象）</param>
+        /// <param name="objTo">新对象（同上）</param>
         public static void ObjectConverter<FROM, TO>(object objFrom, object? objTo) where TO : new() {
             if (objTo == null) {
                 objTo = new();

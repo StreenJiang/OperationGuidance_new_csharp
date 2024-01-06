@@ -16,9 +16,9 @@ namespace OperationGuidance_service.Database {
         public static SqliteConnection GetConnection() {
             string dataSource = (_customDatabasePath == null ? _defaultDatabasePath : _customDatabasePath) + _databaseName;
             SqliteConnection conn = new SqliteConnection($"Data source={dataSource}");
-            Console.WriteLine("dataSource: " + dataSource);
-            Console.WriteLine("current directory: " + Directory.GetCurrentDirectory());
-            Console.WriteLine("current project name: " + Assembly.GetCallingAssembly());
+            // Console.WriteLine("dataSource: " + dataSource);
+            // Console.WriteLine("current directory: " + Directory.GetCurrentDirectory());
+            // Console.WriteLine("current project name: " + Assembly.GetCallingAssembly());
             conn.Open();
             return conn;
         }

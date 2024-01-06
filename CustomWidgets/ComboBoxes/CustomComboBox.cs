@@ -220,6 +220,14 @@ namespace CustomLibrary.ComboBoxs {
             _itemButtons.RemoveAt(index + 1);
             _selectButton.Invalidate();
         }
+        
+        public void Reset() {
+            if (_selectButton.SelectedItem != null) {
+                _selectButton.SelectedItem.SetToggle(false);
+            }
+            _itemButtons[0].SetToggle(true);
+            _selectButton.SelectedItem = null;
+        }
 
         public void SetCurrent(int index) {
             if (_selectButton.SelectedItem != null) {
@@ -359,7 +367,6 @@ namespace CustomLibrary.ComboBoxs {
         }
 
         protected void OnItemSelected() {}
-
 
         // Select button
         public class ComboBoxSelectButton<I>: CommonButton {

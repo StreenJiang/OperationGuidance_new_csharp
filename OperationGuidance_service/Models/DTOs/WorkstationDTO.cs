@@ -1,14 +1,14 @@
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.AbstractClasses;
 
-namespace OperationGuidance_service.Models {
-    public class WorkplaceDTO: ADTOBase {
+namespace OperationGuidance_service.Models.DTOs {
+    public class WorkstationDTO: ADTOBase {
         public string name { get; set; } = "workstation_name";
         public int? tool_id { get; set; }
         public string tool_name { get; set; } = "tool_name";
         public string? tool_description { get; set; }
-        public int tool_device_type_id { get; set; }
-        public string? tool_device_type_name { get; set; }
+        public int tool_device_model_id { get; set; }
+        public string? tool_device_model_name { get; set; }
         public int tool_device_category_id { get; set; }
         public string? tool_device_category_name { get; set; }
         public int tool_can_manipulate { get; set; }

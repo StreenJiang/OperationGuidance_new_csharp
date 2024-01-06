@@ -243,8 +243,8 @@ namespace OperationGuidance_service.Apis
                 // Device type
                 DeviceModel? type = _deviceTypeService.FindById(device.model_id);
                 if (type != null) {
-                    deviceDTO.device_type_id = device.model_id;
-                    deviceDTO.device_type_name = type.name;
+                    deviceDTO.device_model_id = device.model_id;
+                    deviceDTO.device_model_name = type.name;
 
                     // Device category
                     DeviceCategory? category = _deviceCategoryService.FindById(type.category_id);

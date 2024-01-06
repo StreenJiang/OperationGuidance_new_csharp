@@ -4,8 +4,8 @@ namespace OperationGuidance_service.Models.DTOs {
     public class DeviceDTO: ADTOBase {
         public string name { get; set; } = "device";
         public string? description { get; set; }
-        public int device_type_id { get; set; }
-        public string? device_type_name { get; set; }
+        public int device_model_id { get; set; }
+        public string? device_model_name { get; set; }
         public int device_category_id { get; set; }
         public string? device_category_name { get; set; }
         public int can_manipulate { get; set; }
