@@ -66,14 +66,20 @@ namespace CustomLibrary.DataGridViewRelateds {
                 DataGridViewAdvancedBorderStyle advancedBorderStyle, DataGridViewPaintParts paintParts) {
             base.Paint(graphics, clipBounds, cellBounds, rowIndex, cellState, value, formattedValue, errorText, cellStyle, advancedBorderStyle, paintParts);
             if (DataGridView != null) {
+                // Hide text content, only show toggle button
                 if (Selected) {
-                    _toggleButtonParentPanel.BackColor = DataGridView.DefaultCellStyle.SelectionBackColor;
-                    // Hide any content
-                    Style.SelectionForeColor = DataGridView.DefaultCellStyle.SelectionBackColor;
+                    Style.SelectionForeColor = DataGridView.RowsDefaultCellStyle.SelectionBackColor;
                 } else {
-                    _toggleButtonParentPanel.BackColor = DataGridView.DefaultCellStyle.BackColor;
-                    // Hide any content
-                    Style.ForeColor = DataGridView.DefaultCellStyle.BackColor;
+                    Color owningRowBackColor = OwningRow.DefaultCellStyle.BackColor;
+                    if (owningRowBackColor.IsEmpty) {
+                        if (RowIndex % 2 != 0) {
+                            Style.ForeColor = DataGridView.AlternatingRowsDefaultCellStyle.BackColor;
+                        } else {
+                            Style.ForeColor = DataGridView.RowsDefaultCellStyle.BackColor;
+                        }
+                    } else {
+                        Style.ForeColor = OwningRow.DefaultCellStyle.BackColor;
+                    }
                 }
             }
         }

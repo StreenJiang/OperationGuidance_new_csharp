@@ -198,16 +198,23 @@ namespace CustomLibrary.Utils {
             return (int) (realHeight * sliderRatio / (1 - sliderRatio));
         }
 
-        public static Color ChangeColor(Color color, double ratio) {
-            int newR = (int) (color.R * ratio);
-            int newG = (int) (color.G * ratio);
-            int newB = (int) (color.B * ratio);
-            newR = newR > 255 ? 255 : newR;
-            newG = newG > 255 ? 255 : newG;
-            newB = newB > 255 ? 255 : newB;
-            newR = newR < 0 ? 0 : newR;
-            newG = newG < 0 ? 0 : newG;
-            newB = newB < 0 ? 0 : newB;
+        public static Color LighterColor(Color color, double ratio) {
+            if (ratio < 0 || ratio > 1) {
+                throw new ArgumentException("Ratio must be between 0 ~ 1");
+            }
+            int newR = (int) Math.Round(color.R + (255 - color.R) * ratio);
+            int newG = (int) Math.Round(color.G + (255 - color.G) * ratio);
+            int newB = (int) Math.Round(color.B + (255 - color.B) * ratio);
+            return Color.FromArgb(newR, newG, newB);
+        }
+
+        public static Color DarkerColor(Color color, double ratio) {
+            if (ratio < 0 || ratio > 1) {
+                throw new ArgumentException("Ratio must be between 0 ~ 1");
+            }
+            int newR = (int) Math.Round(color.R - color.R * ratio);
+            int newG = (int) Math.Round(color.G - color.G * ratio);
+            int newB = (int) Math.Round(color.B - color.B * ratio);
             return Color.FromArgb(newR, newG, newB);
         }
     }

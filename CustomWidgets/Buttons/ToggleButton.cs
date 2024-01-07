@@ -20,7 +20,7 @@ namespace CustomLibrary.Buttons {
         private Timer _slideTimer;
         private int _slideStep;
         private readonly int _slideSpend = 30;
-        private readonly float _disabledDilutionRatio = .8F;
+        private readonly double _disabledDilutionRatio = .5;
         private ToolTip _toolTip;
         private bool _enabled;
         #endregion
@@ -168,10 +168,10 @@ namespace CustomLibrary.Buttons {
             Color offBackColor = _offBackColor;
             Color offToggleColor = _offToggleColor;
             if (!Enabled) {
-                onBackColor = WidgetUtils.ChangeColor(_onBackColor, _disabledDilutionRatio);
-                onToggleColor = WidgetUtils.ChangeColor(_onToggleColor, _disabledDilutionRatio);
-                offBackColor = WidgetUtils.ChangeColor(_offBackColor, _disabledDilutionRatio);
-                offToggleColor = WidgetUtils.ChangeColor(_offToggleColor, _disabledDilutionRatio);
+                onBackColor = WidgetUtils.LighterColor(_onBackColor, _disabledDilutionRatio);
+                onToggleColor = WidgetUtils.LighterColor(_onToggleColor, _disabledDilutionRatio);
+                offBackColor = WidgetUtils.LighterColor(_offBackColor, _disabledDilutionRatio);
+                offToggleColor = WidgetUtils.LighterColor(_offToggleColor, _disabledDilutionRatio);
             }
             if (Checked) {
                 if (_isSolid) {
@@ -180,7 +180,7 @@ namespace CustomLibrary.Buttons {
                         g.DrawString(_onText, Font, new SolidBrush(onToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.ChangeColor(Parent.BackColor, _disabledDilutionRatio));
+                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LighterColor(Parent.BackColor, _disabledDilutionRatio));
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(onBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
@@ -196,7 +196,7 @@ namespace CustomLibrary.Buttons {
                         g.DrawString(_offText, Font, new SolidBrush(offToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.ChangeColor(Parent.BackColor, _disabledDilutionRatio));
+                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LighterColor(Parent.BackColor, _disabledDilutionRatio));
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(offBackColor, _toggleBorderThickness), new(borderLocation, borderSize));

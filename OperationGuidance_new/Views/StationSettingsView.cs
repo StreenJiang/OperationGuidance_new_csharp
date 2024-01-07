@@ -161,9 +161,27 @@ namespace OperationGuidance_new.Views {
                     arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
                     enabled = (int) YesOrNo.YES,
                     });
-            vos.Add(new());
-            vos.Add(new());
-            vos.Add(new());
+            vos.Add(new() {
+                    id = 2,
+                    name = "test22",
+                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
+                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
+                    enabled = (int) YesOrNo.NO,
+                    });
+            vos.Add(new() {
+                    id = 3,
+                    name = "test3",
+                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
+                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
+                    enabled = (int) YesOrNo.YES,
+                    });
+            vos.Add(new() {
+                    id = 4,
+                    name = "test4",
+                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
+                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
+                    enabled = (int) YesOrNo.YES,
+                    });
             vos.Add(new());
             source.DataSource = vos;
             _gridView = new() {
@@ -175,7 +193,6 @@ namespace OperationGuidance_new.Views {
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                // AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
                 AllowUserToAddRows = false,
@@ -216,16 +233,33 @@ namespace OperationGuidance_new.Views {
                     }
                 }
             }
+            // _gridView.ColumnHeadersDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#CCCCCC");
+            _gridView.ColumnHeadersDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#E86C10");
+            _gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
             _gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _gridView.ColumnHeadersDefaultCellStyle.BackColor;
+            _gridView.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEFEFE");
+            _gridView.RowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F0F0F0");
+            _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .6);
+            _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkerColor(ColorTranslator.FromHtml("#E86C10"), .8);
             _gridView.Columns.AddRange(columnRange);
             _gridView.Columns[0].Frozen = true;
+            _gridView.Columns[0].DefaultCellStyle.BackColor = WidgetUtils.LighterColor(_gridView.ColumnHeadersDefaultCellStyle.BackColor, .5);
             HashSet<int> columsPainted = new();
             _gridView.CellPainting += (sender, eventArgs) => {
                 // Resize and Relocate ToggleButtonColumns
                 if (eventArgs.ColumnIndex > -1 && eventArgs.RowIndex > -1) {
                     DataGridViewColumn column = _gridView.Columns[eventArgs.ColumnIndex];
+                    DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
+                    if (column.Frozen) {
+                        // Forzen columns have different color
+                        if (eventArgs.RowIndex % 2 != 0) {
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.LighterColor(_gridView.ColumnHeadersDefaultCellStyle.BackColor, .9);
+                        } else {
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.LighterColor(_gridView.ColumnHeadersDefaultCellStyle.BackColor, .8);
+                        }
+                    }
                     if (column is DataGridViewToggleButtonColumn) {
-                        DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
+                        // DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
                         WorkstationVO vo = (WorkstationVO) row.DataBoundItem;
                         // If vo'id is null, then this row is just a blank row for displaying
                         if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell) {
@@ -240,8 +274,46 @@ namespace OperationGuidance_new.Views {
                             int panelWidth = panelHeight * 3;
                             cell.ToggleButtonParentPanel.Size = new(panelWidth, panelHeight);
                             // Relocate
+                            DataGridViewContentAlignment headerAlignment = DataGridViewContentAlignment.NotSet;
+                            if (column.HeaderCell.Style.Alignment != DataGridViewContentAlignment.NotSet) {
+                                headerAlignment = column.HeaderCell.Style.Alignment;
+                            } else if (_gridView.ColumnHeadersDefaultCellStyle.Alignment != DataGridViewContentAlignment.NotSet) {
+                                headerAlignment = _gridView.ColumnHeadersDefaultCellStyle.Alignment;
+                            }
                             Point cellPoint = _gridView.GetCellDisplayRectangle(eventArgs.ColumnIndex, eventArgs.RowIndex, true).Location;
-                            cell.ToggleButtonParentPanel.Location = new(cellPoint.X + (cellSize.Width - panelWidth) / 2, cellPoint.Y + (cellSize.Height - panelHeight) / 2);
+                            switch (headerAlignment) {
+                                case DataGridViewContentAlignment.TopLeft:
+                                    break;
+                                default:
+                                case DataGridViewContentAlignment.MiddleLeft:
+                                    cellPoint.Y += (cellSize.Height - panelHeight) / 2;
+                                    break;
+                                case DataGridViewContentAlignment.BottomLeft:
+                                    cellPoint.Y += cellSize.Height - panelHeight;
+                                    break;
+                                case DataGridViewContentAlignment.TopRight:
+                                    cellPoint.X += cellSize.Width - panelWidth;
+                                    break;
+                                case DataGridViewContentAlignment.MiddleRight:
+                                    cellPoint.X += (cellSize.Width - panelWidth) / 2;
+                                    cellPoint.Y += (cellSize.Height - panelHeight) / 2;
+                                    break;
+                                case DataGridViewContentAlignment.BottomRight:
+                                    cellPoint.X += cellSize.Width - panelWidth;
+                                    cellPoint.Y += (cellSize.Height - panelHeight);
+                                    break;
+                                case DataGridViewContentAlignment.TopCenter:
+                                    cellPoint.X += (cellSize.Width - panelWidth) / 2;
+                                    break;
+                                case DataGridViewContentAlignment.MiddleCenter:
+                                    cellPoint.X += (cellSize.Width - panelWidth) / 2;
+                                    cellPoint.Y += (cellSize.Height - panelHeight) / 2;
+                                    break;
+                                case DataGridViewContentAlignment.BottomCenter:
+                                    cellPoint.X += cellSize.Width - panelWidth;
+                                    break;
+                            }
+                            cell.ToggleButtonParentPanel.Location = cellPoint;
                         }
                     }
                 }
@@ -249,15 +321,13 @@ namespace OperationGuidance_new.Views {
             };
             _gridView.Paint += (sender, eventArgs) => {  
                 // Hide ToggleButtonColumns if they don't show
-                if (columsPainted.Count > 0) {
-                    if (_gridView.SelectedColumns.Count != columsPainted.Count) {
-                        foreach (DataGridViewColumn column in _gridView.Columns) {
-                            if (column is DataGridViewToggleButtonColumn && !columsPainted.Contains(column.Index)) {
-                                foreach (DataGridViewRow row in _gridView.Rows) {
-                                    if (row.Cells[column.Index] is DataGridViewToggleButtonCell) {
-                                        DataGridViewToggleButtonCell cell = (DataGridViewToggleButtonCell) row.Cells[column.Index];
-                                        cell.ToggleButtonParentPanel.Visible = false;
-                                    }
+                if (columsPainted.Count > 1) {
+                    foreach (DataGridViewColumn column in _gridView.Columns) {
+                        if (column is DataGridViewToggleButtonColumn && !columsPainted.Contains(column.Index)) {
+                            foreach (DataGridViewRow row in _gridView.Rows) {
+                                if (row.Cells[column.Index] is DataGridViewToggleButtonCell) {
+                                    DataGridViewToggleButtonCell cell = (DataGridViewToggleButtonCell) row.Cells[column.Index];
+                                    cell.ToggleButtonParentPanel.Visible = false;
                                 }
                             }
                         }
@@ -271,6 +341,35 @@ namespace OperationGuidance_new.Views {
             };
             _gridView.DataSourceChanged += (sender ,eventArgs) => {
                 System.Console.WriteLine("DataSourceChanged");
+            };
+            _gridView.DataBindingComplete += (sender, eventArgs) => {
+                _gridView.ClearSelection();
+            };
+            _gridView.CellMouseMove += (sender, eventArgs) => {
+                if (eventArgs.RowIndex > -1) {
+                    DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
+                    WorkstationVO vo = (WorkstationVO) row.DataBoundItem;
+                    if (vo.id != null) {
+                        row.DefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .8);
+                    }
+                }
+            };
+            _gridView.CellMouseLeave += (sender, eventArgs) => {
+                if (eventArgs.RowIndex > -1) {
+                    _gridView.Rows[eventArgs.RowIndex].DefaultCellStyle.BackColor = Color.Empty;
+                }
+            };
+            _gridView.SelectionChanged += (sender, eventArgs) => {
+                if (_gridView.Focused) { 
+                    DataGridViewSelectedRowCollection selectedRows = _gridView.SelectedRows;
+                    for (int i = 0; i < selectedRows.Count; i++) {
+                        DataGridViewRow row = selectedRows[i];
+                        WorkstationVO vo = (WorkstationVO) row.DataBoundItem;
+                        if (vo.id == null) {
+                            row.Selected = false;
+                        }
+                    }
+                }
             };
             _gridView.DataSource = source;
         }
