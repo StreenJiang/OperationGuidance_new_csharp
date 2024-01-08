@@ -3,6 +3,7 @@ using CustomLibrary.Events;
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 using System.ComponentModel;
+using Timer = System.Windows.Forms.Timer;
 
 namespace CustomLibrary.TextBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
@@ -18,12 +19,15 @@ namespace CustomLibrary.TextBoxes {
         private readonly int _borderThickness = 1;
 
         private bool _numberValidate;
+        private bool _numberOnly;
         private bool _isError;
         private int _boxOriginalWidth;
         private int _boxErrorWidth;
         private ErrorProvider _errorProvider;
         private Image? _iconShowing;
         private Color? _borderColorError;
+        private Timer _errorBorderTimer;
+        private int _timerCount;
         #endregion
 
         #region Properties
@@ -83,6 +87,7 @@ namespace CustomLibrary.TextBoxes {
         }
         public Color DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
+        public bool NumberOnly { get => _numberOnly; set => _numberOnly = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
         public bool IsError { get => _isError; set => _isError = value; }
         #endregion
@@ -112,7 +117,25 @@ namespace CustomLibrary.TextBoxes {
                 EventFuncs.CurrentActiveControl = sender as Control;
             };
             _box.TextChanged += (sender, eventArgs) => {
-                if (_numberValidate) {
+                if (_numberOnly) {
+                    int errorCount = 0;
+                    foreach (char c in _box.Text) {
+                        if (!char.IsDigit(c) && c != '.') {
+                            _box.Text = _box.Text.Replace(c.ToString(), "");
+                            errorCount++;
+                        }
+                    }
+                    _box.SelectionStart = _box.Text.Length;
+                    _box.SelectionLength = 0;
+                    if (errorCount == 0) {
+                        _isError = false;
+                    } else {
+                        _isError = true;
+                        Invalidate();
+                        _timerCount = 0;
+                        _errorBorderTimer?.Start();
+                    }
+                } else if (_numberValidate) {
                     ResetErrorIcon();
                     foreach (char c in _box.Text) {
                         if (!char.IsDigit(c) && c != '.') {
@@ -131,6 +154,19 @@ namespace CustomLibrary.TextBoxes {
 
             _borderRect = new();
             _numberValidate = false;
+            _numberOnly = false;
+            _errorBorderTimer = new() {
+                Interval = 1000,
+            };
+            _errorBorderTimer.Tick += (sender, eventArgs) => {
+                _timerCount += 1000;
+                if (_timerCount >= 2000) {
+                    _isError = false;
+                    Invalidate();
+                    _timerCount = 0;
+                    _errorBorderTimer.Stop();
+                }
+            };
         }
         #endregion
 

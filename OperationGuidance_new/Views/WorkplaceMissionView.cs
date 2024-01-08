@@ -19,8 +19,7 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
-namespace OperationGuidance_new.Views
-{
+namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
         private readonly int _tableColumns = 4;
         private readonly float _cellGapRatio = 0.02F;
@@ -1198,31 +1197,6 @@ namespace OperationGuidance_new.Views
             _pictureBox.Image = image;
             _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
         }
-    }
-
-    public class PageSwitchButton: CustomImageTextButtonBase {
-        private int _totalPages;
-        private int _currentPage;
-
-        public int TotalPages {
-            get => _totalPages; set => _totalPages = value;
-        }
-        public int CurrentPage {
-            get => _currentPage; set => _currentPage = value;
-        }
-
-        protected override void ResizeIconImage() {
-            if (Icon != null) {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, new(Height, Height));
-                // Recalculate image location
-                ImageX = 0;
-                ImageY = 0;
-            }
-        }
-
-        protected override void ResizeTextLabel() {
-        }
-
     }
 
     public class DeviceBlock: CustomImageTextButtonBase {

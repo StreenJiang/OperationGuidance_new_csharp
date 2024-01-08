@@ -63,16 +63,6 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap aneng_arm {
-            get {
-                object obj = ResourceManager.GetObject("aneng_arm", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap aneng_arm_error {
             get {
                 object obj = ResourceManager.GetObject("aneng_arm_error", resourceCulture);
@@ -493,46 +483,6 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap page_btn_backward_fast_hover {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_backward_fast_hover", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_backward_fast_toggled {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_backward_fast_toggled", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_backward_hover {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_backward_hover", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_backward_toggled {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_backward_toggled", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap page_btn_forward {
             get {
                 object obj = ResourceManager.GetObject("page_btn_forward", resourceCulture);
@@ -546,46 +496,6 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap page_btn_forward_fast {
             get {
                 object obj = ResourceManager.GetObject("page_btn_forward_fast", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_forward_fast_hover {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_forward_fast_hover", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_forward_fast_toggled {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_forward_fast_toggled", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_forward_hover {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_forward_hover", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap page_btn_forward_toggled {
-            get {
-                object obj = ResourceManager.GetObject("page_btn_forward_toggled", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -14,6 +14,7 @@ namespace CustomLibrary.TextBoxes {
         private CustomComboBox<T> _comboBox;
 
         public new bool Enabled { get => _comboBox.Enabled; set => _comboBox.Enabled = value; }
+        public bool NeedDefaultLabel { get => _comboBox.NeedDefaultLabel; set => _comboBox.NeedDefaultLabel = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }

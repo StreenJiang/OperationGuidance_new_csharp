@@ -13,6 +13,8 @@ namespace CustomLibrary.TextBoxes {
         private string _separator;
         private List<SeparatorControl> _separators;
 
+        private bool _numberValidate;
+        private bool _numberOnly;
         private double? _ratio;
         private FlowLayoutPanel _textBoxesPanel;
         private List<CustomTextBox> _textBoxes;
@@ -84,6 +86,20 @@ namespace CustomLibrary.TextBoxes {
                     }
                 }
                 return false;
+            }
+        }
+        public bool NumberValidate { 
+            get => _numberValidate; 
+            set {
+                _numberValidate = value;
+                SetTextBoxesProperties((textBox) => textBox.NumberValidate = value);
+            }
+        }
+        public bool NumberOnly { 
+            get => _numberOnly; 
+            set {
+                _numberOnly = value;
+                SetTextBoxesProperties((textBox) => textBox.NumberOnly = value);
             }
         }
 

@@ -162,7 +162,7 @@ namespace CustomLibrary.Utils {
         public static int CommonButtonHeight() => (int) (MainPanel.Parent.Height * .042);
         public static int GridViewHeaderRowHeight() => (int) (MainPanel.Parent.Height * .042);
         public static int GridViewContentRowHeight() => (int) (MainPanel.Parent.Height * .04);
-        public static int GridViewPageInfoHeight() => (int) (MainPanel.Parent.Height * .05);
+        public static int GridViewPageInfoHeight() => (int) (MainPanel.Parent.Height * .035);
 
         /// <summary>
         /// 得到一个等差数列

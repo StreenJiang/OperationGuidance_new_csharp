@@ -31,6 +31,7 @@ namespace CustomLibrary.ComboBoxs {
         private bool _isError;
         private FontStyle? _boxFontStyle;
         private readonly string _defaultLabel = "-请选择-";
+        private bool _needDefaultLabel;
         private bool _noItem;
         private Action _itemSelected;
 
@@ -39,6 +40,17 @@ namespace CustomLibrary.ComboBoxs {
             set {
                 base.Enabled = value;
                 _selectButton.Enabled = value;
+            }
+        }
+        public bool NeedDefaultLabel { 
+            get => _needDefaultLabel; 
+            set {
+                _needDefaultLabel = value; 
+                if (value) {
+                    AddDefault();
+                } else {
+                    RemoveDefault();
+                }
             }
         }
         public new Color BackColor {
@@ -118,6 +130,7 @@ namespace CustomLibrary.ComboBoxs {
 
         public CustomComboBox() {
             Margin = new(0);
+            _needDefaultLabel = true;
             _selectButton = new(this) {
                 Parent = this,
                 Label = _defaultLabel,
@@ -197,8 +210,10 @@ namespace CustomLibrary.ComboBoxs {
                 _noItem = false;
                 // Clear <none> item first
                 _itemButtons.Clear();
-                // Add a default item at the top to provide a null option
-                AddItem(_defaultLabel, default(T));
+                if (_needDefaultLabel) {
+                    // Add a default item at the top to provide a null option
+                    AddDefault();
+                }
             }
             // Add new option button according to item
             _itemButtons.Add(new(itemName, obj, _selectButton) {
@@ -209,15 +224,36 @@ namespace CustomLibrary.ComboBoxs {
             // Reset timer interval
             ResetInterval();
             // Return item index (from 0 to end, ignore first default button)
-            return _itemButtons.Count - 2;
+            return _itemButtons.Count - (_needDefaultLabel ? 2 : 1);
+        }
+        // Add default
+        public void AddDefault() {
+            if (_itemButtons.Count == 0 || _itemButtons[0].Label != _defaultLabel) {
+                _itemButtons.Insert(0, new(_defaultLabel, default(T), _selectButton) {
+                    ForeColor = this.ForeColor,
+                    BackColor = this.BackColor,
+                    ToggledColor = WidgetUtils.LighterColor(BackColor, .925),
+                });
+                // Reset timer interval
+                ResetInterval();
+            }
+        }
+        // Remove default
+        public void RemoveDefault() {
+            if (_itemButtons.Count != 0 && _itemButtons[0].Label == _defaultLabel) {
+                _itemButtons.RemoveAt(0);
+                // Reset timer interval
+                ResetInterval();
+            }
         }
 
         public void RemoveItem(int index) {
-            if (_selectButton.SelectedItem == _itemButtons[index + 1]) {
+            int trueIndex = _needDefaultLabel ? index + 1 : index;
+            if (_selectButton.SelectedItem == _itemButtons[trueIndex]) {
                 _selectButton.SelectedItem = _itemButtons[0];
                 _selectButton.SelectedItem.SetToggle(true);
             }
-            _itemButtons.RemoveAt(index + 1);
+            _itemButtons.RemoveAt(trueIndex);
             _selectButton.Invalidate();
         }
         
@@ -230,10 +266,11 @@ namespace CustomLibrary.ComboBoxs {
         }
 
         public void SetCurrent(int index) {
+            int trueIndex = _needDefaultLabel ? index + 1 : index;
             if (_selectButton.SelectedItem != null) {
                 _selectButton.SelectedItem.SetToggle(false);
             }
-            _selectButton.SelectedItem = _itemButtons[index + 1];
+            _selectButton.SelectedItem = _itemButtons[trueIndex];
             _selectButton.SelectedItem.SetToggle(true);
         }
 
