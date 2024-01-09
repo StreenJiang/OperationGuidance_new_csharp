@@ -152,17 +152,32 @@ namespace CustomLibrary.Utils {
             return IsSubClass<T>(type.BaseType);
         }
 
+        // Content configs 
+        public static int ContentTitle() => (int) (MainPanel.Height * .052);
+        public static int ContentPadding(int width, int height) => (width + height) / 350;
+        public static int TextOrComboBoxHeight() => (int) (MainPanel.Height * .036);
+        public static int CommonButtonHeight() => (int) (MainPanel.Height * .036);
         public static int BorderThickness() {
             Control mainControl = MainPanel.Parent;
             int thickness = (mainControl.Width + mainControl.Height) / 1200;
             return thickness > 0 ? thickness : 1;
         }
-        public static int ContentPadding(int width, int height) => (width + height) / 350;
-        public static int TextOrComboBoxHeight() => (int) (MainPanel.Parent.Height * .042);
-        public static int CommonButtonHeight() => (int) (MainPanel.Parent.Height * .042);
-        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Parent.Height * .042);
-        public static int GridViewContentRowHeight() => (int) (MainPanel.Parent.Height * .04);
-        public static int GridViewPageInfoHeight() => (int) (MainPanel.Parent.Height * .035);
+        // Pop up form configs 
+        public static int PopUpFormTitle() => (int) (MainPanel.Height * .04);
+        public static Padding PopUpFormContentPadding() {
+            int hPadding = (int) (MainPanel.Width * .015);
+            int vPadding = (int) (MainPanel.Height * .03);
+            return new(hPadding, vPadding, hPadding, vPadding);
+        }
+        public static Padding PopUpFormButtonsPadding() {
+            int hPadding = (int) (MainPanel.Width * .008);
+            int vPadding = (int) (MainPanel.Height * .008);
+            return new(hPadding, 0, hPadding, vPadding);
+        }
+        // Grid view configs
+        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Height * .036);
+        public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .034);
+        public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);
 
         /// <summary>
         /// 得到一个等差数列

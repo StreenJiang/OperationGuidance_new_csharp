@@ -24,7 +24,6 @@ namespace OperationGuidance_new.Views {
         private readonly int _tableColumns = 4;
         private readonly float _cellGapRatio = 0.02F;
         private readonly float _cellHightRatio = 0.25F;
-        private readonly float _titleHeightRatio = 0.06F;
         private int _titleHeight;
         private int _cellHorizontalMargin;
         private int _cellVerticalMargin;
@@ -89,8 +88,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            // Calculate height of title panel
-            _titleHeight = (int) (TopLevelControl.Height * _titleHeightRatio);
+            _titleHeight = WidgetUtils.ContentTitle();
             // Calculate height of cells: use height of top level control is because self height will automatically change because of scroll bar
             _cellSize = new(0, (int) (TopLevelControl.Height * _cellHightRatio));
             _cellVerticalMargin = _cellSize.Height / 15;
@@ -489,13 +487,13 @@ namespace OperationGuidance_new.Views {
 
         private void ResizePopUpForm() {
             if (_boltPopUpForm != null) {
-                Control mainForm = WidgetUtils.MainPanel.Parent;
-                _boltPopUpForm.CalculateDetailProperties(mainForm);
+                _boltPopUpForm.CalculateDetailProperties();
 
+                Control mainForm = WidgetUtils.MainPanel.Parent;
                 TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
                 Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                 int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxMargin = boxHeight / 8;
+                int boxMargin = boxHeight / 5;
                 int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
                 Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
                 int tableWidth = contentSize.Width - contentPadding.Size.Width;
@@ -772,9 +770,9 @@ namespace OperationGuidance_new.Views {
         }
 
         private void ResizeBarCodePopUpForm() {
-            Control mainForm = WidgetUtils.MainPanel.Parent;
-            _barCodePopUpForm.CalculateDetailProperties(mainForm);
+            _barCodePopUpForm.CalculateDetailProperties();
 
+            Control mainForm = WidgetUtils.MainPanel.Parent;
             Padding contentPadding = _barCodePopUpForm.ContentPanel.Padding;
             int boxHeight = (int) (mainForm.Height * .05);
             Size contentSize = new((int) (mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
@@ -1325,13 +1323,13 @@ namespace OperationGuidance_new.Views {
 
         private void ResizeSecondPopUpForm() {
             if (_currentPopUpForm != null) {
-                Control mainForm = WidgetUtils.MainPanel.Parent;
-                _currentPopUpForm.CalculateDetailProperties(mainForm);
+                _currentPopUpForm.CalculateDetailProperties();
 
+                Control mainForm = WidgetUtils.MainPanel.Parent;
                 TableLayoutPanel tablePanel = _currentPopUpForm.TablePanel;
                 Panel contentPanel = _currentPopUpForm.ContentPanel;
                 int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxMargin = boxHeight / 7;
+                int boxMargin = boxHeight / 5;
                 int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
                 Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPanel.Padding.Size.Height);
                 int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;

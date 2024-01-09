@@ -84,7 +84,7 @@ namespace CustomLibrary.Forms {
 
             // Title panel
             _titlePanel = new() {
-                Height = GetTitlePanelHeight(mainParent),
+                Height = GetTitlePanelHeight(),
                 FlowDirection = FlowDirection.RightToLeft,
             };
             _title = "(未命名)";
@@ -109,12 +109,12 @@ namespace CustomLibrary.Forms {
             // Content panel
             _contentPanel = new() {
                 Margin = new(0), 
-                Padding = GetContentPadding(mainParent),
+                Padding = GetContentPadding(),
             };
             // Buttons panel
             _buttonsPanel = new() {
-                Padding = GetButtonsPanelPadding(mainParent),
-                Height = GetButtonsPanelHeight(mainParent),
+                Padding = GetButtonsPanelPadding(),
+                Height = GetButtonsPanelHeight(),
                 Margin = new(0),
                 Visible = false,
             };
@@ -205,25 +205,17 @@ namespace CustomLibrary.Forms {
             }
         }
 
-        public void CalculateDetailProperties(Control mainParent) {
-            _popUpFormBackboard.Size = mainParent.ClientSize;
-            _titlePanel.Height = GetTitlePanelHeight(mainParent);
-            _buttonsPanel.Padding = GetButtonsPanelPadding(mainParent);
-            _buttonsPanel.Height = GetButtonsPanelHeight(mainParent);
-            _contentPanel.Padding = GetContentPadding(mainParent);
+        public void CalculateDetailProperties() {
+            _popUpFormBackboard.Size = WidgetUtils.MainPanel.ClientSize;
+            _titlePanel.Height = GetTitlePanelHeight();
+            _buttonsPanel.Padding = GetButtonsPanelPadding();
+            _buttonsPanel.Height = GetButtonsPanelHeight();
+            _contentPanel.Padding = GetContentPadding();
         }
-        private int GetTitlePanelHeight(Control mainParent) => (int) (mainParent.Height * .0475) + (int) (Math.Abs(mainParent.Width - mainParent.Height) * .0035);
-        private Padding GetButtonsPanelPadding(Control mainParent) {
-            int hPadding = (int) (mainParent.Width * .008);
-            int vPadding = (int) (mainParent.Height * .008);
-            return new(hPadding, 0, hPadding, vPadding);
-        }
-        private int GetButtonsPanelHeight(Control mainParent) => GetButtonsPanelPadding(mainParent).Size.Height + WidgetUtils.CommonButtonHeight();
-        private Padding GetContentPadding(Control mainParent) {
-            int hPadding = (int) (mainParent.Width * .015);
-            int vPadding = (int) (mainParent.Height * .03);
-            return new(hPadding, vPadding, hPadding, vPadding);
-        }
+        private int GetTitlePanelHeight() => WidgetUtils.PopUpFormTitle();
+        private int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.CommonButtonHeight();
+        private Padding GetContentPadding() => WidgetUtils.PopUpFormContentPadding();
+        private Padding GetButtonsPanelPadding() => WidgetUtils.PopUpFormButtonsPadding();
 
         public void SetContentSizeAndSelfSize(Size contentSize) {
             ContentPanel.Height = contentSize.Height;
@@ -236,7 +228,7 @@ namespace CustomLibrary.Forms {
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            CalculateDetailProperties(WidgetUtils.MainPanel.Parent);
+            CalculateDetailProperties();
             SizeChanged += ResizeChildren;
             SizeChanged += AfterSizeChanged;
         }
@@ -245,7 +237,7 @@ namespace CustomLibrary.Forms {
         public void ResizeChildren() => ResizeChildren(EventArgs.Empty);
         public void ResizeChildren(EventArgs eventArgs) => ResizeChildren(this, eventArgs);
         protected virtual void ResizeChildren(object? sender, EventArgs eventArgs) {
-            CalculateDetailProperties(WidgetUtils.MainPanel.Parent);
+            CalculateDetailProperties();
             // Border
             if (_borderColor != null) {
                 _borderRect = new(0, 0, Width - 1, Height - 1);

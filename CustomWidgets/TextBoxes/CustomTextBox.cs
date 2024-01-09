@@ -26,6 +26,7 @@ namespace CustomLibrary.TextBoxes {
         private ErrorProvider _errorProvider;
         private Image? _iconShowing;
         private Color? _borderColorError;
+        private ToolTip _errorTip;
         private Timer _errorBorderTimer;
         private int _timerCount;
         #endregion
@@ -116,6 +117,7 @@ namespace CustomLibrary.TextBoxes {
             _box.GotFocus += (sender, eventArgs) => {
                 EventFuncs.CurrentActiveControl = sender as Control;
             };
+            _errorTip = new();
             _box.TextChanged += (sender, eventArgs) => {
                 if (_numberOnly) {
                     int errorCount = 0;
@@ -129,8 +131,11 @@ namespace CustomLibrary.TextBoxes {
                     _box.SelectionLength = 0;
                     if (errorCount == 0) {
                         _isError = false;
+                        HideErrorToolTip();
+                        Invalidate();
                     } else {
                         _isError = true;
+                        ShowErrorToolTip();
                         Invalidate();
                         _timerCount = 0;
                         _errorBorderTimer?.Start();
@@ -162,6 +167,7 @@ namespace CustomLibrary.TextBoxes {
                 _timerCount += 1000;
                 if (_timerCount >= 2000) {
                     _isError = false;
+                    HideErrorToolTip();
                     Invalidate();
                     _timerCount = 0;
                     _errorBorderTimer.Stop();
@@ -170,21 +176,32 @@ namespace CustomLibrary.TextBoxes {
         }
         #endregion
 
+        #region Reusable methods
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
                 _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(CustomResources.input_error, newIconSize);
                 _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
                 _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
-                _boxErrorWidth = _boxOriginalWidth - newIconSize.Width;
+            }
+            int boxErrorNewWidth = _boxOriginalWidth - newIconSize.Width;
+            if (_boxErrorWidth != boxErrorNewWidth) {
+                _boxErrorWidth = boxErrorNewWidth;
             }
         }
+        private void ShowErrorToolTip() {
+            _errorTip.Show("请输入数字", _box);
+        }
+        private void HideErrorToolTip() {
+            _errorTip.Hide(_box);
+        }
+        #endregion
 
+        #region Override methods
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;
         }
-
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
@@ -209,7 +226,6 @@ namespace CustomLibrary.TextBoxes {
                 _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
             }
         }
-
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.Clear(this.BackColor);
             base.OnPaint(e);
@@ -228,15 +244,14 @@ namespace CustomLibrary.TextBoxes {
                 e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
             }
         }
-
         protected override void OnForeColorChanged(EventArgs e) {
             base.OnForeColorChanged(e);
             _box.ForeColor = ForeColor;
         }
-
         protected override void OnBackColorChanged(EventArgs e) {
             base.OnBackColorChanged(e);
             _box.BackColor = BackColor;
         }
+        #endregion
     }
 }

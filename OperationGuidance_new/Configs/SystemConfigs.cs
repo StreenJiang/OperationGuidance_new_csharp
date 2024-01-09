@@ -1,7 +1,9 @@
 ﻿using CustomLibrary.Panels;
 using OperationGuidance_new.Views;
+using OperationGuidance_new.Views.ReusableWidgets;
 
-namespace OperationGuidance_new.Configs {
+namespace OperationGuidance_new.Configs
+{
     public static class SystemConfigs {
         // System menus
         public static List<Dictionary<string, object?>> MenuCongfigs {

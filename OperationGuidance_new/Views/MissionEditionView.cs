@@ -788,13 +788,13 @@ namespace OperationGuidance_new.Views {
 
             private void ResizePopUpForm() {
                 if (_boltPopUpForm != null) {
-                    Control mainForm = WidgetUtils.MainPanel.Parent;
-                    _boltPopUpForm.CalculateDetailProperties(mainForm);
+                    _boltPopUpForm.CalculateDetailProperties();
 
+                    Control mainForm = WidgetUtils.MainPanel.Parent;
                     TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
                     Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                     int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                    int boxMargin = boxHeight / 8;
+                    int boxMargin = boxHeight / 5;
                     int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
                     Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
                     int tableWidth = contentSize.Width - contentPadding.Size.Width;

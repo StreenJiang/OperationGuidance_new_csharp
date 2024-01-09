@@ -12,7 +12,6 @@ namespace OperationGuidance_new.Views {
         private readonly int _tableColumns = 4;
         private readonly float _cellGapRatio = 0.02F;
         private readonly float _cellHightRatio = 0.21F;
-        private readonly float _titleHeightRatio = 0.06F;
         private int _titleHeight;
         private int _cellHorizontalMargin;
         private int _cellVerticalMargin;
@@ -87,8 +86,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            // Calculate height of title panel
-            _titleHeight = (int) (this.TopLevelControl.Height * _titleHeightRatio);
+            _titleHeight = WidgetUtils.ContentTitle();
             // Calculate height of cells: use height of top level control is because self height will automatically change because of scroll bar
             _cellSize = new(0, (int) (this.TopLevelControl.Height * _cellHightRatio));
             _cellVerticalMargin = _cellSize.Height / 15;

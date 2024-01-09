@@ -10,6 +10,7 @@ using Timer = System.Windows.Forms.Timer;
 namespace CustomLibrary.ComboBoxs {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomComboBox<T>: UserControl {
+        #region Fields
         private readonly int _collapseStep = 20; // How many pixels increase/decrease each interval
         private readonly int _collapseSpend = 30; // How many milliseconds will the collapse cost
         private readonly int _maxItemsShown = 5; // Maximum of shown items, will has scroll bar if greater than this number
@@ -34,7 +35,9 @@ namespace CustomLibrary.ComboBoxs {
         private bool _needDefaultLabel;
         private bool _noItem;
         private Action _itemSelected;
+        #endregion
 
+        #region Properties
         public new bool Enabled {
             get => base.Enabled;
             set {
@@ -106,14 +109,6 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
         public bool ShowRealValue { get => _selectButton.ShowRealValue; set => _selectButton.ShowRealValue = value; }
-        public event Action ItemSelected { 
-            add => _itemSelected += value; 
-            remove {
-                if (_itemSelected.GetInvocationList().Contains(value)) {
-                    _itemSelected -= value; 
-                }
-            }
-        }
         public List<T?> Items { 
             get {
                 List<T?> items = new();
@@ -127,7 +122,20 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
         public T? Value { get => GetChosenValue(); }
+        #endregion
 
+        #region Events
+        public event Action ItemSelected { 
+            add => _itemSelected += value; 
+            remove {
+                if (_itemSelected.GetInvocationList().Contains(value)) {
+                    _itemSelected -= value; 
+                }
+            }
+        }
+        #endregion
+
+        #region Constructors
         public CustomComboBox() {
             Margin = new(0);
             _needDefaultLabel = true;
@@ -196,6 +204,7 @@ namespace CustomLibrary.ComboBoxs {
             };
             EventFuncs.AddClickAction(ItemsPanelAutoClose);
         }
+        #endregion
 
         private void ResetInterval() {
             if (_itemsPanelHeight != 0) {
