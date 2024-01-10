@@ -79,6 +79,11 @@ namespace CustomLibrary.TextBoxes {
             _comboBox.IsError = isError;
         }
 
+        public void Reset() {
+            _comboBox.Reset();
+        }
+        public static string ResetName() => CustomComboBox<T>.ResetName();
+
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;

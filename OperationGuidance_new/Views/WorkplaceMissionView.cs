@@ -400,7 +400,7 @@ namespace OperationGuidance_new.Views {
                         }
                     };
                     _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.HideForm();
-                    _barCodePopUpForm.FakeShowToCreateHandlesForChildren();
+                    _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
                     ResizeBarCodePopUpForm();
                 }
                 if (_barCodeTextBox.Text != note) {
@@ -463,7 +463,7 @@ namespace OperationGuidance_new.Views {
                                     _boltPopUpForm.HideForm();
                                 };
                                 // Show form but make it transparent to create handles for its children
-                                _boltPopUpForm.FakeShowToCreateHandlesForChildren();
+                                _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
                                 // Resize all widgets
                                 ResizePopUpForm();
                                 // Real show

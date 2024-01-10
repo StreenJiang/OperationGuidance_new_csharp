@@ -1,7 +1,7 @@
 ﻿using CustomLibrary.Buttons;
+using CustomLibrary.Events;
+using CustomLibrary.Forms;
 using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
-using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -15,30 +15,10 @@ namespace OperationGuidance_new.Views
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
-        // Common fields
-        private readonly int _filtersTableColumnNums = 3;
-        private int _textOrComboHeight;
-        private int _buttonHeight;
-        private int _contentVerticalGap;
-        private int _contentHerticalGap;
-        // Filters panel
-        private TableLayoutPanel _filtersTablePanel;
-        private CustomTextBoxGroup _workstationName;
-        private CustomTextBoxGroup _toolName;
-        private CustomComboBoxGroup<int> _toolModel;
-        private CustomTextBoxGroup _armName;
-        private CustomComboBoxGroup<int> _armModel;
-        // Buttons panel
-        private Panel _buttonsPanel;
-        private CustomContentPanel _buttonsLeftInnerPanel;
-        private CustomContentPanel _buttonsRightInnerPanel;
-        private CommonButton _searchButton;
-        private CommonButton _ResetButton;
-        private CommonButton _addNewButton;
-        private CommonButton _modifyButton;
-        private CommonButton _deleteButton;
         // DataGridView panel
-        private DataGridViewPanel<WorkstationVO> _workstationGridView;
+        private DataGridViewGroup<WorkstationVO> _workstationGridView;
+        // Add new pop up form
+        private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
@@ -49,100 +29,31 @@ namespace OperationGuidance_new.Views
             // Get Apis
             apis = SystemUtils.GetApis();
 
+            // Initialize grid view
+            _workstationGridView = new() {
+                Parent = this,
+            };
+            _workstationGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
+            _workstationGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
+            _workstationGridView.AddComboBox("工具型号", false, (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
+            _workstationGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
+            _workstationGridView.AddComboBox("力臂型号", false, (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {{"测试1", 10}, {"测试2", 20}, {"测试3", 30}});
+            _workstationGridView.QueryData = (vo) => {
+                return new() {
+                    new() {
+                        id = 111,
+                        name = "ddafsdfa",
+                    }
+                };
+            };
+            _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
+
             // Initialization
-            InitializeContents();
-            InitializeFiltersPanel();
-            InitializeButtonsPanel();
             InitializeGridView();
         }
         #endregion
 
         #region Initialize methods
-        private void InitializeContents() {
-            _filtersTablePanel = new() {
-                Parent = this,
-                Padding = new(0),
-                ColumnCount = _filtersTableColumnNums,
-            };
-            _buttonsPanel = new() {
-                Parent = this,
-                Margin = new(0),
-                Padding = new(0),
-            };
-            _workstationGridView = new() {
-                Parent = this,
-            };
-        }
-        private void InitializeFiltersPanel() {
-            _workstationName = new("站点名称") {
-                Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _toolName = new("工具名称") {
-                Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _toolModel = new("工具型号") {
-                Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _armName = new("力臂名称") {
-                Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _armModel = new("力臂型号") {
-                Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-        }
-        private void InitializeButtonsPanel() {
-            _buttonsLeftInnerPanel = new() {
-                Parent = _buttonsPanel,
-                Padding = new(0),
-                Dock = DockStyle.Left,
-            };
-            _buttonsRightInnerPanel = new() {
-                Parent = _buttonsPanel,
-                Padding = new(0),
-                Dock = DockStyle.Right,
-            };
-            // Buttons
-            _searchButton = new() {
-                Parent = _buttonsLeftInnerPanel,
-                Label = "查询",
-            };
-            _ResetButton = new() {
-                Parent = _buttonsLeftInnerPanel,
-                Label = "重置",
-            };
-            _addNewButton = new() {
-                Parent = _buttonsRightInnerPanel,
-                Label = "新增",
-            };
-            _modifyButton = new() {
-                Parent = _buttonsRightInnerPanel,
-                Label = "修改",
-            };
-            _deleteButton = new() {
-                Parent = _buttonsRightInnerPanel,
-                Label = "删除",
-            };
-        }
         private void InitializeGridView() {
             List<WorkstationVO> vos = new() {
                 new() {
@@ -297,85 +208,69 @@ namespace OperationGuidance_new.Views
         }
         #endregion
 
-        #region Resize methods
-        private void ResizeContents(Size contentSize) {
-            // Filters panel
-            int filtersPanelHeight = _textOrComboHeight * 2 + _contentVerticalGap;
-            _filtersTablePanel.Size = new(contentSize.Width, filtersPanelHeight);
-            _filtersTablePanel.Margin = new(0, 0, 0, _contentVerticalGap);
-            // Buttons panel
-            _buttonsPanel.Size = new(contentSize.Width, _buttonHeight);
-            _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);
-            // Grid panel
-            _workstationGridView.Size = new(contentSize.Width, contentSize.Height - filtersPanelHeight - _buttonHeight - _contentVerticalGap * 2);
+        #region Reusable methods
+        private void OpenAddNewPopUpForm(Action callBackAction) {
+            _addNewPopUpForm = new() {
+                Title = "新增站点",
+                BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
+            };
+            // 添加按钮
+            CommonButton confirmButton = _addNewPopUpForm.AddButton("保存");
+            confirmButton.Click += (s, e) => {
+                callBackAction();
+                _addNewPopUpForm.HideForm();
+            };
+            CommonButton cancelButton = _addNewPopUpForm.AddButton("取消");
+            cancelButton.Click += (s, e) => {
+                _addNewPopUpForm.HideForm();
+            };
+            // Show form but make it transparent to create handles for its children
+            _addNewPopUpForm.PretendToShowToCreateHandlesForChildren();
+            // Resize all widgets
+            ResizePopUpForm();
+            // Real show
+            _addNewPopUpForm.Show();
+            // Set current pop up form
+            EventFuncs.CurrentPopUpForm = _addNewPopUpForm;
         }
-        private void ResizeFiltersPanel(Size contentSize) {
-            // Width of box
-            int boxWidth = (contentSize.Width - _contentHerticalGap * (_filtersTableColumnNums - 1)) / _filtersTableColumnNums;
-            // Resize boxes
-            TableLayoutControlCollection list = _filtersTablePanel.Controls;
-            for (int i = 0; i < list.Count; i++) {
-                Control control = list[i];
-                control.Size = new(boxWidth, _textOrComboHeight);
-                // Calculate margin
-                Padding margin = new(0);
-                if (i >= _filtersTableColumnNums) margin.Top = _contentVerticalGap;
-                if (i % _filtersTableColumnNums != 0) margin.Left = _contentHerticalGap;
-                control.Margin = margin;
-            }
-        }
-        private void ResizeButtonsPanel() {
-            // Width of button 
-            int buttonHeight = (int) (_buttonHeight * 2.5);
-            // Resize buttons
-            // Left panel width
-            int leftPanelWidht = 0;
-            ControlCollection listLeft = _buttonsLeftInnerPanel.Controls;
-            for (int i = 0; i < listLeft.Count; i++) {
-                Control control = listLeft[i];
-                control.Size = new(buttonHeight, _buttonHeight);
-                leftPanelWidht += buttonHeight;
-                // Calculate margin
-                if (i != 0) {
-                    control.Margin = new(_contentHerticalGap, 0, 0, 0);
-                    leftPanelWidht += _contentHerticalGap;
+        private void ResizePopUpForm() {
+            if (_addNewPopUpForm != null) {
+                _addNewPopUpForm.CalculateDetailProperties();
+
+                // Control mainPanel = WidgetUtils.MainPanel;
+                // TableLayoutPanel tablePanel = _addNewPopUpForm.TablePanel;
+                // Padding contentPadding = _addNewPopUpForm.ContentPanel.Padding;
+                // int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                // int boxMargin = boxHeight / 5;
+                // int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                // Size contentSize = new((int) (mainPanel.Width * .75), tableHeight + contentPadding.Size.Height);
+                // int tableWidth = contentSize.Width - contentPadding.Size.Width;
+                // _addNewPopUpForm.BoxHeight = boxHeight;
+                // _addNewPopUpForm.BoxMargin = boxMargin;
+                // _addNewPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                //
+                // _addNewPopUpForm.SetContentSizeAndSelfSize(contentSize);
+                if (_addNewPopUpForm.Visible) {
+                    _addNewPopUpForm.Invalidate();
                 }
             }
-            // Right panel width
-            int rightPanelWidht = 0;
-            ControlCollection listRight = _buttonsRightInnerPanel.Controls;
-            for (int i = 0; i < listRight.Count; i++) {
-                Control control = listRight[i];
-                control.Size = new(buttonHeight, _buttonHeight);
-                rightPanelWidht += buttonHeight;
-                // Calculate margin
-                if (i != 0) {
-                    control.Margin = new(_contentHerticalGap, 0, 0, 0);
-                    rightPanelWidht += _contentHerticalGap;
-                }
-            }
-            _buttonsLeftInnerPanel.Size = new(leftPanelWidht, _buttonHeight);
-            _buttonsRightInnerPanel.Size = new(rightPanelWidht, _buttonHeight);
         }
         #endregion
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
-            // Calculate gaps
-            _contentVerticalGap = (int) (contentSize.Height * .015);
-            _contentHerticalGap = (int) (contentSize.Width * .015);
-            // Calculate box and button Height
-            _textOrComboHeight = WidgetUtils.TextOrComboBoxHeight();
-            _buttonHeight = WidgetUtils.CommonButtonHeight();
-            // Resize
-            ResizeContents(contentSize);
-            ResizeFiltersPanel(contentSize);
-            ResizeButtonsPanel();
+            _workstationGridView.Size = contentSize;
         }
-        public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            return false;
+        public override void VisibleToTrue() {
+            base.VisibleToTrue();
         }
+        #endregion
+    }
+
+    public class AddNewPopUpForm: CustomPopUpForm {
+        #region Fields
+        // private 
         #endregion
     }
 }

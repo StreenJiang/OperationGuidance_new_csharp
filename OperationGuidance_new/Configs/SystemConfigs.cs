@@ -1,6 +1,5 @@
 ﻿using CustomLibrary.Panels;
 using OperationGuidance_new.Views;
-using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Configs
 {
@@ -85,7 +84,7 @@ namespace OperationGuidance_new.Configs
                             {Key_Icon, Properties.Resources.user_info},
                             {Key_Toggle_Button, true},
                             {Key_Click, null},
-                            {Key_View_Name, typeof(UserInfoView)},
+                            {Key_View_Name, typeof(AccountManagementView)},
                         },
                         new() {
                             {Key_ID, 502},

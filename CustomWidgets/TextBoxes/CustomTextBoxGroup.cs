@@ -38,6 +38,7 @@ namespace CustomLibrary.TextBoxes {
                 SetSeparatorsProperties((separator) => separator.Text = value );
             }
         }
+        public List<CustomTextBox> TextBoxes { get => _textBoxes; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
         public new Control Parent { 

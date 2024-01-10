@@ -85,4 +85,10 @@ namespace CustomLibrary.DataGridViewRelateds {
         }
         #endregion
     }
+
+    public class ToggleButtonPanel: Panel {
+        public DataGridViewTextBoxCell Cell { get; set; }
+        protected override void OnVisibleChanged(EventArgs e) {
+        }
+    }
 }

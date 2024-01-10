@@ -575,7 +575,7 @@ namespace OperationGuidance_new.Views {
                     _boltPopUpForm.HideForm();
                 };
                 // Show form but make it transparent to create handles for its children
-                _boltPopUpForm.FakeShowToCreateHandlesForChildren();
+                _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
                 // Resize all widgets
                 ResizePopUpForm();
                 // Real show

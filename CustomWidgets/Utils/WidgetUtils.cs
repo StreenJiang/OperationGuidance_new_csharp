@@ -232,5 +232,9 @@ namespace CustomLibrary.Utils {
             int newB = (int) Math.Round(color.B - color.B * ratio);
             return Color.FromArgb(newR, newG, newB);
         }
+
+        public static void ShowNoticePopUp(string message) {
+            MessageBox.Show(null, message, "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
     }
 }

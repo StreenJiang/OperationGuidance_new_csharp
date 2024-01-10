@@ -1,3 +1,4 @@
+using System.Reflection;
 using CustomLibrary.Buttons;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
@@ -6,10 +7,10 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewGroup<T>: CustomContentPanel where T: AVOBase {
+    public class DataGridViewGroup<T>: CustomContentPanel where T: AVOBase, new() {
         #region Fields
         // Common fields
-        private T _filterObject;
+        private T _filterParametersVO;
         private readonly int _filtersTableColumnNums = 3;
         private int _textOrComboHeight;
         private int _buttonHeight;
@@ -22,28 +23,50 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private CustomContentPanel _buttonsLeftInnerPanel;
         private CustomContentPanel _buttonsRightInnerPanel;
         private CommonButton _searchButton;
-        private CommonButton _ResetButton;
+        private CommonButton _resetButton;
         private CommonButton _addNewButton;
         private CommonButton _modifyButton;
         private CommonButton _deleteButton;
         private List<CommonButton> _extraButtons;
         // DataGridView panel
         private DataGridViewPanel<T> _voGridView;
+        // Delegates
+        private Func<T, List<T>> _queryData;
+        private Action<Action> _addNewClick;
+        private Action<Action> _modifyClick;
+        private Action<Action> _deleteClick;
         // Events
-        private Func<List<T>> _queryData;
         #endregion
 
         #region Properties
+        public List<CommonButton> ExtraButtons { get => _extraButtons; }
+        public List<T> DataSource { get => _voGridView.DataSource; set => _voGridView.DataSource = value; }
+        public Func<T, List<T>> QueryData { get => _queryData; set => _queryData = value; }
+        public Action<Action> AddNewClick { get => _addNewClick; set => _addNewClick = value; }
+        public Action<Action> ModifyClick { get => _modifyClick; set => _modifyClick = value; }
+        public Action<Action> DeleteClick { get => _deleteClick; set => _deleteClick = value; }
+        public bool SearchButtonVisible { get => _searchButton.Visible; set => _searchButton.Visible = value; }
+        public bool ResetButtonVisible { get => _resetButton.Visible; set => _resetButton.Visible = value; }
+        public bool AddNewButtonVisible { get => _addNewButton.Visible; set => _addNewButton.Visible = value; }
+        public bool ModifyButtonVisible { get => _modifyButton.Visible; set => _modifyButton.Visible = value; }
+        public bool DeleteButtonVisible { get => _deleteButton.Visible; set => _deleteButton.Visible = value; }
         #endregion
 
         #region Events
-        public event Func<List<T>> QueryData { add => _queryData += value; remove => _queryData -= value; }
         #endregion
 
         #region Constructors
         public DataGridViewGroup() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
+            _filterParametersVO = new();
+            _queryData = new((vo) => {
+                WidgetUtils.ShowNoticePopUp("Func<QueryData> has not been set.");
+                return new();
+            });
+            _addNewClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<AddNewClick> has not been set."));
+            _modifyClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<ModifyClick> has not been set."));
+            _deleteClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<DeleteClick> has not been set."));
 
             // Initialization
             InitializeContents();
@@ -84,21 +107,49 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _buttonsLeftInnerPanel,
                 Label = "查询",
             };
-            _ResetButton = new() {
+            _searchButton.Click += (sender, eventArgs) => {
+                QueryAndRefresh();
+            };
+            _resetButton = new() {
                 Parent = _buttonsLeftInnerPanel,
                 Label = "重置",
+            };
+            _resetButton.Click += (sender, eventArgs) => {
+                _filterParametersVO = new();
+                foreach (Control control in _filtersTablePanel.Controls) {
+                    if (control is CustomTextBoxGroup textBoxGroup) {
+                        foreach (CustomTextBox box in textBoxGroup.TextBoxes) {
+                            box.Box.Text = "";
+                        }
+                    } else if (control.GetType().Name == typeof(CustomComboBoxGroup<>).Name) {
+                        Type type = control.GetType();
+                        MethodInfo? methodInfo = type.GetMethod(CustomComboBoxGroup<object>.ResetName());
+                        if (methodInfo != null) {
+                            methodInfo.Invoke(control, null);
+                        }
+                    }
+                }
             };
             _addNewButton = new() {
                 Parent = _buttonsRightInnerPanel,
                 Label = "新增",
             };
+            _addNewButton.Click += (sender, eventArgs) => {
+                _addNewClick(QueryAndRefresh);
+            };
             _modifyButton = new() {
                 Parent = _buttonsRightInnerPanel,
                 Label = "修改",
             };
+            _modifyButton.Click += (sender, eventArgs) => {
+                _modifyClick(QueryAndRefresh);
+            };
             _deleteButton = new() {
                 Parent = _buttonsRightInnerPanel,
                 Label = "删除",
+            };
+            _deleteButton.Click += (sender, eventArgs) => {
+                _deleteClick(QueryAndRefresh);
             };
         }
         private void InitializeGridView() {
@@ -119,7 +170,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             box.TextChanged += (sender, eventArgs) => {
                 try {
                     V? value = (V?) Convert.ChangeType(box.Text, typeof(V));
-                    propertySetter(_filterObject, value);
+                    propertySetter(_filterParametersVO, value);
                 } catch (InvalidCastException e) {
                     System.Console.WriteLine($"Can not convert string to type<{typeof(V)}>. Exception: {e}");
                 }
@@ -135,7 +186,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             boxGroup.ItemSelected += () => {
-                propertySetter(_filterObject, boxGroup.Value);
+                propertySetter(_filterParametersVO, boxGroup.Value);
             };
             Dictionary<string, V>.Enumerator enumerator = items.GetEnumerator();
             while (enumerator.MoveNext()) {
@@ -144,12 +195,26 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
             return boxGroup;
         }
+        public CommonButton AddExtraButton(string buttonName) {
+            return new() {
+                Parent = _buttonsRightInnerPanel,
+                Label = buttonName,
+            };
+        }
+        private void QueryAndRefresh() {
+            _voGridView.DataSource = _queryData(_filterParametersVO);
+        }
         #endregion
 
         #region Resize methods
         private void ResizeContents(Size contentSize) {
             // Filters panel
-            int filtersPanelHeight = _textOrComboHeight * 2 + _contentVerticalGap;
+            int lines = 1 + _filtersTablePanel.Controls.Count / _filtersTableColumnNums;
+            int filtersPanelHeight = _textOrComboHeight;
+            while (lines > 1) {
+                filtersPanelHeight += _textOrComboHeight + _contentVerticalGap;
+                lines--;
+            }
             _filtersTablePanel.Size = new(contentSize.Width, filtersPanelHeight);
             _filtersTablePanel.Margin = new(0, 0, 0, _contentVerticalGap);
             // Buttons panel
@@ -194,15 +259,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
             // Right panel width
             int rightPanelWidht = 0;
-            ControlCollection listRight = _buttonsRightInnerPanel.Controls;
-            for (int i = 0 ; i < listRight.Count ; i++) {
-                Control control = listRight[i];
-                control.Size = new(buttonHeight, _buttonHeight);
-                rightPanelWidht += buttonHeight;
-                // Calculate margin
-                if (i != 0) {
-                    control.Margin = new(_contentHerticalGap, 0, 0, 0);
-                    rightPanelWidht += _contentHerticalGap;
+            int count = 0;
+            foreach (Control control in _buttonsRightInnerPanel.Controls) {
+                if (control.Visible) {
+                    control.Size = new(buttonHeight, _buttonHeight);
+                    rightPanelWidht += buttonHeight;
+                    // Calculate margin
+                    if (count != 0) {
+                        control.Margin = new(_contentHerticalGap, 0, 0, 0);
+                        rightPanelWidht += _contentHerticalGap;
+                    }
+                    count++;
                 }
             }
             _buttonsLeftInnerPanel.Size = new(leftPanelWidht, _buttonHeight);

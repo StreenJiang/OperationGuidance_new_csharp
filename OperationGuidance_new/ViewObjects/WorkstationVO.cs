@@ -10,7 +10,7 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("工具名称")]
         public string? tool_name { get; set; }
         [GridColumn("工具型号")]
-        public string? tool_device_model_name { get; set; }
+        public int? tool_device_model_id { get; set; }
         [GridColumn("工具IP")]
         public string? tool_ip { get; set; }
         [GridColumn("工具端口")]
@@ -18,7 +18,7 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("力臂名称")]
         public string? arm_name { get; set; }
         [GridColumn("力臂型号")]
-        public int? arm_device_type_id { get; set; }
+        public int? arm_device_model_id { get; set; }
         [GridColumn("力臂IP")]
         public string? arm_ip { get; set; }
         [GridColumn("力臂端口")]

@@ -157,7 +157,7 @@ namespace CustomLibrary.Forms {
             };
         }
 
-        public virtual void FakeShowToCreateHandlesForChildren() {
+        public virtual void PretendToShowToCreateHandlesForChildren() {
             base.Show();
             Opacity = 0D;
         }

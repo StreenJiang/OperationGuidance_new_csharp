@@ -145,7 +145,7 @@ namespace CustomLibrary.ComboBoxs {
             };
             _noItem = true;
             _itemButtons = new() {
-                new("-无-"),
+                new("-无-", default(T), null)
             };
             _itemSelected += OnItemSelected;
 
@@ -193,7 +193,9 @@ namespace CustomLibrary.ComboBoxs {
                         }
                     }
                 } else {
-                    _itemSelected();
+                    if (_selectButton.SelectedItem != null) {
+                        _itemSelected();
+                    }
                 }
                 if (_itemsPanel != null) {
                     // This is to prevent VScrollBar from showing while timer is running
@@ -228,7 +230,7 @@ namespace CustomLibrary.ComboBoxs {
             _itemButtons.Add(new(itemName, obj, _selectButton) {
                 ForeColor = this.ForeColor,
                 BackColor = this.BackColor,
-                ToggledColor = WidgetUtils.LighterColor(BackColor, .925),
+                ToggledColor = WidgetUtils.DarkerColor(BackColor, .075),
             });
             // Reset timer interval
             ResetInterval();
@@ -241,7 +243,7 @@ namespace CustomLibrary.ComboBoxs {
                 _itemButtons.Insert(0, new(_defaultLabel, default(T), _selectButton) {
                     ForeColor = this.ForeColor,
                     BackColor = this.BackColor,
-                    ToggledColor = WidgetUtils.LighterColor(BackColor, .925),
+                    ToggledColor = WidgetUtils.DarkerColor(BackColor, .075),
                 });
                 // Reset timer interval
                 ResetInterval();
@@ -267,20 +269,27 @@ namespace CustomLibrary.ComboBoxs {
         }
         
         public void Reset() {
-            if (_selectButton.SelectedItem != null) {
-                _selectButton.SelectedItem.SetToggle(false);
+            if (!_noItem) {
+                if (_selectButton.SelectedItem != null) {
+                    _selectButton.SelectedItem.SetToggle(false);
+                }
+                _itemButtons[0].SetToggle(true);
+                _selectButton.SelectedItem = _itemButtons[0];
+                Invalidate();
             }
-            _itemButtons[0].SetToggle(true);
-            _selectButton.SelectedItem = null;
         }
+        public static string ResetName() => nameof(Reset);
 
         public void SetCurrent(int index) {
-            int trueIndex = _needDefaultLabel ? index + 1 : index;
-            if (_selectButton.SelectedItem != null) {
-                _selectButton.SelectedItem.SetToggle(false);
+            if (!_noItem) {
+                int trueIndex = _needDefaultLabel ? index + 1 : index;
+                if (_selectButton.SelectedItem != null) {
+                    _selectButton.SelectedItem.SetToggle(false);
+                }
+                _selectButton.SelectedItem = _itemButtons[trueIndex];
+                _selectButton.SelectedItem.SetToggle(true);
+                Invalidate();
             }
-            _selectButton.SelectedItem = _itemButtons[trueIndex];
-            _selectButton.SelectedItem.SetToggle(true);
         }
 
         public T? GetChosenValue() {
@@ -412,7 +421,7 @@ namespace CustomLibrary.ComboBoxs {
             }
         }
 
-        protected void OnItemSelected() {}
+        protected virtual void OnItemSelected() {}
 
         // Select button
         public class ComboBoxSelectButton<I>: CommonButton {
@@ -610,10 +619,6 @@ namespace CustomLibrary.ComboBoxs {
             public I? Object { get => _object; set => _object = value; }
             public ComboBoxSelectButton<I>? SelectButton { get => _selectButton; }
             public int ProperWidth { get => _properWidth; }
-
-            public ComboBoxItem(string name) {
-                Initialize(name);
-            }
 
             private void Initialize(string name) {
                 ToggledButton = true;

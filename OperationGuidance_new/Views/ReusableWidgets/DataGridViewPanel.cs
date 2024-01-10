@@ -41,19 +41,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => _pageSize;
             set {
                 _pageSize = value;
-                _countPerPage.Text = $"{_pageSize} 条/页";
-                _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+                ResetPageInfo();
             }
         }
         public List<V> DataSource {
             get => _dataSource;
             set {
+                ClearAll();
                 _dataSource = value;
                 _bindingSource.DataSource = value;
                 _gridView.DataSource = _bindingSource;
                 _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
-                _dataCountInfo.Text = $"共 {value.Count} 条";
-                _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+                ResetPageInfo();
             }
         }
         #endregion
@@ -74,7 +73,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = this,
                 Margin = new(0),
                 Padding = new(0),
-                BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .95),
+                BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .85),
             };
             _pageInfoContentPanel = new() {
                 Parent = _pageInfoPanel,
@@ -92,7 +91,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _pageInfoContentPanel,
                 Margin = new(0),
                 Padding = new(0),
-                Text = $"{_pageSize} 条/页",
                 AutoSize = true,
             };
             _first = new() {
@@ -107,7 +105,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _pageInfoContentPanel,
                 Margin = new(0),
                 Padding = new(0),
-                Text = $"{_currentPage}/{_totalPages}",
                 AutoSize = true,
             };
             _forward = new() {
@@ -138,6 +135,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Text = "页",
                 AutoSize = true,
             };
+            ResetPageInfo();
             // Data grid view
             _gridView = new() {
                 Parent = this,
@@ -148,7 +146,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.ColumnHeader,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
                 AllowUserToAddRows = false,
@@ -220,7 +218,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         // DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
                         V vo = (V) row.DataBoundItem;
                         // If vo'id is null, then this row is just a blank row for displaying
-                        if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell cell) {
+                        if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell cell && cell.Value != null) {
                             // Set toggle state to button in case they're not matched
                             cell.ToggleButton.Checked = (bool) cell.Value;
                             // Show cell in case it's Hiden
@@ -320,12 +318,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 DataGridViewCell cell = _gridView.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
                 Console.WriteLine("Value change to: " + cell.Value);
             };
-            _gridView.DataSourceChanged += (sender, eventArgs) => {
-                Console.WriteLine("DataSourceChanged");
-            };
             _gridView.DataBindingComplete += (sender, eventArgs) => {
                 // Clear auto selection of first row
                 _gridView.ClearSelection();
+                // foreach (Control control in _gridView.Controls) {
+                //     if (control is ToggleButtonPanel) {
+                //     }
+                // }
             };
             _gridView.CellMouseEnter += (sender, eventArgs) => {
                 if (eventArgs.RowIndex > -1 && eventArgs.ColumnIndex > -1) {
@@ -374,8 +373,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Reusable methods
-        private void ResizePageInfoContent(Label label, Font font, int newPageInfoHeight) {
-            label.Font = font;
+        private void ClearAll() {
+            foreach (DataGridViewRow row in _gridView.Rows) {
+                foreach (DataGridViewCell cell in row.Cells) {
+                    if (cell is DataGridViewToggleButtonCell tbCell) {
+                        tbCell.ToggleButtonParentPanel.Dispose();
+                    }
+                }
+            }
+        }
+        private void ResetPageInfo() {
+            _countPerPage.Text = $"{_pageSize} 条/页";
+            _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+            _dataCountInfo.Text = $"共 {_dataSource.Count} 条";
+            _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+        }
+        private void ResizePageInfoContent(Label label, int newPageInfoHeight) {
+            label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
         #endregion
@@ -402,13 +416,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 // Whole page info content panel size
                 _pageInfoPanel.Size = new(Width - Padding.Size.Width, newPageInfoHeight);
                 // Calculate every part of page info
-                Font font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
                 // All labels
-                ResizePageInfoContent(_dataCountInfo, font, newPageInfoHeight);
-                ResizePageInfoContent(_countPerPage, font, newPageInfoHeight);
-                ResizePageInfoContent(_pageInfo, font, newPageInfoHeight);
-                ResizePageInfoContent(_jumpToText, font, newPageInfoHeight);
-                ResizePageInfoContent(_jumpToTextRight, font, newPageInfoHeight);
+                ResizePageInfoContent(_dataCountInfo, newPageInfoHeight);
+                ResizePageInfoContent(_countPerPage, newPageInfoHeight);
+                ResizePageInfoContent(_pageInfo, newPageInfoHeight);
+                ResizePageInfoContent(_jumpToText, newPageInfoHeight);
+                ResizePageInfoContent(_jumpToTextRight, newPageInfoHeight);
                 // All buttons
                 int buttonSide = (int) (newPageInfoHeight * .7);
                 _first.Size = new(buttonSide, buttonSide);
