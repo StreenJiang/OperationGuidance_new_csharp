@@ -81,7 +81,7 @@ namespace CustomLibrary.Panels.BaseClasses {
 
             // Check if needs scrollbar
             bool needsScrollBar = this._vScrollBar.Visible || this._alwaysShowScrollBar;
-            int innerHeight = _needsPadding ? Height - (WidgetUtils.ContentPadding(TopLevelControl.Width, TopLevelControl.Height) * 2 + 1) * 2 : Height;
+            int innerHeight = _needsPadding ? Height - (WidgetUtils.ContentInnerBorderMargin(TopLevelControl.Width, TopLevelControl.Height) * 2 + 1) * 2 : Height;
             if (this._contentPanel.CheckNeedsScrollBar(innerHeight)) {
                 this._vScrollBar.Visible = true;
                 needsScrollBar = true;

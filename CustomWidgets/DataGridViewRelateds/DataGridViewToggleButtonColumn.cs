@@ -50,12 +50,12 @@ namespace CustomLibrary.DataGridViewRelateds {
             _toggleButton = new() {
                 Parent = _toggleButtonParentPanel,
             };
-            _toggleButton.CheckedChanged += (sender, eventArgs) => {
-                Value = _toggleButton.Checked;
-            };
             // Events
             _toggleButtonParentPanel.SizeChanged += (sender, eventArgs) => {
                 _toggleButton.Size = _toggleButtonParentPanel.Size;
+            };
+            _toggleButton.CheckedChanged += (sender, eventArgs) => {
+                Value = _toggleButton.Checked;
             };
         }
         #endregion
@@ -84,11 +84,5 @@ namespace CustomLibrary.DataGridViewRelateds {
             }
         }
         #endregion
-    }
-
-    public class ToggleButtonPanel: Panel {
-        public DataGridViewTextBoxCell Cell { get; set; }
-        protected override void OnVisibleChanged(EventArgs e) {
-        }
     }
 }

@@ -2,7 +2,7 @@
 using Microsoft.Data.Sqlite;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
-using OperationGuidance_service.Controllers;
+using OperationGuidance_service.Services;
 using OperationGuidance_service.Database;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Models.DTOs;
@@ -10,8 +10,7 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
-namespace OperationGuidance_service.Apis
-{
+namespace OperationGuidance_service.Controllers {
     [Api]
     public sealed class OperationGuidanceApis {
         [Autowired]
@@ -33,6 +32,7 @@ namespace OperationGuidance_service.Apis
         [Autowired]
         public BrandService _brandService;
 
+        // 查询所有未被删除的产品任务列表
         public QueryProductMissionListRsp QueryProductMissionListRsp(QueryProductMissionListReq req) {
             // 先查询任务清单
             List<ProductMission> missions = _productMissionService.QueryList(req.UserId);
@@ -40,7 +40,7 @@ namespace OperationGuidance_service.Apis
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
             // 根据任务查询关联的其他表
-            for (int i = 0; i < missions.Count; i++) {
+            for (int i = 0 ; i < missions.Count ; i++) {
                 ProductMission mission = missions[i];
                 ProductMissionDTO productMissionDTO = productMissionDTOs[i];
 
@@ -63,7 +63,7 @@ namespace OperationGuidance_service.Apis
                     productMissionDTO.ProductSides = productSideDTOs;
 
                     // 循环产品面查询螺栓点位信息
-                    for (int j = 0; j < sides.Count; j++) {
+                    for (int j = 0 ; j < sides.Count ; j++) {
                         ProductSide side = sides[j];
                         ProductSideDTO productSideDTO = productSideDTOs[j];
 
@@ -75,14 +75,9 @@ namespace OperationGuidance_service.Apis
                             productSideDTO.Bolts = productBoltDTOs;
 
                             // 循环每个螺栓点位查询工具信息
-                            for (int k = 0; k < bolts.Count; k++) {
+                            for (int k = 0 ; k < bolts.Count ; k++) {
                                 int? toolId = bolts[k].tool_id;
                                 if (toolId != null) {
-                                    //Tool? tool = _toolService.FindById(toolId.Value);
-                                    //if (tool != null) {
-                                    //    productBoltDTOs[i].ToolName = tool.Name;
-                                    //    productBoltDTOs[i].ToolDescription = tool.Description;
-                                    //}
                                     Device? device = _deviceService.FindById(toolId.Value);
                                     if (device != null) {
                                         productBoltDTOs[i].tool_name = device.name;
@@ -152,7 +147,7 @@ namespace OperationGuidance_service.Apis
                     } else {
                         throw new DataException("Insert or Update ProductMission failed, please check.");
                     }
-                    
+
                     // 保存数据，结束事务
                     transaction.Commit();
                 } catch (Exception e) {
@@ -206,7 +201,7 @@ namespace OperationGuidance_service.Apis
                 bolt.side_id = sideId;
                 // 执行插入或者更新操作
                 bolt = _productBoltService.InsertOrUpdate(bolt);
-                
+
                 // 判断是否成功存入数据库
                 if (bolt != null) {
                     // 将保存好的数据放到rsp中
@@ -237,7 +232,7 @@ namespace OperationGuidance_service.Apis
             CommonUtils.ObjectConverter<Device, DeviceDTO>(devices, deviceDTOs);
 
             // 遍历Device清单，查询DeviceType、DeviceCategory、Brand
-            for (int i = 0; i < deviceDTOs.Count; i++) {
+            for (int i = 0 ; i < deviceDTOs.Count ; i++) {
                 Device device = devices[i];
                 DeviceDTO deviceDTO = deviceDTOs[i];
                 // Device type

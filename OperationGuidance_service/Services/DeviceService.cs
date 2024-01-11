@@ -1,10 +1,10 @@
 ﻿using OperationGuidance_service.Attributes;
-using OperationGuidance_service.Controllers.AbstractClasses;
+using OperationGuidance_service.Services.AbstractClasses;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Wrapper;
 
-namespace OperationGuidance_service.Controllers {
+namespace OperationGuidance_service.Services {
     [Service]
     public class DeviceService: AServiceBase<Device, DeviceWrapper> {
         public List<Device> QueryList(int userId) {

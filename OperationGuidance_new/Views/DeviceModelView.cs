@@ -1,25 +1,22 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
-using CustomLibrary.Utils;
+﻿using CustomLibrary.Panels;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView: CustomContentPanel {
+    public class DeviceModelView: CustomContentPanel {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
         // DataGridView panel
-        private DataGridViewGroup<OperationDataVO> _operationDataGridView;
+        private DataGridViewGroup<DeviceModelVO> _operationDataGridView;
         // Add new pop up form
         private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
-        public DataQueryView() {
+        public DeviceModelView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
             
@@ -33,22 +30,17 @@ namespace OperationGuidance_new.Views {
             _operationDataGridView.QueryData = (vo) => {
                 return new() {
                     new() {
-                        id = 111,
-                        procedure_set = 1,
-                        tightened_status = "拧紧完成 - 测试数据 - 查询以后",
+                        id = 1,
+                        name = "PF6000 - after searching",
+                        description = "这是就是个型号，创建新设备的时候可以用来选的（不是填的）",
+                        brand_name = "阿特拉斯",
+                        category_name = "控制器（工具）",
                     }
                 };
             };
-            CustomTextBoxGroup dateFitler = _operationDataGridView.AddTextBox("日期", false, (OperationDataVO vo, string? value) => {});
-            dateFitler.Separator = "~";
-            dateFitler.AddTextBox();
-            CommonButton commonButton = _operationDataGridView.AddExtraButton("导出");
-            commonButton.Click += (sender, eventArgs) => {
-                WidgetUtils.ShowNoticePopUp("Export button has not been set.");
-            };
-            _operationDataGridView.AddNewButtonVisible = false;
-            _operationDataGridView.ModifyButtonVisible = false;
-            _operationDataGridView.DeleteButtonVisible = false;
+            _operationDataGridView.AddTextBox("设备型号名称", false, (DeviceModelVO vo, string? value) => vo.name = value);
+            _operationDataGridView.AddComboBox("设备品牌", false, (DeviceModelVO vo, int? value) => vo.brand_id = value, new() { {"阿特拉斯", 1}, {"速动", 2}, {"安维能", 3}});
+            _operationDataGridView.AddComboBox("设备类型", false, (DeviceModelVO vo, int? value) => vo.category_id = value, new() { {"控制器（工具）", 1}, {"力臂", 2}});
 
             // Initialization
             InitializeGridView();
@@ -57,26 +49,27 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            List<OperationDataVO> vos = new() {
+            List<DeviceModelVO> vos = new() {
                 new() {
                     id = 1,
-                    procedure_set = 1,
-                    tightened_status = "拧紧完成",
+                    name = "PF6000",
+                    description = "这是高级型号",
+                    brand_name = "阿特拉斯",
+                    category_name = "控制器（工具）",
                 },
                 new() {
                     id = 2,
-                    procedure_set = 2,
-                    tightened_status = "拧紧失败",
+                    name = "PF4000",
+                    description = "这是低级型号",
+                    brand_name = "阿特拉斯",
+                    category_name = "控制器（工具）",
                 },
                 new() {
                     id = 3,
-                    procedure_set = 3,
-                    tightened_status = "拧紧完成",
-                },
-                new() {
-                    id = 4,
-                    procedure_set = 4,
-                    tightened_status = "拧紧出错",
+                    name = "xxxxxx",
+                    description = "这是低级型号",
+                    brand_name = "安维能",
+                    category_name = "力臂",
                 },
             };
             _operationDataGridView.DataSource = vos;

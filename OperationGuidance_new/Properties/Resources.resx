@@ -148,6 +148,9 @@
   <data name="bar_code_icon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\bar_code_icon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="brand_management" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\brand_management.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="button_close" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\button_close.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -169,11 +172,20 @@
   <data name="developer_choices" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\developer_choices.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="device_category" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\device_category.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="device_connected" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\device_connected.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="device_disconnected" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\device_disconnected.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="device_management" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\device_management.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="device_model" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\device_model.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="event_log" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\event_log.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -268,9 +280,6 @@
   <data name="software_license" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\software_license.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="station_settings" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Icons\station_settings.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="store_variables" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\store_variables.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -285,5 +294,8 @@
   </data>
   <data name="workplace" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\workplace.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="work_station" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\work_station.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

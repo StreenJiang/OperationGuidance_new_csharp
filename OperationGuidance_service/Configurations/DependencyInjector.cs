@@ -30,7 +30,7 @@ namespace OperationGuidance_service.Configurations {
                     }
                     IEnumerable<Attribute> attributes = type.GetCustomAttributes();
                     foreach (Attribute attribute in attributes) {
-                        if (attribute is ControllerAttribute || attribute is ServerAttribute) {
+                        if (attribute is ComponentAttribute) {
                             // TODO: should log info here
                             Services.TryAddSingleton(type);
                         }

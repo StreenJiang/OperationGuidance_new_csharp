@@ -109,6 +109,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _searchButton.Click += (sender, eventArgs) => {
                 QueryAndRefresh();
+                _voGridView.ResizeChildren();
             };
             _resetButton = new() {
                 Parent = _buttonsLeftInnerPanel,
@@ -209,14 +210,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #region Resize methods
         private void ResizeContents(Size contentSize) {
             // Filters panel
-            int lines = 1 + _filtersTablePanel.Controls.Count / _filtersTableColumnNums;
-            int filtersPanelHeight = _textOrComboHeight;
-            while (lines > 1) {
-                filtersPanelHeight += _textOrComboHeight + _contentVerticalGap;
-                lines--;
+            int filtersPanelHeight = 0;
+            if (_filtersTablePanel.Controls.Count > 0) {
+                int lines = (int) Math.Ceiling(_filtersTablePanel.Controls.Count / (decimal) _filtersTableColumnNums);
+                for (int i = 0; i < lines; i++) {
+                    filtersPanelHeight += _textOrComboHeight;
+                    if (i > 0) {
+                        filtersPanelHeight += _contentVerticalGap;
+                    }
+                }
+                _filtersTablePanel.Size = new(contentSize.Width, filtersPanelHeight);
+                _filtersTablePanel.Margin = new(0, 0, 0, _contentVerticalGap);
+                _filtersTablePanel.Visible = true;
+            } else {
+                _filtersTablePanel.Visible = false;
             }
-            _filtersTablePanel.Size = new(contentSize.Width, filtersPanelHeight);
-            _filtersTablePanel.Margin = new(0, 0, 0, _contentVerticalGap);
             // Buttons panel
             _buttonsPanel.Size = new(contentSize.Width, _buttonHeight);
             _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);

@@ -73,7 +73,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = this,
                 Margin = new(0),
                 Padding = new(0),
-                BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .85),
+                BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .9),
             };
             _pageInfoContentPanel = new() {
                 Parent = _pageInfoPanel,
@@ -137,6 +137,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             ResetPageInfo();
             // Data grid view
+            InitializeGridView();
+        }
+        #endregion
+
+        #region Initialization methods
+        private void InitializeGridView() {
             _gridView = new() {
                 Parent = this,
                 Margin = new(0),
@@ -156,6 +162,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 EnableHeadersVisualStyles = false,
             };
             _gridView.BringToFront();
+            _gridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .15);
+            _gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
+            _gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _gridView.ColumnHeadersDefaultCellStyle.BackColor;
+            _gridView.RowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F0F0F0");
+            _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .8);
+            _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkerColor(ColorTranslator.FromHtml("#E86C10"), .7);
+            _gridView.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEFEFE");
+            _gridView.BackgroundColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .975);
+            // Initialize column headers
+            InitializeColumnHeaders();
+            InitializeEventBindings();
+            InitializeOthers();
+        }
+        private void InitializeColumnHeaders() {
             DataGridViewColumn[] columnRange = {};
             Type type = typeof(V);
             List<PropertyInfo> props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
@@ -170,16 +190,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             columnName = property.Name;
                         }
                         if (gridColumn.CellType != null && gridColumn.CellType == typeof(ToggleButton)) {
-                            DataGridViewToggleButtonColumn column = new()
-                            {
+                            DataGridViewToggleButtonColumn column = new() {
+                                DataPropertyName = property.Name,
+                                HeaderText = columnName,
+                                ReadOnly = true,
+                            };
+                            columnRange = columnRange.Append(column).ToArray();
+                        } else if (gridColumn.CellType != null && gridColumn.CellType == typeof(Image)) {
+                            DataGridViewImageColumn column = new() {
                                 DataPropertyName = property.Name,
                                 HeaderText = columnName,
                                 ReadOnly = true,
                             };
                             columnRange = columnRange.Append(column).ToArray();
                         } else {
-                            DataGridViewTextBoxColumn column = new()
-                            {
+                            DataGridViewTextBoxColumn column = new() {
                                 DataPropertyName = property.Name,
                                 HeaderText = columnName,
                                 ReadOnly = true,
@@ -189,16 +214,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
             }
-            _gridView.ColumnHeadersDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#E86C10");
-            _gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
-            _gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _gridView.ColumnHeadersDefaultCellStyle.BackColor;
-            _gridView.RowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F0F0F0");
-            _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .6);
-            _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkerColor(ColorTranslator.FromHtml("#E86C10"), .8);
-            _gridView.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEFEFE");
-            _gridView.BackgroundColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .95);
             _gridView.Columns.AddRange(columnRange);
             _gridView.Columns[0].Frozen = true;
+        }
+        private void InitializeEventBindings() {
             HashSet<int> columnsPainted = new();
             HashSet<int> rowsPainted = new();
             _gridView.CellPainting += (sender, eventArgs) => {
@@ -209,9 +228,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     if (column.Frozen) {
                         // Forzen columns have different color
                         if (eventArgs.RowIndex % 2 != 0) {
-                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.LighterColor(_gridView.ColumnHeadersDefaultCellStyle.BackColor, .9);
+                            // Alternating rows
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkerColor(_gridView.AlternatingRowsDefaultCellStyle.BackColor, .1);
                         } else {
-                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.LighterColor(_gridView.ColumnHeadersDefaultCellStyle.BackColor, .85);
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkerColor(_gridView.RowsDefaultCellStyle.BackColor, .1);
                         }
                     }
                     if (column is DataGridViewToggleButtonColumn) {
@@ -220,14 +240,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         // If vo'id is null, then this row is just a blank row for displaying
                         if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell cell && cell.Value != null) {
                             // Set toggle state to button in case they're not matched
-                            cell.ToggleButton.Checked = (bool) cell.Value;
+                            if (cell.ToggleButton.Checked != (bool) cell.Value) {
+                                cell.ToggleButton.Checked = (bool) cell.Value;
+                            }
                             // Show cell in case it's Hiden
-                            cell.ToggleButtonParentPanel.Visible = true;
+                            if (!cell.ToggleButtonParentPanel.Visible) {
+                                cell.ToggleButtonParentPanel.Visible = true;
+                            }
                             // Resize
                             Size cellSize = cell.Size;
                             int panelHeight = (int) (cellSize.Height * .65);
                             int panelWidth = panelHeight * 3;
-                            cell.ToggleButtonParentPanel.Size = new(panelWidth, panelHeight);
+                            if (cell.ToggleButtonParentPanel.Size != cellSize) {
+                                cell.ToggleButtonParentPanel.Size = new(panelWidth, panelHeight);
+                            }
                             // Relocate
                             DataGridViewContentAlignment headerAlignment = DataGridViewContentAlignment.NotSet;
                             if (column.HeaderCell.Style.Alignment != DataGridViewContentAlignment.NotSet) {
@@ -236,25 +262,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                 headerAlignment = _gridView.ColumnHeadersDefaultCellStyle.Alignment;
                             }
                             Point cellPoint = _gridView.GetCellDisplayRectangle(eventArgs.ColumnIndex, eventArgs.RowIndex, true).Location;
+                            float paddingRatio = .05F;
                             switch (headerAlignment) {
                                 case DataGridViewContentAlignment.TopLeft:
+                                    cellPoint.X += (int) (column.Width * paddingRatio);
                                     break;
                                 default:
                                 case DataGridViewContentAlignment.MiddleLeft:
+                                    cellPoint.X += (int) (column.Width * paddingRatio);
                                     cellPoint.Y += (cellSize.Height - panelHeight) / 2;
                                     break;
                                 case DataGridViewContentAlignment.BottomLeft:
+                                    cellPoint.X += (int) (column.Width * paddingRatio);
                                     cellPoint.Y += cellSize.Height - panelHeight;
                                     break;
                                 case DataGridViewContentAlignment.TopRight:
-                                    cellPoint.X += cellSize.Width - panelWidth;
+                                    cellPoint.X += cellSize.Width - panelWidth - (int) (column.Width * paddingRatio);
                                     break;
                                 case DataGridViewContentAlignment.MiddleRight:
-                                    cellPoint.X += (cellSize.Width - panelWidth) / 2;
+                                    cellPoint.X += (cellSize.Width - panelWidth) / 2 - (int) (column.Width * paddingRatio);
                                     cellPoint.Y += (cellSize.Height - panelHeight) / 2;
                                     break;
                                 case DataGridViewContentAlignment.BottomRight:
-                                    cellPoint.X += cellSize.Width - panelWidth;
+                                    cellPoint.X += cellSize.Width - panelWidth - (int) (column.Width * paddingRatio);
                                     cellPoint.Y += cellSize.Height - panelHeight;
                                     break;
                                 case DataGridViewContentAlignment.TopCenter:
@@ -268,15 +298,36 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                     cellPoint.X += cellSize.Width - panelWidth;
                                     break;
                             }
-                            cell.ToggleButtonParentPanel.Location = cellPoint;
+                            if (cell.ToggleButtonParentPanel.Location != cellPoint) {
+                                cell.ToggleButtonParentPanel.Location = cellPoint;
+                            }
                         }
                     }
                 }
                 columnsPainted.Add(eventArgs.ColumnIndex);
                 rowsPainted.Add(eventArgs.RowIndex);
             };
+            Tuple<int, int> cellDirectionDown = new(-1, -1);
+            Tuple<int, int> cellDirectionUp = new(-1, -1);
+            bool rowChanged = false;
+            bool columnChanged = false;
+            _gridView.CellMouseDown += (sender, eventArgs) => locateCellClick(ref cellDirectionDown, eventArgs.RowIndex, eventArgs.ColumnIndex);
+            _gridView.CellMouseUp += (sender, eventArgs) => locateCellClick(ref cellDirectionUp, eventArgs.RowIndex, eventArgs.ColumnIndex);
+            void locateCellClick(ref Tuple<int, int> direction, int rowIndex, int columnIndex) {
+                if (direction.Item1 == -1 && direction.Item2 == -1) {
+                    rowChanged = true;
+                    columnChanged = true;
+                } else {
+                    if (direction.Item1 != rowIndex) {
+                        rowChanged = true;
+                    }
+                    if (direction.Item2 != columnIndex) {
+                        columnChanged = true;
+                    }
+                }
+                direction = new(rowIndex, columnIndex);
+            }
             _gridView.Paint += (sender, eventArgs) => {
-                // Hide ToggleButtonColumns if they don't show
                 if (columnsPainted.Count > 1) {
                     foreach (DataGridViewColumn column in _gridView.Columns) {
                         if (column is DataGridViewToggleButtonColumn && !columnsPainted.Contains(column.Index)) {
@@ -289,12 +340,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                     columnsPainted.Clear();
                 }
-                if (rowsPainted.Count > 1) {
+                if (rowsPainted.Count > 1 && !(rowChanged && _gridView.SelectedRows.Count == 1) && !(!rowChanged && columnChanged)) {
                     foreach (DataGridViewRow row in _gridView.Rows) {
-                        foreach (DataGridViewColumn column in _gridView.Columns) {
-                            if (column is DataGridViewToggleButtonColumn && !rowsPainted.Contains(row.Index)) {
-                                if (row.Cells[column.Index] is DataGridViewToggleButtonCell cell) {
-                                    cell.ToggleButtonParentPanel.Visible = false;
+                        if (!rowsPainted.Contains(row.Index)) {
+                            foreach (DataGridViewColumn column in _gridView.Columns) {
+                                if (column is DataGridViewToggleButtonColumn) {
+                                    if (row.Cells[column.Index] is DataGridViewToggleButtonCell cell) {
+                                        cell.ToggleButtonParentPanel.Visible = false;
+                                    }
                                 }
                             }
                         }
@@ -313,6 +366,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         _blankPanel.Visible = false;
                     }
                 }
+                rowChanged = false;
+                columnChanged = false;
             };
             _gridView.CellValueChanged += (sender, eventArgs) => {
                 DataGridViewCell cell = _gridView.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
@@ -321,10 +376,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.DataBindingComplete += (sender, eventArgs) => {
                 // Clear auto selection of first row
                 _gridView.ClearSelection();
-                // foreach (Control control in _gridView.Controls) {
-                //     if (control is ToggleButtonPanel) {
-                //     }
-                // }
             };
             _gridView.CellMouseEnter += (sender, eventArgs) => {
                 if (eventArgs.RowIndex > -1 && eventArgs.ColumnIndex > -1) {
@@ -340,9 +391,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.CellMouseMove += (sender, eventArgs) => {
                 if (eventArgs.RowIndex > -1) {
                     DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
-                    V vo = (V)row.DataBoundItem;
+                    V vo = (V) row.DataBoundItem;
                     if (vo.id != null) {
-                        row.DefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .8);
+                        row.DefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .9);
                     }
                 }
             };
@@ -354,15 +405,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.SelectionChanged += (sender, eventArgs) => {
                 if (_gridView.Focused) {
                     DataGridViewSelectedRowCollection selectedRows = _gridView.SelectedRows;
-                    for (int i = 0 ; i < selectedRows.Count ; i++) {
-                        DataGridViewRow row = selectedRows[i];
-                        V vo = (V)row.DataBoundItem;
+                    foreach (DataGridViewRow row in selectedRows) {
+                        V vo = (V) row.DataBoundItem;
                         if (vo.id == null) {
                             row.Selected = false;
                         }
                     }
                 }
             };
+        }
+        private void InitializeOthers() {
             _blankPanel = new() {
                 Parent = _gridView,
                 Margin = new(0),
@@ -396,11 +448,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
+            foreach (DataGridViewColumn column in _gridView.Columns) {
+                if (column.Width > columnMaxWidth) {
+                    if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None) {
+                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                    }
+                    column.Width = columnMaxWidth;
+                } else if (column.AutoSizeMode == DataGridViewAutoSizeColumnMode.None) {
+                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+                }
+            }
             // Grid header height
             int newHeaderHeight = WidgetUtils.GridViewHeaderRowHeight();
             if (newHeaderHeight >= 4) {
                 _gridView.ColumnHeadersHeight = newHeaderHeight;
                 _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
+                // Check if any image column exists
+                foreach (DataGridViewColumn column in _gridView.Columns) {
+                    if (column is DataGridViewImageColumn imageColumn) {
+                        // TODO
+                        System.Console.WriteLine("Need to resize image column here");
+                    }
+                }
             }
             // Grid content height
             int newContentHeight = WidgetUtils.GridViewContentRowHeight();

@@ -1,9 +1,9 @@
 ﻿using OperationGuidance_service.Attributes;
-using OperationGuidance_service.Controllers.AbstractClasses;
+using OperationGuidance_service.Services.AbstractClasses;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Wrapper;
 
-namespace OperationGuidance_service.Controllers {
+namespace OperationGuidance_service.Services {
     [Service]
     public class BrandService: AServiceBase<Brand, BrandWrapper> {
     }

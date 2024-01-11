@@ -10,22 +10,22 @@ namespace CustomLibrary.Buttons {
         private Color _linerColorRight;
 
         public Color LinerColorLeft {
-            get => this._linerColorLeft;
-            set => this._linerColorLeft = value;
+            get => _linerColorLeft;
+            set => _linerColorLeft = value;
         }
         public Color LinerColorRight {
-            get => this._linerColorRight;
-            set => this._linerColorRight = value;
+            get => _linerColorRight;
+            set => _linerColorRight = value;
         }
 
         public CustomChildMenuFirstButton(Color linerColorLeft, Color linerColorRight) {
-            this._linerColorLeft = linerColorLeft;
-            this._linerColorRight = linerColorRight;
+            _linerColorLeft = linerColorLeft;
+            _linerColorRight = linerColorRight;
         }
 
         protected override void PaintAfter(PaintEventArgs e) {
             // Check if is toggled
-            if (this.Toggled) {
+            if (Toggled) {
                 ExtraSize = new(ExtraSize.Width + BarThickness, ExtraSize.Height);
                 Rectangle rect = new(ClientRectangle.Location, ClientRectangle.Size);
                 if (ToggleBar && ToggleBarRect != null) {
@@ -54,33 +54,33 @@ namespace CustomLibrary.Buttons {
         }
 
         protected override void ResizeIconImage() {
-            if (this.Icon != null) {
+            if (Icon != null) {
                 int newImageSide = CalcNewImageSide();
-                this.ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(this.Icon, newImageSide, newImageSide);
+                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newImageSide, newImageSide);
                 // Recalculate image location
-                if (!this.OnlyIcon) {
-                    this.ImageX = (int) (this.Height * 0.45);
+                if (!OnlyIcon) {
+                    ImageX = (int) (Height * 0.04 + Width * .1);
                 } else {
-                    this.ImageX = (this.Width - newImageSide) / 2;
+                    ImageX = (Width - newImageSide) / 2;
                 }
-                this.ImageY = (this.Height - newImageSide) / 2;
+                ImageY = (Height - newImageSide) / 2;
             }
         }
 
         protected override void ResizeTextLabel() {
-            if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Height / 5.7F + 1.25F, FontStyle.Bold);
+            if (Label != null) {
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 5.7F + 1.25F, FontStyle.Bold);
                 // Recalculate label location
-                this.LabelX = (int) (this.Height * 0.95);
-                this.LabelY = (this.Height - this.Font.Height) / 2;
+                LabelX = (int) (Height * 0.45 + Width * .1);
+                LabelY = (Height - Font.Height) / 2;
             }
         }
 
         private int CalcNewImageSide() {
-            if (!this.OnlyIcon) {
-                return (int) (this.Height * _imageSideRatio);
+            if (!OnlyIcon) {
+                return (int) (Height * _imageSideRatio);
             } else {
-                return (int) (this.Height * _imageSideRatioOnlyIcon);
+                return (int) (Height * _imageSideRatioOnlyIcon);
             }
         }
     }

@@ -1,25 +1,22 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
-using CustomLibrary.Utils;
+﻿using CustomLibrary.Panels;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView: CustomContentPanel {
+    public class BrandManagementView: CustomContentPanel {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
         // DataGridView panel
-        private DataGridViewGroup<OperationDataVO> _operationDataGridView;
+        private DataGridViewGroup<BrandVO> _operationDataGridView;
         // Add new pop up form
         private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
-        public DataQueryView() {
+        public BrandManagementView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
             
@@ -33,22 +30,14 @@ namespace OperationGuidance_new.Views {
             _operationDataGridView.QueryData = (vo) => {
                 return new() {
                     new() {
-                        id = 111,
-                        procedure_set = 1,
-                        tightened_status = "拧紧完成 - 测试数据 - 查询以后",
+                        id = 1,
+                        name = "安维能 - after searching",
+                        description = "xxxxxxxxxxxxxxxx",
                     }
                 };
             };
-            CustomTextBoxGroup dateFitler = _operationDataGridView.AddTextBox("日期", false, (OperationDataVO vo, string? value) => {});
-            dateFitler.Separator = "~";
-            dateFitler.AddTextBox();
-            CommonButton commonButton = _operationDataGridView.AddExtraButton("导出");
-            commonButton.Click += (sender, eventArgs) => {
-                WidgetUtils.ShowNoticePopUp("Export button has not been set.");
-            };
-            _operationDataGridView.AddNewButtonVisible = false;
-            _operationDataGridView.ModifyButtonVisible = false;
-            _operationDataGridView.DeleteButtonVisible = false;
+            _operationDataGridView.AddTextBox("品牌名称", false, (BrandVO vo, string? value) => vo.name = value);
+            _operationDataGridView.AddTextBox("品牌描述", false, (BrandVO vo, string? value) => vo.description = value);
 
             // Initialization
             InitializeGridView();
@@ -57,26 +46,21 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            List<OperationDataVO> vos = new() {
+            List<BrandVO> vos = new() {
                 new() {
                     id = 1,
-                    procedure_set = 1,
-                    tightened_status = "拧紧完成",
+                    name = "安维能",
+                    description = "xxxxxxxxxxxxxxxx",
                 },
                 new() {
                     id = 2,
-                    procedure_set = 2,
-                    tightened_status = "拧紧失败",
+                    name = "阿特拉斯",
+                    description = "sadfasdfasdfasdfasdf",
                 },
                 new() {
                     id = 3,
-                    procedure_set = 3,
-                    tightened_status = "拧紧完成",
-                },
-                new() {
-                    id = 4,
-                    procedure_set = 4,
-                    tightened_status = "拧紧出错",
+                    name = "速动",
+                    description = "zx.gj;ojklj;lj;lj",
                 },
             };
             _operationDataGridView.DataSource = vos;

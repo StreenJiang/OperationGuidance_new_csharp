@@ -5,13 +5,13 @@ using CustomLibrary.Panels;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
-using OperationGuidance_service.Apis;
+using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views
 {
-    public class StationSettingsView: CustomContentPanel {
+    public class WorkStationView: CustomContentPanel {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -22,7 +22,7 @@ namespace OperationGuidance_new.Views
         #endregion
 
         #region Constructors
-        public StationSettingsView() {
+        public WorkStationView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
             

@@ -5,7 +5,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Wrapper.AbstractClasses;
 
-namespace OperationGuidance_service.Controllers.AbstractClasses {
+namespace OperationGuidance_service.Services.AbstractClasses {
     [Service]
     public abstract class AServiceBase<T, E> where T : AEntityBase, new() where E : AWrapperBase<T> {
         [Autowired]
@@ -35,6 +35,14 @@ namespace OperationGuidance_service.Controllers.AbstractClasses {
                 return null;
             }
             return t;
+        }
+
+        public T? InsertOrUpdate(T entity) {
+            if (entity.id > 0) {
+                return UpdateEntity(entity);
+            } else {
+                return AddEntity(entity);
+            }
         }
 
         public List<T> FindBySqlCondition(string sqlCondition) {

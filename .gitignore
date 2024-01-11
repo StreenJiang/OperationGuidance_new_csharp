@@ -365,4 +365,4 @@ FodyWeavers.xsd
 # Ignore all *.db files
 *.db
 # Ignore db files in directory bellow
-OperationGuidance_new/Database/
+# OperationGuidance_new/Database/

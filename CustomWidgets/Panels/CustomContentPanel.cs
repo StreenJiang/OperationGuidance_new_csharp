@@ -21,7 +21,7 @@ namespace CustomLibrary.Panels {
             if (_penBorderColor != null) {
                 int padding = 0;
                 if (_autoPadding) {
-                    padding = WidgetUtils.ContentPadding(this.TopLevelControl.Width, this.TopLevelControl.Height);
+                    padding = WidgetUtils.ContentInnerBorderMargin(this.TopLevelControl.Width, this.TopLevelControl.Height);
                 }
                 // Recalcuate rectangle
                 _innerBorderRect = new(padding, padding, this.Width - padding * 2 - 1, this.Height - padding * 2 - 1);

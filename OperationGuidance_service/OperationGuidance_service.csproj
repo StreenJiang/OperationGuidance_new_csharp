@@ -13,10 +13,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\Interfaces\" />
+    <Folder Include="Services\Interfaces\" />
     <Folder Include="Database\sqls\" />
     <Folder Include="Wrapper\Interfaces\" />
   </ItemGroup>

@@ -8,6 +8,7 @@ using OperationGuidance_new.Configs;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
+        #region Fields
         private readonly float _contentHGapRatio = 0.025F;
         private readonly float _contentVGapRatio = 0.05F;
         private readonly float _contentHPaddingRatio = 0.15F;
@@ -17,19 +18,31 @@ namespace OperationGuidance_new.Views {
         private int _contentVGap;
         private int _contentHPadding;
         private int _contentVPadding;
-
         // Resolution options content panel
         private CustomContentPanel _resolutionPanel;
         private TitlePanel _resolutionTitlePanel;
         private CustomContentPanel _resolutionContentPanel;
         private CustomComboBoxGroup<KeyValuePair<Size, SizeRatioNRectColor>> _resolutionOptionsBox;
         private CommonButton _resolutionConfirmButton;
+        // Storage path panel
+        private CustomContentPanel _storagePanel;
+        private TitlePanel _storageTitlePanel;
+        private CustomContentPanel _storageContentPanel;
+        private CustomTextBoxGroup _storageTextBox;
+        #endregion
 
+        #region Constructors
         public VariableSettingsView() {
+            // Default values
             FlowDirection = FlowDirection.TopDown;
-            InitializeResolutionPanel();
-        }
 
+            // Initilizations
+            InitializeResolutionPanel();
+            InitializeStoragePanel();
+        }
+        #endregion
+
+        #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Control mainParent = WidgetUtils.MainPanel.Parent;
             _titleHeight = WidgetUtils.ContentTitle();
@@ -37,9 +50,26 @@ namespace OperationGuidance_new.Views {
             _contentVGap = (int) (mainParent.Height * _contentVGapRatio);
             _contentHPadding = (int) (mainParent.Width * .015);
             _contentVPadding = (int) (mainParent.Height * .03);
-            ResizeResolutionPanel();
-        }
 
+            // Resizes
+            ResizeResolutionPanel();
+            ResizeStoragePanel();
+        }
+        public override void VisibleToTrue() {
+            base.VisibleToTrue();
+            // Reset current resolution
+            List<KeyValuePair<Size, SizeRatioNRectColor>> items = _resolutionOptionsBox.Items;
+            Control mainParent = WidgetUtils.MainPanel.Parent;
+            for (int i = 0; i < items.Count; i++) {
+                KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
+                if (item.Key == mainParent.Size) {
+                    _resolutionOptionsBox.SetDefault(i);
+                }
+            }
+        }
+        #endregion
+
+        #region Initialization methods
         private void InitializeResolutionPanel() {
             _resolutionPanel = new() {
                 Parent = this,
@@ -59,6 +89,7 @@ namespace OperationGuidance_new.Views {
                 BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
                 NameAlignment = HorizontalAlignment.Right,
+                Ratio = 7.25,
             };
             Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
             Size screenSize = WidgetUtils.GetScreenResolution();
@@ -102,7 +133,32 @@ namespace OperationGuidance_new.Views {
                 }
             };
         }
+        private void InitializeStoragePanel() {
+            _storagePanel = new() {
+                Parent = this,
+                FlowDirection = FlowDirection.TopDown,
+            };
+            _storageTitlePanel = new("存储参数") {
+                Parent = _storagePanel,
+                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
+            };
+            _storageContentPanel = new() {
+                Parent = _storagePanel,
+            };
+            _storageTextBox = new("数据存储路径") {
+                Parent = _storageContentPanel,
+                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                NameAlignment = HorizontalAlignment.Right,
+                Ratio = 7.25,
+            };
+            _storageTextBox.GetTextBox(0).Box.Text = Directory.GetCurrentDirectory();
+        }
+        #endregion
 
+        #region Resize methods
         private void ResizeResolutionPanel() {
             // Resize title
             _resolutionTitlePanel.Size = new(Width, _titleHeight);
@@ -121,22 +177,20 @@ namespace OperationGuidance_new.Views {
             // Resize outer panel
             _resolutionPanel.Size = new(Width, _resolutionTitlePanel.Height + _resolutionContentPanel.Height);
         }
-
-        public override void VisibleToTrue() {
-            base.VisibleToTrue();
-            // Reset current resolution
-            List<KeyValuePair<Size, SizeRatioNRectColor>> items = _resolutionOptionsBox.Items;
-            Control mainParent = WidgetUtils.MainPanel.Parent;
-            for (int i = 0; i < items.Count; i++) {
-                KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
-                if (item.Key == mainParent.Size) {
-                    _resolutionOptionsBox.SetDefault(i);
-                }
-            }
+        private void ResizeStoragePanel() {
+            // Resize title
+            _storageTitlePanel.Size = new(Width, _titleHeight);
+            // Resize Content
+            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int contentHeight = boxHeight + _contentVPadding * 2;
+            _storageContentPanel.Size = new(Width, contentHeight);
+            _storageContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
+            // Resize box and button
+            _storageTextBox.Size = new((int) (Width - _resolutionContentPanel.Padding.Size.Width - _contentHGap) / 2, boxHeight);
+            _storageTextBox.Margin = new(0, 0, _contentHGap / 2, 0);
+            // Resize outer panel
+            _storagePanel.Size = new(Width, _resolutionTitlePanel.Height + _resolutionContentPanel.Height);
         }
-
-        public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            return false;
-        }
+        #endregion
     }
 }

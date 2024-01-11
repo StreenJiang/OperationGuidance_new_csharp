@@ -5,6 +5,7 @@ namespace CustomLibrary.TextBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomTextBoxGroup: UserControl {
         private bool _enabled;
+        private bool _readOnly;
         private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;
@@ -24,6 +25,13 @@ namespace CustomLibrary.TextBoxes {
         private Color? _borderColorError;
 
         public new bool Enabled {
+            get => _readOnly;
+            set {
+                _readOnly = value;
+                SetTextBoxesProperties((textBox) => textBox.ReadOnly = value);
+            }
+        }
+        public bool ReadOnly { 
             get => _enabled;
             set {
                 _enabled = value;

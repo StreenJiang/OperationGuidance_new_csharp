@@ -163,6 +163,16 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap brand_management {
+            get {
+                object obj = ResourceManager.GetObject("brand_management", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap button_close {
             get {
                 object obj = ResourceManager.GetObject("button_close", resourceCulture);
@@ -233,6 +243,16 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap device_category {
+            get {
+                object obj = ResourceManager.GetObject("device_category", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap device_connected {
             get {
                 object obj = ResourceManager.GetObject("device_connected", resourceCulture);
@@ -246,6 +266,26 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap device_disconnected {
             get {
                 object obj = ResourceManager.GetObject("device_disconnected", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap device_management {
+            get {
+                object obj = ResourceManager.GetObject("device_management", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap device_model {
+            get {
+                object obj = ResourceManager.GetObject("device_model", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -563,16 +603,6 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap station_settings {
-            get {
-                object obj = ResourceManager.GetObject("station_settings", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap store_variables {
             get {
                 object obj = ResourceManager.GetObject("store_variables", resourceCulture);
@@ -606,6 +636,16 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap variable_settings {
             get {
                 object obj = ResourceManager.GetObject("variable_settings", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap work_station {
+            get {
+                object obj = ResourceManager.GetObject("work_station", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -154,7 +154,12 @@ namespace CustomLibrary.Utils {
 
         // Content configs 
         public static int ContentTitle() => (int) (MainPanel.Height * .052);
-        public static int ContentPadding(int width, int height) => (width + height) / 350;
+        public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
+        public static Padding ContentPadding() {
+            int hPadding = (int) (MainPanel.Width * .015);
+            int vPadding = (int) (MainPanel.Height * .03);
+            return new(hPadding, vPadding, hPadding, vPadding);
+        }
         public static int TextOrComboBoxHeight() => (int) (MainPanel.Height * .036);
         public static int CommonButtonHeight() => (int) (MainPanel.Height * .036);
         public static int BorderThickness() {
@@ -177,6 +182,7 @@ namespace CustomLibrary.Utils {
         // Grid view configs
         public static int GridViewHeaderRowHeight() => (int) (MainPanel.Height * .036);
         public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .034);
+        public static int GridViewContentColumnMaxWidth() => (int) (MainPanel.Width * .2);
         public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);
 
         /// <summary>
