@@ -4,6 +4,7 @@ using CustomLibrary.Panels.BaseClasses;
 namespace CustomLibrary.Panels
 {
     public class CustomChildMenuFirstPanel: CustomMenuPanelBase {
+        #region Fields
         private const float _childFirstButtonHeightRatio = 0.07F;
         private bool _needFoldButton;
         private bool _isFolded;
@@ -12,7 +13,10 @@ namespace CustomLibrary.Panels
         private const float _foldButtonWidthRatio = 0.35F;
         private const float _foldButtonHeightRatio = 0.035F;
         private int _allMenuButtonHeight;
+        private UserInfoPanel? _userInfoPanel;
+        #endregion
 
+        #region Properties
         public bool NeedFoldButton {
             get => _needFoldButton;
             set {
@@ -45,13 +49,54 @@ namespace CustomLibrary.Panels
             get => _foldButton;
             set => _foldButton = value;
         }
+        #endregion
 
+        #region Constructors
         public CustomChildMenuFirstPanel() : base() {
             _needFoldButton = false;
             _isFolded = false;
             _allMenuButtonHeight = 0;
         }
+        #endregion
 
+        #region Methods
+        public void ShowUserInfoPanel(string userName) {
+            if (_userInfoPanel != null) {
+                _userInfoPanel.Show();
+            } else {
+                _userInfoPanel = new() {
+                    Parent = this,
+                    UserName = userName,
+                };
+                _userInfoPanel.BringToFront();
+            }
+        }
+        public void HideUserInfoPanel() {
+            if (_userInfoPanel != null) {
+                _userInfoPanel.Hide();
+            }
+        }
+        private bool CheckFoldButtonPanel() {
+            if (_needFoldButton) {
+                if (_foldButtonPanel == null) {
+                    throw new NullReferenceException("FoldButtonPanel can not be null if NeedFoldButton is true.");
+                }
+                return true;
+            }
+            return false;
+        }
+        private bool CheckFoldButton() {
+            if (_needFoldButton) {
+                if (_foldButton == null) {
+                    throw new NullReferenceException("FoldButton can not be null if NeedFoldButton is true.");
+                }
+                return true;
+            }
+            return false;
+        }
+        #endregion
+
+        #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
             if (CheckFoldButtonPanel() && CheckFoldButton()) {
@@ -59,14 +104,12 @@ namespace CustomLibrary.Panels
                 _foldButton.Location = new(_foldButtonPanel.Width - _foldButton.Width, _foldButtonPanel.Height - _foldButton.Height);
             }
         }
-
         protected override void OnControlAdded(ControlEventArgs e) {
             base.OnControlAdded(e);
             if (CheckFoldButtonPanel()) {
                 _foldButtonPanel.SendToBack();
             }
         }
-
         // Ratio of height of main menu panel in main form
         protected override float GetResizeRatio() {
             if (!this.OnlyIconMode) {
@@ -75,8 +118,12 @@ namespace CustomLibrary.Panels
                 return 0.05F;
             }
         }
-
         protected override void ResizeButtons() {
+            // Check if is user info panel, if is then resize the user info panel block
+            if (_userInfoPanel != null) {
+                _userInfoPanel.Size = new(Width, Width);
+            }
+            // Resize buttons
             Size newButtonSize = new(this.Width, (int) (this.Height * _childFirstButtonHeightRatio));
             _allMenuButtonHeight = 0;
             foreach (Control button in this.Controls) {
@@ -93,25 +140,6 @@ namespace CustomLibrary.Panels
                 _allMenuButtonHeight += newButtonSize.Height;
             }
         }
-
-        private bool CheckFoldButtonPanel() {
-            if (_needFoldButton) {
-                if (_foldButtonPanel == null) {
-                    throw new NullReferenceException("FoldButtonPanel can not be null if NeedFoldButton is true.");
-                }
-                return true;
-            }
-            return false;
-        }
-
-        private bool CheckFoldButton() {
-            if (_needFoldButton) {
-                if (_foldButton == null) {
-                    throw new NullReferenceException("FoldButton can not be null if NeedFoldButton is true.");
-                }
-                return true;
-            }
-            return false;
-        }
+        #endregion
     }
 }

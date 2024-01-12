@@ -8,6 +8,8 @@ using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 using CustomLibrary.Configs;
+using OperationGuidance_service.Models.DTOs;
+using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomContentPanel {
@@ -45,7 +47,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
             };
-            _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
+            // _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
 
             // Initialization
             InitializeGridView();
@@ -269,7 +271,20 @@ namespace OperationGuidance_new.Views {
 
     public class AddNewPopUpForm: CustomPopUpForm {
         #region Fields
-        // private 
+        private WorkstationDTO dto = new();
+        private readonly int _tableColumnsCount = 2;
+        // Work station panel
+        private CustomContentPanel _workStationPanel;
+        private TableLayoutPanel _workStationTablePanel;
+        private CustomTextBoxGroup _workStationNameTextBox;
+        // Tool panel
+        private CustomContentPanel _toolPanel;
+        private TitlePanel _toolTitlePanel;
+        private TableLayoutPanel _toolTablePanel;
+        // Arm panel
+        private CustomContentPanel _armPanel;
+        private TitlePanel _armTitlePanel;
+        private TableLayoutPanel _armTablePanel;
         #endregion
     }
 }

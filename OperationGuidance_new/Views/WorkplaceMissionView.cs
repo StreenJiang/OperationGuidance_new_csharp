@@ -450,6 +450,7 @@ namespace OperationGuidance_new.Views {
                                 switchBtn.Click += (s, e) => {
                                     if (CurrentWorkingButton != null) {
                                         CurrentWorkingButton.BackColor = BoltButton.WAITING;
+                                        CurrentWorkingButton.BoltStatus = BoltStatus.DEFAULT;
                                         CurrentWorkingButton.StopFlicker();
                                     }
                                     boltBtn.BackColor = BoltButton.WORKING;
@@ -653,6 +654,11 @@ namespace OperationGuidance_new.Views {
                 changeCurrentPageAndInvalidate();
             };
             void changeCurrentPageAndInvalidate() {
+                if (CurrentWorkingButton != null) {
+                    CurrentWorkingButton.BackColor = BoltButton.WAITING;
+                    CurrentWorkingButton.BoltStatus = BoltStatus.DEFAULT;
+                    CurrentWorkingButton.StopFlicker();
+                }
                 int newCurrentPage = _productSideIndex + 1;
                 _first.CurrentPage = newCurrentPage;
                 _backward.CurrentPage = newCurrentPage;
@@ -689,7 +695,7 @@ namespace OperationGuidance_new.Views {
                     deviceBlock = _deviceBlocks[deviceDTO.device_category_id];
                 } else {
                     deviceBlock = new DeviceBlock(
-ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
+                        ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
                     ) {
                         Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
                         Parent = _bottom,
@@ -1034,8 +1040,6 @@ ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
             get => _boltStatus;
             set {
                 _boltStatus = value;
-                InvokeResizing();
-                InvokePainting();
                 switch (value) {
                     case BoltStatus.TIGHTENING:
                         StartTimer();
@@ -1058,9 +1062,12 @@ ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
                         _statusDesc.Visible = true;
                         break;
                     default:
+                        StopTimer();
                         _statusDesc.Visible = false;
                         break;
                 }
+                InvokeResizing();
+                InvokePainting();
             }
         }
 

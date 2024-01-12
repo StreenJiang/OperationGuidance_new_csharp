@@ -169,15 +169,40 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 NumberOnly = numberOnly,
             };
             TextBox box = boxGroup.GetTextBox(0).Box;
-            box.TextChanged += (sender, eventArgs) => {
-                try {
-                    V? value = (V?) Convert.ChangeType(box.Text, typeof(V));
-                    propertySetter(_filterParametersVO, value);
-                } catch (InvalidCastException e) {
-                    System.Console.WriteLine($"Can not convert string to type<{typeof(V)}>. Exception: {e}");
-                }
-            };
+            V? value = default(V);
+            box.TextChanged += (sender, eventArgs) => HandleTextChanged(box, out value);
+            propertySetter(_filterParametersVO, value);
             return boxGroup;
+        }
+        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?, V?> propertiesSetter) {
+            CustomTextBoxGroup boxGroup = new(boxName) {
+                Parent = _filtersTablePanel,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+                Separator = separator,
+                NumberOnly = numberOnly,
+            };
+            // Need two boxes
+            boxGroup.AddTextBox();
+            // Handle values
+            V? value1 = default(V);
+            V? value2 = default(V);
+            TextBox box1 = boxGroup.GetTextBox(0).Box;
+            TextBox box2 = boxGroup.GetTextBox(1).Box;
+            box1.TextChanged += (sender, eventArgs) => HandleTextChanged(box1, out value1);
+            box2.TextChanged += (sender, eventArgs) => HandleTextChanged(box2, out value2);
+            propertiesSetter(_filterParametersVO, value1, value2);
+            return boxGroup;
+        }
+        private void HandleTextChanged<V>(TextBox box, out V? value) {
+            value = default(V);
+            try {
+                value = (V?) Convert.ChangeType(box.Text, typeof(V));
+            } catch (InvalidCastException e) {
+                System.Console.WriteLine($"Can not convert string to type<{typeof(V)}>. Exception: {e}");
+            }
         }
         public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> boxGroup = new(boxName) {

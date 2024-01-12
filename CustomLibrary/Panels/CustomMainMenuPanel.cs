@@ -1,6 +1,5 @@
 ﻿using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
-using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
 namespace CustomLibrary.Panels
@@ -9,11 +8,14 @@ namespace CustomLibrary.Panels
         private Image? _mainMenuLogo;
         private Image? _mainMenuLogoShowing;
         private Point? _mainMenuLogoLocation;
-
-        
+ 
         public Image? MainMenuLogo {
             get => _mainMenuLogo;
             set => _mainMenuLogo = value;
+        }
+
+        public CustomMainMenuPanel() {
+            WidgetUtils.MakeControlDraggable(this, WidgetUtils.MainPanel.Parent);
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

@@ -242,5 +242,30 @@ namespace CustomLibrary.Utils {
         public static void ShowNoticePopUp(string message) {
             MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+
+        private static Point controlOriginalLocation;
+        private static Point mouseDownLocation;
+        private static bool mouseLeftDown = false;
+        public static void MakeControlDraggable(Control dragControl, Control moveControl) {
+            dragControl.MouseDown += (sender, eventArgs) => {
+                if (!mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
+                    mouseDownLocation = eventArgs.Location;
+                    controlOriginalLocation = moveControl.Location;
+                    mouseLeftDown = true;
+                }
+            };
+            dragControl.MouseMove += (sender, eventArgs) => {
+                if (mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
+                    Point locationOffsetExtra = new(eventArgs.Location.X - mouseDownLocation.X, eventArgs.Location.Y - mouseDownLocation.Y);
+                    controlOriginalLocation.Offset(locationOffsetExtra);
+                    moveControl.Location = controlOriginalLocation;
+                }
+            };
+            dragControl.MouseUp += (sender, eventArgs) => {
+                if (mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
+                    mouseLeftDown = false;
+                }
+            };
+        }
     }
 }

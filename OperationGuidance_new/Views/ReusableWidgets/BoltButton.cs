@@ -65,6 +65,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public void StopFlicker() {
             _buttonTimer.Stop();
+
+            if (_workProcessPanel == null) {
+                throw new NullReferenceException("WorkProcessPanel should be set, it's null now.");
+            }
+            _workProcessPanel.BoltDTO = _boltDTO;
+            _workProcessPanel.Status = ProductMissionStatus.READY;
+            _workProcessPanel.BoltStatus = _boltStatus;
             Visible = true;
         }
 

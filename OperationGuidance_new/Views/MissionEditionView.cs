@@ -398,8 +398,10 @@ namespace OperationGuidance_new.Views {
                 _leftBottomContentPanel.MouseUp += (sender, eventArgs) => {
                     if (_mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
                         Point locationOffset = _currentProductImageFile.LocationOffset;
-                        locationOffset.X += _currentProductImageFile.LocationOffsetMoving.X;
-                        locationOffset.Y += _currentProductImageFile.LocationOffsetMoving.Y;
+                        locationOffset.Offset(_currentProductImageFile.LocationOffsetMoving);
+                        // Use Offset method to replace two lines code as bellow
+                        // locationOffset.X += _currentProductImageFile.LocationOffsetMoving.X;
+                        // locationOffset.Y += _currentProductImageFile.LocationOffsetMoving.Y;
                         _currentProductImageFile.LocationOffset = locationOffset;
                         _currentProductImageFile.LocationOffsetMoving = new(0, 0);
                         Cursor = Cursors.Arrow;

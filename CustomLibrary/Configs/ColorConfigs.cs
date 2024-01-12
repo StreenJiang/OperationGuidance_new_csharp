@@ -43,6 +43,7 @@
         public static Color COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND => COLOR_EEEEEE;
         public static Color COLOR_MISSION_EDITION_BUTTON_BACK => COLOR_DDDDDD;
         public static Color COLOR_TITLE_UNDERLINE => COLOR_BBBBBB;
+        public static Color COLOR_USER_INFO_NAME => COLOR_E86C10;
 
 
         // Color contants definition

@@ -39,9 +39,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
             };
-            CustomTextBoxGroup dateFitler = _operationDataGridView.AddTextBox("日期", false, (OperationDataVO vo, string? value) => {});
-            dateFitler.Separator = "~";
-            dateFitler.AddTextBox();
+            CustomTextBoxGroup dateFitler = _operationDataGridView.AddSeparateTextBox("日期", "~", false, (OperationDataVO vo, string? value1, string? value2) => {});
             CommonButton commonButton = _operationDataGridView.AddExtraButton("导出");
             commonButton.Click += (sender, eventArgs) => {
                 WidgetUtils.ShowNoticePopUp("Export button has not been set.");

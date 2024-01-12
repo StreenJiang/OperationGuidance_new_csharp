@@ -1,4 +1,5 @@
 ﻿using CustomLibrary.Panels;
+using CustomLibrary.Utils;
 using OperationGuidance_new.Views;
 
 namespace OperationGuidance_new.Configs {
@@ -15,6 +16,7 @@ namespace OperationGuidance_new.Configs {
                 {Key_Toggle_Button, true},
                 {Key_Click, null},
                 {Key_View_Name, typeof(CustomTabPanel)},
+                {Key_Is_User_Info_panel, false},
                 {
                     Key_Children, new List<Dictionary<string, object?>>(){
                         new() {
@@ -44,6 +46,7 @@ namespace OperationGuidance_new.Configs {
                 {Key_Toggle_Button, true},
                 {Key_Click, null},
                 {Key_View_Name, typeof(WorkplaceMissionView)},
+                {Key_Is_User_Info_panel, false},
                 {Key_Children, null},
             },
             new() {
@@ -54,6 +57,7 @@ namespace OperationGuidance_new.Configs {
                 {Key_Toggle_Button, true},
                 {Key_Click, null},
                 {Key_View_Name, typeof(DataQueryView)},
+                {Key_Is_User_Info_panel, false},
                 {Key_Children, null},
             },
             new() {
@@ -64,6 +68,7 @@ namespace OperationGuidance_new.Configs {
                 {Key_Icon, Properties.Resources.event_log},
                 {Key_Click, null},
                 {Key_View_Name, typeof(EventLogView)},
+                {Key_Is_User_Info_panel, false},
                 {Key_Children, null},
             },
             new() {
@@ -74,6 +79,7 @@ namespace OperationGuidance_new.Configs {
                 {Key_Toggle_Button, true},
                 {Key_Click, null},
                 {Key_View_Name, typeof(CustomTabPanel)},
+                {Key_Is_User_Info_panel, false},
                 {
                     Key_Children, new List<Dictionary<string, object?>>() {
                         new() {
@@ -158,8 +164,37 @@ namespace OperationGuidance_new.Configs {
                 {Key_Icon, Properties.Resources.user_info},
                 {Key_Toggle_Button, true},
                 {Key_Click, null},
-                {Key_View_Name, typeof(UserInfoView)},
-                {Key_Children, null},
+                {Key_View_Name, typeof(CustomTabPanel)},
+                {Key_Is_User_Info_panel, true},
+                {
+                    Key_Children, new List<Dictionary<string, object?>>(){
+                        new() {
+                            {Key_ID, 601},
+                            {Key_Name, "用户个人信息"},
+                            {Key_Icon, Properties.Resources.mission_list},
+                            {Key_Toggle_Button, true},
+                            {Key_Click, null},
+                            {Key_View_Name, typeof(UserInfoView)},
+                        },
+                        new() {
+                            {Key_ID, 602},
+                            {Key_Name, "注销账户"},
+                            {Key_Icon, Properties.Resources.mission_edition},
+                            {Key_Toggle_Button, false},
+                            {
+                                Key_Click, new EventHandler(
+                                    (sender, EventArgs) => {
+                                        DialogResult result = MessageBox.Show(null, "确定要注销当前账户吗？", "账户注销", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                                        if (result == DialogResult.Yes) {
+                                            WidgetUtils.ShowNoticePopUp("注销账户成功！");
+                                        }
+                                    }
+                                )
+                            },
+                            {Key_View_Name, null},
+                        },
+                    }
+                },
             },
             new() {
                 {Key_ID, 700},
@@ -190,5 +225,6 @@ namespace OperationGuidance_new.Configs {
         public const string Key_View_Name = "view_name";
         public const string Key_Children = "children";
         public const string Key_Toggle_Button = "toggle_button";
+        public const string Key_Is_User_Info_panel = "is_user_info_panel";
     }
 }

@@ -106,7 +106,7 @@ namespace OperationGuidance_new {
                         }
                         contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
                         mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
+                            ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
                         ) {
                             Name = contentPanelTemp.Name
                         };
@@ -124,6 +124,9 @@ ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
                         childMenuPanel.FoldButton.FoldedIcon = Properties.Resources.navigator_fold;
                         childMenuPanel.FoldButton.UnfoldedIcon = Properties.Resources.navigator_unfold;
                         childMenuPanel.FoldButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
+                        if ((bool) mainMenuConfig[SystemConfigs.Key_Is_User_Info_panel]) {
+                            childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName());
+                        }
                         //childMenuPanel.OnlyIconMode = true;
                         // childContentPanel
                         childContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
@@ -152,7 +155,7 @@ ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
                                     }
                                     childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
                                     childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
+                                        ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
                                     ) {
                                         Name = childContentPanelTemp.Name
                                     };

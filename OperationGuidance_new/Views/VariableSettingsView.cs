@@ -43,7 +43,7 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            Control mainParent = WidgetUtils.MainPanel.Parent;
+            Control mainParent = WidgetUtils.MainPanel;
             _titleHeight = WidgetUtils.ContentTitle();
             _contentHGap = (int) (mainParent.Height * _contentHGapRatio);
             _contentVGap = (int) (mainParent.Height * _contentVGapRatio);
