@@ -53,7 +53,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Height / 11 + 1.25F, FontStyle.Bold);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .15F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
                 int newImageSide = CalcNewImageSide();
                 using (Graphics g = CreateGraphics()) {

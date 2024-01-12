@@ -69,9 +69,9 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (Label != null) {
-                Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 5.7F + 1.25F, FontStyle.Bold);
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .275F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
-                LabelX = (int) (Height * 0.45 + Width * .1);
+                LabelX = (int) (Height * 0.475 + Width * .1);
                 LabelY = (Height - Font.Height) / 2;
             }
         }
