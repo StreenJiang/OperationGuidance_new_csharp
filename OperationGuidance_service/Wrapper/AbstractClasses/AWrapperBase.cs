@@ -1,5 +1,4 @@
 ﻿using Dapper;
-using Microsoft.Data.Sqlite;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
@@ -7,13 +6,14 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.SQLite;
 using System.Reflection;
 
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
         private string _tabelName;
-        private SqliteConnection? _conn;
+        private SQLiteConnection? _conn;
 
         public string TabelName { get => _tabelName; }
 
@@ -21,8 +21,14 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             _tabelName = GetTableName();
         }
 
-        public void UseConnection(SqliteConnection conn) {
+        public void UseConnection(SQLiteConnection conn) {
             _conn = conn;
+        }
+        public void ReleaseConnection() {
+            if (_conn != null) { 
+                _conn.Dispose();
+                _conn = null;
+            }
         }
 
         public T? Add(T entity) {
@@ -31,7 +37,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             string newEntitySql = GenerateQueryNewestSql(entity);
             System.Console.WriteLine("newEntitySql: " + newEntitySql);
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
                     return conn.QueryFirst<T>(newEntitySql);
                 }
@@ -43,12 +49,10 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public int AddBatch(List<T> entities) {
-            T entity = entities[0];
             string sql = GenerateInsertSql();
             System.Console.WriteLine("sql: " + sql);
-            string newEntitySql = GenerateQueryNewestSql(entity);
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     return conn.Execute(sql, entities);
                 }
             } else {
@@ -67,7 +71,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             IEnumerable<T> enumerable;
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     enumerable = conn.Query<T>(sql);
                 }
             } else {
@@ -81,7 +85,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             IEnumerable<T> enumerable;
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     enumerable = conn.Query<T>(sql, @params);
                 }
             } else {
@@ -98,7 +102,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             int rows;
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     rows = conn.Execute(sql, entity);
                 }
             } else {
@@ -117,7 +121,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             int rows;
             if (_conn == null) {
-                using (SqliteConnection conn = DbConnector.GetConnection()) {
+                using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     rows = conn.Execute(sql, entities);
                 }
             } else {

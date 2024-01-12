@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using Microsoft.Data.Sqlite;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Services;
@@ -9,6 +8,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
+using System.Data.SQLite;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -116,9 +116,9 @@ namespace OperationGuidance_service.Controllers {
         public AddOrUpdateProductMissionRsp AddOrUpdateProductMission(AddOrUpdateProductMissionReq req) {
             AddOrUpdateProductMissionRsp rsp = new();
             // 使用同一个connection确保当前所有操作都在同一个事务下
-            using SqliteConnection conn = DbConnector.GetConnection();
+            using SQLiteConnection conn = DbConnector.GetConnection();
             // 开启事务
-            using (SqliteTransaction transaction = conn.BeginTransaction()) {
+            using (SQLiteTransaction transaction = conn.BeginTransaction()) {
                 _productMissionService.UseConnection(conn);
                 _productSideService.UseConnection(conn);
                 _productBoltService.UseConnection(conn);
@@ -156,6 +156,10 @@ namespace OperationGuidance_service.Controllers {
                     rsp.RsponseMessage = e.Message;
 
                     transaction.Rollback();
+                } finally { 
+                    _productMissionService.ReleaseConnection();
+                    _productSideService.ReleaseConnection();
+                    _productBoltService.ReleaseConnection();
                 }
             }
             return rsp;

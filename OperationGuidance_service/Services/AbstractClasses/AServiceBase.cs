@@ -1,9 +1,9 @@
-﻿using Microsoft.Data.Sqlite;
-using OperationGuidance_service.Attributes;
+﻿using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Wrapper.AbstractClasses;
+using System.Data.SQLite;
 
 namespace OperationGuidance_service.Services.AbstractClasses {
     [Service]
@@ -13,8 +13,11 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             set; get;
         }
 
-        public void UseConnection(SqliteConnection conn) {
+        public void UseConnection(SQLiteConnection conn) {
             Wrapper.UseConnection(conn);
+        }
+        public void ReleaseConnection() { 
+            Wrapper.ReleaseConnection();
         }
 
         public T? AddEntity(T entity) {
