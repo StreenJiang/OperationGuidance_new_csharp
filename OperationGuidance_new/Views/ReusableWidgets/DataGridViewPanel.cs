@@ -6,7 +6,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Attributes;
-using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
@@ -62,7 +61,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // Self properties
             AutoPadding = false;
             Padding = new(1);
-            PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
+            PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER;
             // Data source
             _bindingSource = new();
             _dataSource = new();
@@ -73,7 +72,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = this,
                 Margin = new(0),
                 Padding = new(0),
-                BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .9),
+                BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9),
             };
             _pageInfoContentPanel = new() {
                 Parent = _pageInfoPanel,
@@ -125,8 +124,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _jumpToBox = new() {
                 Parent = _pageInfoContentPanel,
                 NumberOnly = true,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             _jumpToTextRight = new() {
                 Parent = _pageInfoContentPanel,
@@ -162,14 +161,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 EnableHeadersVisualStyles = false,
             };
             _gridView.BringToFront();
-            _gridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .15);
+            _gridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .15);
             _gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
             _gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _gridView.ColumnHeadersDefaultCellStyle.BackColor;
             _gridView.RowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F0F0F0");
-            _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .8);
-            _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkerColor(ColorTranslator.FromHtml("#E86C10"), .7);
+            _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .8);
+            _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkenColor(ColorTranslator.FromHtml("#E86C10"), .7);
             _gridView.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEFEFE");
-            _gridView.BackgroundColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .975);
+            _gridView.BackgroundColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .975);
             // Initialize column headers
             InitializeColumnHeaders();
             InitializeEventBindings();
@@ -229,9 +228,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         // Forzen columns have different color
                         if (eventArgs.RowIndex % 2 != 0) {
                             // Alternating rows
-                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkerColor(_gridView.AlternatingRowsDefaultCellStyle.BackColor, .1);
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkenColor(_gridView.AlternatingRowsDefaultCellStyle.BackColor, .1);
                         } else {
-                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkerColor(_gridView.RowsDefaultCellStyle.BackColor, .1);
+                            row.Cells[eventArgs.ColumnIndex].Style.BackColor = WidgetUtils.DarkenColor(_gridView.RowsDefaultCellStyle.BackColor, .1);
                         }
                     }
                     if (column is DataGridViewToggleButtonColumn) {
@@ -393,7 +392,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
                     V vo = (V) row.DataBoundItem;
                     if (vo.id != null) {
-                        row.DefaultCellStyle.BackColor = WidgetUtils.LighterColor(ColorTranslator.FromHtml("#E86C10"), .9);
+                        row.DefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9);
                     }
                 }
             };
@@ -450,7 +449,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
             foreach (DataGridViewColumn column in _gridView.Columns) {
-                if (column.Width > columnMaxWidth) {
+                if (column.Width == columnMaxWidth) {
+                    continue;
+                } else if (column.Width > columnMaxWidth) {
                     if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None) {
                         column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                     }

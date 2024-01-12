@@ -134,17 +134,17 @@ namespace OperationGuidance_new.Views {
             };
             TopBar topBar = new(missionDTO.name) {
                 Parent = page,
-                BackColor = ConfigsVariables.COLOR_MAIN_MENU_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
                 MainMenuLogo = Properties.Resources.logo,
                 Margin = new Padding(0),
                 PanelDirection = MenuPanelDirection.TOP,
-                TitleColor = ConfigsVariables.COLOR_WORKPLACE_TITLE,
+                TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
             };
             WorkplaceContent workplaceContent = new(missionDTO) {
                 Parent = page,
-                BackColor = ConfigsVariables.COLOR_MAIN_FORM_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
                 Margin = new Padding(0),
-                PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             page.ResizeChildren();
             // Hide main panel
@@ -333,39 +333,39 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
                 Padding = new(0),
                 FlowDirection = FlowDirection.RightToLeft,
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
 
             _leftTop = new() {
                 Parent = _left,
                 Padding = new(0),
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             _leftBottom = new() {
                 Parent = _left,
                 Padding = new(0),
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
 
             _rightTop = new() {
                 Parent = _right,
                 Padding = new(0),
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             _rightMiddle = new() {
                 Parent = _right,
                 Padding = new(0),
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             _rightBottom = new() {
                 Parent = _right,
                 Padding = new(0),
-                OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
         }
 
         private void InitializeLeftTop() {
-            _leftTop.BackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND;
+            _leftTop.BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
             _barCodeImage = Properties.Resources.bar_code_icon;
             _barCodePictureBox = new() {
                 Parent = _leftTop,
@@ -374,10 +374,10 @@ namespace OperationGuidance_new.Views {
             };
             _barCodeTextBox = new() {
                 Parent = _leftTop,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                DisabledBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                DisabledBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             string note = ConfigsVariables.BAR_CODE_NOTE;
             EventFuncs.CurrentActiveControl = _leftTop;
@@ -391,7 +391,7 @@ namespace OperationGuidance_new.Views {
                 if (_barCodePopUpForm == null) {
                     _barCodePopUpForm = new(note, _barCodeTextBox) {
                         Title = "录入条码",
-                        BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
+                        BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                     };
                     _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
                         if (!_barCodePopUpForm.TextBox.IsError) {
@@ -416,7 +416,7 @@ namespace OperationGuidance_new.Views {
                 Parent = _leftBottom,
                 Margin = new(1, 1, 0, 0),
                 Padding = new(0),
-                BackColor = ConfigsVariables.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
             };
             _missionImages = new();
             _productImageFiles = new();
@@ -443,7 +443,7 @@ namespace OperationGuidance_new.Views {
                             boltBtn.Click += (s, e) => {
                                 _boltPopUpForm = new(boltDTO) {
                                     Title = boltDTO.serial_num + " - " + boltDTO.name,
-                                    BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
+                                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                                 };
                                 // 添加按钮
                                 CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
@@ -528,7 +528,7 @@ namespace OperationGuidance_new.Views {
                 Padding = new(0),
                 Text = "扭矩（N*m）",
                 TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ConfigsVariables.COLOR_WORKPLACE_DATA_TITLE,
+                BackColor = ColorConfigs.COLOR_WORKPLACE_DATA_TITLE,
             };
             _torque = new() {
                 Parent = _rightMiddle,
@@ -543,7 +543,7 @@ namespace OperationGuidance_new.Views {
                 Padding = new(0),
                 Text = "角度（°）",
                 TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ConfigsVariables.COLOR_WORKPLACE_DATA_TITLE,
+                BackColor = ColorConfigs.COLOR_WORKPLACE_DATA_TITLE,
             };
             _angle = new() {
                 Parent = _rightMiddle,
@@ -564,8 +564,8 @@ namespace OperationGuidance_new.Views {
                 Margin = new(1),
                 Padding = new(0),
                 TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ConfigsVariables.COLOR_WORKPLACE_SIDE_TITLE_TEXT,
-                BackColor = ConfigsVariables.COLOR_WORKPLACE_SIDE_TITLE_BACK,
+                ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_TEXT,
+                BackColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_BACK,
             };
             _smallSideImage = new() {
                 Parent = _rightBottom,
@@ -613,7 +613,7 @@ namespace OperationGuidance_new.Views {
                 Margin = new(0),
                 Padding = new(0),
                 TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ConfigsVariables.COLOR_WORKPLACE_SIDE_PAGE_TEXT,
+                ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_PAGE_TEXT,
             };
             _pageInfo.Text = currentPage + "/" + totalPages;
             _buttonPanel = new() {
@@ -689,14 +689,14 @@ namespace OperationGuidance_new.Views {
                     deviceBlock = _deviceBlocks[deviceDTO.device_category_id];
                 } else {
                     deviceBlock = new DeviceBlock(
-                        ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
+ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
                     ) {
                         Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
                         Parent = _bottom,
                         Margin = new(0),
                         Padding = new(0),
                         ToggledButton = true,
-                        ToggledColor = ConfigsVariables.COLOR_DEVICE_BLOCK_TOGGLED,
+                        ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
                     };
                     deviceBlock.Click += (sender, eventArgs) => {
                         try {
@@ -959,10 +959,10 @@ namespace OperationGuidance_new.Views {
             _initStr = initStr;
             _textBox = new() {
                 Parent = ContentPanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                BackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 NumberValidate = true,
             };
             _textBox.GotFocus += (s, e) => {
@@ -1043,7 +1043,7 @@ namespace OperationGuidance_new.Views {
                         if (_boltDTO != null) {
                             _statusDesc.Text = _statusDesc.Text.Replace("%", _boltDTO.serial_num + "");
                         }
-                        _statusDesc.ForeColor = ConfigsVariables.COLOR_WORKING_PROCESS_GREEN;
+                        _statusDesc.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                         _statusDesc.BackColor = BackColor;
                         _statusDesc.Visible = true;
                         break;
@@ -1053,7 +1053,7 @@ namespace OperationGuidance_new.Views {
                         if (_boltDTO != null) {
                             _statusDesc.Text = _statusDesc.Text.Replace("%", _boltDTO.serial_num + "");
                         }
-                        _statusDesc.ForeColor = ConfigsVariables.COLOR_WORKING_PROCESS_GREEN;
+                        _statusDesc.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                         _statusDesc.BackColor = BackColor;
                         _statusDesc.Visible = true;
                         break;
@@ -1072,14 +1072,14 @@ namespace OperationGuidance_new.Views {
         public WorkingProcessPanel() : base() {
             _clockwiseIcon = Properties.Resources.processing_clockwise;
             _anticlockwiseIcon = Properties.Resources.processing_anticlockwise;
-            _correctColor = ConfigsVariables.COLOR_WORKING_PROCESS_GREEN;
-            _errorColor = ConfigsVariables.COLOR_WORKING_PROCESS_RED;
+            _correctColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
+            _errorColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
             _statusTxt = new() {
                 Parent = this,
                 Margin = new(0),
                 Padding = new(0),
                 TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ConfigsVariables.COLOR_WORKING_PROCESS_WHITE,
+                ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_WHITE,
                 BackColor = _correctColor,
                 Text = "就绪",
             };
@@ -1276,7 +1276,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public DeviceDetailPopUpForm(string categoryName) : base() {
-            BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
 
             _statusIconConnected = Properties.Resources.device_connected;
@@ -1398,7 +1398,7 @@ namespace OperationGuidance_new.Views {
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
         public DeviceOperationPopUpForm(CustomPopUpForm upperForm, string titleInfo) : base() {
-            BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER;
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "手动操作工具（" + titleInfo + "）";
 
             _upperForm = upperForm;
@@ -1410,16 +1410,16 @@ namespace OperationGuidance_new.Views {
             };
 
             _stationTextBox = new("站点") {
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             _procedureTextBox = new("程序") {
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             _stationTextBox.SetValue(0, "1");
             _procedureTextBox.SetValue(0, "1");

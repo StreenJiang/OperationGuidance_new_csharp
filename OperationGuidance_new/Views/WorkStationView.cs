@@ -2,15 +2,14 @@
 using CustomLibrary.Events;
 using CustomLibrary.Forms;
 using CustomLibrary.Panels;
-using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
+using CustomLibrary.Configs;
 
-namespace OperationGuidance_new.Views
-{
+namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomContentPanel {
         #region Fields
         // Apis
@@ -212,7 +211,7 @@ namespace OperationGuidance_new.Views
         private void OpenAddNewPopUpForm(Action callBackAction) {
             _addNewPopUpForm = new() {
                 Title = "新增站点",
-                BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             // 添加按钮
             CommonButton confirmButton = _addNewPopUpForm.AddButton("保存");

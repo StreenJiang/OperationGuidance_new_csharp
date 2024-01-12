@@ -53,7 +53,7 @@ namespace CustomLibrary.TextBoxes {
         public override Color BackColor {
             get => base.BackColor;
             set {
-                _disabledBackColor = WidgetUtils.DarkerColor(value, .1);
+                _disabledBackColor = WidgetUtils.DarkenColor(value, .1);
                 if (!_enabled) {
                     base.BackColor = _disabledBackColor;
                     _box.BackColor = _disabledBackColor;
@@ -108,7 +108,7 @@ namespace CustomLibrary.TextBoxes {
                 _errorProvider = errorProvider;
             }
             _originalBackColor = BackColor;
-            _disabledBackColor = WidgetUtils.DarkerColor(BackColor, .1);
+            _disabledBackColor = WidgetUtils.DarkenColor(BackColor, .1);
 
             _box = new() {
                 Parent = this,
@@ -205,22 +205,35 @@ namespace CustomLibrary.TextBoxes {
         }
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
-            Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
-                    _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
             int boxWidthTemp = Width - Padding.Size.Width;
-            // Recalculate size and location of box
-            _box.Font = Font;
-            int hPadding = (int) (Height / 2.6);
-            int vPadding = Margin.Top;
-            _boxOriginalWidth = boxWidthTemp - hPadding * 2;
-            ResetErrorIcon();
-            if (_isError) {
-                _box.Width = _boxErrorWidth;
+            if (!Multiline) {
+                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
+                        _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
+                // Recalculate size and location of box
+                _box.Font = Font;
+                int hPadding = (int) (Height / 2.6);
+                int vPadding = Margin.Top;
+                _boxOriginalWidth = boxWidthTemp - hPadding * 2;
+                ResetErrorIcon();
+                if (_isError) {
+                    _box.Width = _boxErrorWidth;
+                } else {
+                    _box.Width = _boxOriginalWidth;
+                }
+                _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
+                _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
             } else {
-                _box.Width = _boxOriginalWidth;
+                int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
+                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .53F, 
+                        _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
+                // Recalculate size and location of box
+                _box.Font = Font;
+                int hPadding = (int) (textBoxHeight / 4);
+                int vPadding = (int) (textBoxHeight / 4);
+                _box.Size = new(boxWidthTemp - hPadding * 2, Height - vPadding * 2);
+                _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
+                _box.Location = new(hPadding, vPadding);
             }
-            _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
-            _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {

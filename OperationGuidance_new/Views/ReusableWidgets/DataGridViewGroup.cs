@@ -1,9 +1,9 @@
 using System.Reflection;
 using CustomLibrary.Buttons;
+using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Configs;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
@@ -102,6 +102,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Padding = new(0),
                 Dock = DockStyle.Right,
             };
+            _extraButtons = new();
             // Buttons
             _searchButton = new() {
                 Parent = _buttonsLeftInnerPanel,
@@ -161,10 +162,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
             CustomTextBoxGroup boxGroup = new(boxName) {
                 Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 NumberOnly = numberOnly,
             };
             TextBox box = boxGroup.GetTextBox(0).Box;
@@ -181,10 +182,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> boxGroup = new(boxName) {
                 Parent = _filtersTablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             boxGroup.ItemSelected += () => {
                 propertySetter(_filterParametersVO, boxGroup.Value);
@@ -197,10 +198,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return boxGroup;
         }
         public CommonButton AddExtraButton(string buttonName) {
-            return new() {
+            CommonButton extraButton = new() {
                 Parent = _buttonsRightInnerPanel,
                 Label = buttonName,
             };
+            _extraButtons.Add(extraButton);
+            return extraButton;
         }
         private void QueryAndRefresh() {
             _voGridView.DataSource = _queryData(_filterParametersVO);
@@ -229,7 +232,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _buttonsPanel.Size = new(contentSize.Width, _buttonHeight);
             _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);
             // Grid panel
-            _voGridView.Size = new(contentSize.Width, contentSize.Height - filtersPanelHeight - _buttonHeight - _contentVerticalGap * 2);
+            int gridHeight = contentSize.Height - filtersPanelHeight - _buttonHeight - _contentVerticalGap;
+            if (_filtersTablePanel.Visible) {
+                gridHeight -= _contentVerticalGap;
+            }
+            _voGridView.Size = new(contentSize.Width, gridHeight);
         }
         private void ResizeFiltersPanel(Size contentSize) {
             // Width of box
@@ -250,15 +257,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         private void ResizeButtonsPanel() {
             // Width of button 
-            int buttonHeight = (int)(_buttonHeight * 2.5);
+            int buttonWidth = (int)(_buttonHeight * 2.5);
             // Resize buttons
             // Left panel width
             int leftPanelWidht = 0;
             ControlCollection listLeft = _buttonsLeftInnerPanel.Controls;
             for (int i = 0 ; i < listLeft.Count ; i++) {
                 Control control = listLeft[i];
-                control.Size = new(buttonHeight, _buttonHeight);
-                leftPanelWidht += buttonHeight;
+                control.Size = new(buttonWidth, _buttonHeight);
+                leftPanelWidht += buttonWidth;
                 // Calculate margin
                 if (i != 0) {
                     control.Margin = new(_contentHerticalGap, 0, 0, 0);
@@ -270,8 +277,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int count = 0;
             foreach (Control control in _buttonsRightInnerPanel.Controls) {
                 if (control.Visible) {
-                    control.Size = new(buttonHeight, _buttonHeight);
-                    rightPanelWidht += buttonHeight;
+                    control.Size = new(buttonWidth, _buttonHeight);
+                    rightPanelWidht += buttonWidth;
                     // Calculate margin
                     if (count != 0) {
                         control.Margin = new(_contentHerticalGap, 0, 0, 0);

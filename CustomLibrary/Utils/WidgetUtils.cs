@@ -219,7 +219,7 @@ namespace CustomLibrary.Utils {
             return (int) (realHeight * sliderRatio / (1 - sliderRatio));
         }
 
-        public static Color LighterColor(Color color, double ratio) {
+        public static Color LightColor(Color color, double ratio) {
             if (ratio < 0 || ratio > 1) {
                 throw new ArgumentException("Ratio must be between 0 ~ 1");
             }
@@ -229,7 +229,7 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static Color DarkerColor(Color color, double ratio) {
+        public static Color DarkenColor(Color color, double ratio) {
             if (ratio < 0 || ratio > 1) {
                 throw new ArgumentException("Ratio must be between 0 ~ 1");
             }
@@ -240,7 +240,7 @@ namespace CustomLibrary.Utils {
         }
 
         public static void ShowNoticePopUp(string message) {
-            MessageBox.Show(null, message, "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

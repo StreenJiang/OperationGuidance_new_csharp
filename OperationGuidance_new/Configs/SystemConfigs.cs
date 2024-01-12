@@ -1,13 +1,11 @@
 ﻿using CustomLibrary.Panels;
 using OperationGuidance_new.Views;
 
-namespace OperationGuidance_new.Configs
-{
+namespace OperationGuidance_new.Configs {
     public static class SystemConfigs {
         // System menus
-        public static List<Dictionary<string, object?>> MenuCongfigs {
-            get => _menusConfig;
-        }
+        public static List<Dictionary<string, object?>> MenuCongfigs => _menusConfig;
+
         private static readonly List<Dictionary<string, object?>> _menusConfig = new() {
             new() {
                 {Key_ID, 100},
@@ -126,14 +124,14 @@ namespace OperationGuidance_new.Configs
                             {Key_Click, null},
                             {Key_View_Name, typeof(BrandManagementView)},
                         },
-                        new() {
-                            {Key_ID, 507},
-                            {Key_Name, "开发者选项"},
-                            {Key_Icon, Properties.Resources.developer_choices},
-                            {Key_Toggle_Button, true},
-                            {Key_Click, null},
-                            {Key_View_Name, typeof(DeveloperChoicesView)},
-                        },
+                        // new() {
+                        //     {Key_ID, 507},
+                        //     {Key_Name, "开发者选项"},
+                        //     {Key_Icon, Properties.Resources.developer_choices},
+                        //     {Key_Toggle_Button, true},
+                        //     {Key_Click, null},
+                        //     {Key_View_Name, typeof(DeveloperChoicesView)},
+                        // },
                         new() {
                             {Key_ID, 508},
                             {Key_Name, "软件许可"},

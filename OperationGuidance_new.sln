@@ -5,7 +5,7 @@ VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OperationGuidance_new", "OperationGuidance_new\OperationGuidance_new.csproj", "{2C17C31C-9BCD-48BE-ADA5-3F7146581664}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CustomLibrary", "CustomWidgets\CustomLibrary.csproj", "{39449F62-225E-4CA9-9CA4-492956D9E807}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CustomLibrary", "CustomLibrary\CustomLibrary.csproj", "{39449F62-225E-4CA9-9CA4-492956D9E807}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OperationGuidance_service", "OperationGuidance_service\OperationGuidance_service.csproj", "{B0FC8814-7425-4F76-BA19-83594684F173}"
 EndProject

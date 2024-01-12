@@ -268,7 +268,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             // If disabled, then color should be lighter
             if (!this.Enabled) {
                 if (this._disableColor == null) {
-                    this._disableColor = WidgetUtils.DarkerColor(this.BackColor, .1);
+                    this._disableColor = WidgetUtils.DarkenColor(this.BackColor, .1);
                 }
                 this._enabledSaveBackColor = this.BackColor;
                 this.BackColor = this._disableColor.Value;

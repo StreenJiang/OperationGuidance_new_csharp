@@ -168,10 +168,10 @@ namespace CustomLibrary.Buttons {
             Color offBackColor = _offBackColor;
             Color offToggleColor = _offToggleColor;
             if (!Enabled) {
-                onBackColor = WidgetUtils.LighterColor(_onBackColor, _disabledDilutionRatio);
-                onToggleColor = WidgetUtils.LighterColor(_onToggleColor, _disabledDilutionRatio);
-                offBackColor = WidgetUtils.LighterColor(_offBackColor, _disabledDilutionRatio);
-                offToggleColor = WidgetUtils.LighterColor(_offToggleColor, _disabledDilutionRatio);
+                onBackColor = WidgetUtils.LightColor(_onBackColor, _disabledDilutionRatio);
+                onToggleColor = WidgetUtils.LightColor(_onToggleColor, _disabledDilutionRatio);
+                offBackColor = WidgetUtils.LightColor(_offBackColor, _disabledDilutionRatio);
+                offToggleColor = WidgetUtils.LightColor(_offToggleColor, _disabledDilutionRatio);
             }
             if (Checked) {
                 if (_isSolid) {
@@ -180,7 +180,7 @@ namespace CustomLibrary.Buttons {
                         g.DrawString(_onText, Font, new SolidBrush(onToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LighterColor(Parent.BackColor, _disabledDilutionRatio));
+                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(onBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
@@ -196,7 +196,7 @@ namespace CustomLibrary.Buttons {
                         g.DrawString(_offText, Font, new SolidBrush(offToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LighterColor(Parent.BackColor, _disabledDilutionRatio));
+                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
                     g.DrawRectangle(new(offBackColor, _toggleBorderThickness), new(borderLocation, borderSize));

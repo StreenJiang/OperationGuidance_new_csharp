@@ -4,7 +4,6 @@ using CustomLibrary.Constants;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Configs;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
@@ -77,17 +76,17 @@ namespace OperationGuidance_new.Views {
             };
             _resolutionTitlePanel = new("分辨率") {
                 Parent = _resolutionPanel,
-                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
             };
             _resolutionContentPanel = new() {
                 Parent = _resolutionPanel,
             };
             _resolutionOptionsBox = new("分辨率") {
                 Parent = _resolutionContentPanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 NameAlignment = HorizontalAlignment.Right,
                 Ratio = 7.25,
             };
@@ -140,17 +139,17 @@ namespace OperationGuidance_new.Views {
             };
             _storageTitlePanel = new("存储参数") {
                 Parent = _storagePanel,
-                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
             };
             _storageContentPanel = new() {
                 Parent = _storagePanel,
             };
             _storageTextBox = new("数据存储路径") {
                 Parent = _storageContentPanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 NameAlignment = HorizontalAlignment.Right,
                 Ratio = 7.25,
             };

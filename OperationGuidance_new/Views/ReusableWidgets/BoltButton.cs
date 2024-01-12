@@ -1,16 +1,15 @@
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
-using OperationGuidance_new.Configs;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Drawing.Drawing2D;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltButton: CommonButtonBase {
-        public static Color WAITING = ConfigsVariables.COLOR_WORKPLACE_BOLT_BG_WAITING;
-        public static Color WORKING = ConfigsVariables.COLOR_WORKPLACE_BOLT_BG_WORKING;
-        public static Color DONE = ConfigsVariables.COLOR_WORKPLACE_BOLT_BG_DONE;
-        public static Color ERROR = ConfigsVariables.COLOR_WORKPLACE_BOLT_BG_ERROR;
+        public static Color WAITING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
+        public static Color WORKING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WORKING;
+        public static Color DONE = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_DONE;
+        public static Color ERROR = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_ERROR;
 
         private int _borderSize;
         private ProductBoltDTO _boltDTO;
@@ -49,8 +48,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _moved = false;
 
             BlockHoverUp = true;
-            BackColor = ConfigsVariables.COLOR_WORKPLACE_BOLT_BG_WAITING;
-            ForeColor = ConfigsVariables.COLOR_WORKPLACE_BOLT_NUMBER;
+            BackColor = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
+            ForeColor = ColorConfigs.COLOR_WORKPLACE_BOLT_NUMBER;
         }
 
         public void StartFlicker() {

@@ -8,7 +8,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
@@ -132,31 +131,31 @@ namespace OperationGuidance_new.Views {
                 _sideTitlePanel = new() {
                     Parent = _left,
                     Padding = new(0),
-                    BackColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
+                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
                 _leftBottom = new() {
                     Parent = _left,
                     Padding = new(0),
-                    OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
+                    OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
                 };
 
                 _right = new() {
                     Parent = this,
                     Padding = new(0),
                     FlowDirection = FlowDirection.TopDown,
-                    OuterPenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER,
-                    ForeColor = ConfigsVariables.COLOR_MISSION_EDITION_TEXT,
-                    BackColor = ConfigsVariables.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
+                    OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                    ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
+                    BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
                 };
             }
 
             private void InitializeLeftTop() {
                 _missionName = new("任务名称") {
                     Parent = _leftTop,
-                    BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                    ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                    BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                    BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                    BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                    ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                    BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                    BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                     NameAlignment = HorizontalAlignment.Left,
                 };
                 CustomTextBox textBox = _missionName.GetTextBox(0);
@@ -278,7 +277,7 @@ namespace OperationGuidance_new.Views {
                     Parent = _leftBottom,
                     Margin = new(1, 1, 0, 0),
                     Padding = new(0),
-                    BackColor = ConfigsVariables.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
+                    BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
                 };
                 BindEventsForLeftBottomContentPanel();
                 GenerateSideButtons();
@@ -431,9 +430,9 @@ namespace OperationGuidance_new.Views {
 
                 _addNewSideButton = new("新增") {
                     Parent = _sideTitlePanel,
-                    BackColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_NEW,
-                    ForeColor = ConfigsVariables.COLOR_MISSION_EDITION_TEXT,
-                    ToggleBarColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
+                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_NEW,
+                    ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
+                    ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
                 };
                 _addNewSideButton.SingleClickDelegate += (eventArgs) => {
                     ProductSideDTO sideDTO = new() {
@@ -462,8 +461,8 @@ namespace OperationGuidance_new.Views {
                 SideButton sideButton = new(sideDTO, _leftBottomContentPanel, productImageFile, productImageFileNew) {
                     Parent = _sideTitlePanel,
                     BackColor = Color.Transparent,
-                    ForeColor = ConfigsVariables.COLOR_MISSION_EDITION_TEXT,
-                    ToggleBarColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
+                    ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
+                    ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
                 };
                 sideButton.SingleClickDelegate += (eventArgs) => SideButonClick(sideButton);
                 sideButton.DoubleClickDelegate += (eventArgs) => {
@@ -557,7 +556,7 @@ namespace OperationGuidance_new.Views {
             private void OpenBoltPopUpForm(ProductBoltDTO boltDTO) {
                 _boltPopUpForm = new(boltDTO) {
                     Title = boltDTO.serial_num + " - " + boltDTO.name,
-                    BorderColor = ConfigsVariables.COLOR_POP_UP_BORDER,
+                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
@@ -600,7 +599,7 @@ namespace OperationGuidance_new.Views {
                     Parent = _right,
                     Padding = new(0),
                     Margin = new(1, 1, 0, 0),
-                    BackColor = ConfigsVariables.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
+                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
                 _rightContentPanel = new(_sideButtons) {
                     Padding = new(0),
@@ -636,7 +635,7 @@ namespace OperationGuidance_new.Views {
                 BoltEditionButton boltEditionButton = new(boltDTO) {
                     Parent = _rightContentPanel,
                     ForeColor = _right.ForeColor,
-                    BackColor = ConfigsVariables.COLOR_MISSION_EDITION_BUTTON_BACK,
+                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_BUTTON_BACK,
                     Visible = false,
                 };
                 boltEditionButton.SingleClickDelegate += (eventArgs) => {
@@ -834,7 +833,7 @@ namespace OperationGuidance_new.Views {
             private int _gapBetweenImageAndText;
 
             public ImageButton() {
-                ForeColor = ConfigsVariables.COLOR_MENU_FOREGROUND;
+                ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
             }
 
             protected override void OnSizeChanged(EventArgs e) {
@@ -1155,7 +1154,7 @@ namespace OperationGuidance_new.Views {
                     int imageX = (Width - ProductDefaultImageShowing.Width - textWidth - gapBetweenImageAndText) / 2;
                     g.DrawImage(ProductDefaultImageShowing, new Point(imageX, (Height - newImageSide) / 2));
 
-                    Brush brush = new SolidBrush(ConfigsVariables.COLOR_EMPTY_PRODUCT_IMAGE_NOTICE_TEXT);
+                    Brush brush = new SolidBrush(ColorConfigs.COLOR_EMPTY_PRODUCT_IMAGE_NOTICE_TEXT);
                     Point point = new Point(imageX + ProductDefaultImageShowing.Width + gapBetweenImageAndText, (Height - Font.Height) / 2 - Font.Height / 10);
                     g.DrawString(_defaultText, Font, brush, point);
                 } else {

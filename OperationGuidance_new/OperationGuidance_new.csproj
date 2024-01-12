@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CustomWidgets\CustomLibrary.csproj" />
+    <ProjectReference Include="..\CustomLibrary\CustomLibrary.csproj" />
     <ProjectReference Include="..\OperationGuidance_service\OperationGuidance_service.csproj" />
   </ItemGroup>
 

@@ -1,10 +1,9 @@
+using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
-using OperationGuidance_new.Configs;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
-namespace OperationGuidance_new.Views.ReusableWidgets
-{
+namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: BoltPopUpForm {
         private bool _modified;
 
@@ -28,19 +27,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets
             AngleBox.Enabled = true;
             _positionX = new("点位X坐标") {
                 Parent = TablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ConfigsVariables.COLOR_TEXT_BOX_BORDER_ERROR,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
             };
             _positionX.GetTextBox(0).NumberValidate = true;
             _positionY = new("点位Y坐标") {
                 Parent = TablePanel,
-                BorderColor = ConfigsVariables.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ConfigsVariables.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ConfigsVariables.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
             };

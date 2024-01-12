@@ -66,7 +66,7 @@ namespace CustomLibrary.ComboBoxs {
                     itemButton.BackColor = value;
                 }
                 _backColorSaved = value;
-                _disabledBackColor = WidgetUtils.DarkerColor(value, .1);
+                _disabledBackColor = WidgetUtils.DarkenColor(value, .1);
                 _selectButton.DisabledBackColor = _disabledBackColor;
                 }
         }
@@ -230,7 +230,7 @@ namespace CustomLibrary.ComboBoxs {
             _itemButtons.Add(new(itemName, obj, _selectButton) {
                 ForeColor = this.ForeColor,
                 BackColor = this.BackColor,
-                ToggledColor = WidgetUtils.DarkerColor(BackColor, .075),
+                ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
             });
             // Reset timer interval
             ResetInterval();
@@ -243,7 +243,7 @@ namespace CustomLibrary.ComboBoxs {
                 _itemButtons.Insert(0, new(_defaultLabel, default(T), _selectButton) {
                     ForeColor = this.ForeColor,
                     BackColor = this.BackColor,
-                    ToggledColor = WidgetUtils.DarkerColor(BackColor, .075),
+                    ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
                 });
                 // Reset timer interval
                 ResetInterval();

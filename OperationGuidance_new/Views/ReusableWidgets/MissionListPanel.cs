@@ -1,5 +1,5 @@
-﻿using CustomLibrary.Panels;
-using OperationGuidance_new.Configs;
+﻿using CustomLibrary.Configs;
+using CustomLibrary.Panels;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
@@ -21,7 +21,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             FlowDirection = FlowDirection.TopDown;
             _titlePanel = new(title) {
                 Parent = this,
-                UnderlineColor = ConfigsVariables.COLOR_TITLE_UNDERLINE,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
             };
             TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
             rightButton.Click += rightButtonClick;
@@ -54,9 +54,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             coverImage,
                             Properties.Resources.image_choose,
                             mission.name,
-                            ConfigsVariables.COLOR_MISSION_BLOCK_BORDER,
-                            ConfigsVariables.COLOR_MISSION_BLOCK_BACKGROUND,
-                            ConfigsVariables.COLOR_MISSION_BLOCK_IMAGE_BORDER
+ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
+ColorConfigs.COLOR_MISSION_BLOCK_BACKGROUND,
+ColorConfigs
+.COLOR_MISSION_BLOCK_IMAGE_BORDER
                         )
                     {
                         Parent = _missionsTable,
