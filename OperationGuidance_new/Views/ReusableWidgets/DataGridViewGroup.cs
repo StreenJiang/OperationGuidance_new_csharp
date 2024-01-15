@@ -170,11 +170,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             TextBox box = boxGroup.GetTextBox(0).Box;
             V? value = default(V);
-            box.TextChanged += (sender, eventArgs) => HandleTextChanged(box, out value);
+            box.TextChanged += (sender, eventArgs) => HandleTextChanged(box, propertySetter);
             propertySetter(_filterParametersVO, value);
             return boxGroup;
         }
-        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?, V?> propertiesSetter) {
+        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?> propertiesSetter1, Action<T, V?> propertiesSetter2) {
             CustomTextBoxGroup boxGroup = new(boxName) {
                 Parent = _filtersTablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -186,20 +186,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             // Need two boxes
             boxGroup.AddTextBox();
-            // Handle values
-            V? value1 = default(V);
-            V? value2 = default(V);
             TextBox box1 = boxGroup.GetTextBox(0).Box;
             TextBox box2 = boxGroup.GetTextBox(1).Box;
-            box1.TextChanged += (sender, eventArgs) => HandleTextChanged(box1, out value1);
-            box2.TextChanged += (sender, eventArgs) => HandleTextChanged(box2, out value2);
-            propertiesSetter(_filterParametersVO, value1, value2);
+            box1.TextChanged += (sender, eventArgs) => HandleTextChanged(box1, propertiesSetter1);
+            box2.TextChanged += (sender, eventArgs) => HandleTextChanged(box2, propertiesSetter2);
             return boxGroup;
         }
-        private void HandleTextChanged<V>(TextBox box, out V? value) {
-            value = default(V);
+        private void HandleTextChanged<V>(TextBox box, Action<T, V?> propertySetter) {
             try {
-                value = (V?) Convert.ChangeType(box.Text, typeof(V));
+                V? value = (V?) Convert.ChangeType(box.Text, typeof(V));
+                propertySetter(_filterParametersVO, value);
             } catch (InvalidCastException e) {
                 System.Console.WriteLine($"Can not convert string to type<{typeof(V)}>. Exception: {e}");
             }

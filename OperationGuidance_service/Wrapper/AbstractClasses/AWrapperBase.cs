@@ -39,11 +39,13 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             if (_conn == null) {
                 using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
+                    System.Console.WriteLine($"entity.id: {entity.id}");
                     return conn.QueryFirst<T>(newEntitySql);
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
                 _conn.Execute(sql, entity);
+                System.Console.WriteLine($"entity.id: {entity.id}");
                 return _conn.QueryFirst<T>(newEntitySql, entity);
             }
         }
@@ -139,6 +141,13 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         public bool DeleteById(int id) {
             T entity = FindById(id) ?? throw new EntityNotFoundException("Entity not found by id = " + id + ".");
             return Delete(entity);
+        }
+
+        public int DeleteByIds(List<int> ids) {
+            string idsStr = string.Join(", ", ids.ToArray());
+            List<T> entities = FindBySql($"select * from {_tabelName} where id in ({idsStr})");
+            entities.ForEach(entity => entity.deleted = (int) YesOrNo.YES);
+            return UpdateBatch(entities);
         }
 
         private string GenerateInsertSql() {

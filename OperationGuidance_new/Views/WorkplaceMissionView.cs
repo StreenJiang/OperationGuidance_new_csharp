@@ -691,31 +691,33 @@ namespace OperationGuidance_new.Views {
             // Create device blocks
             foreach (DeviceDTO deviceDTO in _deviceDTOs) {
                 DeviceBlock deviceBlock;
-                if (_deviceBlocks.ContainsKey(deviceDTO.device_category_id)) {
-                    deviceBlock = _deviceBlocks[deviceDTO.device_category_id];
-                } else {
-                    deviceBlock = new DeviceBlock(
-                        ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.device_category_name
-                    ) {
-                        Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
-                        Parent = _bottom,
-                        Margin = new(0),
-                        Padding = new(0),
-                        ToggledButton = true,
-                        ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
-                    };
-                    deviceBlock.Click += (sender, eventArgs) => {
-                        try {
-                            EventFuncs.CurrentPopUpForm = deviceBlock.PopUpForm;
-                            deviceBlock.PopUpForm.Show();
-                        } finally {
-                            deviceBlock.SetToggle(false);
-                        }
-                    };
-                    _deviceBlocks.Add(deviceDTO.device_category_id, deviceBlock);
+                if (deviceDTO.category_id != null) {
+                    if (_deviceBlocks.ContainsKey(deviceDTO.category_id.Value)) {
+                        deviceBlock = _deviceBlocks[deviceDTO.category_id.Value];
+                    } else {
+                        deviceBlock = new DeviceBlock(
+                            ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.category_name
+                        ) {
+                            Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
+                            Parent = _bottom,
+                            Margin = new(0),
+                            Padding = new(0),
+                            ToggledButton = true,
+                            ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
+                        };
+                        deviceBlock.Click += (sender, eventArgs) => {
+                            try {
+                                EventFuncs.CurrentPopUpForm = deviceBlock.PopUpForm;
+                                deviceBlock.PopUpForm.Show();
+                            } finally {
+                                deviceBlock.SetToggle(false);
+                            }
+                        };
+                        _deviceBlocks.Add(deviceDTO.category_id.Value, deviceBlock);
+                    }
+                    deviceBlock.DeviceDTOs.Add(deviceDTO.id, deviceDTO);
+                    deviceBlock.PopUpForm.DeviceDTOs.Add(deviceDTO);
                 }
-                deviceBlock.DeviceDTOs.Add(deviceDTO.id, deviceDTO);
-                deviceBlock.PopUpForm.DeviceDTOs.Add(deviceDTO);
             }
         }
 
@@ -1316,8 +1318,10 @@ namespace OperationGuidance_new.Views {
                         EventFuncs.CurrentPopUpForm = _currentPopUpForm;
                     };
                 }
-                if (ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port) == ConnectionStatus.DISCONNECTED) {
-                    button.Enabled = false;
+                if (deviceDTO.ip != null && deviceDTO.port != null) {
+                    if (ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value) == ConnectionStatus.DISCONNECTED) {
+                        button.Enabled = false;
+                    }
                 }
 
                 int btnH = (int) (_iconHeight * 1.15);
@@ -1364,11 +1368,13 @@ namespace OperationGuidance_new.Views {
                     }
                     textPoint = new((int) (imagePoint.X * 1.2) + _connectedShowing.Width, imagePoint.Y + (_connectedShowing.Height - Font.Height) / 2);
 
-                    ConnectionStatus status = ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port);
-                    if (status == ConnectionStatus.CONNECTED) {
-                        e.Graphics.DrawImage(_connectedShowing, imagePoint);
-                    } else {
-                        e.Graphics.DrawImage(_disconnectedShowing, imagePoint);
+                    if (deviceDTO.ip != null && deviceDTO.port != null) {
+                        ConnectionStatus status = ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value);
+                        if (status == ConnectionStatus.CONNECTED) {
+                            e.Graphics.DrawImage(_connectedShowing, imagePoint);
+                        } else {
+                            e.Graphics.DrawImage(_disconnectedShowing, imagePoint);
+                        }
                     }
                     e.Graphics.DrawString(deviceDTO.ip + "-" + deviceDTO.port, Font, new SolidBrush(Color.Black), textPoint);
                 }

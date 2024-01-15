@@ -20,18 +20,19 @@ namespace OperationGuidance_service.Controllers {
         [Autowired]
         public ProductSideService _productSideService;
         [Autowired]
-        public ProductService _productService;
-        [Autowired]
         public ProductBoltService _productBoltService;
         [Autowired]
         public DeviceService _deviceService;
         [Autowired]
+        public BrandService _brandService;
+        [Autowired]
         public DeviceCategoryService _deviceCategoryService;
         [Autowired]
-        public DeviceTypeService _deviceTypeService;
+        public DeviceModelService _deviceModelService;
         [Autowired]
-        public BrandService _brandService;
+        public WorkstationService _workstationService;
 
+        #region 产品任务相关
         // 查询所有未被删除的产品任务列表
         public QueryProductMissionListRsp QueryProductMissionListRsp(QueryProductMissionListReq req) {
             // 先查询任务清单
@@ -43,16 +44,6 @@ namespace OperationGuidance_service.Controllers {
             for (int i = 0 ; i < missions.Count ; i++) {
                 ProductMission mission = missions[i];
                 ProductMissionDTO productMissionDTO = productMissionDTOs[i];
-
-                // 如果产品id不为空
-                int? productId = mission.product_id;
-                if (productId != null) {
-                    Product? product = _productService.FindById(productId.Value);
-                    if (product != null) {
-                        productMissionDTO.product_name = product.name;
-                        productMissionDTO.product_description = product.description;
-                    }
-                }
 
                 // 根据mission_id查询产品面列表
                 List<ProductSide> sides = _productSideService.FindBySqlCondition($"mission_id = {mission.id}");
@@ -85,7 +76,7 @@ namespace OperationGuidance_service.Controllers {
                                         productBoltDTOs[i].tool_ip = device.ip;
                                         productBoltDTOs[i].tool_port = device.port;
 
-                                        DeviceModel? type = _deviceTypeService.FindById(device.model_id);
+                                        DeviceModel? type = _deviceModelService.FindById(device.model_id);
                                         if (type != null) {
                                             productBoltDTOs[i].tool_type_name = type.name;
                                             DeviceCategory? category = _deviceCategoryService.FindById(type.category_id);
@@ -107,12 +98,11 @@ namespace OperationGuidance_service.Controllers {
                 }
             }
 
-            QueryProductMissionListRsp rsp = new() {
+            return new() {
                 ProductMissionsDTOs = productMissionDTOs
             };
-            return rsp;
         }
-
+        // 新增或修改任务
         public AddOrUpdateProductMissionRsp AddOrUpdateProductMission(AddOrUpdateProductMissionReq req) {
             AddOrUpdateProductMissionRsp rsp = new();
             // 使用同一个connection确保当前所有操作都在同一个事务下
@@ -217,7 +207,7 @@ namespace OperationGuidance_service.Controllers {
             }
             return boltDTOsRsp;
         }
-
+        // 删除任务
         public DeleteProductMissionRsp DeleteProductMission(DeleteProductMissionReq req) {
             DeleteProductMissionRsp rsp = new();
             ProductMission productMission = new();
@@ -228,7 +218,10 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
+        #endregion
 
+        #region 设备相关
+        // 查询设备列表
         public QueryDeviceListRsp QueryDeviceList(QueryDeviceListReq req) {
             // 先查询Device表
             List<Device> devices = _deviceService.QueryList(req.UserId);
@@ -240,16 +233,16 @@ namespace OperationGuidance_service.Controllers {
                 Device device = devices[i];
                 DeviceDTO deviceDTO = deviceDTOs[i];
                 // Device type
-                DeviceModel? type = _deviceTypeService.FindById(device.model_id);
+                DeviceModel? type = _deviceModelService.FindById(device.model_id);
                 if (type != null) {
-                    deviceDTO.device_model_id = device.model_id;
-                    deviceDTO.device_model_name = type.name;
+                    deviceDTO.model_id = device.model_id;
+                    deviceDTO.model_name = type.name;
 
                     // Device category
                     DeviceCategory? category = _deviceCategoryService.FindById(type.category_id);
                     if (category != null) {
-                        deviceDTO.device_category_id = category.id;
-                        deviceDTO.device_category_name = category.name;
+                        deviceDTO.category_id = category.id;
+                        deviceDTO.category_name = category.name;
                         deviceDTO.can_manipulate = category.can_manipulate;
                         deviceDTO.icon_normal = category.icon_normal;
                         deviceDTO.icon_error = category.icon_error;
@@ -263,12 +256,240 @@ namespace OperationGuidance_service.Controllers {
                 }
             }
 
-            QueryDeviceListRsp rsp = new() {
+            return new() {
                 DeviceDTOs = deviceDTOs
             };
+        }
+        // 新增或修改设备
+        public AddOrUpdateDeviceRsp AddOrUpdateDevice(AddOrUpdateDeviceReq req) {
+            DeviceDTO deviceDTO = req.DeviceDTO;
+            Device device = new();
+            CommonUtils.ObjectConverter<DeviceDTO, Device>(deviceDTO, device);
+            Device? deviceNew = _deviceService.InsertOrUpdate(device);
+            if (deviceNew != null) {
+                deviceDTO.id = deviceNew.id;
+            }
+
+            return new() {
+                DeviceDTO = deviceDTO,
+            };
+        }
+        // 删除设备
+        public DeleteDeviceByIdsRsp DeleteDevice(DeleteDeviceByIdsReq req) {
+            int deletedRows = _deviceService.DeleteByIds(req.Ids);
+
+            DeleteDeviceByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
             return rsp;
         }
+        #endregion
 
+        #region 品牌相关
+        // 查询品牌列表
+        public QueryBrandListRsp QueryBrandList(QueryBrandListReq req) {
+            List<Brand> brands = _brandService.QueryList(req.UserId);
+            List<BrandDTO> brandDTOs = new();
+            CommonUtils.ObjectConverter<Brand, BrandDTO>(brands, brandDTOs);
 
+            return new() {
+                BrandDTOs = brandDTOs,
+            };
+        }
+        // 新增品牌
+        public AddOrUpdateBrandRsp AddOrUpdateBrand(AddOrUpdateBrandReq req) {
+            BrandDTO brandDTO = req.BrandDTO;
+            Brand brand = new();
+            CommonUtils.ObjectConverter<BrandDTO, Brand>(brandDTO, brand);
+            Brand? brandNew = _brandService.InsertOrUpdate(brand);
+            if (brandNew != null) {
+                brandDTO.id = brandNew.id;
+            }
+
+            return new() {
+                BrandDTO = brandDTO,
+            };
+        }
+        // 删除品牌
+        public DeleteBrandByIdsRsp DeleteBrand(DeleteBrandByIdsReq req) {
+            int deletedRows = _brandService.DeleteByIds(req.Ids);
+
+            DeleteBrandByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 设备类型相关
+        // 查询设备类型列表
+        public QueryDeviceCategoryListRsp QueryDeviceCategoryList(QueryDeviceCategoryListReq req) {
+            List<DeviceCategory> deviceCategories = _deviceCategoryService.QueryList(req.UserId);
+            List<DeviceCategoryDTO> deviceCategoryDTOs = new();
+            CommonUtils.ObjectConverter<DeviceCategory, DeviceCategoryDTO>(deviceCategories, deviceCategoryDTOs);
+
+            return new() {
+                DeviceCategoryDTOs = deviceCategoryDTOs,
+            };
+        }
+        // 新增或修改设备类型
+        public AddOrUpdateDeviceCategoryRsp AddOrUpdateDeviceCategory(AddOrUpdateDeviceCategoryReq req) {
+            DeviceCategoryDTO deviceCategoryDTO = req.DeviceCategoryDTO;
+            DeviceCategory deviceCategory = new();
+            CommonUtils.ObjectConverter<DeviceCategoryDTO, DeviceCategory>(deviceCategoryDTO, deviceCategory);
+            DeviceCategory? deviceCategoryNew = _deviceCategoryService.InsertOrUpdate(deviceCategory);
+            if (deviceCategoryNew != null) {
+                deviceCategoryDTO.id = deviceCategoryNew.id;
+            }
+
+            return new() {
+                DeviceCategoryDTO = deviceCategoryDTO,
+            };
+        }
+        // 删除设备类型
+        public DeleteDeviceCategoryByIdsRsp DeleteDeviceCategory(DeleteDeviceCategoryByIdsReq req) {
+            int deletedRows = _deviceCategoryService.DeleteByIds(req.Ids);
+
+            DeleteDeviceCategoryByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 设备型号相关
+        // 查询设备型号列表
+        public QueryDeviceModelListRsp queryDeviceModel(QueryDeviceModelListReq req) {
+            List<DeviceModel> deviceModels = _deviceModelService.QueryList(req.UserId);
+            List<DeviceModelDTO> deviceModelDTOs = new();
+            CommonUtils.ObjectConverter<DeviceModel, DeviceModelDTO>(deviceModels, deviceModelDTOs);
+            
+            return new() {
+                DeviceModelDTOs = deviceModelDTOs,
+            };
+        }
+        // 新增或修改设备型号
+        public AddOrUpdateDeviceModelRsp AddOrUpdateDeviceModel(AddOrUpdateDeviceModelReq req) {
+            DeviceModelDTO deviceModelDTO = req.DeviceModelDTO;
+            DeviceModel deviceModel = new();
+            CommonUtils.ObjectConverter<DeviceModelDTO, DeviceModel>(deviceModelDTO, deviceModel);
+            DeviceModel? deviceModelNew = _deviceModelService.InsertOrUpdate(deviceModel);
+            if (deviceModelNew != null) {
+                deviceModelDTO.id = deviceModelNew.id;
+            }
+
+            return new() {
+                DeviceModelDTO = deviceModelDTO,
+            };
+        }
+        // 删除设备型号
+        public DeleteDeviceModelByIdsRsp DeleteDeviceModel(DeleteDeviceModelByIdsReq req) {
+            int deletedRows = _deviceModelService.DeleteByIds(req.Ids);
+
+            DeleteDeviceModelByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 站点（或者叫工作站、工位？）相关
+        // 查询站点列表
+        public QueryWorkstationListRsp QueryWorkstationList(QueryWorkstationListReq req) {
+            List<Workstation> workstations = _workstationService.QueryList(req.UserId);
+            List<WorkstationDTO> workstationDTOs = new();
+            CommonUtils.ObjectConverter<Workstation, WorkstationDTO>(workstations, workstationDTOs);
+
+            foreach (WorkstationDTO dto in workstationDTOs) {
+                if (dto.tool_id != null) {
+                    Device? device = _deviceService.FindById(dto.tool_id.Value);
+                    if (device != null) {
+                        dto.tool_name = device.name;
+                        dto.tool_description = device.description;
+                        dto.tool_ip = device.ip;
+                        dto.tool_port = device.port;
+                        dto.tool_device_model_id = device.model_id;
+                        DeviceModel? deviceModel = _deviceModelService.FindById(device.model_id);
+                        if (deviceModel != null) {
+                            dto.tool_device_model_name = deviceModel.name;
+                            dto.tool_device_category_id = deviceModel.category_id;
+                            DeviceCategory? deviceCategory = _deviceCategoryService.FindById(deviceModel.category_id);
+                            if (deviceCategory != null) {
+                                dto.tool_device_category_name = deviceCategory.name;
+                                dto.tool_can_manipulate = deviceCategory.can_manipulate;
+                            }
+                            dto.tool_brand_id = deviceModel.brand_id;
+                            Brand? brand = _brandService.FindById(deviceModel.brand_id);
+                            if (brand != null) {
+                                dto.tool_brand_name = brand.name;
+                            }
+                        }
+                    }
+                }
+                if (dto.arm_id != null) {
+                    Device? device = _deviceService.FindById(dto.arm_id.Value);
+                    if (device != null) {
+                        dto.arm_name = device.name;
+                        dto.arm_description = device.description;
+                        dto.arm_ip = device.ip;
+                        dto.arm_port = device.port;
+                        dto.arm_device_model_id = device.model_id;
+                        DeviceModel? deviceModel = _deviceModelService.FindById(device.model_id);
+                        if (deviceModel != null) {
+                            dto.arm_device_model_name = deviceModel.name;
+                            dto.arm_device_category_id = deviceModel.category_id;
+                            DeviceCategory? deviceCategory = _deviceCategoryService.FindById(deviceModel.category_id);
+                            if (deviceCategory != null) {
+                                dto.arm_device_category_name = deviceCategory.name;
+                                dto.arm_can_manipulate = deviceCategory.can_manipulate;
+                            }
+                            dto.arm_brand_id = deviceModel.brand_id;
+                            Brand? brand = _brandService.FindById(deviceModel.brand_id);
+                            if (brand != null) {
+                                dto.arm_brand_name = brand.name;
+                            }
+                        }
+                    }
+                }
+            }            
+
+            return new() {
+                WorkstationsDTOs = workstationDTOs,
+            };
+        }
+        // 新增或修改站点
+        public AddOrUpdateWorkstationRsp AddOrUpdateWorkstation(AddOrUpdateWorkstationReq req) {
+            WorkstationDTO workstationDTO = req.WorkstationDTO;
+            Workstation workstation = new();
+            CommonUtils.ObjectConverter<WorkstationDTO, Workstation>(workstationDTO, workstation);
+            Workstation? workstationNew = _workstationService.InsertOrUpdate(workstation);
+            if (workstationNew != null) {
+                workstationDTO.id = workstationNew.id;
+            }
+
+            return new() {
+                WorkstationDTO = workstationDTO,
+            };
+        }
+        // 删除站点
+        public DeleteWorkstationByIdsRsp DeleteWorkstation(DeleteWorkstationByIdsReq req) {
+            int deletedRows = _workstationService.DeleteByIds(req.Ids);
+
+            DeleteWorkstationByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
     }
 }

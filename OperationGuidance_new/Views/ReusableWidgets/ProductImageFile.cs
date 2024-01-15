@@ -51,13 +51,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             Image? image = CommonUtils.ImageBase64ToImage(sideDTO.image);
             if (image != null) {
                 _image = image;
-                _containerMaxRect = new(CommonUtils.PointStringToPoint(sideDTO.max_rectangle_location), new(sideDTO.max_rectangle_width, sideDTO.max_rectangle_height));
-                _centerLocation = CommonUtils.PointStringToPoint(sideDTO.center_location);
-                _locationOffset = CommonUtils.PointStringToPoint(sideDTO.location_offset);
-                _locationOffsetMoving = CommonUtils.PointStringToPoint(sideDTO.location_offset_moving);
-                _zoomingRatio = sideDTO.zooming_ratio != null ? sideDTO.zooming_ratio.Value : 0;
-                _zoomingRatioExtra = sideDTO.zooming_ratio_extra != null ? sideDTO.zooming_ratio_extra.Value : 0;
-                _rotateAngle = sideDTO.rotate_angle != null ? sideDTO.rotate_angle.Value : 0;
+                if (sideDTO.max_rectangle_width != null && sideDTO.max_rectangle_height != null) {
+                    _containerMaxRect = new(CommonUtils.PointStringToPoint(sideDTO.max_rectangle_location), new(sideDTO.max_rectangle_width.Value, sideDTO.max_rectangle_height.Value));
+                    _centerLocation = CommonUtils.PointStringToPoint(sideDTO.center_location);
+                    _locationOffset = CommonUtils.PointStringToPoint(sideDTO.location_offset);
+                    _locationOffsetMoving = CommonUtils.PointStringToPoint(sideDTO.location_offset_moving);
+                    _zoomingRatio = sideDTO.zooming_ratio != null ? sideDTO.zooming_ratio.Value : 0;
+                    _zoomingRatioExtra = sideDTO.zooming_ratio_extra != null ? sideDTO.zooming_ratio_extra.Value : 0;
+                    _rotateAngle = sideDTO.rotate_angle != null ? sideDTO.rotate_angle.Value : 0;
+                }
             }
         }
 

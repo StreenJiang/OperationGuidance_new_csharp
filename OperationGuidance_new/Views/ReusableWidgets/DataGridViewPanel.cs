@@ -28,30 +28,33 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _currentPage;
         private int _pageSize;
         private int _totalPages;
-        private BindingSource _bindingSource;
         private List<V> _dataSource;
         #endregion
 
         #region Properties
         public DataGridView GridView { get => _gridView; }
-        public int CurrentPage { get => _currentPage; set => _currentPage = value; }
+        public int CurrentPage { 
+            get => _currentPage; 
+            set {
+                _currentPage = value; 
+                Paging(_currentPage, _pageSize);
+            }
+        }
         public int TotalPages { get => _totalPages; set => _totalPages = value; }
         public int PageSize {
             get => _pageSize;
             set {
                 _pageSize = value;
-                ResetPageInfo();
+                Paging(_currentPage, _pageSize);
             }
         }
         public List<V> DataSource {
             get => _dataSource;
             set {
-                ClearAll();
+                ClearAllToggleButtonCells();
                 _dataSource = value;
-                _bindingSource.DataSource = value;
-                _gridView.DataSource = _bindingSource;
                 _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
-                ResetPageInfo();
+                Paging(_currentPage, _pageSize);
             }
         }
         #endregion
@@ -63,7 +66,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             Padding = new(1);
             PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER;
             // Data source
-            _bindingSource = new();
             _dataSource = new();
             // Page info
             _pageSize = 20;
@@ -96,9 +98,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _pageInfoContentPanel,
                 Icon = Properties.Resources.page_btn_backward_fast,
             };
+            _first.Click += (sender, evnetArgs) => {
+                if (_currentPage != 1) {
+                    CurrentPage = 1;
+                }
+            };
             _backward = new() {
                 Parent = _pageInfoContentPanel,
                 Icon = Properties.Resources.page_btn_backward,
+            };
+            _backward.Click += (sender, evnetArgs) => {
+                if (_currentPage > 1) {
+                    CurrentPage--;
+                }
             };
             _pageInfo = new() {
                 Parent = _pageInfoContentPanel,
@@ -110,9 +122,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _pageInfoContentPanel,
                 Icon = Properties.Resources.page_btn_forward,
             };
+            _forward.Click += (sender, evnetArgs) => {
+                if (_currentPage < _totalPages) {
+                    CurrentPage++;
+                }
+            };
             _last = new() {
                 Parent = _pageInfoContentPanel,
                 Icon = Properties.Resources.page_btn_forward_fast,
+            };
+            _last.Click += (sender, evnetArgs) => {
+                if (_currentPage != _totalPages) {
+                    CurrentPage = _totalPages;
+                }
             };
             _jumpToText = new() {
                 Parent = _pageInfoContentPanel,
@@ -134,9 +156,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Text = "页",
                 AutoSize = true,
             };
-            ResetPageInfo();
             // Data grid view
             InitializeGridView();
+            Paging(1, _pageSize);
         }
         #endregion
 
@@ -424,7 +446,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Reusable methods
-        private void ClearAll() {
+        private void ClearAllToggleButtonCells() {
             foreach (DataGridViewRow row in _gridView.Rows) {
                 foreach (DataGridViewCell cell in row.Cells) {
                     if (cell is DataGridViewToggleButtonCell tbCell) {
@@ -443,9 +465,32 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
+        private void Paging(int currentPage, int pageSize) {
+            BindingSource bindingSource = new();
+            if (_dataSource.Count > 0) {
+                bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
+            } else {
+                bindingSource.DataSource = null;
+            }
+            LoadDataAsynchronously(bindingSource);
+            ResetPageInfo();
+        }
+        private void LoadDataAsynchronously(BindingSource bindingSource) {
+            if (IsHandleCreated) {
+                new Thread(new ThreadStart(() => {
+                    Invoke(new EventHandler(delegate(object? sender, EventArgs eventArgs) {
+                        _gridView.DataSource = bindingSource;
+                    }), new object[2] { this, null });
+                })).Start();
+            }
+        }
         #endregion
 
         #region Override methods
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            Paging(_currentPage, _pageSize);
+        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
             foreach (DataGridViewColumn column in _gridView.Columns) {

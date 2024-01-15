@@ -20,6 +20,14 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             Wrapper.ReleaseConnection();
         }
 
+        public List<T> QueryList(int userId) {
+            // Validate each parameter
+            ArgumentValidator.Validate(userId, "UserId should greater than 0. Passing 'userId = " + userId + "' incorrectly.");
+
+            // TODO: use cache to prevent fetching data every time
+            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()}", new { @user_id = userId });
+        }
+
         public T? AddEntity(T entity) {
             return this.Wrapper.Add(entity);
         }
@@ -46,6 +54,10 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             } else {
                 return AddEntity(entity);
             }
+        }
+
+        public int DeleteByIds(List<int> ids) {
+            return Wrapper.DeleteByIds(ids);
         }
 
         public List<T> FindBySqlCondition(string sqlCondition) {

@@ -312,29 +312,34 @@ namespace OperationGuidance_new.Views {
                         } else {
                             boltDTO.serial_num = _currentSideButton.BoltButtons.Count + 1;
                         }
-                        _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num);
-                        _currentSideButton.BoltSerialNums.Sort();
-                        // Add new buttons
-                        BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO);
-                        BoltEditionButton boltEditionButton = AddNewBoltEditionButton(_currentSideButton, boltDTO);
-                        boltButton.Visible = true;
-                        boltEditionButton.Visible = true;
-                        // Add buttons into side button
-                        _currentSideButton.BoltButtons.Add(boltDTO.serial_num, boltButton);
-                        _currentSideButton.BoltEditionButtons.Add(boltDTO.serial_num, boltEditionButton);
+                        if (boltDTO.serial_num != null) {
+                            _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num.Value);
+                            _currentSideButton.BoltSerialNums.Sort();
+                            // Add new buttons
+                            BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO);
+                            BoltEditionButton boltEditionButton = AddNewBoltEditionButton(_currentSideButton, boltDTO);
+                            boltButton.Visible = true;
+                            boltEditionButton.Visible = true;
+                            // Add buttons into side button
+                            _currentSideButton.BoltButtons.Add(boltDTO.serial_num.Value, boltButton);
+                            _currentSideButton.BoltEditionButtons.Add(boltDTO.serial_num.Value, boltEditionButton);
 
-                        // Reorder the edition buttons
-                        boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num));
-                        // Do this to force fire SizeChanged event
-                        ResizeLeftBottom();
-                        ForceResizeRight();
+                            // Reorder the edition buttons
+                            boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num.Value));
+                            // Do this to force fire SizeChanged event
+                            ResizeLeftBottom();
+                            ForceResizeRight();
 
-                        // Save new boltDto to sideDto
-                        sideDTO.Bolts.Add(boltDTO);
+                            // Save new boltDto to sideDto
+                            if (sideDTO.Bolts == null) {
+                                sideDTO.Bolts = new();
+                            }
+                            sideDTO.Bolts.Add(boltDTO);
 
-                        // Trigger rename logic of bolt
-                        if (boltEditionButton.DoubleClickDelegate != null) {
-                            boltEditionButton.DoubleClickDelegate(eventArgs);
+                            // Trigger rename logic of bolt
+                            if (boltEditionButton.DoubleClickDelegate != null) {
+                                boltEditionButton.DoubleClickDelegate(eventArgs);
+                            }
                         }
                     }
                 };
@@ -505,8 +510,10 @@ namespace OperationGuidance_new.Views {
                 // Initialize bolts buttons
                 if (sideDTO.Bolts != null && sideDTO.Bolts.Count > 0) {
                     foreach (ProductBoltDTO boltDTO in sideDTO.Bolts) {
-                        sideButton.BoltButtons.Add(boltDTO.serial_num, AddNewBoltButton(sideButton, boltDTO));
-                        sideButton.BoltSerialNums.Add(boltDTO.serial_num);
+                        if (boltDTO.serial_num != null) {
+                            sideButton.BoltButtons.Add(boltDTO.serial_num.Value, AddNewBoltButton(sideButton, boltDTO));
+                            sideButton.BoltSerialNums.Add(boltDTO.serial_num.Value);
+                        }
                     }
                 }
                 return sideButton;
@@ -623,7 +630,9 @@ namespace OperationGuidance_new.Views {
                 // Create all bolt edition buttons and set them invisible
                 foreach (SideButton sideButton in _sideButtons) {
                     foreach (BoltButton button in sideButton.BoltButtons.Values) {
-                        sideButton.BoltEditionButtons.Add(button.BoltDTO.serial_num, AddNewBoltEditionButton(sideButton, button.BoltDTO));
+                        if (button.BoltDTO.serial_num != null) {
+                            sideButton.BoltEditionButtons.Add(button.BoltDTO.serial_num.Value, AddNewBoltEditionButton(sideButton, button.BoltDTO));
+                        }
                     }
                 }
 

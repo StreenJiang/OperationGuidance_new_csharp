@@ -6,10 +6,5 @@ using OperationGuidance_service.Wrapper;
 namespace OperationGuidance_service.Services {
     [Service]
     public class ProductSideService: AServiceBase<ProductSide, ProductSideWrapper> {
-
-        public ProductSide? GetById(int id) {
-            return this.Wrapper.FindById(id);
-            ;
-        }
     }
 }

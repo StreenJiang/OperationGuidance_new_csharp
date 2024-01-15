@@ -88,23 +88,6 @@ CREATE TABLE "device_model" (
 );
 
 -- ----------------------------
--- Table structure for product
--- ----------------------------
-DROP TABLE IF EXISTS "product";
-CREATE TABLE "product" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "name" text(128),
-  "description" text(512),
-  "enable" integer(1),
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
-);
-
--- ----------------------------
 -- Table structure for product_bolt
 -- ----------------------------
 DROP TABLE IF EXISTS "product_bolt";
@@ -141,11 +124,9 @@ DROP TABLE IF EXISTS "product_mission";
 CREATE TABLE "product_mission" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
-  "product_id" integer,
   "pn_code" text(64),
-  "enable" integer(1),
+  "enabled" integer(1),
   "user_id" integer NOT NULL,
-  "enabled" i(1) NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
   "modifier" text(128) NOT NULL,
@@ -188,9 +169,8 @@ CREATE TABLE "workstation" (
   "name" text(128),
   "tool_id" integer,
   "arm_id" integer,
-  "enable" integer(1),
+  "enabled" integer(1),
   "user_id" integer NOT NULL,
-  "enabled" i(1) NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
   "modifier" text(128) NOT NULL,

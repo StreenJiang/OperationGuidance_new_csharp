@@ -5,17 +5,18 @@ using CustomLibrary.Panels;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
-using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 using CustomLibrary.Configs;
 using OperationGuidance_service.Models.DTOs;
 using CustomLibrary.TextBoxes;
+using OperationGuidance_service.Models.Responses;
 
 namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomContentPanel {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
+        private List<WorkstationVO> _dataList;
         // DataGridView panel
         private DataGridViewGroup<WorkstationVO> _workstationGridView;
         // Add new pop up form
@@ -30,25 +31,6 @@ namespace OperationGuidance_new.Views {
             // Get Apis
             apis = SystemUtils.GetApis();
 
-            // Initialize grid view
-            _workstationGridView = new() {
-                Parent = this,
-            };
-            _workstationGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
-            _workstationGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
-            _workstationGridView.AddComboBox("工具型号", false, (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
-            _workstationGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
-            _workstationGridView.AddComboBox("力臂型号", false, (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {{"测试1", 10}, {"测试2", 20}, {"测试3", 30}});
-            _workstationGridView.QueryData = (vo) => {
-                return new() {
-                    new() {
-                        id = 111,
-                        name = "ddafsdfa",
-                    }
-                };
-            };
-            // _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
-
             // Initialization
             InitializeGridView();
         }
@@ -56,160 +38,56 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            List<WorkstationVO> vos = new() {
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 2,
-                    name = "test22",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.NO,
-                },
-                new() {
-                    id = 3,
-                    name = "test3",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 4,
-                    name = "test4",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 2,
-                    name = "test22",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.NO,
-                },
-                new() {
-                    id = 3,
-                    name = "test3",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 4,
-                    name = "test4",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 2,
-                    name = "test22",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.NO,
-                },
-                new() {
-                    id = 3,
-                    name = "test3",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 4,
-                    name = "test4",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 2,
-                    name = "test22",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.NO,
-                },
-                new() {
-                    id = 3,
-                    name = "test3",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 4,
-                    name = "test4",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 1,
-                    name = "test",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 2,
-                    name = "test22",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.NO,
-                },
-                new() {
-                    id = 3,
-                    name = "test3",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
-                new() {
-                    id = 4,
-                    name = "test4",
-                    tool_name = "aaaagasdfasfasdfasdfasfasdf",
-                    arm_name = "asdfasgasgsadfsadfsadfasdfasdf",
-                    enabled = (int) YesOrNo.YES,
-                },
+            _workstationGridView = new() {
+                Parent = this,
             };
-            _workstationGridView.DataSource = vos;
+            _workstationGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
+            _workstationGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
+            CustomComboBoxGroup<int?> toolModelOptions = _workstationGridView.AddComboBox("工具型号", false, (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
+            _workstationGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
+            CustomComboBoxGroup<int?> armModelOptions = _workstationGridView.AddComboBox("力臂型号", false, (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
+
+            // 工具型号和力臂型号的选项完善
+            QueryDeviceModelListRsp queryDeviceModelListRsp = apis.queryDeviceModel(new() {
+                UserId = SystemUtils.LoggedUserId(),
+            });
+            List<DeviceModelDTO> deviceModelDTOs = queryDeviceModelListRsp.DeviceModelDTOs;
+            deviceModelDTOs.Where(dto => dto.id == 1).ToList().ForEach(dto => {
+                if (dto.name != null) {
+                    toolModelOptions.AddItem(dto.name, dto.id);
+                }
+            });
+            deviceModelDTOs.Where(dto => dto.id == 2).ToList().ForEach(dto => {
+                if (dto.name != null) {
+                    armModelOptions.AddItem(dto.name, dto.id);
+                }
+            });
+
+            // 查询按钮逻辑
+            _workstationGridView.QueryData = (vo) => {
+                List<WorkstationVO> workstationVOs = QueryDataList();
+                return workstationVOs
+                    .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
+                    .Where(o => vo.tool_name == null || o.tool_name != null && o.tool_name.Contains(vo.tool_name))
+                    .Where(o => vo.tool_device_model_id == null || o.tool_device_model_id != null && o.tool_device_model_id == vo.tool_device_model_id)
+                    .Where(o => vo.arm_name == null || o.arm_name != null && o.arm_name.Contains(vo.arm_name))
+                    .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
+                    .ToList();
+            };
+            // _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
         }
         #endregion
 
         #region Reusable methods
+        private List<WorkstationVO> QueryDataList() {
+            QueryWorkstationListRsp rsp = apis.QueryWorkstationList(new() {
+                UserId = SystemUtils.LoggedUserId(),
+            });
+            List<WorkstationDTO> workstationsDTOs = rsp.WorkstationsDTOs;
+            List<WorkstationVO> workstationVOs = new();
+            CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(workstationsDTOs, workstationVOs);
+            return workstationVOs;
+        }
         private void OpenAddNewPopUpForm(Action callBackAction) {
             _addNewPopUpForm = new() {
                 Title = "新增站点",
@@ -259,6 +137,10 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Override methods
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            _workstationGridView.DataSource = QueryDataList();
+        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _workstationGridView.Size = contentSize;

@@ -6,5 +6,6 @@ using OperationGuidance_service.Wrapper;
 namespace OperationGuidance_service.Services {
     [Service]
     public class BrandService: AServiceBase<Brand, BrandWrapper> {
+
     }
 }

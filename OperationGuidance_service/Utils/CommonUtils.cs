@@ -60,7 +60,7 @@ namespace OperationGuidance_service.Utils {
                     ICollection<FROM> froms = (ICollection<FROM>) objFrom;
                     ICollection<TO> tos = (ICollection<TO>) objTo;
                     foreach (FROM from in froms) {
-                        if (from != null) {
+                       if (from != null) {
                             TO to = new();
                             ObjectConverter<FROM, TO>(from, to);
                             tos.Add(to);

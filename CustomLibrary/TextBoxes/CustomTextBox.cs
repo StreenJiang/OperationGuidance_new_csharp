@@ -203,6 +203,10 @@ namespace CustomLibrary.TextBoxes {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;
         }
+        protected override void OnClick(EventArgs e) {
+            base.OnClick(e);
+            _box.Focus();
+        }
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             int boxWidthTemp = Width - Padding.Size.Width;

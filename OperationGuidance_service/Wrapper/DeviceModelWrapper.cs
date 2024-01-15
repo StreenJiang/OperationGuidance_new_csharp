@@ -4,6 +4,6 @@ using OperationGuidance_service.Wrapper.AbstractClasses;
 
 namespace OperationGuidance_service.Wrapper {
     [Wrapper]
-    public class DeviceTypeWrapper: AWrapperBase<DeviceModel> {
+    public class DeviceModelWrapper: AWrapperBase<DeviceModel> {
     }
 }

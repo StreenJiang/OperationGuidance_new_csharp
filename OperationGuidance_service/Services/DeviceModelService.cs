@@ -5,6 +5,6 @@ using OperationGuidance_service.Wrapper;
 
 namespace OperationGuidance_service.Services {
     [Service]
-    public class ProductService: AServiceBase<Product, ProductWrapper> {
+    public class DeviceModelService: AServiceBase<DeviceModel, DeviceModelWrapper> {
     }
 }
