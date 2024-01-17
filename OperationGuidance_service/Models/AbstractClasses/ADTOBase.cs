@@ -4,7 +4,7 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.AbstractClasses {
     public abstract class ADTOBase {
-        public int id { get; set; }
+        public int id { get; set; } = -1;
         public int user_id { get; set; } = SystemUtils.LoggedUserId();
         public int deleted { get; set; } = (int) YesOrNo.NO;
         public string creator { get; set; } = SystemUtils.LoggedUserName();

@@ -24,18 +24,18 @@ namespace CustomLibrary.TextBoxes {
         private Color? _borderColor;
         private Color? _borderColorError;
 
-        public new bool Enabled {
-            get => _readOnly;
-            set {
-                _readOnly = value;
-                SetTextBoxesProperties((textBox) => textBox.ReadOnly = value);
-            }
-        }
-        public bool ReadOnly { 
+        public new bool Enabled { 
             get => _enabled;
             set {
                 _enabled = value;
                 SetTextBoxesProperties((textBox) => textBox.Enabled = value);
+            }
+        }
+        public bool ReadOnly {
+            get => _readOnly;
+            set {
+                _readOnly = value;
+                SetTextBoxesProperties((textBox) => textBox.ReadOnly = value);
             }
         }
         public string TextName { get => this._textName; set => this._textName = value; }

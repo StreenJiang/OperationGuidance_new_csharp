@@ -31,7 +31,7 @@ namespace CustomLibrary.DataGridViewRelateds {
         #region Properties
         public Panel ToggleButtonParentPanel { 
             get {
-                if (_toggleButtonParentPanel.Parent == null && DataGridView != null) {
+                if (!_toggleButtonParentPanel.IsDisposed && _toggleButtonParentPanel.Parent == null && DataGridView != null) {
                     _toggleButtonParentPanel.Parent = DataGridView;
                 }
                 return _toggleButtonParentPanel; 

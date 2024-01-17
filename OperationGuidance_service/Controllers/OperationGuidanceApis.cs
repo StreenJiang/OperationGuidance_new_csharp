@@ -365,7 +365,7 @@ namespace OperationGuidance_service.Controllers {
 
         #region 设备型号相关
         // 查询设备型号列表
-        public QueryDeviceModelListRsp queryDeviceModel(QueryDeviceModelListReq req) {
+        public QueryDeviceModelListRsp QueryDeviceModelList(QueryDeviceModelListReq req) {
             List<DeviceModel> deviceModels = _deviceModelService.QueryList(req.UserId);
             List<DeviceModelDTO> deviceModelDTOs = new();
             CommonUtils.ObjectConverter<DeviceModel, DeviceModelDTO>(deviceModels, deviceModelDTOs);

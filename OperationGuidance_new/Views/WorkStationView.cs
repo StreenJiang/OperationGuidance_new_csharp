@@ -1,6 +1,4 @@
 ﻿using CustomLibrary.Buttons;
-using CustomLibrary.Events;
-using CustomLibrary.Forms;
 using CustomLibrary.Panels;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -10,17 +8,20 @@ using CustomLibrary.Configs;
 using OperationGuidance_service.Models.DTOs;
 using CustomLibrary.TextBoxes;
 using OperationGuidance_service.Models.Responses;
+using CustomLibrary.Utils;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
-    public class WorkStationView: CustomContentPanel {
+    public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
-        private List<WorkstationVO> _dataList;
+        private List<WorkstationDTO> _dataDTOList;
+        private List<WorkstationVO> _dataVOSource;
         // DataGridView panel
         private DataGridViewGroup<WorkstationVO> _workstationGridView;
         // Add new pop up form
-        private AddNewPopUpForm _addNewPopUpForm;
+        private EditEntityPopUpForm<WorkstationDTO> _editEntityPopUpForm;
         #endregion
 
         #region Constructors
@@ -43,12 +44,12 @@ namespace OperationGuidance_new.Views {
             };
             _workstationGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
             _workstationGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
-            CustomComboBoxGroup<int?> toolModelOptions = _workstationGridView.AddComboBox("工具型号", false, (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
+            CustomComboBoxGroup<int?> toolModelOptions = _workstationGridView.AddComboBox("工具型号", (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
             _workstationGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
-            CustomComboBoxGroup<int?> armModelOptions = _workstationGridView.AddComboBox("力臂型号", false, (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
+            CustomComboBoxGroup<int?> armModelOptions = _workstationGridView.AddComboBox("力臂型号", (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
 
             // 工具型号和力臂型号的选项完善
-            QueryDeviceModelListRsp queryDeviceModelListRsp = apis.queryDeviceModel(new() {
+            QueryDeviceModelListRsp queryDeviceModelListRsp = apis.QueryDeviceModelList(new() {
                 UserId = SystemUtils.LoggedUserId(),
             });
             List<DeviceModelDTO> deviceModelDTOs = queryDeviceModelListRsp.DeviceModelDTOs;
@@ -63,9 +64,9 @@ namespace OperationGuidance_new.Views {
                 }
             });
 
-            // 查询按钮逻辑
+            // 按钮逻辑
             _workstationGridView.QueryData = (vo) => {
-                List<WorkstationVO> workstationVOs = QueryDataList();
+                List<WorkstationVO> workstationVOs = QueryList();
                 return workstationVOs
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .Where(o => vo.tool_name == null || o.tool_name != null && o.tool_name.Contains(vo.tool_name))
@@ -74,72 +75,276 @@ namespace OperationGuidance_new.Views {
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .ToList();
             };
-            // _workstationGridView.AddNewClick = OpenAddNewPopUpForm;
+            _workstationGridView.AddNewClick = (action) => {
+                WorkstationDTO dto = new();
+                OpenEditEntityPopUpForm("新增站点", dto, action);
+            };
+            _workstationGridView.ModifyClick = (ids, action) => {
+                if (ids.Count <= 0) {
+                    WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+                } else if (ids.Count > 1) {
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                } else {
+                    if (_dataDTOList.Count > 0) {
+                        WorkstationDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
+                        OpenEditEntityPopUpForm("更新站点信息", dto, action);
+                        // 更新后再触发一次查询操作
+                        action();
+                    }
+                }
+            };
+            _workstationGridView.DeleteClick = (ids, action) => {
+                // 删除选择的数据
+                Delete(ids);
+                // 删除后再触发一次查询操作
+                action();
+            };
         }
         #endregion
 
         #region Reusable methods
-        private List<WorkstationVO> QueryDataList() {
-            QueryWorkstationListRsp rsp = apis.QueryWorkstationList(new() {
-                UserId = SystemUtils.LoggedUserId(),
-            });
-            List<WorkstationDTO> workstationsDTOs = rsp.WorkstationsDTOs;
-            List<WorkstationVO> workstationVOs = new();
-            CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(workstationsDTOs, workstationVOs);
-            return workstationVOs;
-        }
-        private void OpenAddNewPopUpForm(Action callBackAction) {
-            _addNewPopUpForm = new() {
-                Title = "新增站点",
+        private void OpenEditEntityPopUpForm(string title, WorkstationDTO dto, Action callBackAction) {
+            _editEntityPopUpForm = new(dto) {
+                Title = title,
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
-            // 添加按钮
-            CommonButton confirmButton = _addNewPopUpForm.AddButton("保存");
-            confirmButton.Click += (s, e) => {
-                callBackAction();
-                _addNewPopUpForm.HideForm();
+            QueryDeviceListRsp deviceRsp1 = apis.QueryDeviceList(new());
+            List<DeviceDTO> deviceDTOs = deviceRsp1.DeviceDTOs;
+            // 添加字段
+            CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
+                (WorkstationDTO dto, string? value) => dto.name = value == null ? "" : value);
+            if (dto.name != null) {
+                stationName.SetValue(0, dto.name);
+            }
+            ToggleButtonGroup toggleButtonGroup = _editEntityPopUpForm.AddToggleButton("是否启用", 
+                    (WorkstationDTO dto, bool value) => dto.enabled = value ? (int) YesOrNo.YES : (int) YesOrNo.NO);
+            if (dto.enabled != null) {
+                toggleButtonGroup.Checked = dto.enabled == (int) YesOrNo.YES;
+            } else {
+                toggleButtonGroup.Checked = true;
+            }
+            // 工具部分
+            SubPanel<WorkstationDTO> toolSubPanel = _editEntityPopUpForm.AddSubPanel("工具");
+            // 工具选择
+            ToggleButton toolToggle = toolSubPanel.TitlePanel.AddRightButton<ToggleButton>();
+            Dictionary<string, int> toolIds = deviceDTOs.Where(dto => dto.category_id == 1).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox<int>("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, toolIds);
+            toolSubPanel.TablePanel.SetColumnSpan(toolOptions, 2);
+            // 工具名称
+            CustomTextBoxGroup toolNameTextBox = toolSubPanel.AddTextBox("工具名称", false, 
+                (WorkstationDTO dto, string? value) => dto.tool_name = value == null ? "" : value);
+            toolNameTextBox.Enabled = false;
+            // 工具型号
+            QueryDeviceModelListRsp deviceModelRsp = apis.QueryDeviceModelList(new());
+            List<DeviceModelDTO> deviceModelDTOs = deviceModelRsp.DeviceModelDTOs;
+            Dictionary<string, int> toolModelOptions = deviceModelDTOs.Where(dto => dto.category_id == 1).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> toolModelNameTextBox = toolSubPanel.AddComboBox("工具型号", 
+                (WorkstationDTO dto, int value) => dto.tool_device_model_id = value, toolModelOptions);
+            toolModelNameTextBox.Enabled = false;
+            // 工具IP
+            CustomTextBoxGroup toolIPTextBox = toolSubPanel.AddTextBox("工具IP", false, 
+                (WorkstationDTO dto, string? value) => dto.tool_ip = value == null ? "" : value);
+            toolIPTextBox.Enabled = false;
+            // 工具端口
+            CustomTextBoxGroup toolPortTextBox = toolSubPanel.AddTextBox("工具端口", false, 
+                (WorkstationDTO dto, int? value) => dto.tool_port = value == null ? 0 : value);
+            toolPortTextBox.Enabled = false;
+            if (dto.tool_id != null) {
+                toolOptions.SetCurrent(toolOptions.IndexOf(dto.tool_id.Value));
+                SetToolValues();
+                toolToggle.Checked = true;
+            } else {
+                toolSubPanel.TablePanel.Hide();
+                ResetToolValues();
+            }
+            // 工具选择事件：选择后自动填入
+            toolOptions.ItemSelected += () => {
+                if (!toolOptions.IsDefaultValue()) {
+                    SetToolValues();
+                } else {
+                    ResetToolValues();
+                }
             };
-            CommonButton cancelButton = _addNewPopUpForm.AddButton("取消");
+            void SetToolValues() {
+                DeviceDTO deviceDTO = deviceDTOs.Single(dto => dto.id == toolOptions.Value);
+                DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
+                toolNameTextBox.SetValue(0, deviceDTO.name);
+                toolModelNameTextBox.SetCurrent(toolModelNameTextBox.IndexOf(deviceModelDTO.id));
+                toolIPTextBox.SetValue(0, deviceDTO.ip);
+                toolPortTextBox.SetValue(0, deviceDTO.port + "");
+            }
+            void ResetToolValues() {
+                toolNameTextBox.SetValue(0, null);
+                toolModelNameTextBox.Reset();
+                toolIPTextBox.SetValue(0, null);
+                toolPortTextBox.SetValue(0, null);
+            }
+            // 是否显示工具开关事件
+            int toolChosenIndexCache = -1;
+            toolToggle.CheckedChanged += (sender, eventArgs) => {
+                if (toolToggle.Checked) {
+                    toolSubPanel.TablePanel.Show();
+                    toolOptions.SetCurrent(toolChosenIndexCache);
+                } else {
+                    toolSubPanel.TablePanel.Hide();
+                    toolChosenIndexCache = toolOptions.GetCurrentIndex();
+                    toolOptions.Reset();
+                }
+                ResizePopUpForm();
+                toolNameTextBox.ResizeChildren();
+                toolModelNameTextBox.ResizeChildren();
+                toolIPTextBox.ResizeChildren();
+                toolPortTextBox.ResizeChildren();
+                toolOptions.ResizeChildren();
+            };
+            // 力臂部分
+            SubPanel<WorkstationDTO> armSubPanel = _editEntityPopUpForm.AddSubPanel("力臂");
+            // 力臂选择
+            ToggleButton armToggle = armSubPanel.TitlePanel.AddRightButton<ToggleButton>();
+            Dictionary<string, int> armIds = deviceDTOs.Where(dto => dto.category_id == 2).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox<int>("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, armIds);
+            armSubPanel.TablePanel.SetColumnSpan(armOptions, 2);
+            // 力臂名称
+            CustomTextBoxGroup armNameTextBox = armSubPanel.AddTextBox("力臂名称", false, 
+                (WorkstationDTO dto, string? value) => dto.arm_name = value == null ? "" : value);
+            armNameTextBox.Enabled = false;
+            // 力臂型号
+            Dictionary<string, int> armModelOptions = deviceModelDTOs.Where(dto => dto.category_id == 2).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> armModelNameTextBox = armSubPanel.AddComboBox("力臂型号", 
+                (WorkstationDTO dto, int value) => dto.arm_device_model_id = value, armModelOptions);
+            armModelNameTextBox.Enabled = false;
+            // 力臂IP
+            CustomTextBoxGroup armIPTextBox = armSubPanel.AddTextBox("力臂IP", false, 
+                (WorkstationDTO dto, string? value) => dto.arm_ip = value == null ? "" : value);
+            armIPTextBox.Enabled = false;
+            // 力臂端口
+            CustomTextBoxGroup armPortTextBox = armSubPanel.AddTextBox("力臂端口", false, 
+                (WorkstationDTO dto, int? value) => dto.arm_port = value == null ? 0 : value);
+            armPortTextBox.Enabled = false;
+            if (dto.arm_id != null) {
+                armOptions.SetCurrent(armOptions.IndexOf(dto.arm_id.Value));
+                SetArmValues();
+                armToggle.Checked = true;
+            } else {
+                armSubPanel.TablePanel.Hide();
+                ResetArmValues();
+            }
+            // 力臂选择事件：选择后自动填入
+            armOptions.ItemSelected += () => {
+                if (!armOptions.IsDefaultValue()) {
+                    SetArmValues();
+                } else {
+                    ResetArmValues();
+                }
+            };
+            void SetArmValues() {
+                DeviceDTO deviceDTO = deviceDTOs.Single(dto => dto.id == armOptions.Value);
+                DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
+                armNameTextBox.SetValue(0, deviceDTO.name);
+                armModelNameTextBox.SetCurrent(armModelNameTextBox.IndexOf(deviceModelDTO.id));
+                armIPTextBox.SetValue(0, deviceDTO.ip);
+                armPortTextBox.SetValue(0, deviceDTO.port + "");
+            }
+            void ResetArmValues() {
+                armNameTextBox.SetValue(0, null);
+                armModelNameTextBox.Reset();
+                armIPTextBox.SetValue(0, null);
+                armPortTextBox.SetValue(0, null);
+            }
+            // 是否显示力臂开关事件
+            int armChosenIndexCache = -1;
+            armToggle.CheckedChanged += (sender, eventArgs) => {
+                if (armToggle.Checked) {
+                    armSubPanel.TablePanel.Show();
+                    armOptions.SetCurrent(armChosenIndexCache);
+                } else {
+                    armSubPanel.TablePanel.Hide();
+                    armChosenIndexCache = armOptions.GetCurrentIndex();
+                    armOptions.Reset();
+                }
+                ResizePopUpForm();
+                armNameTextBox.ResizeChildren();
+                armModelNameTextBox.ResizeChildren();
+                armIPTextBox.ResizeChildren();
+                armPortTextBox.ResizeChildren();
+                armOptions.ResizeChildren();
+            };
+
+            // 添加按钮
+            CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
+            confirmButton.Click += (s, e) => {
+                AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(dto));
+                if (rsp.RsponseCode == HttpResponseCode.OK) {
+                    WidgetUtils.ShowNoticePopUp("保存成功！");
+                    callBackAction();
+                    _editEntityPopUpForm.HideForm();
+                } else {
+                    WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
+                }
+            };
+            CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {
-                _addNewPopUpForm.HideForm();
+                _editEntityPopUpForm.HideForm();
             };
             // Show form but make it transparent to create handles for its children
-            _addNewPopUpForm.PretendToShowToCreateHandlesForChildren();
+            _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();
             // Resize all widgets
             ResizePopUpForm();
             // Real show
-            _addNewPopUpForm.Show();
-            // Set current pop up form
-            EventFuncs.CurrentPopUpForm = _addNewPopUpForm;
+            _editEntityPopUpForm.Show();
         }
         private void ResizePopUpForm() {
-            if (_addNewPopUpForm != null) {
-                _addNewPopUpForm.CalculateDetailProperties();
-
-                // Control mainPanel = WidgetUtils.MainPanel;
-                // TableLayoutPanel tablePanel = _addNewPopUpForm.TablePanel;
-                // Padding contentPadding = _addNewPopUpForm.ContentPanel.Padding;
-                // int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                // int boxMargin = boxHeight / 5;
-                // int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                // Size contentSize = new((int) (mainPanel.Width * .75), tableHeight + contentPadding.Size.Height);
-                // int tableWidth = contentSize.Width - contentPadding.Size.Width;
-                // _addNewPopUpForm.BoxHeight = boxHeight;
-                // _addNewPopUpForm.BoxMargin = boxMargin;
-                // _addNewPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
-                //
-                // _addNewPopUpForm.SetContentSizeAndSelfSize(contentSize);
-                if (_addNewPopUpForm.Visible) {
-                    _addNewPopUpForm.Invalidate();
-                }
+            if (_editEntityPopUpForm != null) {
+                _editEntityPopUpForm.ResizeTablePanelAndItsChildren();
+                _editEntityPopUpForm.Invalidate();
             }
         }
         #endregion
 
         #region Override methods
+        protected override List<WorkstationVO> QueryList() {
+            QueryWorkstationListRsp rsp = apis.QueryWorkstationList(new() {
+                UserId = SystemUtils.LoggedUserId(),
+            });
+            _dataDTOList = rsp.WorkstationsDTOs;
+            List<WorkstationVO> workstationVOs = new();
+            CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(_dataDTOList, workstationVOs);
+            // TODO: can use BackgroundWorker to do this
+            // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
+            // for (int i = 0; i < 5000; i++) {
+            //     workstationVOs.Add(workstationVOs[0]);
+            // }
+            return workstationVOs;
+        }
+        protected override void Add(WorkstationVO entity) {
+            WorkstationDTO workstationDTO = new();
+            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(entity, workstationDTO);
+            AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(workstationDTO));
+            if (rsp.RsponseCode == HttpResponseCode.OK) {
+                WidgetUtils.ShowNoticePopUp("新增成功！");
+            }
+        }
+        protected override void Update(WorkstationVO entity) {
+            WorkstationDTO workstationDTO = new();
+            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(entity, workstationDTO);
+            AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(workstationDTO));
+            if (rsp.RsponseCode == HttpResponseCode.OK) {
+                WidgetUtils.ShowNoticePopUp("修改成功！");
+            }
+        }
+        protected override void Delete(List<int> ids) {
+            if (ids.Count <= 0) {
+                WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+            } else if (WidgetUtils.ShowConfirmPopUp($"确认要删除已选择的{ids.Count}条数据吗？")) {
+                DeleteWorkstationByIdsRsp rsp = apis.DeleteWorkstation(new(ids));
+                if (rsp.RsponseCode == HttpResponseCode.OK) {
+                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                }
+            }
+        }
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            _workstationGridView.DataSource = QueryDataList();
+            _workstationGridView.DataSource = QueryList();
         }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
@@ -148,25 +353,6 @@ namespace OperationGuidance_new.Views {
         public override void VisibleToTrue() {
             base.VisibleToTrue();
         }
-        #endregion
-    }
-
-    public class AddNewPopUpForm: CustomPopUpForm {
-        #region Fields
-        private WorkstationDTO dto = new();
-        private readonly int _tableColumnsCount = 2;
-        // Work station panel
-        private CustomContentPanel _workStationPanel;
-        private TableLayoutPanel _workStationTablePanel;
-        private CustomTextBoxGroup _workStationNameTextBox;
-        // Tool panel
-        private CustomContentPanel _toolPanel;
-        private TitlePanel _toolTitlePanel;
-        private TableLayoutPanel _toolTablePanel;
-        // Arm panel
-        private CustomContentPanel _armPanel;
-        private TitlePanel _armTitlePanel;
-        private TableLayoutPanel _armTablePanel;
         #endregion
     }
 }

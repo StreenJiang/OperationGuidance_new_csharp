@@ -407,7 +407,6 @@ namespace OperationGuidance_new.Views {
                     _barCodePopUpForm.TextBox.Text = _barCodeTextBox.Text;
                 }
                 _barCodePopUpForm.Show();
-                EventFuncs.CurrentPopUpForm = _barCodePopUpForm;
             }
         }
 
@@ -469,8 +468,6 @@ namespace OperationGuidance_new.Views {
                                 ResizePopUpForm();
                                 // Real show
                                 _boltPopUpForm.Show();
-                                // Set current pop up form
-                                EventFuncs.CurrentPopUpForm = _boltPopUpForm;
                             };
                             boltButtons.Add(boltBtn);
                         }

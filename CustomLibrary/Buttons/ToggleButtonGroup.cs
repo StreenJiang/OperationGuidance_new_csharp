@@ -24,7 +24,7 @@ namespace CustomLibrary.Buttons {
                 BackColor = value.BackColor;
             } 
         }
-        public Color BoxBackColor { 
+        public Color ButtonBackColor { 
             get => _toggleButton.BackColor; 
             set => _toggleButton.BackColor = value; 
         }

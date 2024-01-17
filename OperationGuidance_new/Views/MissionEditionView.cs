@@ -588,8 +588,6 @@ namespace OperationGuidance_new.Views {
                 ResizePopUpForm();
                 // Real show
                 _boltPopUpForm.Show();
-                // Set current pop up form
-                EventFuncs.CurrentPopUpForm = _boltPopUpForm;
             }
 
             private void SideButonClick(SideButton sideButton) {

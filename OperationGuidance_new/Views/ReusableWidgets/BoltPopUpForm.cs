@@ -152,7 +152,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _toolIdComboBox.AddItem(list[0].id + "（" + list[0].name + "）", list[0].id);
             _toolIdComboBox.AddItem(list[1].id + "（" + list[1].name + "）", list[1].id);
-            _toolIdComboBox.SetDefault(0);
+            _toolIdComboBox.SetCurrent(0);
             _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
             _procedureSetBox.SetValue(0, boltDTO.procedure_set + "");
             _torqueBox.SetValue(0, boltDTO.torque_min + "");

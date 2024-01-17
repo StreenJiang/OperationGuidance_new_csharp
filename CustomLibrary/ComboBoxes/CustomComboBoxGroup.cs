@@ -59,29 +59,15 @@ namespace CustomLibrary.TextBoxes {
             _comboBox.Parent = this;
         }
 
-        public int AddItem(string itemName, T? obj) {
-            return _comboBox.AddItem(itemName, obj);
-        }
-
-        public void RemoveItem(int index) {
-            _comboBox.RemoveItem(index);
-        }
-
-        public CustomComboBox<T>.ComboBoxItem<T>? GetChosenItem() {
-            return _comboBox.GetChosenItem();
-        }
-
-        public void SetDefault(int index) {
-            _comboBox.SetCurrent(index);
-        }
-
-        public void SetError(bool isError) {
-            _comboBox.IsError = isError;
-        }
-
-        public void Reset() {
-            _comboBox.Reset();
-        }
+        public int AddItem(string itemName, T? obj) => _comboBox.AddItem(itemName, obj);
+        public void RemoveItem(int index) => _comboBox.RemoveItem(index);
+        public CustomComboBox<T>.ComboBoxItem<T>? GetChosenItem() => _comboBox.GetChosenItem();
+        public void SetCurrent(int index) => _comboBox.SetCurrent(index);
+        public int IndexOf(T t) => _comboBox.IndexOf(t);
+        public int GetCurrentIndex() => _comboBox.GetCurrentIndex();
+        public bool IsDefaultValue() => _comboBox.IsDefaultValue();
+        public void SetError(bool isError) => _comboBox.IsError = isError;
+        public void Reset() => _comboBox.Reset();
         public static string ResetName() => CustomComboBox<T>.ResetName();
 
         protected override void OnHandleCreated(EventArgs e) {

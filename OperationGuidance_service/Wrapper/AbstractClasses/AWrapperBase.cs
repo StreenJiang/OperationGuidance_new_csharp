@@ -40,7 +40,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 using (SQLiteConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
                     System.Console.WriteLine($"entity.id: {entity.id}");
-                    return conn.QueryFirst<T>(newEntitySql);
+                    return conn.QueryFirst<T>(newEntitySql, entity);
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction

@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Views {
         // DataGridView panel
         private DataGridViewGroup<OperationDataVO> _operationDataGridView;
         // Add new pop up form
-        private AddNewPopUpForm _addNewPopUpForm;
+        // private EditEntityPopUpForm<> _addNewPopUpForm;
         #endregion
 
         #region Constructors

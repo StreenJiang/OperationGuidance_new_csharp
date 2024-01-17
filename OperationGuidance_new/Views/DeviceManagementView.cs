@@ -12,7 +12,7 @@ namespace OperationGuidance_new.Views {
         // DataGridView panel
         private DataGridViewGroup<DeviceVO> _operationDataGridView;
         // Add new pop up form
-        private AddNewPopUpForm _addNewPopUpForm;
+        // private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
@@ -41,9 +41,9 @@ namespace OperationGuidance_new.Views {
             };
             _operationDataGridView.AddTextBox("设备名称", false, (DeviceVO vo, string? value) => vo.name = value);
             _operationDataGridView.AddTextBox("设备描述", false, (DeviceVO vo, string? value) => vo.description = value);
-            _operationDataGridView.AddComboBox("设备品牌", false, (DeviceVO vo, int? value) => {}, new() { {"阿特拉斯", 1}, {"速动", 2}, {"安维能", 3}});
-            _operationDataGridView.AddComboBox("设备类型", false, (DeviceVO vo, int? value) => {}, new() { {"控制器（工具）", 1}, {"力臂", 2}});
-            _operationDataGridView.AddComboBox("设备型号", false, (DeviceVO vo, int? value) => {}, new() { {"PF6000", 1}, {"PF4000", 2}, {"XXXXXX", 3}});
+            _operationDataGridView.AddComboBox("设备品牌", (DeviceVO vo, int? value) => { }, new() { { "阿特拉斯", 1 }, { "速动", 2 }, { "安维能", 3 } });
+            _operationDataGridView.AddComboBox("设备类型", (DeviceVO vo, int? value) => { }, new() { { "控制器（工具）", 1 }, { "力臂", 2 } });
+            _operationDataGridView.AddComboBox("设备型号", (DeviceVO vo, int? value) => { }, new() { { "PF6000", 1 }, { "PF4000", 2 }, { "XXXXXX", 3 } });
 
             // Initialization
             InitializeGridView();

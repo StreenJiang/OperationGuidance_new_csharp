@@ -12,7 +12,7 @@ namespace OperationGuidance_new.Views {
         // DataGridView panel
         private DataGridViewGroup<DeviceCategoryVO> _operationDataGridView;
         // Add new pop up form
-        private AddNewPopUpForm _addNewPopUpForm;
+        // private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
@@ -39,7 +39,7 @@ namespace OperationGuidance_new.Views {
             };
             _operationDataGridView.AddTextBox("设备类型名称", false, (DeviceCategoryVO vo, string? value) => vo.name = value);
             _operationDataGridView.AddTextBox("设备类型描述", false, (DeviceCategoryVO vo, string? value) => vo.description = value);
-            _operationDataGridView.AddComboBox("是否运行手动控制", false, (DeviceCategoryVO vo, bool? value) => vo.bool_can_manipulate = value, new() { {"是", true}, {"否", false}});
+            _operationDataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, bool? value) => vo.bool_can_manipulate = value, new() { { "是", true }, { "否", false } });
 
             // Initialization
             InitializeGridView();

@@ -22,7 +22,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
 
         public List<T> QueryList(int userId) {
             // Validate each parameter
-            ArgumentValidator.Validate(userId, "UserId should greater than 0. Passing 'userId = " + userId + "' incorrectly.");
+            ArgumentValidator.ValidateInt(userId, "UserId should greater than 0. Passing 'userId = " + userId + "' incorrectly.");
 
             // TODO: use cache to prevent fetching data every time
             return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()}", new { @user_id = userId });

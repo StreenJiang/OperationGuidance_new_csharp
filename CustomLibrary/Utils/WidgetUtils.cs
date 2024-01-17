@@ -1,5 +1,7 @@
 ﻿using CustomLibrary.Buttons;
+using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.TextBoxes;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 
@@ -169,6 +171,7 @@ namespace CustomLibrary.Utils {
         }
         // Pop up form configs 
         public static int PopUpFormTitle() => (int) (MainPanel.Height * .04);
+        public static int PopUpFormSubTitle() => (int) (MainPanel.Height * .0475);
         public static Padding PopUpFormContentPadding() {
             int hPadding = (int) (MainPanel.Width * .015);
             int vPadding = (int) (MainPanel.Height * .03);
@@ -239,8 +242,15 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
+        public static bool ShowConfirmPopUp(string message) {
+            DialogResult result = MessageBox.Show(null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            return result == DialogResult.Yes;
+        }
         public static void ShowNoticePopUp(string message) {
             MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        public static void ShowErrorPopUp(string message) {
+            MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private static Point controlOriginalLocation;
@@ -266,6 +276,77 @@ namespace CustomLibrary.Utils {
                     mouseLeftDown = false;
                 }
             };
+        }
+
+        public static CustomTextBoxGroup AddTextBox<T, V>(Control parent, T t, string boxName, bool numberOnly, Action<T, V?> propertySetter) {
+            CustomTextBoxGroup boxGroup = new(boxName) {
+                Parent = parent,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+                NumberOnly = numberOnly,
+            };
+            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter);
+            return boxGroup;
+        }
+        public static CustomTextBoxGroup AddSeparateTextBox<T, V>(Control parent, T t, string boxName, string separator, bool numberOnly, Action<T, V?> propertySetter1, Action<T, V?> propertySetter2) {
+            CustomTextBoxGroup boxGroup = new(boxName) {
+                Parent = parent,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+                Separator = separator,
+                NumberOnly = numberOnly,
+            };
+            // Need two boxes
+            boxGroup.AddTextBox();
+            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter1);
+            boxGroup.GetTextBox(1).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 1, propertySetter2);
+            return boxGroup;
+        }
+        public static void HandleTextChanged<T, V>(T t, CustomTextBoxGroup boxGroup, int index, Action<T, V?> propertySetter) {
+            string valueStr = boxGroup.GetTextBox(index).Text;
+            try {
+                V? value;
+                if (valueStr != null && valueStr != string.Empty && valueStr != "") {
+                    Type? type = Nullable.GetUnderlyingType(typeof(V?));
+                    if (type != null) {
+                        value = (V?) Convert.ChangeType(valueStr, type);
+                    } else {
+                        value = (V?) Convert.ChangeType(valueStr, typeof(V?));
+                    }
+                } else {
+                    value = default(V?);
+                }
+                propertySetter(t, value);
+            } catch (InvalidCastException e) {
+                System.Console.WriteLine($"{boxGroup.TextName}. Can not convert string[{valueStr}] to type<{typeof(V)}>. Exception: {e}");
+            }
+        }
+        public static CustomComboBoxGroup<V> AddComboBox<T, V>(Control parent, T t, string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
+            CustomComboBoxGroup<V> boxGroup = new(boxName) {
+                Parent = parent,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+            };
+            boxGroup.ItemSelected += () => propertySetter(t, boxGroup.Value);
+            Dictionary<string, V>.Enumerator enumerator = items.GetEnumerator();
+            while (enumerator.MoveNext()) {
+                KeyValuePair<string, V> current = enumerator.Current;
+                boxGroup.AddItem(current.Key, current.Value);
+            }
+            return boxGroup;
+        }
+        public static ToggleButtonGroup AddToggleButton<T>(Control parent, T t, string toggleButtonName, Action<T, bool> propertySetter) {
+            ToggleButtonGroup toggleButton = new(toggleButtonName) {
+                Parent = parent,
+            };
+            toggleButton.CheckedChanged += (sender, eventArgs) => propertySetter(t, toggleButton.Checked);
+            return toggleButton;
         }
     }
 }

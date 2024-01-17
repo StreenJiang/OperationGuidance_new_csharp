@@ -33,8 +33,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         // Delegates
         private Func<T, List<T>> _queryData;
         private Action<Action> _addNewClick;
-        private Action<Action> _modifyClick;
-        private Action<Action> _deleteClick;
+        private Action<List<int>, Action> _modifyClick;
+        private Action<List<int>, Action> _deleteClick;
         // Events
         #endregion
 
@@ -43,8 +43,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public List<T> DataSource { get => _voGridView.DataSource; set => _voGridView.DataSource = value; }
         public Func<T, List<T>> QueryData { get => _queryData; set => _queryData = value; }
         public Action<Action> AddNewClick { get => _addNewClick; set => _addNewClick = value; }
-        public Action<Action> ModifyClick { get => _modifyClick; set => _modifyClick = value; }
-        public Action<Action> DeleteClick { get => _deleteClick; set => _deleteClick = value; }
+        public Action<List<int>, Action> ModifyClick { get => _modifyClick; set => _modifyClick = value; }
+        public Action<List<int>, Action> DeleteClick { get => _deleteClick; set => _deleteClick = value; }
         public bool SearchButtonVisible { get => _searchButton.Visible; set => _searchButton.Visible = value; }
         public bool ResetButtonVisible { get => _resetButton.Visible; set => _resetButton.Visible = value; }
         public bool AddNewButtonVisible { get => _addNewButton.Visible; set => _addNewButton.Visible = value; }
@@ -64,9 +64,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 WidgetUtils.ShowNoticePopUp("Func<QueryData> has not been set.");
                 return new();
             });
-            _addNewClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<AddNewClick> has not been set."));
-            _modifyClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<ModifyClick> has not been set."));
-            _deleteClick = new((a) => WidgetUtils.ShowNoticePopUp("Func<DeleteClick> has not been set."));
+            _addNewClick = new((action) => WidgetUtils.ShowNoticePopUp("Func<AddNewClick> has not been set."));
+            _modifyClick = new((ids, action) => WidgetUtils.ShowNoticePopUp("Func<ModifyClick> has not been set."));
+            _deleteClick = new((ids, action) => WidgetUtils.ShowNoticePopUp("Func<DeleteClick> has not been set."));
 
             // Initialization
             InitializeContents();
@@ -110,14 +110,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _searchButton.Click += (sender, eventArgs) => {
                 QueryAndRefresh();
-                _voGridView.ResizeChildren();
             };
             _resetButton = new() {
                 Parent = _buttonsLeftInnerPanel,
                 Label = "重置",
             };
             _resetButton.Click += (sender, eventArgs) => {
-                _filterParametersVO = new();
+                PropertyInfo[] propertyInfos = _filterParametersVO.GetType().GetProperties();
+                foreach (PropertyInfo property in propertyInfos) {
+                    property.SetValue(_filterParametersVO, null);
+                }
                 foreach (Control control in _filtersTablePanel.Controls) {
                     if (control is CustomTextBoxGroup textBoxGroup) {
                         foreach (CustomTextBox box in textBoxGroup.TextBoxes) {
@@ -144,14 +146,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Label = "修改",
             };
             _modifyButton.Click += (sender, eventArgs) => {
-                _modifyClick(QueryAndRefresh);
+                _modifyClick(GetSelectedIds(), QueryAndRefresh);
             };
             _deleteButton = new() {
                 Parent = _buttonsRightInnerPanel,
                 Label = "删除",
             };
             _deleteButton.Click += (sender, eventArgs) => {
-                _deleteClick(QueryAndRefresh);
+                _deleteClick(GetSelectedIds(), QueryAndRefresh);
             };
         }
         private void InitializeGridView() {
@@ -160,63 +162,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Reusable methods
         public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
-            CustomTextBoxGroup boxGroup = new(boxName) {
-                Parent = _filtersTablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                NumberOnly = numberOnly,
-            };
-            TextBox box = boxGroup.GetTextBox(0).Box;
-            V? value = default(V);
-            box.TextChanged += (sender, eventArgs) => HandleTextChanged(box, propertySetter);
-            propertySetter(_filterParametersVO, value);
-            return boxGroup;
+            return WidgetUtils.AddTextBox(_filtersTablePanel, _filterParametersVO, boxName, numberOnly, propertySetter);
         }
-        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?> propertiesSetter1, Action<T, V?> propertiesSetter2) {
-            CustomTextBoxGroup boxGroup = new(boxName) {
-                Parent = _filtersTablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                Separator = separator,
-                NumberOnly = numberOnly,
-            };
-            // Need two boxes
-            boxGroup.AddTextBox();
-            TextBox box1 = boxGroup.GetTextBox(0).Box;
-            TextBox box2 = boxGroup.GetTextBox(1).Box;
-            box1.TextChanged += (sender, eventArgs) => HandleTextChanged(box1, propertiesSetter1);
-            box2.TextChanged += (sender, eventArgs) => HandleTextChanged(box2, propertiesSetter2);
-            return boxGroup;
+        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?> propertySetter1, Action<T, V?> propertySetter2) {
+            return WidgetUtils.AddSeparateTextBox(_filtersTablePanel, _filterParametersVO, boxName, separator, numberOnly, propertySetter1, propertySetter2);
         }
-        private void HandleTextChanged<V>(TextBox box, Action<T, V?> propertySetter) {
-            try {
-                V? value = (V?) Convert.ChangeType(box.Text, typeof(V));
-                propertySetter(_filterParametersVO, value);
-            } catch (InvalidCastException e) {
-                System.Console.WriteLine($"Can not convert string to type<{typeof(V)}>. Exception: {e}");
-            }
-        }
-        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter, Dictionary<string, V> items) {
-            CustomComboBoxGroup<V> boxGroup = new(boxName) {
-                Parent = _filtersTablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            boxGroup.ItemSelected += () => {
-                propertySetter(_filterParametersVO, boxGroup.Value);
-            };
-            Dictionary<string, V>.Enumerator enumerator = items.GetEnumerator();
-            while (enumerator.MoveNext()) {
-                KeyValuePair<string, V> current = enumerator.Current;
-                boxGroup.AddItem(current.Key, current.Value);
-            }
-            return boxGroup;
+        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
+            return WidgetUtils.AddComboBox(_filtersTablePanel, _filterParametersVO, boxName, propertySetter, items);
         }
         public CommonButton AddExtraButton(string buttonName) {
             CommonButton extraButton = new() {
@@ -227,7 +179,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return extraButton;
         }
         private void QueryAndRefresh() {
+            // TODO: try to use background worker here
             _voGridView.DataSource = _queryData(_filterParametersVO);
+        }
+        private List<int> GetSelectedIds() {
+            List<int> ids = new();
+            DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
+            foreach (DataGridViewRow row in selectedRows) {
+                T dataBoundItem = (T) row.DataBoundItem;
+                if (dataBoundItem.id != null) {
+                    ids.Add(dataBoundItem.id.Value);
+                }
+            }
+            return ids;
         }
         #endregion
 

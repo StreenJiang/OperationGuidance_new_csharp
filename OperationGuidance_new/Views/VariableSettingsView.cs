@@ -62,7 +62,7 @@ namespace OperationGuidance_new.Views {
             for (int i = 0; i < items.Count; i++) {
                 KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
                 if (item.Key == mainParent.Size) {
-                    _resolutionOptionsBox.SetDefault(i);
+                    _resolutionOptionsBox.SetCurrent(i);
                 }
             }
         }

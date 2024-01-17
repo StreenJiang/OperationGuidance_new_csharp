@@ -9,7 +9,7 @@ using OperationGuidance_new.Attributes;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewPanel<V>: CustomContentPanel where V : AVOBase {
+    public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
         #region Feilds 
         private DataGridView _gridView;
         private Panel _blankPanel;
@@ -28,7 +28,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _currentPage;
         private int _pageSize;
         private int _totalPages;
-        private List<V> _dataSource;
+        private List<T> _dataSource;
         #endregion
 
         #region Properties
@@ -48,10 +48,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Paging(_currentPage, _pageSize);
             }
         }
-        public List<V> DataSource {
+        public List<T> DataSource {
             get => _dataSource;
             set {
-                ClearAllToggleButtonCells();
                 _dataSource = value;
                 _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
                 Paging(_currentPage, _pageSize);
@@ -198,7 +197,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         private void InitializeColumnHeaders() {
             DataGridViewColumn[] columnRange = {};
-            Type type = typeof(V);
+            Type type = typeof(T);
             List<PropertyInfo> props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
             foreach (PropertyInfo property in props) {
                 IEnumerable<Attribute> enumerable = property.GetCustomAttributes();
@@ -257,7 +256,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                     if (column is DataGridViewToggleButtonColumn) {
                         // DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
-                        V vo = (V) row.DataBoundItem;
+                        T vo = (T) row.DataBoundItem;
                         // If vo'id is null, then this row is just a blank row for displaying
                         if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell cell && cell.Value != null) {
                             // Set toggle state to button in case they're not matched
@@ -412,7 +411,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.CellMouseMove += (sender, eventArgs) => {
                 if (eventArgs.RowIndex > -1) {
                     DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
-                    V vo = (V) row.DataBoundItem;
+                    T vo = (T) row.DataBoundItem;
                     if (vo.id != null) {
                         row.DefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9);
                     }
@@ -427,7 +426,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 if (_gridView.Focused) {
                     DataGridViewSelectedRowCollection selectedRows = _gridView.SelectedRows;
                     foreach (DataGridViewRow row in selectedRows) {
-                        V vo = (V) row.DataBoundItem;
+                        T vo = (T) row.DataBoundItem;
                         if (vo.id == null) {
                             row.Selected = false;
                         }
@@ -466,6 +465,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
         private void Paging(int currentPage, int pageSize) {
+            ClearAllToggleButtonCells();
             BindingSource bindingSource = new();
             if (_dataSource.Count > 0) {
                 bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
@@ -473,13 +473,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 bindingSource.DataSource = null;
             }
             LoadDataAsynchronously(bindingSource);
-            ResetPageInfo();
         }
         private void LoadDataAsynchronously(BindingSource bindingSource) {
             if (IsHandleCreated) {
                 new Thread(new ThreadStart(() => {
                     Invoke(new EventHandler(delegate(object? sender, EventArgs eventArgs) {
                         _gridView.DataSource = bindingSource;
+                        ResetPageInfo();
+                        ResizeChildren();
                     }), new object[2] { this, null });
                 })).Start();
             }

@@ -1,6 +1,7 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
+using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
@@ -163,14 +164,17 @@ namespace CustomLibrary.Forms {
         }
 
         public virtual void HideForm() {
-            Hide();
-            _popUpFormBackboard.Owner.Focus();
             _popUpFormBackboard.Hide();
+            Hide();
         }
 
         public new void Show() {
-            base.Show();
+            base.Hide();
             Opacity = 1D;
+            EventFuncs.CurrentPopUpForm = this;
+            // Sometimes cursor will hide and don't know why for now
+            Cursor.Show();
+            base.ShowDialog();
         }
 
         public FunctionButton AddButton(string label) {
@@ -237,7 +241,7 @@ namespace CustomLibrary.Forms {
         public void ResizeChildren() => ResizeChildren(EventArgs.Empty);
         public void ResizeChildren(EventArgs eventArgs) => ResizeChildren(this, eventArgs);
         protected virtual void ResizeChildren(object? sender, EventArgs eventArgs) {
-            CalculateDetailProperties();
+            // CalculateDetailProperties();
             // Border
             if (_borderColor != null) {
                 _borderRect = new(0, 0, Width - 1, Height - 1);

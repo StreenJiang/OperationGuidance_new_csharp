@@ -275,6 +275,7 @@ namespace CustomLibrary.ComboBoxs {
                 }
                 _itemButtons[0].SetToggle(true);
                 _selectButton.SelectedItem = _itemButtons[0];
+                _itemSelected();
                 Invalidate();
             }
         }
@@ -288,8 +289,30 @@ namespace CustomLibrary.ComboBoxs {
                 }
                 _selectButton.SelectedItem = _itemButtons[trueIndex];
                 _selectButton.SelectedItem.SetToggle(true);
+                _itemSelected();
                 Invalidate();
             }
+        }
+        public int IndexOf(T t) {
+            int index = -1;
+            if (!_noItem) {
+                ComboBoxItem<T>? item = _itemButtons.SingleOrDefault(item => t.Equals(item.Object));
+                if (item != null) {
+                    index = _itemButtons.IndexOf(item);
+                    index = _needDefaultLabel ? index - 1 : index;
+                }
+            }
+            return index;
+        }
+        public int GetCurrentIndex() {
+            int index = -1;
+            if (!_noItem) {
+                if (_selectButton.SelectedItem != null) {
+                    index = _itemButtons.IndexOf(_selectButton.SelectedItem);
+                    index = _needDefaultLabel ? index - 1 : index;
+                }
+            }
+            return index;
         }
 
         public T? GetChosenValue() {
@@ -298,6 +321,14 @@ namespace CustomLibrary.ComboBoxs {
                 t = _selectButton.SelectedItem.Object;
             }
             return t;
+        }
+        public bool IsDefaultValue() {
+            if (!_noItem && _needDefaultLabel) {
+                if (_selectButton.SelectedItem != null) {
+                    return _selectButton.Label == _defaultLabel;
+                }
+            }
+            return false;
         }
 
         public ComboBoxItem<T>? GetChosenItem() {

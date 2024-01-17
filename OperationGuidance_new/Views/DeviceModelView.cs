@@ -12,7 +12,7 @@ namespace OperationGuidance_new.Views {
         // DataGridView panel
         private DataGridViewGroup<DeviceModelVO> _operationDataGridView;
         // Add new pop up form
-        private AddNewPopUpForm _addNewPopUpForm;
+        // private AddNewPopUpForm _addNewPopUpForm;
         #endregion
 
         #region Constructors
@@ -39,8 +39,8 @@ namespace OperationGuidance_new.Views {
                 };
             };
             _operationDataGridView.AddTextBox("设备型号名称", false, (DeviceModelVO vo, string? value) => vo.name = value);
-            _operationDataGridView.AddComboBox("设备品牌", false, (DeviceModelVO vo, int? value) => vo.brand_id = value, new() { {"阿特拉斯", 1}, {"速动", 2}, {"安维能", 3}});
-            _operationDataGridView.AddComboBox("设备类型", false, (DeviceModelVO vo, int? value) => vo.category_id = value, new() { {"控制器（工具）", 1}, {"力臂", 2}});
+            _operationDataGridView.AddComboBox("设备品牌", (DeviceModelVO vo, int? value) => vo.brand_id = value, new() { { "阿特拉斯", 1 }, { "速动", 2 }, { "安维能", 3 } });
+            _operationDataGridView.AddComboBox("设备类型", (DeviceModelVO vo, int? value) => vo.category_id = value, new() { { "控制器（工具）", 1 }, { "力臂", 2 } });
 
             // Initialization
             InitializeGridView();
