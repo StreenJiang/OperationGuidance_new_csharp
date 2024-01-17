@@ -19,7 +19,7 @@ namespace OperationGuidance_new.Views {
         private List<BrandDTO> _dataDTOList;
         private List<BrandVO> _dataVOSource;
         // DataGridView panel
-        private DataGridViewGroup<BrandVO> _operationDataGridView;
+        private DataGridViewGroup<BrandVO> _dataGridView;
         // Add new pop up form
         private EditEntityPopUpForm<BrandDTO> _editEntityPopUpForm;
         #endregion
@@ -39,25 +39,25 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            _operationDataGridView = new() {
+            _dataGridView = new() {
                 Parent = this,
             };
-            _operationDataGridView.AddTextBox("品牌名称", false, (BrandVO vo, string? value) => vo.name = value);
-            _operationDataGridView.AddTextBox("品牌描述", false, (BrandVO vo, string? value) => vo.description = value);
+            _dataGridView.AddTextBox("品牌名称", false, (BrandVO vo, string? value) => vo.name = value);
+            _dataGridView.AddTextBox("品牌描述", false, (BrandVO vo, string? value) => vo.description = value);
 
             // 按钮逻辑
-            _operationDataGridView.QueryData = (vo) => {
+            _dataGridView.QueryData = (vo) => {
                 List<BrandVO> workstationVOs = QueryList();
                 return workstationVOs
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .Where(o => vo.description == null || o.description != null && o.description.Contains(vo.description))
                     .ToList();
             };
-            _operationDataGridView.AddNewClick = (action) => {
+            _dataGridView.AddNewClick = (action) => {
                 BrandDTO dto = new();
                 OpenEditEntityPopUpForm("新增品牌", dto, action);
             };
-            _operationDataGridView.ModifyClick = (ids, action) => {
+            _dataGridView.ModifyClick = (ids, action) => {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
                 } else if (ids.Count > 1) {
@@ -71,7 +71,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
             };
-            _operationDataGridView.DeleteClick = (ids, action) => {
+            _dataGridView.DeleteClick = (ids, action) => {
                 // 删除选择的数据
                 Delete(ids);
                 // 删除后再触发一次查询操作
@@ -88,27 +88,27 @@ namespace OperationGuidance_new.Views {
             };
             // 添加字段
             CustomTextBoxGroup brandName = _editEntityPopUpForm.AddTextBox("品牌名称", false, 
-                (BrandDTO dto, string? value) => dto.name = value == null ? "" : value);
+                (BrandDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {
                 brandName.SetValue(0, dto.name);
             }
             CustomTextBoxGroup brandShortName = _editEntityPopUpForm.AddTextBox("品牌简称", false, 
-                (BrandDTO dto, string? value) => dto.short_name = value == null ? "" : value);
+                (BrandDTO dto, string? value) => dto.short_name = value ?? "");
             if (dto.short_name != null) {
                 brandShortName.SetValue(0, dto.short_name);
             }
             CustomTextBoxGroup brandEnglishName = _editEntityPopUpForm.AddTextBox("品牌英文名称", false, 
-                (BrandDTO dto, string? value) => dto.english_name = value == null ? "" : value);
+                (BrandDTO dto, string? value) => dto.english_name = value ?? "");
             if (dto.english_name != null) {
                 brandEnglishName.SetValue(0, dto.english_name);
             }
             CustomTextBoxGroup brandEnglishShortName = _editEntityPopUpForm.AddTextBox("品牌英文简称", false, 
-                (BrandDTO dto, string? value) => dto.english_short_name = value == null ? "" : value);
+                (BrandDTO dto, string? value) => dto.english_short_name = value ?? "");
             if (dto.english_short_name != null) {
                 brandEnglishShortName.SetValue(0, dto.english_short_name);
             }
             CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("品牌描述", false, 
-                (BrandDTO dto, string? value) => dto.description = value == null ? "" : value);
+                (BrandDTO dto, string? value) => dto.description = value ?? "");
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
@@ -176,11 +176,11 @@ namespace OperationGuidance_new.Views {
         }
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            _operationDataGridView.DataSource = QueryList();
+            _dataGridView.DataSource = QueryList();
         }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
-            _operationDataGridView.Size = contentSize;
+            _dataGridView.Size = contentSize;
         }
         public override void VisibleToTrue() {
             base.VisibleToTrue();

@@ -19,7 +19,7 @@ namespace OperationGuidance_new.Views {
         private List<WorkstationDTO> _dataDTOList;
         private List<WorkstationVO> _dataVOSource;
         // DataGridView panel
-        private DataGridViewGroup<WorkstationVO> _workstationGridView;
+        private DataGridViewGroup<WorkstationVO> _dataGridView;
         // Add new pop up form
         private EditEntityPopUpForm<WorkstationDTO> _editEntityPopUpForm;
         #endregion
@@ -39,14 +39,14 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            _workstationGridView = new() {
+            _dataGridView = new() {
                 Parent = this,
             };
-            _workstationGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
-            _workstationGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
-            CustomComboBoxGroup<int?> toolModelOptions = _workstationGridView.AddComboBox("工具型号", (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
-            _workstationGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
-            CustomComboBoxGroup<int?> armModelOptions = _workstationGridView.AddComboBox("力臂型号", (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
+            _dataGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
+            _dataGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
+            CustomComboBoxGroup<int?> toolModelOptions = _dataGridView.AddComboBox("工具型号", (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
+            _dataGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
+            CustomComboBoxGroup<int?> armModelOptions = _dataGridView.AddComboBox("力臂型号", (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
 
             // 工具型号和力臂型号的选项完善
             QueryDeviceModelListRsp queryDeviceModelListRsp = apis.QueryDeviceModelList(new() {
@@ -65,7 +65,7 @@ namespace OperationGuidance_new.Views {
             });
 
             // 按钮逻辑
-            _workstationGridView.QueryData = (vo) => {
+            _dataGridView.QueryData = (vo) => {
                 List<WorkstationVO> workstationVOs = QueryList();
                 return workstationVOs
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
@@ -75,11 +75,11 @@ namespace OperationGuidance_new.Views {
                     .Where(o => vo.arm_device_model_id == null || o.arm_device_model_id != null && o.arm_device_model_id == vo.arm_device_model_id)
                     .ToList();
             };
-            _workstationGridView.AddNewClick = (action) => {
+            _dataGridView.AddNewClick = (action) => {
                 WorkstationDTO dto = new();
                 OpenEditEntityPopUpForm("新增站点", dto, action);
             };
-            _workstationGridView.ModifyClick = (ids, action) => {
+            _dataGridView.ModifyClick = (ids, action) => {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
                 } else if (ids.Count > 1) {
@@ -93,7 +93,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
             };
-            _workstationGridView.DeleteClick = (ids, action) => {
+            _dataGridView.DeleteClick = (ids, action) => {
                 // 删除选择的数据
                 Delete(ids);
                 // 删除后再触发一次查询操作
@@ -112,7 +112,7 @@ namespace OperationGuidance_new.Views {
             List<DeviceDTO> deviceDTOs = deviceRsp1.DeviceDTOs;
             // 添加字段
             CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
-                (WorkstationDTO dto, string? value) => dto.name = value == null ? "" : value);
+                (WorkstationDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {
                 stationName.SetValue(0, dto.name);
             }
@@ -128,11 +128,11 @@ namespace OperationGuidance_new.Views {
             // 工具选择
             ToggleButton toolToggle = toolSubPanel.TitlePanel.AddRightButton<ToggleButton>();
             Dictionary<string, int> toolIds = deviceDTOs.Where(dto => dto.category_id == 1).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox<int>("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, toolIds);
+            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, toolIds);
             toolSubPanel.TablePanel.SetColumnSpan(toolOptions, 2);
             // 工具名称
             CustomTextBoxGroup toolNameTextBox = toolSubPanel.AddTextBox("工具名称", false, 
-                (WorkstationDTO dto, string? value) => dto.tool_name = value == null ? "" : value);
+                (WorkstationDTO dto, string? value) => dto.tool_name = value ?? "");
             toolNameTextBox.Enabled = false;
             // 工具型号
             QueryDeviceModelListRsp deviceModelRsp = apis.QueryDeviceModelList(new());
@@ -143,11 +143,11 @@ namespace OperationGuidance_new.Views {
             toolModelNameTextBox.Enabled = false;
             // 工具IP
             CustomTextBoxGroup toolIPTextBox = toolSubPanel.AddTextBox("工具IP", false, 
-                (WorkstationDTO dto, string? value) => dto.tool_ip = value == null ? "" : value);
+                (WorkstationDTO dto, string? value) => dto.tool_ip = value ?? "");
             toolIPTextBox.Enabled = false;
             // 工具端口
             CustomTextBoxGroup toolPortTextBox = toolSubPanel.AddTextBox("工具端口", false, 
-                (WorkstationDTO dto, int? value) => dto.tool_port = value == null ? 0 : value);
+                (WorkstationDTO dto, int? value) => dto.tool_port = value ?? 0);
             toolPortTextBox.Enabled = false;
             if (dto.tool_id != null) {
                 toolOptions.SetCurrent(toolOptions.IndexOf(dto.tool_id.Value));
@@ -335,11 +335,11 @@ namespace OperationGuidance_new.Views {
         }
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            _workstationGridView.DataSource = QueryList();
+            _dataGridView.DataSource = QueryList();
         }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
-            _workstationGridView.Size = contentSize;
+            _dataGridView.Size = contentSize;
         }
         public override void VisibleToTrue() {
             base.VisibleToTrue();

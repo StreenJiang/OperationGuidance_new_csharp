@@ -396,10 +396,10 @@ namespace OperationGuidance_new.Views {
                     _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
                         if (!_barCodePopUpForm.TextBox.IsError) {
                             _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
-                            _barCodePopUpForm.HideForm();
+                            _barCodePopUpForm.DisposeForm();
                         }
                     };
-                    _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.HideForm();
+                    _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.DisposeForm();
                     _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
                     ResizeBarCodePopUpForm();
                 }
@@ -456,11 +456,11 @@ namespace OperationGuidance_new.Views {
                                     boltBtn.BoltStatus = BoltStatus.TIGHTENING;
                                     boltBtn.StartFlicker();
                                     CurrentWorkingButton = boltBtn;
-                                    _boltPopUpForm.HideForm();
+                                    _boltPopUpForm.DisposeForm();
                                 };
                                 CommonButton closeBtn = _boltPopUpForm.AddButton("关闭");
                                 closeBtn.Click += (s, e) => {
-                                    _boltPopUpForm.HideForm();
+                                    _boltPopUpForm.DisposeForm();
                                 };
                                 // Show form but make it transparent to create handles for its children
                                 _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
@@ -1452,14 +1452,13 @@ namespace OperationGuidance_new.Views {
             };
             CommonButton btnClose = AddButton("关闭");
             btnClose.Click += (s, e) => {
-                HideForm();
+                DisposeForm();
             };
         }
 
-        public override void HideForm() {
-            base.HideForm();
+        public override void DisposeForm() {
+            base.DisposeForm();
             _upperForm.Show();
-            EventFuncs.CurrentPopUpForm = _upperForm;
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

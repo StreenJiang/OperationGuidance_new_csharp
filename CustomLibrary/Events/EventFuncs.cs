@@ -52,7 +52,7 @@ namespace CustomLibrary.Events {
                             Rectangle rectangleToScreen = new(CurrentPopUpForm.PointToScreen(Point.Empty), CurrentPopUpForm.Size);
                             // 判断鼠标点击的坐标是否在弹框范围外
                             if (!rectangleToScreen.Contains(point)) {
-                                CurrentPopUpForm.HideForm();
+                                CurrentPopUpForm.DisposeForm();
                                 CurrentPopUpForm = null;
                             }
                         }

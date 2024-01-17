@@ -19,9 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Views\BrandManagement.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Update="Views\BrandManagement.cs" />
     <Compile Update="Views\MissionEditionView.cs">
       <SubType>Component</SubType>
     </Compile>

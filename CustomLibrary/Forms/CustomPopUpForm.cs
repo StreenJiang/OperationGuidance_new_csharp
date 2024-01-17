@@ -164,11 +164,13 @@ namespace CustomLibrary.Forms {
         }
 
         public virtual void HideForm() {
+            EventFuncs.CurrentPopUpForm = null;
             _popUpFormBackboard.Hide();
             Hide();
         }
 
         public virtual void DisposeForm() {
+            EventFuncs.CurrentPopUpForm = null;
             _popUpFormBackboard.Dispose();
             Dispose();
         }
