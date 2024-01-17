@@ -12,7 +12,7 @@ using CustomLibrary.Utils;
 using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
-    public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationVO> {
+    public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -72,7 +72,7 @@ namespace OperationGuidance_new.Views {
                     .Where(o => vo.tool_name == null || o.tool_name != null && o.tool_name.Contains(vo.tool_name))
                     .Where(o => vo.tool_device_model_id == null || o.tool_device_model_id != null && o.tool_device_model_id == vo.tool_device_model_id)
                     .Where(o => vo.arm_name == null || o.arm_name != null && o.arm_name.Contains(vo.arm_name))
-                    .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
+                    .Where(o => vo.arm_device_model_id == null || o.arm_device_model_id != null && o.arm_device_model_id == vo.arm_device_model_id)
                     .ToList();
             };
             _workstationGridView.AddNewClick = (action) => {
@@ -273,18 +273,12 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(dto));
-                if (rsp.RsponseCode == HttpResponseCode.OK) {
-                    WidgetUtils.ShowNoticePopUp("保存成功！");
-                    callBackAction();
-                    _editEntityPopUpForm.HideForm();
-                } else {
-                    WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
-                }
+                callBackAction += _editEntityPopUpForm.DisposeForm;
+                AddOrUpdate(dto, callBackAction);
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {
-                _editEntityPopUpForm.HideForm();
+                _editEntityPopUpForm.DisposeForm();
             };
             // Show form but make it transparent to create handles for its children
             _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();
@@ -316,21 +310,16 @@ namespace OperationGuidance_new.Views {
             // }
             return workstationVOs;
         }
-        protected override void Add(WorkstationVO entity) {
+        protected override void AddOrUpdate(WorkstationDTO dto, Action action) {
             WorkstationDTO workstationDTO = new();
-            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(entity, workstationDTO);
+            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(dto, workstationDTO);
             AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(workstationDTO));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
-                WidgetUtils.ShowNoticePopUp("新增成功！");
+                WidgetUtils.ShowNoticePopUp("保存成功！");
+            } else {
+                WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
             }
-        }
-        protected override void Update(WorkstationVO entity) {
-            WorkstationDTO workstationDTO = new();
-            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(entity, workstationDTO);
-            AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(workstationDTO));
-            if (rsp.RsponseCode == HttpResponseCode.OK) {
-                WidgetUtils.ShowNoticePopUp("修改成功！");
-            }
+            action();
         }
         protected override void Delete(List<int> ids) {
             if (ids.Count <= 0) {
@@ -339,6 +328,8 @@ namespace OperationGuidance_new.Views {
                 DeleteWorkstationByIdsRsp rsp = apis.DeleteWorkstation(new(ids));
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
                     WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                } else {
+                    WidgetUtils.ShowErrorPopUp($"删除失败！错误信息：{rsp.RsponseMessage}");
                 }
             }
         }

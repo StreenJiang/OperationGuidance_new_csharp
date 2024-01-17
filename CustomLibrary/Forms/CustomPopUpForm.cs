@@ -168,6 +168,11 @@ namespace CustomLibrary.Forms {
             Hide();
         }
 
+        public virtual void DisposeForm() {
+            _popUpFormBackboard.Dispose();
+            Dispose();
+        }
+
         public new void Show() {
             base.Hide();
             Opacity = 1D;

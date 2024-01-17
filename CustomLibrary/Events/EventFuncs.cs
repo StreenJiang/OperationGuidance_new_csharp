@@ -54,7 +54,6 @@ namespace CustomLibrary.Events {
                             if (!rectangleToScreen.Contains(point)) {
                                 CurrentPopUpForm.HideForm();
                                 CurrentPopUpForm = null;
-                                MainForm.Focus();
                             }
                         }
 
