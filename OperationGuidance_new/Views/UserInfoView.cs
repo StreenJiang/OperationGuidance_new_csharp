@@ -1,4 +1,5 @@
-﻿using CustomLibrary.Configs;
+﻿using CustomLibrary.Buttons;
+using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;

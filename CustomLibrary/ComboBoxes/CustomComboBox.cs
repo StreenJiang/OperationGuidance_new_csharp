@@ -16,8 +16,9 @@ namespace CustomLibrary.ComboBoxs {
         private readonly int _maxItemsShown = 5; // Maximum of shown items, will has scroll bar if greater than this number
         private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
+        private Form? _itemsOuterForm;
         private ItemsScrollPanel? _itemsScrollPanel;
-        private ItemsPanel? _itemsPanel;
+        private ItemsInnerPanel? _itemsInnerPanel;
         private int _itemsPanelHeight;
         private int _itemsScrollPanelHeight;
         private List<ComboBoxItem<T>> _itemButtons;
@@ -154,39 +155,46 @@ namespace CustomLibrary.ComboBoxs {
             _selectButton.Click += (sender, eventArgs) => {
                 if (!_selectButton.IsCollapsed) {
                     if (_itemsScrollPanel == null || _itemsScrollPanel.IsDisposed) {
-                        _itemsPanel = new() {
+                        _itemsOuterForm = new() {
+                            StartPosition = FormStartPosition.Manual,
+                            FormBorderStyle = FormBorderStyle.None,
+                            ShowInTaskbar = false,
+                            Size = new(Width, 1),
+                            TopMost = true,
+                        };
+                        _itemsOuterForm.SizeChanged += (sender, eventArgs) => {
+                            if (_itemsScrollPanel != null) {
+                                _itemsScrollPanel.Size = _itemsOuterForm.Size;
+                            }
+                        };
+                        _itemsInnerPanel = new() {
                             Margin = new(0), 
                             FlowDirection = FlowDirection.TopDown,
                             BackColor = this.BackColor,
                         };
-                        _itemsPanel.NewHeight = _itemHeight * _itemButtons.Count;
-                        _itemsPanel.SizeChanged += (sender, eventArgs) => {
+                        _itemsInnerPanel.NewHeight = _itemHeight * _itemButtons.Count;
+                        _itemsInnerPanel.SizeChanged += (sender, eventArgs) => {
                             if (_itemsScrollPanel != null) {
                                 foreach (ComboBoxItem<T> item in _itemButtons) {
-                                    item.Size = new(_itemsPanel.Width - _itemsScrollPanel.Padding.Size.Width, _itemHeight);
+                                    item.Size = new(_itemsInnerPanel.Width - _itemsScrollPanel.Padding.Size.Width, _itemHeight);
                                 }
                             }
                         };
-                        Point point = PointToScreen(Point.Empty);
-                        _itemsScrollPanel = new(_itemsPanel) {
+                        _itemsScrollPanel = new(_itemsInnerPanel) {
+                            Parent = _itemsOuterForm,
                             Margin = new(0), 
                             Size = new(Width, 0),
                             BorderColor = this.BorderColor,
                             NeedsPadding = false,
-                            Visible = false,
                         };
-                        if (EventFuncs.CurrentPopUpForm != null) {
-                            _itemsScrollPanel.Parent = EventFuncs.CurrentPopUpForm;
-                        } else {
-                            _itemsScrollPanel.Parent = WidgetUtils.MainPanel.Parent;
-                        }
-                        _itemsScrollPanel.BringToFront();
-                        _itemsScrollPanel.Location = _itemsScrollPanel.PointToClient(new(point.X, point.Y + Height));
-                        _itemsScrollPanel.Visible = true;
+
+                        Point point = PointToScreen(Point.Empty);
+                        _itemsOuterForm.Location = _itemsOuterForm.PointToClient(new(point.X, point.Y + Height));
+                        _itemsOuterForm.Show();
                     }
-                    if (_itemsPanel != null && !_itemsPanel.IsDisposed && _itemsPanel.Controls.Count == 0) {
+                    if (_itemsInnerPanel != null && !_itemsInnerPanel.IsDisposed && _itemsInnerPanel.Controls.Count == 0) {
                         foreach (ComboBoxItem<T> item in _itemButtons) {
-                            _itemsPanel.Controls.Add(item);
+                            _itemsInnerPanel.Controls.Add(item);
                             if (item.Toggled) {
                                 item.BringToFront();
                             }
@@ -197,9 +205,9 @@ namespace CustomLibrary.ComboBoxs {
                         _itemSelected();
                     }
                 }
-                if (_itemsPanel != null) {
+                if (_itemsInnerPanel != null) {
                     // This is to prevent VScrollBar from showing while timer is running
-                    _itemsPanel.Visible = false;
+                    _itemsInnerPanel.Visible = false;
                 }
                 
                 _collapseTimer.Start();
@@ -336,43 +344,43 @@ namespace CustomLibrary.ComboBoxs {
         }
 
         private void TimerTick(object? sender, EventArgs eventArgs) {
-            if (_itemsScrollPanel == null) {
+            if (_itemsOuterForm == null || _itemsScrollPanel == null) {
                 _collapseTimer.Stop();
                 return;
             }
             if (_selectButton.IsCollapsed) {
-                if (_itemsScrollPanel.Height - _collapseStep <= 0) {
-                    _itemsScrollPanel.Height = 0;
-                    if (_itemsPanel != null) {
-                        _itemsPanel.Controls.Clear();
+                if (_itemsOuterForm.Height - _collapseStep <= 0) {
+                    _itemsOuterForm.Height = 0;
+                    if (_itemsInnerPanel != null) {
+                        _itemsInnerPanel.Controls.Clear();
                     }
-                    _itemsScrollPanel.Dispose();
-                    _itemsScrollPanel = null;
+                    _itemsOuterForm.Dispose();
+                    _itemsOuterForm = null;
                     _collapseTimer.Stop();
                 } else {
-                    _itemsScrollPanel.Height -= _collapseStep;
+                    _itemsOuterForm.Height -= _collapseStep;
                     _itemsScrollPanel.ResizeChildren(eventArgs);
-                    _itemsScrollPanel.Invalidate();
+                    _itemsOuterForm.Invalidate();
                 }
             } else {
-                if (_itemsScrollPanel.Height + _collapseStep >= _itemsScrollPanelHeight) {
-                    _itemsScrollPanel.Height = _itemsScrollPanelHeight;
-                    if (_itemsPanel != null) {
-                        _itemsPanel.Visible = true;
+                if (_itemsOuterForm.Height + _collapseStep >= _itemsScrollPanelHeight) {
+                    _itemsOuterForm.Height = _itemsScrollPanelHeight;
+                    if (_itemsInnerPanel != null) {
+                        _itemsInnerPanel.Visible = true;
                     }
                     // Do this method
                     ResetWidthOfItemScrollPanelByItemProperWidth();
                     _collapseTimer.Stop();
                 } else {
-                    _itemsScrollPanel.Height += _collapseStep;
+                    _itemsOuterForm.Height += _collapseStep;
                 }
                 _itemsScrollPanel.ResizeChildren(eventArgs);
-                _itemsScrollPanel.Invalidate();
+                _itemsOuterForm.Invalidate();
             }
         }
 
         private void ResetWidthOfItemScrollPanelByItemProperWidth() {
-            if (_itemsScrollPanel != null) {
+            if (_itemsOuterForm != null && _itemsScrollPanel != null) {
                 _itemsScrollPanel.ResizeChildren();
                 int properWidth = 0;
                 foreach (ComboBoxItem<T> item in _itemButtons) {
@@ -382,27 +390,29 @@ namespace CustomLibrary.ComboBoxs {
                 }
                 if (properWidth > 0) {
                     if (_itemsScrollPanel.VScrollBar.Visible) {
-                        _itemsScrollPanel.Width = properWidth + _itemsScrollPanel.VScrollBar.Width;
+                        _itemsOuterForm.Width = properWidth + _itemsScrollPanel.VScrollBar.Width;
                     } else {
-                        _itemsScrollPanel.Width = properWidth;
+                        _itemsOuterForm.Width = properWidth;
                     }
                 }
             }
         }
 
         private void ItemsPanelAutoClose() {
-            if (_itemsScrollPanel != null) {
+            if (_itemsOuterForm != null && _itemsScrollPanel != null) {
                 Point realTimePoint = EventFuncs.RealTimePoint;
-                if (!new Rectangle(_itemsScrollPanel.PointToScreen(Point.Empty), _itemsScrollPanel.Size).Contains(realTimePoint) 
+                if (!new Rectangle(_itemsOuterForm.PointToScreen(Point.Empty), _itemsOuterForm.Size).Contains(realTimePoint) 
                         && !new Rectangle(_selectButton.PointToScreen(Point.Empty), _selectButton.Size).Contains(realTimePoint)) {
                     if (!_selectButton.IsCollapsed) {
                         _selectButton.IsCollapsed = true;
                     }
-                    if (_itemsPanel != null) {
-                        _itemsPanel.Controls.Clear();
+                    if (_itemsInnerPanel != null) {
+                        _itemsInnerPanel.Controls.Clear();
                     }
                     _itemsScrollPanel.Dispose();
                     _itemsScrollPanel = null;
+                    _itemsOuterForm.Dispose();
+                    _itemsOuterForm = null;
                 }
             }
         }
@@ -571,8 +581,8 @@ namespace CustomLibrary.ComboBoxs {
         }
 
         // Items panel
-        public class ItemsPanel: CustomContentPanel {
-            public ItemsPanel() => DoubleBuffered = true;
+        public class ItemsInnerPanel: CustomContentPanel {
+            public ItemsInnerPanel() => DoubleBuffered = true;
 
             public override bool CheckNeedsScrollBar(int parentNewHeight) {
                 if (!Visible) {

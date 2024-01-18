@@ -1,14 +1,14 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Configurations;
-using OperationGuidance_service.Models;
+using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Utils {
     public static class SystemUtils {
-        private static UserAccountInfo? _user;
+        private static UserAccountInfoDTO? _user;
         private static OperationGuidanceApis? apis;
 
-        public static UserAccountInfo UserInfo {
+        public static UserAccountInfoDTO UserInfo {
             set {
                 _user = value;
             } get {
@@ -27,7 +27,7 @@ namespace OperationGuidance_service.Utils {
         }
 
         public static string LoggedUserName() {
-            return _user != null ? _user.name : "UnKnownUser";
+            return _user != null && _user.name != null ? _user.name : "UnKnownUser";
         }
 
         // 获取Apis

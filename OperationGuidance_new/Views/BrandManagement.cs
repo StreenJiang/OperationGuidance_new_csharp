@@ -17,7 +17,6 @@ namespace OperationGuidance_new.Views {
         // Apis
         private OperationGuidanceApis apis;
         private List<BrandDTO> _dataDTOList;
-        private List<BrandVO> _dataVOSource;
         // DataGridView panel
         private DataGridViewGroup<BrandVO> _dataGridView;
         // Add new pop up form
@@ -47,8 +46,8 @@ namespace OperationGuidance_new.Views {
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
-                List<BrandVO> workstationVOs = QueryList();
-                return workstationVOs
+                List<BrandVO> vos = QueryList();
+                return vos
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .Where(o => vo.description == null || o.description != null && o.description.Contains(vo.description))
                     .ToList();
@@ -59,7 +58,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.ModifyClick = (ids, action) => {
                 if (ids.Count <= 0) {
-                    WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+                    WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
                     WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
                 } else {
@@ -154,9 +153,7 @@ namespace OperationGuidance_new.Views {
             return brandVOs;
         }
         protected override void AddOrUpdate(BrandDTO dto, Action action) {
-            BrandDTO brandDTO = new();
-            CommonUtils.ObjectConverter<BrandVO, BrandDTO>(dto, brandDTO);
-            AddOrUpdateBrandRsp rsp = apis.AddOrUpdateBrand(new(brandDTO));
+            AddOrUpdateBrandRsp rsp = apis.AddOrUpdateBrand(new(dto));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
                 WidgetUtils.ShowNoticePopUp("保存成功！");
             } else {

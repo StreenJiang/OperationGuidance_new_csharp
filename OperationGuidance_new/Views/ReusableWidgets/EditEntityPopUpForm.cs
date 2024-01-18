@@ -30,9 +30,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Reusable methods
         public SubPanel<T> AddSubPanel(string title) {
-            SubPanel<T> subPanel = new(_dto, title, _columnCount) {
-                Parent = _tablePanel,
-            };
+            SubPanel<T> subPanel = new(_dto, title, _columnCount);
+            _tablePanel.Controls.Add(subPanel);
             _tablePanel.SetColumnSpan(subPanel, 2);
             return subPanel;
         }
@@ -54,6 +53,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             toggleButtonGroup.Ratio = 7;
             return toggleButtonGroup;
         }
+        public PictureBoxGroup AddPictureBox(string boxName, Action<T, Image> imageSetter, Action<T, string> fileNameSetter) {
+            PictureBoxGroup pictureBoxGroup = WidgetUtils.AddPictureBox(_tablePanel, _dto, boxName, imageSetter, fileNameSetter);
+            pictureBoxGroup.NameAlignment = HorizontalAlignment.Right;
+            pictureBoxGroup.Ratio = 7;
+            _tablePanel.SetColumnSpan(pictureBoxGroup, 2);
+            return pictureBoxGroup;
+        }
         public void ResizeTablePanelAndItsChildren() {
             CalculateDetailProperties();
 
@@ -67,6 +73,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int previousRowIndex = -1;
             int cntentWidth = (int) (mainForm.Width * .75);
             int tableWidth = cntentWidth - contentPadding.Size.Width;
+            int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
             foreach (Control control in _tablePanel.Controls) {
                 if (control.Visible) {
                     int currentRowIndex = _tablePanel.GetPositionFromControl(control).Row;
@@ -77,6 +84,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         } else if (control is SubPanel<T> subPanel) {
                             subPanel.ResizeSelf(tableWidth);
                             tableHeight += subPanel.Height;
+                        } else if (control is PictureBoxGroup pictureBox) {
+                            pictureBox.SetSize(contentPieceWidth, boxHeight, WidgetUtils.PictureBoxGroupBaseHeight(), 1, contentPieceWidth + boxMargin * 2);
+                            pictureBox.Margin = new(boxMargin);
+                            tableHeight += pictureBox.Height + subTitleMargin * 2;
                         } else {
                             tableHeight += boxHeight + boxMargin * 2;
                         }
@@ -91,9 +102,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     titlePanel.Size = new(_tablePanel.Width, subTitleHeight);
                 } else if (control is SubPanel<T> subPanel) {
                     continue;
+                } else if (control is PictureBoxGroup pictureBox) {
+                    continue;
                 } else {
                     control.Margin = new(boxMargin);
-                    control.Size = new(_tablePanel.Width / _tablePanel.ColumnCount - boxMargin * 2, boxHeight);
+                    control.Size = new(contentPieceWidth, boxHeight);
                 }
             }
 

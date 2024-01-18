@@ -17,7 +17,6 @@ namespace OperationGuidance_new.Views {
         // Apis
         private OperationGuidanceApis apis;
         private List<WorkstationDTO> _dataDTOList;
-        private List<WorkstationVO> _dataVOSource;
         // DataGridView panel
         private DataGridViewGroup<WorkstationVO> _dataGridView;
         // Add new pop up form
@@ -66,8 +65,8 @@ namespace OperationGuidance_new.Views {
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
-                List<WorkstationVO> workstationVOs = QueryList();
-                return workstationVOs
+                List<WorkstationVO> vos = QueryList();
+                return vos
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .Where(o => vo.tool_name == null || o.tool_name != null && o.tool_name.Contains(vo.tool_name))
                     .Where(o => vo.tool_device_model_id == null || o.tool_device_model_id != null && o.tool_device_model_id == vo.tool_device_model_id)
@@ -81,7 +80,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.ModifyClick = (ids, action) => {
                 if (ids.Count <= 0) {
-                    WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+                    WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
                     WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
                 } else {
@@ -311,9 +310,7 @@ namespace OperationGuidance_new.Views {
             return workstationVOs;
         }
         protected override void AddOrUpdate(WorkstationDTO dto, Action action) {
-            WorkstationDTO workstationDTO = new();
-            CommonUtils.ObjectConverter<WorkstationVO, WorkstationDTO>(dto, workstationDTO);
-            AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(workstationDTO));
+            AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(dto));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
                 WidgetUtils.ShowNoticePopUp("保存成功！");
             } else {

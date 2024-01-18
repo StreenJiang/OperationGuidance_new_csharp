@@ -116,10 +116,10 @@ namespace OperationGuidance_new.Views {
                     // Resize main form according to chosen resolution
                     Form mainParent = (Form) WidgetUtils.MainPanel.Parent;
                     Size newSize = value.Key;
+                    if (_resolutionOptionsBox.IsError) {
+                        _resolutionOptionsBox.SetError(false);
+                    }
                     if (newSize != mainParent.Size) {
-                        if (_resolutionOptionsBox.IsError) {
-                            _resolutionOptionsBox.SetError(false);
-                        }
                         if (newSize == screenSize) {
                             mainParent.WindowState = FormWindowState.Maximized;
                         } else {

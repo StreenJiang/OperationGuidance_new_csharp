@@ -9,8 +9,10 @@ namespace OperationGuidance_new.ViewObjects {
         public string? description { get; set; }
         [GridColumn("设备品牌")]
         public string? brand_name { get; set; }
+        public int? brand_id { get; set; }
         [GridColumn("设备类型")]
         public string? category_name { get; set; }
+        public int? category_id { get; set; }
         [GridColumn("设备型号")]
         public string? model_name { get; set; }
         public int? model_id { get; set; }

@@ -17,7 +17,6 @@ namespace OperationGuidance_new.Views {
         // Apis
         private OperationGuidanceApis apis;
         private List<DeviceCategoryDTO> _dataDTOList;
-        private List<DeviceCategoryVO> _dataVOSource;
         // DataGridView panel
         private DataGridViewGroup<DeviceCategoryVO> _dataGridView;
         // Add new pop up form
@@ -44,7 +43,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.AddTextBox("设备类型名称", false, (DeviceCategoryVO vo, string? value) => vo.name = value);
             _dataGridView.AddTextBox("设备类型描述", false, (DeviceCategoryVO vo, string? value) => vo.description = value);
-            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, bool? value) => vo.bool_can_manipulate = value, new() { { "是", true }, { "否", false } });
+            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, int? value) => vo.can_manipulate = value, new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } });
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
@@ -52,6 +51,7 @@ namespace OperationGuidance_new.Views {
                 return workstationVOs
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
                     .Where(o => vo.description == null || o.description != null && o.description.Contains(vo.description))
+                    .Where(o => vo.can_manipulate == null || vo.can_manipulate.Value == 0 || o.can_manipulate != null && o.can_manipulate == vo.can_manipulate)
                     .ToList();
             };
             _dataGridView.AddNewClick = (action) => {
@@ -60,15 +60,13 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.ModifyClick = (ids, action) => {
                 if (ids.Count <= 0) {
-                    WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+                    WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
                     WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
                 } else {
                     if (_dataDTOList.Count > 0) {
                         DeviceCategoryDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
                         OpenEditEntityPopUpForm("更新设备类型信息", dto, action);
-                        // 更新后再触发一次查询操作
-                        action();
                     }
                 }
             };
@@ -100,9 +98,41 @@ namespace OperationGuidance_new.Views {
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
-            _editEntityPopUpForm.AddComboBox("是否允许手动控制", 
+            CustomComboBoxGroup<int?> canManipulate = _editEntityPopUpForm.AddComboBox("是否允许手动控制", 
                 (DeviceCategoryDTO dto, int? value) => dto.can_manipulate = value, 
-                new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } }).Ratio = 6;
+                new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } });
+            canManipulate.Ratio = 6;
+            if (dto.can_manipulate != null) {
+                canManipulate.SetCurrent(canManipulate.IndexOf(dto.can_manipulate));
+            }
+            PictureBoxGroup iconNormal = _editEntityPopUpForm.AddPictureBox("状态正常图标", 
+                (DeviceCategoryDTO dto, Image value) => dto.icon_normal = CommonUtils.ImageToBase64(value), 
+                (DeviceCategoryDTO dto, string value) => dto.icon_normal_name = value
+            );
+            iconNormal.Ratio = 6;
+            if (dto.icon_normal_name != null) {
+                iconNormal.FileName = dto.icon_normal_name;
+            }
+            if (dto.icon_normal != null) {
+                Image? image = CommonUtils.ImageBase64ToImage(dto.icon_normal);
+                if (image != null) {
+                    iconNormal.Image = image;
+                }
+            }
+            PictureBoxGroup iconError = _editEntityPopUpForm.AddPictureBox("状态错误图标", 
+                (DeviceCategoryDTO dto, Image value) => dto.icon_error = CommonUtils.ImageToBase64(value), 
+                (DeviceCategoryDTO dto, string value) => dto.icon_error_name = value
+            );
+            iconError.Ratio = 6;
+            if (dto.icon_error_name != null) {
+                iconError.FileName = dto.icon_error_name;
+            }
+            if (dto.icon_error != null) {
+                Image? image = CommonUtils.ImageBase64ToImage(dto.icon_error);
+                if (image != null) {
+                    iconError.Image = image;
+                }
+            }
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
@@ -145,9 +175,8 @@ namespace OperationGuidance_new.Views {
             return brandVOs;
         }
         protected override void AddOrUpdate(DeviceCategoryDTO dto, Action action) {
-            DeviceCategoryDTO brandDTO = new();
-            CommonUtils.ObjectConverter<DeviceCategoryVO, DeviceCategoryDTO>(dto, brandDTO);
-            AddOrUpdateDeviceCategoryRsp rsp = apis.AddOrUpdateDeviceCategory(new(brandDTO));
+            System.Console.WriteLine($"dtoicon_normal_name.: {dto.icon_normal_name}");
+            AddOrUpdateDeviceCategoryRsp rsp = apis.AddOrUpdateDeviceCategory(new(dto));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
                 WidgetUtils.ShowNoticePopUp("保存成功！");
             } else {

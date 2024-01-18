@@ -14,23 +14,34 @@ namespace OperationGuidance_service.Controllers {
     [Api]
     public sealed class OperationGuidanceApis {
         [Autowired]
-        public UserAccountInfoService _userAccountInfoService;
+        private UserAccountInfoService _userAccountInfoService;
         [Autowired]
-        public ProductMissionService _productMissionService;
+        private ProductMissionService _productMissionService;
         [Autowired]
-        public ProductSideService _productSideService;
+        private ProductSideService _productSideService;
         [Autowired]
-        public ProductBoltService _productBoltService;
+        private ProductBoltService _productBoltService;
         [Autowired]
-        public DeviceService _deviceService;
+        private DeviceService _deviceService;
         [Autowired]
-        public BrandService _brandService;
+        private BrandService _brandService;
         [Autowired]
-        public DeviceCategoryService _deviceCategoryService;
+        private DeviceCategoryService _deviceCategoryService;
         [Autowired]
-        public DeviceModelService _deviceModelService;
+        private DeviceModelService _deviceModelService;
         [Autowired]
-        public WorkstationService _workstationService;
+        private WorkstationService _workstationService;
+
+        #region 用户账户信息相关
+        public FindUserByIdRsp FindUserById(FindUserByIdReq req) {
+            FindUserByIdRsp rsp = new();
+            UserAccountInfo? userAccountInfo = _userAccountInfoService.FindById(req.UserId);
+            if (userAccountInfo != null) {
+                CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfo, rsp.UserAccountInfoDTO);
+            }
+            return rsp;
+        }
+        #endregion
 
         #region 产品任务相关
         // 查询所有未被删除的产品任务列表
@@ -369,6 +380,20 @@ namespace OperationGuidance_service.Controllers {
             List<DeviceModel> deviceModels = _deviceModelService.QueryList(req.UserId);
             List<DeviceModelDTO> deviceModelDTOs = new();
             CommonUtils.ObjectConverter<DeviceModel, DeviceModelDTO>(deviceModels, deviceModelDTOs);
+            foreach (DeviceModelDTO dto in deviceModelDTOs) {
+                if (dto.category_id != null) {
+                    DeviceCategory? deviceCategory = _deviceCategoryService.FindById(dto.category_id.Value);
+                    if (deviceCategory != null) {
+                        dto.category_name = deviceCategory.name;
+                    }
+                }
+                if (dto.brand_id != null) {
+                    Brand? brand = _brandService.FindById(dto.brand_id.Value);
+                    if (brand != null) {
+                        dto.brand_name = brand.name;
+                    }
+                }
+            }
             
             return new() {
                 DeviceModelDTOs = deviceModelDTOs,

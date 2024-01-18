@@ -28,15 +28,11 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("是否启用", typeof(ToggleButton))]
         public bool? bool_enabled { get; set; }
         // This is to get the value from database, will change it to bool above
+        private int? int_enabled;
         public int? enabled { 
-            get {
-                if (bool_enabled != null && bool_enabled.Value) {
-                    return (int) YesOrNo.YES;
-                } else {
-                    return (int) YesOrNo.NO;
-                }
-            } 
+            get => int_enabled;
             set {
+                int_enabled = value;
                 if (value != null && value.Value == (int) YesOrNo.YES) {
                     bool_enabled = true;
                 } else {

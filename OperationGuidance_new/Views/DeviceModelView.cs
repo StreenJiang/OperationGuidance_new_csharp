@@ -1,18 +1,26 @@
-﻿using CustomLibrary.Panels;
+﻿using CustomLibrary.Buttons;
+using CustomLibrary.Configs;
+using CustomLibrary.Panels;
+using CustomLibrary.TextBoxes;
+using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
+using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class DeviceModelView: CustomContentPanel {
+    public class DeviceModelView: CustomDataGridViewOuterPanel<DeviceModelDTO, DeviceModelVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
+        private List<DeviceModelDTO> _dataDTOList;
         // DataGridView panel
-        private DataGridViewGroup<DeviceModelVO> _operationDataGridView;
+        private DataGridViewGroup<DeviceModelVO> _dataGridView;
         // Add new pop up form
-        // private AddNewPopUpForm _addNewPopUpForm;
+        private EditEntityPopUpForm<DeviceModelDTO> _editEntityPopUpForm;
         #endregion
 
         #region Constructors
@@ -23,25 +31,6 @@ namespace OperationGuidance_new.Views {
             // Get Apis
             apis = SystemUtils.GetApis();
 
-            // Initialize grid view
-            _operationDataGridView = new() {
-                Parent = this,
-            };
-            _operationDataGridView.QueryData = (vo) => {
-                return new() {
-                    new() {
-                        id = 1,
-                        name = "PF6000 - after searching",
-                        description = "这是就是个型号，创建新设备的时候可以用来选的（不是填的）",
-                        brand_name = "阿特拉斯",
-                        category_name = "控制器（工具）",
-                    }
-                };
-            };
-            _operationDataGridView.AddTextBox("设备型号名称", false, (DeviceModelVO vo, string? value) => vo.name = value);
-            _operationDataGridView.AddComboBox("设备品牌", (DeviceModelVO vo, int? value) => vo.brand_id = value, new() { { "阿特拉斯", 1 }, { "速动", 2 }, { "安维能", 3 } });
-            _operationDataGridView.AddComboBox("设备类型", (DeviceModelVO vo, int? value) => vo.category_id = value, new() { { "控制器（工具）", 1 }, { "力臂", 2 } });
-
             // Initialization
             InitializeGridView();
         }
@@ -49,40 +38,156 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            List<DeviceModelVO> vos = new() {
-                new() {
-                    id = 1,
-                    name = "PF6000",
-                    description = "这是高级型号",
-                    brand_name = "阿特拉斯",
-                    category_name = "控制器（工具）",
-                },
-                new() {
-                    id = 2,
-                    name = "PF4000",
-                    description = "这是低级型号",
-                    brand_name = "阿特拉斯",
-                    category_name = "控制器（工具）",
-                },
-                new() {
-                    id = 3,
-                    name = "xxxxxx",
-                    description = "这是低级型号",
-                    brand_name = "安维能",
-                    category_name = "力臂",
-                },
+            _dataGridView = new() {
+                Parent = this,
             };
-            _operationDataGridView.DataSource = vos;
+            _dataGridView.AddTextBox("设备型号名称", false, (DeviceModelVO vo, string? value) => vo.name = value).Ratio = 6;
+            _dataGridView.AddTextBox("设备型号描述", false, (DeviceModelVO vo, string? value) => vo.description = value).Ratio = 6;
+            // 处理设备品牌和类型的查询条件
+            QueryDeviceCategoryListRsp queryDeviceCategoryListRsp = apis.QueryDeviceCategoryList(new());
+            Dictionary<string, int> deviceCategoryIds = queryDeviceCategoryListRsp.DeviceCategoryDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _dataGridView.AddComboBox("设备类型", (DeviceModelVO vo, int value) => vo.category_id = value, deviceCategoryIds).Ratio = 6;
+            QueryBrandListRsp queryBrandListRsp = apis.QueryBrandList(new());
+            Dictionary<string, int> brandIds = queryBrandListRsp.BrandDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _dataGridView.AddComboBox("设备品牌", (DeviceModelVO vo, int value) => vo.brand_id = value, brandIds).Ratio = 6;
+
+            // 按钮逻辑
+            _dataGridView.QueryData = (vo) => {
+                List<DeviceModelVO> vos = QueryList();
+                return vos
+                    .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
+                    .Where(o => vo.description == null || o.description != null && o.description.Contains(vo.description))
+                    .Where(o => vo.category_id == null || vo.category_id.Value == 0 || o.category_id != null && o.category_id == vo.category_id)
+                    .Where(o => vo.brand_id == null || vo.brand_id.Value == 0 || o.brand_id != null && o.brand_id == vo.brand_id)
+                    .ToList();
+            };
+            _dataGridView.AddNewClick = (action) => {
+                DeviceModelDTO dto = new();
+                OpenEditEntityPopUpForm("新增设备型号", dto, action);
+            };
+            _dataGridView.ModifyClick = (ids, action) => {
+                if (ids.Count <= 0) {
+                    WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
+                } else if (ids.Count > 1) {
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                } else {
+                    if (_dataDTOList.Count > 0) {
+                        DeviceModelDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
+                        OpenEditEntityPopUpForm("更新设备型号信息", dto, action);
+                        // 更新后再触发一次查询操作
+                        action();
+                    }
+                }
+            };
+            _dataGridView.DeleteClick = (ids, action) => {
+                // 删除选择的数据
+                Delete(ids);
+                // 删除后再触发一次查询操作
+                action();
+            };
         }
         #endregion
 
         #region Reusable methods
+        private void OpenEditEntityPopUpForm(string title, DeviceModelDTO dto, Action callBackAction) {
+            _editEntityPopUpForm = new(dto) {
+                Title = title,
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+            };
+            // 添加字段
+            CustomTextBoxGroup brandName = _editEntityPopUpForm.AddTextBox("设备型号名称", false, 
+                (DeviceModelDTO dto, string? value) => dto.name = value ?? "");
+            brandName.Ratio = 7;
+            if (dto.name != null) {
+                brandName.SetValue(0, dto.name);
+            }
+            CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("设备型号描述", false, 
+                (DeviceModelDTO dto, string? value) => dto.description = value ?? "");
+            description.Ratio = 7;
+            if (dto.description != null) {
+                description.SetValue(0, dto.description);
+            }
+            // 处理设备品牌和设备类型
+            QueryBrandListRsp brandListRsp = apis.QueryBrandList(new());
+            Dictionary<string, int> brandIds = brandListRsp.BrandDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> brand = _editEntityPopUpForm.AddComboBox("设备品牌", ((DeviceModelDTO dto, int value) => dto.brand_id = value), brandIds);
+            if (dto.brand_id != null) {
+                brand.SetCurrent(brand.IndexOf(dto.brand_id.Value));
+            }
+            QueryDeviceCategoryListRsp deviceCategoryListRsp = apis.QueryDeviceCategoryList(new());
+            Dictionary<string, int> deviceCategoryIds = deviceCategoryListRsp.DeviceCategoryDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            CustomComboBoxGroup<int> deviceCategory = _editEntityPopUpForm.AddComboBox("设备类型", ((DeviceModelDTO dto, int value) => dto.category_id = value), deviceCategoryIds);
+            if (dto.category_id != null) {
+                deviceCategory.SetCurrent(deviceCategory.IndexOf(dto.category_id.Value));
+            }
+
+            // 添加按钮
+            CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
+            confirmButton.Click += (s, e) => {
+                callBackAction += _editEntityPopUpForm.DisposeForm;
+                AddOrUpdate(dto, callBackAction);
+            };
+            CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
+            cancelButton.Click += (s, e) => {
+                _editEntityPopUpForm.DisposeForm();
+            };
+            // Show form but make it transparent to create handles for its children
+            _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();
+            // Resize all widgets
+            ResizePopUpForm();
+            // Real show
+            _editEntityPopUpForm.Show();
+        }
+        private void ResizePopUpForm() {
+            if (_editEntityPopUpForm != null) {
+                _editEntityPopUpForm.ResizeTablePanelAndItsChildren();
+                _editEntityPopUpForm.Invalidate();
+            }
+        }
         #endregion
 
         #region Override methods
+        protected override List<DeviceModelVO> QueryList() {
+            QueryDeviceModelListRsp rsp = apis.QueryDeviceModelList(new() {
+                UserId = SystemUtils.LoggedUserId(),
+            });
+            _dataDTOList = rsp.DeviceModelDTOs;
+            List<DeviceModelVO> brandVOs = new();
+            CommonUtils.ObjectConverter<DeviceModelDTO, DeviceModelVO>(_dataDTOList, brandVOs);
+
+            // TODO: can use BackgroundWorker to do this
+            // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
+            // for (int i = 0; i < 5000; i++) {
+            //     workstationVOs.Add(workstationVOs[0]);
+            // }
+            return brandVOs;
+        }
+        protected override void AddOrUpdate(DeviceModelDTO dto, Action action) {
+            AddOrUpdateDeviceModelRsp rsp = apis.AddOrUpdateDeviceModel(new(dto));
+            if (rsp.RsponseCode == HttpResponseCode.OK) {
+                WidgetUtils.ShowNoticePopUp("保存成功！");
+            } else {
+                WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
+            }
+            action();
+        }
+        protected override void Delete(List<int> ids) {
+            if (ids.Count <= 0) {
+                WidgetUtils.ShowNoticePopUp("请选择要删除的数据。");
+            } else if (WidgetUtils.ShowConfirmPopUp($"确认要删除已选择的{ids.Count}条数据吗？")) {
+                DeleteDeviceModelByIdsRsp rsp = apis.DeleteDeviceModel(new(ids));
+                if (rsp.RsponseCode == HttpResponseCode.OK) {
+                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                }
+            }
+        }
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            _dataGridView.DataSource = QueryList();
+        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
-            _operationDataGridView.Size = contentSize;
+            _dataGridView.Size = contentSize;
         }
         public override void VisibleToTrue() {
             base.VisibleToTrue();

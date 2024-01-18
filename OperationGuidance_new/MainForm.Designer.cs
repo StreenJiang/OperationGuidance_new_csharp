@@ -49,8 +49,8 @@ namespace OperationGuidance_new {
 
         private void InitializeComponentManually() {
             // Get login user info
-            OperationGuidanceApis? apis = DependencyInjector.Provider.GetService<OperationGuidanceApis>();
-            SystemUtils.UserInfo = apis._userAccountInfoService.FindById(1);
+            OperationGuidanceApis apis = DependencyInjector.Provider.GetService<OperationGuidanceApis>();
+            SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
 
             // Main panel
             mainPanel = new();

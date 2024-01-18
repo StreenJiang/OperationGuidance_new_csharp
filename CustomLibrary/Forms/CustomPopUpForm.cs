@@ -69,7 +69,7 @@ namespace CustomLibrary.Forms {
             Owner = _popUpFormBackboard;
             StartPosition = FormStartPosition.Manual;
             FormBorderStyle = FormBorderStyle.None;
-            ShowInTaskbar = false;           
+            ShowInTaskbar = false;
             // Initialize backboard
             _popUpFormBackboard = new() {
                 Owner = (Form) mainParent,
