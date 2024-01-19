@@ -41,18 +41,18 @@ namespace OperationGuidance_new.Views {
             _dataGridView = new() {
                 Parent = this,
             };
-            _dataGridView.AddTextBox("设备名称", false, (DeviceVO vo, string? value) => vo.name = value).Ratio = 6;
-            _dataGridView.AddTextBox("设备描述", false, (DeviceVO vo, string? value) => vo.description = value).Ratio = 6;
+            _dataGridView.AddTextBox("设备名称", false, (DeviceVO vo, string? value) => vo.name = value);
+            _dataGridView.AddTextBox("设备描述", false, (DeviceVO vo, string? value) => vo.description = value);
             // 处理设备型号、品牌和类型的查询条件
             QueryDeviceModelListRsp queryDeviceModelListRsp = apis.QueryDeviceModelList(new());
             Dictionary<string, int> deviceModelIds = queryDeviceModelListRsp.DeviceModelDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _dataGridView.AddComboBox("设备型号", (DeviceVO vo, int value) => vo.model_id = value, deviceModelIds).Ratio = 6;
+            _dataGridView.AddComboBox("设备型号", (DeviceVO vo, int value) => vo.model_id = value, deviceModelIds);
             QueryDeviceCategoryListRsp queryDeviceCategoryListRsp = apis.QueryDeviceCategoryList(new());
             Dictionary<string, int> deviceCategoryIds = queryDeviceCategoryListRsp.DeviceCategoryDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _dataGridView.AddComboBox("设备类型", (DeviceVO vo, int value) => vo.category_id = value, deviceCategoryIds).Ratio = 6;
+            _dataGridView.AddComboBox("设备类型", (DeviceVO vo, int value) => vo.category_id = value, deviceCategoryIds);
             QueryBrandListRsp queryBrandListRsp = apis.QueryBrandList(new());
             Dictionary<string, int> brandIds = queryBrandListRsp.BrandDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _dataGridView.AddComboBox("设备品牌", (DeviceVO vo, int value) => vo.brand_id = value, brandIds).Ratio = 6;
+            _dataGridView.AddComboBox("设备品牌", (DeviceVO vo, int value) => vo.brand_id = value, brandIds);
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {

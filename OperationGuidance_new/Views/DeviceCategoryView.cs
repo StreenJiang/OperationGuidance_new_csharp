@@ -43,7 +43,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.AddTextBox("设备类型名称", false, (DeviceCategoryVO vo, string? value) => vo.name = value);
             _dataGridView.AddTextBox("设备类型描述", false, (DeviceCategoryVO vo, string? value) => vo.description = value);
-            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, int? value) => vo.can_manipulate = value, new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } });
+            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, int? value) => vo.can_manipulate = value, new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } }).Ratio = 4.75;
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
