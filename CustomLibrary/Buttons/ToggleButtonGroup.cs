@@ -90,7 +90,7 @@ namespace CustomLibrary.Buttons {
             if (_nameAlignment == HorizontalAlignment.Right) {
                 x = _toggleButton.Location.X - _nameWidth - _gapNameAndButton;
             }
-            e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
+            e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2 + 1));
         }
 
         protected override void OnForeColorChanged(EventArgs e) {

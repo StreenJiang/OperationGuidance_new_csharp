@@ -1383,7 +1383,7 @@ namespace OperationGuidance_new.Views {
                 int boxHeight = WidgetUtils.TextOrComboBoxHeight();
                 int boxMargin = boxHeight / 5;
                 int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPanel.Padding.Size.Height);
+                Size contentSize = new((int) (mainForm.Width * .65), tableHeight + contentPanel.Padding.Size.Height);
                 int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
                 _secondPopUpForm.BoxHeight = boxHeight;
                 _secondPopUpForm.BoxMargin = boxMargin;
