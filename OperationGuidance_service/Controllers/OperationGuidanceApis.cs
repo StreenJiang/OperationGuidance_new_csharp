@@ -31,6 +31,8 @@ namespace OperationGuidance_service.Controllers {
         private DeviceModelService _deviceModelService;
         [Autowired]
         private WorkstationService _workstationService;
+        [Autowired]
+        private OperationDataService _operationDataService;
 
         #region 用户账户信息相关
         public FindUserByIdRsp FindUserById(FindUserByIdReq req) {
@@ -514,6 +516,18 @@ namespace OperationGuidance_service.Controllers {
                 rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
             }
             return rsp;
+        }
+        #endregion
+
+        #region 数据查询相关
+        public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
+            List<OperationData> operationDatas = _operationDataService.QueryList(req.UserId);
+            List<OperationDataDTO> operationDataDTOs = new();
+            CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
+
+            return new() {
+                OperationDataDTOs = operationDataDTOs,
+            };
         }
         #endregion
     }

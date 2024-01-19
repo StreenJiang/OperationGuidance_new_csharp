@@ -6,6 +6,7 @@ using OperationGuidance_service.Utils;
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: BoltPopUpForm {
         private bool _modified;
+        private ProductBoltDTO _boltDTO;
 
         private CustomTextBoxGroup _positionX;
         private CustomTextBoxGroup _positionY;

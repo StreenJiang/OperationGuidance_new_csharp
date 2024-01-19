@@ -176,7 +176,7 @@ namespace CustomLibrary.Forms {
         }
 
         public new void Show() {
-            base.Hide();
+            Hide();
             Opacity = 1D;
             EventFuncs.CurrentPopUpForm = this;
             // Sometimes cursor will hide and don't know why for now

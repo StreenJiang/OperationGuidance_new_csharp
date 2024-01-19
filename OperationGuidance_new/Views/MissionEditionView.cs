@@ -570,6 +570,8 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
                 confirmButton.Click += (s, e) => {
+                    System.Console.WriteLine($"_boltPopUpForm.ConfirmSave(): {_boltPopUpForm.ConfirmSave()}");
+                    System.Console.WriteLine($"_boltPopUpForm.ModifiedBoltDTO: {_boltPopUpForm.ModifiedBoltDTO}");
                     _boltPopUpForm.DisposeForm();
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");

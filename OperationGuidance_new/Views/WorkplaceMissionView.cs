@@ -704,8 +704,7 @@ namespace OperationGuidance_new.Views {
                         };
                         deviceBlock.Click += (sender, eventArgs) => {
                             try {
-                                EventFuncs.CurrentPopUpForm = deviceBlock.PopUpForm;
-                                deviceBlock.PopUpForm.Show();
+                                deviceBlock.ShowPopUpForm();
                             } finally {
                                 deviceBlock.SetToggle(false);
                             }
@@ -713,7 +712,6 @@ namespace OperationGuidance_new.Views {
                         _deviceBlocks.Add(deviceDTO.category_id.Value, deviceBlock);
                     }
                     deviceBlock.DeviceDTOs.Add(deviceDTO.id, deviceDTO);
-                    deviceBlock.PopUpForm.DeviceDTOs.Add(deviceDTO);
                 }
             }
         }
@@ -1207,37 +1205,48 @@ namespace OperationGuidance_new.Views {
         private readonly float _imageRatio = 0.75F;
         private Rectangle _borderRect;
         private Color _borderColor;
+        private string _categoryName;
         private Dictionary<int, DeviceDTO> _deviceDTOs;
-        private DeviceDetailPopUpForm _popUpForm;
+        private DeviceDetailPopUpForm? _popUpForm;
 
+        public string CategoryName { get => _categoryName; set => _categoryName = value; }
         public Dictionary<int, DeviceDTO> DeviceDTOs {
             get => _deviceDTOs;
         }
-        public DeviceDetailPopUpForm PopUpForm {
-            get => _popUpForm;
-        }
+        public DeviceDetailPopUpForm? PopUpForm { get => _popUpForm; set => _popUpForm = value; }
 
         public DeviceBlock(Color borderColor, string categoryName) : base() {
+            _categoryName = categoryName;
             _borderColor = borderColor;
             _deviceDTOs = new();
-            _popUpForm = new(categoryName);
         }
 
         protected override void OnSizeChanged(EventArgs e) {
             base.OnSizeChanged(e);
             _borderRect = new(0, 0, Width, Height);
+        }
 
-            // 计算以及弹出窗口的size
+        public void ShowPopUpForm() {
+            _popUpForm = new(this, _categoryName, DeviceDTOs.Values.ToList());
+            _popUpForm.PretendToShowToCreateHandlesForChildren();
+            ResizePopUpForm();
+            _popUpForm.Show();
+        }
+
+        private void ResizePopUpForm() {
             if (_popUpForm != null) {
-                int count = _deviceDTOs.Count;
-                int mainW = WidgetUtils.MainPanel.Parent.Width;
-                int mainH = WidgetUtils.MainPanel.Parent.Height;
-                int extraH = _popUpForm.TitlePanel.Height + _popUpForm.ButtonsPanel.Height;
-                int popUpW = (int) (mainW * .4);
-                int hGap = (int) (mainH * .02);
-                int popUpContentH = (int) (mainH * .05 + mainW * .0165 - extraH) * count + hGap * (count + 1);
-                _popUpForm.HeightGap = hGap;
-                _popUpForm.ContentPanel.Size = new(popUpW, popUpContentH);
+                _popUpForm.CalculateDetailProperties();
+
+                Control mainForm = WidgetUtils.MainPanel.Parent;
+                Padding contentPadding = _popUpForm.ContentPanel.Padding;
+                _popUpForm.PieceHeight = WidgetUtils.TextOrComboBoxHeight();
+                Size contentSize = new((int) (mainForm.Width * .55), _popUpForm.DeviceDTOs.Count * _popUpForm.PieceHeight + contentPadding.Size.Height);
+                int tableWidth = contentSize.Width - contentPadding.Size.Width;
+
+                _popUpForm.SetContentSizeAndSelfSize(contentSize);
+                if (_popUpForm.Visible) {
+                    _popUpForm.Invalidate();
+                }
             }
         }
 
@@ -1261,141 +1270,134 @@ namespace OperationGuidance_new.Views {
     }
 
     public class DeviceDetailPopUpForm: CustomPopUpForm {
+        private DeviceBlock _deviceBlock;
+
         private readonly Image _statusIconConnected;
         private readonly Image _statusIconDisconnected;
-        private int _iconHeight;
         private Image? _connectedShowing;
         private Image? _disconnectedShowing;
-        private int _firstImageX;
-        private int _firstImageY;
         private List<DeviceDTO> _deviceDTOs;
-        private Dictionary<int, CommonButton> _operateButtons;
-        private int _heightGap;
-        private DeviceOperationPopUpForm? _currentPopUpForm;
+        private CustomContentPanel _devicesInfoPanel;
+        private DeviceOperationPopUpForm? _secondPopUpForm;
+        private int _pieceHeight;
 
-        public List<DeviceDTO> DeviceDTOs {
-            get => _deviceDTOs;
-        }
-        public int HeightGap {
-            get => _heightGap;
-            set => _heightGap = value;
-        }
+        public List<DeviceDTO> DeviceDTOs { get => _deviceDTOs; set => _deviceDTOs = value; }
+        public int PieceHeight { get => _pieceHeight; set => _pieceHeight = value; }
 
-        public DeviceDetailPopUpForm(string categoryName) : base() {
+        public DeviceDetailPopUpForm(DeviceBlock deviceBlock, string categoryName, List<DeviceDTO> dtos) : base() {
+            _deviceBlock = deviceBlock;
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
 
+            _devicesInfoPanel = new() {
+                Parent = ContentPanel,
+                FlowDirection = FlowDirection.TopDown,
+            };
             _statusIconConnected = Properties.Resources.device_connected;
             _statusIconDisconnected = Properties.Resources.device_connected;
-            _deviceDTOs = new();
-            _operateButtons = new();
+            _deviceDTOs = dtos;
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
-            ResizeIconImage();
-            ResizeText();
-
-            for (int i = 0; i < DeviceDTOs.Count; i++) {
-                DeviceDTO deviceDTO = _deviceDTOs[i];
-                CommonButton button;
-                if (_operateButtons.ContainsKey(deviceDTO.id)) {
-                    button = _operateButtons[deviceDTO.id];
-                } else {
-                    button = new();
-                    button.Label = "操作";
-                    button.Parent = this;
-                    button.Enabled = deviceDTO.can_manipulate == (int) (YesOrNo.YES);
-                    _operateButtons.Add(deviceDTO.id, button);
-                    button.Click += (s, e) => {
-                        HideForm();
-                        _currentPopUpForm = new(this, deviceDTO.ip + "-" + deviceDTO.port);
-                        ResizeSecondPopUpForm();
-                        _currentPopUpForm.Show();
-                        EventFuncs.CurrentPopUpForm = _currentPopUpForm;
-                    };
-                }
-                if (deviceDTO.ip != null && deviceDTO.port != null) {
-                    if (ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value) == ConnectionStatus.DISCONNECTED) {
-                        button.Enabled = false;
-                    }
-                }
-
-                int btnH = (int) (_iconHeight * 1.15);
-                button.Size = new((int) (btnH * 2.15), btnH);
-                button.Location = new((int) ((Width - button.Width) * .95), HeightGap * (i + 1) + _iconHeight * i + TitlePanel.Height - (btnH - _iconHeight) / 2);
-            }
-
-            ResizeSecondPopUpForm();
-        }
-
-        private void ResizeSecondPopUpForm() {
-            if (_currentPopUpForm != null) {
-                _currentPopUpForm.CalculateDetailProperties();
-
-                Control mainForm = WidgetUtils.MainPanel.Parent;
-                TableLayoutPanel tablePanel = _currentPopUpForm.TablePanel;
-                Panel contentPanel = _currentPopUpForm.ContentPanel;
-                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxMargin = boxHeight / 5;
-                int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPanel.Padding.Size.Height);
-                int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
-                _currentPopUpForm.BoxHeight = boxHeight;
-                _currentPopUpForm.BoxMargin = boxMargin;
-                _currentPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
-
-                _currentPopUpForm.SetContentSizeAndSelfSize(contentSize);
-            }
+            _devicesInfoPanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
         }
 
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
 
-            if (_connectedShowing != null && _disconnectedShowing != null) {
-                for (int i = 0; i < _deviceDTOs.Count; i++) {
-                    DeviceDTO deviceDTO = _deviceDTOs[i];
+            foreach (DeviceDTO deviceDTO in _deviceDTOs) {
+                _pieceHeight = WidgetUtils.TextOrComboBoxHeight();
+                // 每一个设备需要一个panel包裹，作为一行
+                Panel devicePanel = new() {
+                    Parent = _devicesInfoPanel,
+                    Margin = new(0),
+                    Size = new(_devicesInfoPanel.Width, _pieceHeight),
+                };
 
-                    Point imagePoint;
-                    Point textPoint;
-                    if (i == 0) {
-                        imagePoint = new(_firstImageX, _firstImageY);
-                    } else {
-                        imagePoint = new(_firstImageX, HeightGap * (i + 1) + _iconHeight * i + TitlePanel.Height);
-                    }
-                    textPoint = new((int) (imagePoint.X * 1.2) + _connectedShowing.Width, imagePoint.Y + (_connectedShowing.Height - Font.Height) / 2);
+                // 设备状态指示灯（icon）
+                int iconSide = _pieceHeight;
+                _connectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, iconSide, iconSide);
+                _disconnectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, iconSide, iconSide);
+                PictureBox pictureBox = new() {
+                    Parent = devicePanel,
+                    Size = new(iconSide, iconSide),
+                    Dock = DockStyle.Left,
+                };
+                ConnectionStatus status = ConnectionStatus.DISCONNECTED;
+                if (deviceDTO.ip != null && deviceDTO.port != null) {
+                    status = ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value);
+                }
+                if (status == ConnectionStatus.CONNECTED) {
+                    pictureBox.Image = _connectedShowing;
+                } else {
+                    pictureBox.Image = _disconnectedShowing;
+                }
 
-                    if (deviceDTO.ip != null && deviceDTO.port != null) {
-                        ConnectionStatus status = ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value);
-                        if (status == ConnectionStatus.CONNECTED) {
-                            e.Graphics.DrawImage(_connectedShowing, imagePoint);
-                        } else {
-                            e.Graphics.DrawImage(_disconnectedShowing, imagePoint);
-                        }
+                // 设备信息显示
+                string deviceInfoText = deviceDTO.ip + "-" + deviceDTO.port;
+                Font font = new Font(WidgetsConfigs.SystemFontFamily, _pieceHeight * .625F, FontStyle.Regular, GraphicsUnit.Pixel);
+                int textWidth = (int) (e.Graphics.MeasureString(deviceInfoText, font).Width);
+                Label deviceInfo = new() {
+                    Parent = devicePanel,
+                    Size = new(textWidth, _pieceHeight),
+                    Font = font,
+                    Text = deviceInfoText,
+                    Location = new(pictureBox.Location.X + (int) (pictureBox.Width * 1.5), 0),
+                };
+
+                // 设备操作按钮
+                CommonButton button;
+                int btnH = WidgetUtils.CommonButtonHeight();
+                Size buttonSize = new((int) (btnH * 2.5), btnH);
+                button = new() {
+                    Parent = devicePanel,
+                    Label = "操作",
+                    Dock = DockStyle.Right,
+                    Enabled = deviceDTO.can_manipulate == (int) (YesOrNo.YES),
+                };
+                button.Size = buttonSize;
+                button.Click += (s, e) => {
+                    DisposeForm();
+                    _secondPopUpForm = new(_deviceBlock, deviceInfoText);
+                    _secondPopUpForm.PretendToShowToCreateHandlesForChildren();
+                    ResizeSecondPopUpForm();
+                    _secondPopUpForm.Show();
+                };
+                if (deviceDTO.ip != null && deviceDTO.port != null) {
+                    if (ConnectionUtils.CheckConnection(deviceDTO.ip, deviceDTO.port.Value) == ConnectionStatus.DISCONNECTED) {
+                        button.Enabled = false;
                     }
-                    e.Graphics.DrawString(deviceDTO.ip + "-" + deviceDTO.port, Font, new SolidBrush(Color.Black), textPoint);
                 }
             }
         }
 
-        protected void ResizeIconImage() {
-            int count = DeviceDTOs.Count;
-            _iconHeight = (Height - TitlePanel.Height - HeightGap * (count + 1)) / count;
-            _connectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, _iconHeight, _iconHeight);
-            _disconnectedShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, _iconHeight, _iconHeight);
-            // Recalculate image location
-            _firstImageX = (int) (Width * .075);
-            _firstImageY = HeightGap + TitlePanel.Height;
-        }
+        private void ResizeSecondPopUpForm() {
+            if (_secondPopUpForm != null) {
+                _secondPopUpForm.CalculateDetailProperties();
 
-        protected void ResizeText() {
-            Font = new Font(WidgetsConfigs.SystemFontFamily, _iconHeight * .55F, FontStyle.Regular);
-        }
+                Control mainForm = WidgetUtils.MainPanel.Parent;
+                TableLayoutPanel tablePanel = _secondPopUpForm.TablePanel;
+                Panel contentPanel = _secondPopUpForm.ContentPanel;
+                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxMargin = boxHeight / 5;
+                int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPanel.Padding.Size.Height);
+                int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
+                _secondPopUpForm.BoxHeight = boxHeight;
+                _secondPopUpForm.BoxMargin = boxMargin;
+                _secondPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
+                _secondPopUpForm.SetContentSizeAndSelfSize(contentSize);
+                if (_secondPopUpForm != null) {
+                    _secondPopUpForm.Invalidate();
+                }
+            }
+        }
     }
 
     public class DeviceOperationPopUpForm: CustomPopUpForm {
-        private CustomPopUpForm _upperForm;
+        private DeviceBlock _deviceBlock;
 
         private TableLayoutPanel _tablePanel;
         private int _boxHeight;
@@ -1407,25 +1409,27 @@ namespace OperationGuidance_new.Views {
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
-        public DeviceOperationPopUpForm(CustomPopUpForm upperForm, string titleInfo) : base() {
+        public DeviceOperationPopUpForm(DeviceBlock deviceBlock, string titleInfo) : base() {
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "手动操作工具（" + titleInfo + "）";
 
-            _upperForm = upperForm;
+            _deviceBlock = deviceBlock;
             _tablePanel = new() {
                 Margin = new(0),
                 Padding = new(0),
                 ColumnCount = 2,
-                Parent = this,
+                Parent = ContentPanel,
             };
 
             _stationTextBox = new("站点") {
+                Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
             _procedureTextBox = new("程序") {
+                Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
@@ -1433,9 +1437,6 @@ namespace OperationGuidance_new.Views {
             };
             _stationTextBox.SetValue(0, "1");
             _procedureTextBox.SetValue(0, "1");
-
-            _tablePanel.Controls.Add(_stationTextBox);
-            _tablePanel.Controls.Add(_procedureTextBox);
 
             CommonButton btnLock = AddButton("禁用");
             btnLock.Click += (s, e) => {
@@ -1449,6 +1450,8 @@ namespace OperationGuidance_new.Views {
             btnPSet.Click += (s, e) => {
                 string station = _stationTextBox.GetTextBox(0).Text;
                 string procedure = _procedureTextBox.GetTextBox(0).Text;
+                WidgetUtils.ShowNoticePopUp("下发成功!");
+                DisposeForm();
             };
             CommonButton btnClose = AddButton("关闭");
             btnClose.Click += (s, e) => {
@@ -1458,7 +1461,7 @@ namespace OperationGuidance_new.Views {
 
         public override void DisposeForm() {
             base.DisposeForm();
-            _upperForm.Show();
+            _deviceBlock.ShowPopUpForm();
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

@@ -4,6 +4,9 @@ using System.Reflection;
 
 namespace OperationGuidance_service.Utils {
     public static class CommonUtils {
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD = "yyyy-MM-dd";
+
         public static Point PointStringToPoint(string? pointString) {
             if (pointString != null) {
                 string[] pointStringArr = pointString.Replace("{X=", "").Replace("Y=", "").Replace("}", "").Split(",");

@@ -1,4 +1,5 @@
 using OperationGuidance_new.Attributes;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.ViewObjects.AbstractClasses {
     public abstract class AVOBase {
@@ -9,13 +10,13 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
         public string? modifier { get; set; }
         [GridColumn("创建时间")]
         public string? string_create_time { get; set; }
-        public DateTime? _create_time;
+        private DateTime? _create_time;
         public DateTime? create_time { 
             get => _create_time;
             set {
                 _create_time = value;
                 if (value != null) {
-                    string_create_time = value.Value.ToString("yyyy-MM-dd HH:mm:ss");
+                    string_create_time = value.Value.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
                 }
             }
         }
@@ -27,7 +28,7 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
             set {
                 _modify_time = value;
                 if (value != null) {
-                    string_modify_time = value.Value.ToString("yyyy-MM-dd HH:mm:ss");
+                    string_modify_time = value.Value.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
                 }
             } 
         }

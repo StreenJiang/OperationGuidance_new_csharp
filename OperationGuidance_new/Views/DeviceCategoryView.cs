@@ -165,14 +165,14 @@ namespace OperationGuidance_new.Views {
                 UserId = SystemUtils.LoggedUserId(),
             });
             _dataDTOList = rsp.DeviceCategoryDTOs;
-            List<DeviceCategoryVO> brandVOs = new();
-            CommonUtils.ObjectConverter<DeviceCategoryDTO, DeviceCategoryVO>(_dataDTOList, brandVOs);
+            List<DeviceCategoryVO> vos = new();
+            CommonUtils.ObjectConverter<DeviceCategoryDTO, DeviceCategoryVO>(_dataDTOList, vos);
             // TODO: can use BackgroundWorker to do this
             // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
             // for (int i = 0; i < 5000; i++) {
             //     workstationVOs.Add(workstationVOs[0]);
             // }
-            return brandVOs;
+            return vos;
         }
         protected override void AddOrUpdate(DeviceCategoryDTO dto, Action action) {
             System.Console.WriteLine($"dtoicon_normal_name.: {dto.icon_normal_name}");
