@@ -358,11 +358,11 @@ namespace CustomLibrary.Utils {
             DialogResult result = MessageBox.Show(null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             return result == DialogResult.Yes;
         }
-        public static void ShowNoticePopUp(string message) {
-            MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public static DialogResult ShowNoticePopUp(string message) {
+            return MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-        public static void ShowErrorPopUp(string message) {
-            MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public static DialogResult ShowErrorPopUp(string message) {
+            return MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private static Point controlOriginalLocation;

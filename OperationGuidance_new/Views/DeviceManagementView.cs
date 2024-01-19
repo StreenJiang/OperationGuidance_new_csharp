@@ -173,15 +173,15 @@ namespace OperationGuidance_new.Views {
                 UserId = SystemUtils.LoggedUserId(),
             });
             _dataDTOList = rsp.DeviceDTOs;
-            List<DeviceVO> brandVOs = new();
-            CommonUtils.ObjectConverter<DeviceDTO, DeviceVO>(_dataDTOList, brandVOs);
+            List<DeviceVO> vos = new();
+            CommonUtils.ObjectConverter<DeviceDTO, DeviceVO>(_dataDTOList, vos);
 
             // TODO: can use BackgroundWorker to do this
             // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
             // for (int i = 0; i < 5000; i++) {
             //     workstationVOs.Add(workstationVOs[0]);
             // }
-            return brandVOs;
+            return vos;
         }
         protected override void AddOrUpdate(DeviceDTO dto, Action action) {
             AddOrUpdateDeviceRsp rsp = apis.AddOrUpdateDevice(new(dto));

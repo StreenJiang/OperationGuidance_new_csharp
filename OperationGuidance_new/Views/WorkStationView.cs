@@ -300,14 +300,14 @@ namespace OperationGuidance_new.Views {
                 UserId = SystemUtils.LoggedUserId(),
             });
             _dataDTOList = rsp.WorkstationsDTOs;
-            List<WorkstationVO> workstationVOs = new();
-            CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(_dataDTOList, workstationVOs);
+            List<WorkstationVO> vos = new();
+            CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(_dataDTOList, vos);
             // TODO: can use BackgroundWorker to do this
             // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
             // for (int i = 0; i < 5000; i++) {
             //     workstationVOs.Add(workstationVOs[0]);
             // }
-            return workstationVOs;
+            return vos;
         }
         protected override void AddOrUpdate(WorkstationDTO dto, Action action) {
             AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(dto));

@@ -29,5 +29,7 @@ namespace OperationGuidance_new.ViewObjects {
         public int? batch_sum { get; set; }
         [GridColumn("批次状态")]
         public string? batch_status { get; set; }
+        public DateTime? filter_create_time_min { get; set; }
+        public DateTime? filter_create_time_max { get; set; }
     }
 }
