@@ -570,8 +570,6 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
                 confirmButton.Click += (s, e) => {
-                    System.Console.WriteLine($"_boltPopUpForm.ConfirmSave(): {_boltPopUpForm.ConfirmSave()}");
-                    System.Console.WriteLine($"_boltPopUpForm.ModifiedBoltDTO: {_boltPopUpForm.ModifiedBoltDTO}");
                     _boltPopUpForm.DisposeForm();
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");
@@ -1271,16 +1269,16 @@ namespace OperationGuidance_new.Views {
                     } else if (!Fired && Milliseconds >= 200) {
                         switch (ClickTimes) {
                             case 1:
+                                Fired = true;
                                 if (SingleClickDelegate != null && EventArgs != null) {
                                     SingleClickDelegate(EventArgs);
                                 }
-                                Fired = true;
                                 break;
                             case 2:
+                                Fired = true;
                                 if (DoubleClickDelegate != null && EventArgs != null) {
                                     DoubleClickDelegate(EventArgs);
                                 }
-                                Fired = true;
                                 break;
                         }
                     }
