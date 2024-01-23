@@ -23,7 +23,7 @@ namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
         private readonly int _tableColumns = 4;
         private readonly float _cellGapRatio = 0.02F;
-        private readonly float _cellHightRatio = 0.25F;
+        private readonly float _cellHightRatio = 0.24F;
         private int _titleHeight;
         private int _cellHorizontalMargin;
         private int _cellVerticalMargin;
@@ -1227,9 +1227,9 @@ namespace OperationGuidance_new.Views {
         }
 
         public void ShowPopUpForm() {
-            _popUpForm = new(this, _categoryName, DeviceDTOs.Values.ToList());
-            _popUpForm.PretendToShowToCreateHandlesForChildren();
-            ResizePopUpForm();
+                _popUpForm = new(this, _categoryName, DeviceDTOs.Values.ToList());
+                _popUpForm.PretendToShowToCreateHandlesForChildren();
+                ResizePopUpForm();
             _popUpForm.Show();
         }
 
@@ -1240,7 +1240,9 @@ namespace OperationGuidance_new.Views {
                 Control mainForm = WidgetUtils.MainPanel.Parent;
                 Padding contentPadding = _popUpForm.ContentPanel.Padding;
                 _popUpForm.PieceHeight = WidgetUtils.TextOrComboBoxHeight();
-                Size contentSize = new((int) (mainForm.Width * .55), _popUpForm.DeviceDTOs.Count * _popUpForm.PieceHeight + contentPadding.Size.Height);
+                _popUpForm.VGap = _popUpForm.PieceHeight / 4;
+                int contentHeight = _popUpForm.DeviceDTOs.Count * (_popUpForm.PieceHeight + _popUpForm.VGap * 2) + contentPadding.Size.Height;
+                Size contentSize = new((int) (mainForm.Width * .55), contentHeight);
                 int tableWidth = contentSize.Width - contentPadding.Size.Width;
 
                 _popUpForm.SetContentSizeAndSelfSize(contentSize);
@@ -1280,9 +1282,11 @@ namespace OperationGuidance_new.Views {
         private CustomContentPanel _devicesInfoPanel;
         private DeviceOperationPopUpForm? _secondPopUpForm;
         private int _pieceHeight;
+        private int _vGap;
 
         public List<DeviceDTO> DeviceDTOs { get => _deviceDTOs; set => _deviceDTOs = value; }
         public int PieceHeight { get => _pieceHeight; set => _pieceHeight = value; }
+        public int VGap { get => _vGap; set => _vGap = value; }
 
         public DeviceDetailPopUpForm(DeviceBlock deviceBlock, string categoryName, List<DeviceDTO> dtos) : base() {
             _deviceBlock = deviceBlock;
@@ -1311,7 +1315,7 @@ namespace OperationGuidance_new.Views {
                 // 每一个设备需要一个panel包裹，作为一行
                 Panel devicePanel = new() {
                     Parent = _devicesInfoPanel,
-                    Margin = new(0),
+                    Margin = new(0, _vGap, 0, _vGap),
                     Size = new(_devicesInfoPanel.Width, _pieceHeight),
                 };
 

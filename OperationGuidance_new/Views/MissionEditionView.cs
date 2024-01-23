@@ -27,19 +27,24 @@ namespace OperationGuidance_new.Views {
             CreateANewOne();
         }
 
-        public void CreateANewOne() {
+        public MissionEditionPage CreateANewOne() {
             _missionDTO = new() {
                 name = "任务名称",
                 ProductSides = new(),
             };
-            OpenEditionPage(_missionDTO);
+            return OpenEditionPage(_missionDTO);
         }
 
-        public void OpenEditionPage(ProductMissionDTO missionDTO) {
+        public MissionEditionPage OpenEditionPage(ProductMissionDTO missionDTO) {
             // Clear all child controls
             Controls.Clear();
             // Create a new page according to missionbody and show
+            if (_editionPage != null) {
+                _editionPage.Dispose();
+            }
             _editionPage = new(this, missionDTO);
+            _editionPage.ResizeChildren();
+            return _editionPage;
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
@@ -586,7 +591,7 @@ namespace OperationGuidance_new.Views {
                 _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
                 // Resize all widgets
                 ResizePopUpForm();
-                // Real show
+                // Real show_editionPage
                 _boltPopUpForm.Show();
             }
 
@@ -688,17 +693,60 @@ namespace OperationGuidance_new.Views {
                 return boltEditionButton;
             }
 
+            protected override void OnHandleCreated(EventArgs e) {
+                base.OnHandleCreated(e);
+                ResizeChildrenAfterAllHandlesCreated();
+            }
+
+            protected void ResizeChildrenAfterAllHandlesCreated() {
+                Task.Run(() => {
+                    BeginInvoke(() => {
+                        bool checkAllHandlesCreated = false;
+                        while (!checkAllHandlesCreated) {
+                            checkAllHandlesCreated = AllControlHandlesCreated(this);
+                        }
+                        Size = Parent.Size;
+                        ResizeChildren();
+                    });
+                });
+            }
+
+            private bool AllControlHandlesCreated(Control parent) {
+                bool result = true;
+                foreach (Control control in parent.Controls) {
+                    if (!control.Visible) {
+                        continue;
+                    }
+                    if (control.IsHandleCreated) {
+                        if (control.Controls.Count > 0) {
+                            result = AllControlHandlesCreated(control);
+                        } else {
+                            result = true;
+                        }
+                    } else {
+                        result = false;
+                        break;
+                    }
+                }
+                return result;
+            }
+
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (Size == new Size(200, 100)) {
                     // TODO: have to figure out why this happen
                     return;
                 }
-                Padding outerPadding = Parent.Parent.Parent.Padding;
-                ResizeContent(outerPadding);
-                ResizeSideButtons();
-                ResizeLeftTop();
-                ResizeLeftBottom();
-                ResizeRight();
+                if (Parent != null && Parent.IsHandleCreated) {
+                    CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView) Parent).OuterVScrollPanel;
+                    if (outerVScrollPanel != null) {
+                        Padding outerPadding = outerVScrollPanel.OuterPanel.Padding;
+                        ResizeContent(outerPadding);
+                        ResizeSideButtons();
+                        ResizeLeftTop();
+                        ResizeLeftBottom();
+                        ResizeRight();
+                    }
+                }
             }
 
             private void ResizeContent(Padding outerPadding) {

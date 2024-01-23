@@ -217,11 +217,12 @@ namespace OperationGuidance_new {
             // MainForm
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             // Controls.Add(mainPanel);
-            Size = new(800, 600);
-            ClientSize = new(800, 600);
+            Size = new(1280, 720);
+            ClientSize = new(1280, 720);
             MinimumSize = new Size(400, 300);
             Name = "MainForm";
             Text = "MainForm";
+            CenterToScreen();
 
 
             // Test

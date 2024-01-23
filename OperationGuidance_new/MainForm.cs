@@ -14,12 +14,11 @@ namespace OperationGuidance_new {
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;
-            // InvokeResizing(this, EventArgs.Empty); // 上面那句注释掉后暂时用这个触发一下
+            // ResizeChildren(this, EventArgs.Empty); // 上面那句注释掉后暂时用这个触发一下
         }
 
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
-            CenterToScreen();
             if (this.WindowState == FormWindowState.Minimized) {
                 return;
             }

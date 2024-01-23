@@ -1,6 +1,5 @@
 using System.Reflection;
 using CustomLibrary.Buttons;
-using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
@@ -39,6 +38,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Properties
+        public DataGridViewPanel<T> VoGridView { get => _voGridView; set => _voGridView = value; }
         public List<CommonButton> ExtraButtons { get => _extraButtons; }
         public List<T> DataSource { get => _voGridView.DataSource; set => _voGridView.DataSource = value; }
         public Func<T, List<T>> QueryData { get => _queryData; set => _queryData = value; }

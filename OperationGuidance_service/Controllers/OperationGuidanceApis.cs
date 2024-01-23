@@ -35,11 +35,47 @@ namespace OperationGuidance_service.Controllers {
         private OperationDataService _operationDataService;
 
         #region 用户账户信息相关
+        // 根据用户ID查询用户信息
         public FindUserByIdRsp FindUserById(FindUserByIdReq req) {
             FindUserByIdRsp rsp = new();
             UserAccountInfo? userAccountInfo = _userAccountInfoService.FindById(req.UserId);
             if (userAccountInfo != null) {
                 CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfo, rsp.UserAccountInfoDTO);
+            }
+            return rsp;
+        }
+        // 查询用户列表
+        public QueryUserAccountInfoListRsp QueryUserAccountInfoList(QueryUserAccountInfoListReq req) {
+            List<UserAccountInfo> userAccountInfos = _userAccountInfoService.QueryList(req.UserId);
+            List<UserAccountInfoDTO> userAccountInfoDTOs = new();
+            CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos, userAccountInfoDTOs);
+
+            return new() {
+                UserAccountInfoDTOs = userAccountInfoDTOs,
+            };
+        }
+        // 新增用户
+        public AddOrUpdateUserAccountInfoRsp AddOrUpdateUserAccountInfo(AddOrUpdateUserAccountInfoReq req) {
+            UserAccountInfoDTO userAccountInfoDTO = req.UserAccountInfoDTO;
+            UserAccountInfo userAccountInfo = new();
+            CommonUtils.ObjectConverter<UserAccountInfoDTO, UserAccountInfo>(userAccountInfoDTO, userAccountInfo);
+            UserAccountInfo? userAccountInfoNew = _userAccountInfoService.InsertOrUpdate(userAccountInfo);
+            if (userAccountInfoNew != null) {
+                userAccountInfoDTO.id = userAccountInfoNew.id;
+            }
+
+            return new() {
+                UserAccountInfoDTO = userAccountInfoDTO,
+            };
+        }
+        // 删除用户
+        public DeleteUserAccountInfoByIdsRsp DeleteUserAccountInfo(DeleteUserAccountInfoByIdsReq req) {
+            int deletedRows = _userAccountInfoService.DeleteByIds(req.Ids);
+
+            DeleteUserAccountInfoByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
             }
             return rsp;
         }

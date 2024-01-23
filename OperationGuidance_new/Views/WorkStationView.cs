@@ -10,6 +10,7 @@ using CustomLibrary.TextBoxes;
 using OperationGuidance_service.Models.Responses;
 using CustomLibrary.Utils;
 using OperationGuidance_service.Constants;
+using CustomLibrary.DataGridViewRelateds;
 
 namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
@@ -98,6 +99,20 @@ namespace OperationGuidance_new.Views {
                 // 删除后再触发一次查询操作
                 action();
             };
+            // Toggle button check changed
+            _dataGridView.VoGridView.GridView.CellValueChanged += (sender, eventArgs) => {
+                if (sender != null && sender is DataGridView view) {
+                    DataGridViewCell cell = view.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
+                    if (cell is DataGridViewToggleButtonCell tCell) {
+                        DataGridViewRow row = view.Rows[eventArgs.RowIndex];
+                        WorkstationVO vo = (WorkstationVO) row.DataBoundItem;
+                        WorkstationDTO dto = _dataDTOList.Single(dto => vo.id != null && dto.id == vo.id.Value);
+                        bool value = (bool) cell.Value;
+                        dto.enabled = value ? (int) YesOrNo.YES : (int) YesOrNo.NO;
+                        apis.AddOrUpdateWorkstation(new(dto));
+                    }
+                }
+            };
         }
         #endregion
 
@@ -165,12 +180,14 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetToolValues() {
-                DeviceDTO deviceDTO = deviceDTOs.Single(dto => dto.id == toolOptions.Value);
-                DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
-                toolNameTextBox.SetValue(0, deviceDTO.name);
-                toolModelNameTextBox.SetCurrent(toolModelNameTextBox.IndexOf(deviceModelDTO.id));
-                toolIPTextBox.SetValue(0, deviceDTO.ip);
-                toolPortTextBox.SetValue(0, deviceDTO.port + "");
+                DeviceDTO? deviceDTO = deviceDTOs.SingleOrDefault(dto => dto.id == toolOptions.Value);
+                if (deviceDTO != null) {
+                    DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
+                    toolNameTextBox.SetValue(0, deviceDTO.name);
+                    toolModelNameTextBox.SetCurrent(toolModelNameTextBox.IndexOf(deviceModelDTO.id));
+                    toolIPTextBox.SetValue(0, deviceDTO.ip);
+                    toolPortTextBox.SetValue(0, deviceDTO.port + "");
+                }
             }
             void ResetToolValues() {
                 toolNameTextBox.SetValue(0, null);
@@ -237,12 +254,14 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetArmValues() {
-                DeviceDTO deviceDTO = deviceDTOs.Single(dto => dto.id == armOptions.Value);
-                DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
-                armNameTextBox.SetValue(0, deviceDTO.name);
-                armModelNameTextBox.SetCurrent(armModelNameTextBox.IndexOf(deviceModelDTO.id));
-                armIPTextBox.SetValue(0, deviceDTO.ip);
-                armPortTextBox.SetValue(0, deviceDTO.port + "");
+                DeviceDTO? deviceDTO = deviceDTOs.SingleOrDefault(dto => dto.id == armOptions.Value);
+                if (deviceDTO != null) {
+                    DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
+                    armNameTextBox.SetValue(0, deviceDTO.name);
+                    armModelNameTextBox.SetCurrent(armModelNameTextBox.IndexOf(deviceModelDTO.id));
+                    armIPTextBox.SetValue(0, deviceDTO.ip);
+                    armPortTextBox.SetValue(0, deviceDTO.port + "");
+                }
             }
             void ResetArmValues() {
                 armNameTextBox.SetValue(0, null);

@@ -1,5 +1,6 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
+using CustomLibrary.DataGridViewRelateds;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
@@ -43,8 +44,8 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.AddTextBox("设备类型名称", false, (DeviceCategoryVO vo, string? value) => vo.name = value);
             _dataGridView.AddTextBox("设备类型描述", false, (DeviceCategoryVO vo, string? value) => vo.description = value);
-            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, int? value) => vo.can_manipulate = value, new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } }).Ratio = 4.75;
-
+            _dataGridView.AddComboBox("是否运行手动控制", (DeviceCategoryVO vo, int? value) => vo.can_manipulate = value, new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } });
+            
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
                 List<DeviceCategoryVO> workstationVOs = QueryList();
@@ -76,6 +77,21 @@ namespace OperationGuidance_new.Views {
                 // 删除后再触发一次查询操作
                 action();
             };
+
+            // Toggle button check changed
+            _dataGridView.VoGridView.GridView.CellValueChanged += (sender, eventArgs) => {
+                if (sender != null && sender is DataGridView view) {
+                    DataGridViewCell cell = view.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
+                    if (cell is DataGridViewToggleButtonCell tCell) {
+                        DataGridViewRow row = view.Rows[eventArgs.RowIndex];
+                        DeviceCategoryVO vo = (DeviceCategoryVO) row.DataBoundItem;
+                        DeviceCategoryDTO dto = _dataDTOList.Single(dto => vo.id != null && dto.id == vo.id.Value);
+                        bool value = (bool) cell.Value;
+                        dto.can_manipulate = value ? (int) YesOrNo.YES : (int) YesOrNo.NO;
+                        apis.AddOrUpdateDeviceCategory(new(dto));
+                    }
+                }
+            };
         }
         #endregion
 
@@ -98,12 +114,14 @@ namespace OperationGuidance_new.Views {
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
-            CustomComboBoxGroup<int?> canManipulate = _editEntityPopUpForm.AddComboBox("是否允许手动控制", 
-                (DeviceCategoryDTO dto, int? value) => dto.can_manipulate = value, 
-                new() { { "是", (int) YesOrNo.YES }, { "否", (int) YesOrNo.NO } });
+
+            ToggleButtonGroup canManipulate = _editEntityPopUpForm.AddToggleButton("是否允许手动控制", 
+                    (DeviceCategoryDTO dto, bool value) => dto.can_manipulate = value ? (int) YesOrNo.YES : (int) YesOrNo.NO);
             canManipulate.Ratio = 6;
             if (dto.can_manipulate != null) {
-                canManipulate.SetCurrent(canManipulate.IndexOf(dto.can_manipulate));
+                canManipulate.Checked = dto.can_manipulate == (int) YesOrNo.YES;
+            } else {
+                canManipulate.Checked = true;
             }
             PictureBoxGroup iconNormal = _editEntityPopUpForm.AddPictureBox("状态正常图标", 
                 (DeviceCategoryDTO dto, Image value) => dto.icon_normal = CommonUtils.ImageToBase64(value), 
@@ -137,7 +155,6 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                callBackAction += _editEntityPopUpForm.DisposeForm;
                 AddOrUpdate(dto, callBackAction);
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
@@ -150,6 +167,7 @@ namespace OperationGuidance_new.Views {
             ResizePopUpForm();
             // Real show
             _editEntityPopUpForm.Show();
+            callBackAction += _editEntityPopUpForm.DisposeForm;
         }
         private void ResizePopUpForm() {
             if (_editEntityPopUpForm != null) {

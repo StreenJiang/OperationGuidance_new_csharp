@@ -13,7 +13,7 @@ namespace CustomLibrary.ComboBoxs {
         #region Fields
         private readonly int _collapseStep = 20; // How many pixels increase/decrease each interval
         private readonly int _collapseSpend = 30; // How many milliseconds will the collapse cost
-        private readonly int _maxItemsShown = 5; // Maximum of shown items, will has scroll bar if greater than this number
+        private readonly int _maxItemsShown = 8; // Maximum of shown items, will has scroll bar if greater than this number
         private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
         private Form? _itemsOuterForm;
@@ -205,8 +205,11 @@ namespace CustomLibrary.ComboBoxs {
                         _itemSelected();
                     }
                 }
+                // This is to prevent VScrollBar from showing while timer is running
+                if (_itemsScrollPanel != null) {
+                    _itemsScrollPanel.Visible = false;
+                }
                 if (_itemsInnerPanel != null) {
-                    // This is to prevent VScrollBar from showing while timer is running
                     _itemsInnerPanel.Visible = false;
                 }
                 
@@ -359,12 +362,13 @@ namespace CustomLibrary.ComboBoxs {
                     _collapseTimer.Stop();
                 } else {
                     _itemsOuterForm.Height -= _collapseStep;
-                    _itemsScrollPanel.ResizeChildren(eventArgs);
-                    _itemsOuterForm.Invalidate();
                 }
             } else {
                 if (_itemsOuterForm.Height + _collapseStep >= _itemsScrollPanelHeight) {
                     _itemsOuterForm.Height = _itemsScrollPanelHeight;
+                    if (_itemsScrollPanel != null) {
+                        _itemsScrollPanel.Visible = true;
+                    }
                     if (_itemsInnerPanel != null) {
                         _itemsInnerPanel.Visible = true;
                     }
@@ -374,8 +378,6 @@ namespace CustomLibrary.ComboBoxs {
                 } else {
                     _itemsOuterForm.Height += _collapseStep;
                 }
-                _itemsScrollPanel.ResizeChildren(eventArgs);
-                _itemsOuterForm.Invalidate();
             }
         }
 

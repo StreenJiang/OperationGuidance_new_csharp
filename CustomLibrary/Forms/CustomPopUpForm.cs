@@ -82,6 +82,9 @@ namespace CustomLibrary.Forms {
             };
             _popUpFormBackboard.Owner.LocationChanged += (sender, eventArgs) => AfterSizeChanged(this, EventArgs.Empty);
             _popUpFormBackboard.Hide();
+            _popUpFormBackboard.Click += (s, e) => {
+                System.Console.WriteLine($"_title: {_title}");
+            };
 
             // Title panel
             _titlePanel = new() {
@@ -164,24 +167,30 @@ namespace CustomLibrary.Forms {
         }
 
         public virtual void HideForm() {
-            EventFuncs.CurrentPopUpForm = null;
             _popUpFormBackboard.Hide();
             Hide();
         }
 
         public virtual void DisposeForm() {
-            EventFuncs.CurrentPopUpForm = null;
             _popUpFormBackboard.Dispose();
             Dispose();
         }
 
         public new void Show() {
+            EventFuncs.CurrentPopUpForm = this;
+            base.Hide();
+            Opacity = 1D;
+            // Sometimes cursor will hide and don't know why for now
+            // Cursor.Show();
+            _popUpFormBackboard.Show();
+            base.Show();
+        }
+
+        public new DialogResult ShowDialog() {
             base.Hide();
             Opacity = 1D;
             EventFuncs.CurrentPopUpForm = this;
-            // Sometimes cursor will hide and don't know why for now
-            Cursor.Show();
-            base.ShowDialog();
+            return base.ShowDialog();
         }
 
         public FunctionButton AddButton(string label) {
@@ -279,14 +288,12 @@ namespace CustomLibrary.Forms {
             }
         }
 
-        protected override void OnVisibleChanged(EventArgs e) {
-            base.OnVisibleChanged(e);
-            if (Visible) {
-                _popUpFormBackboard.Show();
-            } else {
-                HideForm();
-            }
-        }
+        // protected override void OnVisibleChanged(EventArgs e) {
+        //     base.OnVisibleChanged(e);
+        //     if (Visible) {
+        //         _popUpFormBackboard.Show();
+        //     }
+        // }
 
         private class CloseButton: CustomImageTextButtonBase {
             private readonly float _closebuttonIconRatio = 0.75F;
@@ -313,12 +320,14 @@ namespace CustomLibrary.Forms {
 
         public class FunctionButton: CommonButton {
             protected override void ResizeTextLabel() {
-                if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
-                    using (Graphics g = CreateGraphics()) {
-                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                if (!IsDisposed) {
+                    if (Label != null) {
+                        Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
+                        using (Graphics g = CreateGraphics()) {
+                            LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                        }
+                        LabelY = (Height - Font.Height) / 2;
                     }
-                    LabelY = (Height - Font.Height) / 2;
                 }
             }
         }

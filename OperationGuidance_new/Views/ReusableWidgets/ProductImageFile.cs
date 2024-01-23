@@ -204,7 +204,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 _container.SetImage(null, null);
             }
-            SaveSideInfo();
+            // TODO: this will cause extra time wastes, so can move to save button
+            // SaveSideInfo();
         }
 
         private void SaveSideInfo() {

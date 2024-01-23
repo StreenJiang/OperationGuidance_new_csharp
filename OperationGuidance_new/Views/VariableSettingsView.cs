@@ -126,6 +126,7 @@ namespace OperationGuidance_new.Views {
                             mainParent.WindowState = FormWindowState.Normal;
                             mainParent.Size = newSize;
                             mainParent.ClientSize = newSize;
+                            mainParent.Location = new((screenSize.Width - newSize.Width) / 2, (screenSize.Height - newSize.Height) / 2);
                         }
                     }
                 }

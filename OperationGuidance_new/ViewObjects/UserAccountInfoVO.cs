@@ -11,7 +11,6 @@ namespace OperationGuidance_new.ViewObjects {
         public string? position { get; set; }
         [GridColumn("账户名")]
         public string? account { get; set; }
-        [GridColumn("密码")]
         public string? password { get; set; }
     }
 }

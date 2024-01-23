@@ -67,10 +67,6 @@ namespace CustomLibrary.Events {
                                 if (MainForm != null && MainForm.ActiveControl != null) {
                                     MainForm.ActiveControl = null;
                                 }
-                                // 检查当前是否有弹窗，如果有的话检查control是否也在弹窗上有焦点
-                                if (CurrentPopUpForm != null && CurrentPopUpForm.ActiveControl != null) {
-                                    CurrentPopUpForm.ActiveControl = null;
-                                }
                             }
                         }
                     }
