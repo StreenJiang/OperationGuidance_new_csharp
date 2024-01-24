@@ -85,9 +85,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             procedureSetBox.TextChanged += (s, e) => {
                 if (!ProcedureSetBox.HasError) {
                     if (procedureSetBox.Text != "" && procedureSetBox.Text != string.Empty) {
-                        ModifiedBoltDTO.procedure_set = int.Parse(procedureSetBox.Text);
+                        ModifiedBoltDTO.parameters_set = int.Parse(procedureSetBox.Text);
                     } else {
-                        ModifiedBoltDTO.procedure_set = 0;
+                        ModifiedBoltDTO.parameters_set = 0;
                     }
                 }
             };

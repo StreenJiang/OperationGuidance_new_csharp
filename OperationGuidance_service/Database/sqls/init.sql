@@ -105,7 +105,7 @@ CREATE TABLE "product_bolt" (
   "location_y_percent" real(8),
   "tool_id" integer,
   "bit_specification" real(16),
-  "procedure_set" integer(8),
+  "parameters_set" integer(8),
   "torque_min" real(16),
   "torque_max" real(16),
   "angle_min" real(32),

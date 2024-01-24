@@ -21,7 +21,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? tool_ip { get; set; }
         public int? tool_port { get; set; }
         public float? bit_specification { get; set; }
-        public int? procedure_set { get; set; }
+        public int? parameters_set { get; set; }
         public float? torque_min { get; set; }
         public float? torque_max { get; set; }
         public float? angle_min { get; set; }

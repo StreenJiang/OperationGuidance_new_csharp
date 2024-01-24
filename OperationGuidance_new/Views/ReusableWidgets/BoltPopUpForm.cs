@@ -154,7 +154,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _toolIdComboBox.AddItem(list[1].id + "（" + list[1].name + "）", list[1].id);
             _toolIdComboBox.SetCurrent(0);
             _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
-            _procedureSetBox.SetValue(0, boltDTO.procedure_set + "");
+            _procedureSetBox.SetValue(0, boltDTO.parameters_set + "");
             _torqueBox.SetValue(0, boltDTO.torque_min + "");
             _torqueBox.SetValue(1, boltDTO.torque_max + "");
             _angleBox.SetValue(0, boltDTO.angle_min + "");
