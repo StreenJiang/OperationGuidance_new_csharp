@@ -157,7 +157,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int boxMargin = boxHeight / 5;
             int titleHeight = WidgetUtils.PopUpFormSubTitle();
             int titleMargin = titleHeight / 5;
-            int tableHeight = titleHeight + titleMargin * 2;
+            int tableHeight = 0;
             int previousRowIndex = -1;
             foreach (Control control in _tablePanel.Controls) {
                 if (control.Visible) {
@@ -175,7 +175,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 control.Margin = new(boxMargin);
                 control.Size = new(_tablePanel.Width / _tablePanel.ColumnCount - boxMargin * 2, boxHeight);
             }
-            Size = _tablePanel.Size;
+            Size = new(width, tableHeight + titleHeight + titleMargin * 2);
             Invalidate();
         }
     }
