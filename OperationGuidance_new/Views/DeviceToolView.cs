@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons;
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
@@ -12,7 +12,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class DeviceManagementView: CustomDataGridViewOuterPanel<DeviceDTO, DeviceVO> {
+    public class DeviceToolView: CustomDataGridViewOuterPanel<DeviceDTO, DeviceVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -24,7 +24,7 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Constructors
-        public DeviceManagementView() {
+        public DeviceToolView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
             

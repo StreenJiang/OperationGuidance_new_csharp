@@ -396,10 +396,10 @@ namespace OperationGuidance_new.Views {
                     _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
                         if (!_barCodePopUpForm.TextBox.IsError) {
                             _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
-                            _barCodePopUpForm.DisposeForm();
+                            _barCodePopUpForm.Dispose();
                         }
                     };
-                    _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.DisposeForm();
+                    _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
                     _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
                     ResizeBarCodePopUpForm();
                 }
@@ -456,11 +456,11 @@ namespace OperationGuidance_new.Views {
                                     boltBtn.BoltStatus = BoltStatus.TIGHTENING;
                                     boltBtn.StartFlicker();
                                     CurrentWorkingButton = boltBtn;
-                                    _boltPopUpForm.DisposeForm();
+                                    _boltPopUpForm.Dispose();
                                 };
                                 CommonButton closeBtn = _boltPopUpForm.AddButton("关闭");
                                 closeBtn.Click += (s, e) => {
-                                    _boltPopUpForm.DisposeForm();
+                                    _boltPopUpForm.Dispose();
                                 };
                                 // Show form but make it transparent to create handles for its children
                                 _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
@@ -1227,9 +1227,11 @@ namespace OperationGuidance_new.Views {
         }
 
         public void ShowPopUpForm() {
-                _popUpForm = new(this, _categoryName, DeviceDTOs.Values.ToList());
+            if (_popUpForm == null || _popUpForm.IsDisposed) {
+                _popUpForm = new(ShowPopUpForm, _categoryName, DeviceDTOs.Values.ToList());
                 _popUpForm.PretendToShowToCreateHandlesForChildren();
                 ResizePopUpForm();
+            }
             _popUpForm.Show();
         }
 
@@ -1272,7 +1274,7 @@ namespace OperationGuidance_new.Views {
     }
 
     public class DeviceDetailPopUpForm: CustomPopUpForm {
-        private DeviceBlock _deviceBlock;
+        private Action _popUpSelf;
 
         private readonly Image _statusIconConnected;
         private readonly Image _statusIconDisconnected;
@@ -1288,8 +1290,8 @@ namespace OperationGuidance_new.Views {
         public int PieceHeight { get => _pieceHeight; set => _pieceHeight = value; }
         public int VGap { get => _vGap; set => _vGap = value; }
 
-        public DeviceDetailPopUpForm(DeviceBlock deviceBlock, string categoryName, List<DeviceDTO> dtos) : base() {
-            _deviceBlock = deviceBlock;
+        public DeviceDetailPopUpForm(Action popUpSelf, string categoryName, List<DeviceDTO> dtos) : base() {
+            _popUpSelf = popUpSelf;
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
 
@@ -1363,8 +1365,8 @@ namespace OperationGuidance_new.Views {
                 };
                 button.Size = buttonSize;
                 button.Click += (s, e) => {
-                    DisposeForm();
-                    _secondPopUpForm = new(_deviceBlock, deviceInfoText);
+                    Hide();
+                    _secondPopUpForm = new(_popUpSelf, deviceInfoText);
                     _secondPopUpForm.PretendToShowToCreateHandlesForChildren();
                     ResizeSecondPopUpForm();
                     _secondPopUpForm.Show();
@@ -1402,7 +1404,7 @@ namespace OperationGuidance_new.Views {
     }
 
     public class DeviceOperationPopUpForm: CustomPopUpForm {
-        private DeviceBlock _deviceBlock;
+        private Action _openParent;
 
         private TableLayoutPanel _tablePanel;
         private int _boxHeight;
@@ -1414,11 +1416,11 @@ namespace OperationGuidance_new.Views {
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
-        public DeviceOperationPopUpForm(DeviceBlock deviceBlock, string titleInfo) : base() {
+        public DeviceOperationPopUpForm(Action openParent, string titleInfo) : base() {
+            _openParent = openParent;
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "手动操作工具（" + titleInfo + "）";
 
-            _deviceBlock = deviceBlock;
             _tablePanel = new() {
                 Margin = new(0),
                 Padding = new(0),
@@ -1456,17 +1458,17 @@ namespace OperationGuidance_new.Views {
                 string station = _stationTextBox.GetTextBox(0).Text;
                 string procedure = _procedureTextBox.GetTextBox(0).Text;
                 WidgetUtils.ShowNoticePopUp("下发成功!");
-                DisposeForm();
+                Dispose();
             };
             CommonButton btnClose = AddButton("关闭");
             btnClose.Click += (s, e) => {
-                DisposeForm();
+                Dispose();
             };
         }
 
-        public override void DisposeForm() {
-            base.DisposeForm();
-            _deviceBlock.ShowPopUpForm();
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+            _openParent();
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

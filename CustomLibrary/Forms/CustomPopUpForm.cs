@@ -93,7 +93,7 @@ namespace CustomLibrary.Forms {
             };
             _title = "(未命名)";
             _closeButton = new() { Parent = _titlePanel };
-            _closeButton.Click += (sender, eventArgs) => HideForm();
+            _closeButton.Click += (sender, eventArgs) => Hide();
             _titlePanel.SizeChanged += (sender, eventArgs) => {
                 _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular);
                 _closeButton.Size = new((int) (_titlePanel.Height * 1.25), _titlePanel.Height - _borderThickness);
@@ -166,31 +166,16 @@ namespace CustomLibrary.Forms {
             Opacity = 0D;
         }
 
-        public virtual void HideForm() {
-            _popUpFormBackboard.Hide();
-            Hide();
-        }
-
-        public virtual void DisposeForm() {
-            _popUpFormBackboard.Dispose();
-            Dispose();
+        public new void Dispose() {
+            base.Dispose();
         }
 
         public new void Show() {
-            EventFuncs.CurrentPopUpForm = this;
-            base.Hide();
             Opacity = 1D;
             // Sometimes cursor will hide and don't know why for now
             // Cursor.Show();
-            _popUpFormBackboard.Show();
+            // _popUpFormBackboard.Show();
             base.Show();
-        }
-
-        public new DialogResult ShowDialog() {
-            base.Hide();
-            Opacity = 1D;
-            EventFuncs.CurrentPopUpForm = this;
-            return base.ShowDialog();
         }
 
         public FunctionButton AddButton(string label) {
@@ -288,12 +273,21 @@ namespace CustomLibrary.Forms {
             }
         }
 
-        // protected override void OnVisibleChanged(EventArgs e) {
-        //     base.OnVisibleChanged(e);
-        //     if (Visible) {
-        //         _popUpFormBackboard.Show();
-        //     }
-        // }
+        protected override void OnVisibleChanged(EventArgs e) {
+            base.OnVisibleChanged(e);
+            _popUpFormBackboard.Visible = Visible;
+            if (Visible) {
+                EventFuncs.CurrentPopUpForm = this;
+            } else {
+                EventFuncs.CurrentPopUpForm = null;
+            }
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+            _popUpFormBackboard.Dispose();
+            EventFuncs.CurrentPopUpForm = null;
+        }
 
         private class CloseButton: CustomImageTextButtonBase {
             private readonly float _closebuttonIconRatio = 0.75F;

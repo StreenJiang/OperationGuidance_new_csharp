@@ -213,16 +213,6 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap communication_device {
-            get {
-                object obj = ResourceManager.GetObject("communication_device", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap data_query {
             get {
                 object obj = ResourceManager.GetObject("data_query", resourceCulture);
@@ -243,9 +233,29 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap device_arm {
+            get {
+                object obj = ResourceManager.GetObject("device_arm", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap device_category {
             get {
                 object obj = ResourceManager.GetObject("device_category", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap device_communication {
+            get {
+                object obj = ResourceManager.GetObject("device_communication", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -273,9 +283,9 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap device_management {
+        internal static System.Drawing.Bitmap device_model {
             get {
-                object obj = ResourceManager.GetObject("device_management", resourceCulture);
+                object obj = ResourceManager.GetObject("device_model", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -283,9 +293,19 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap device_model {
+        internal static System.Drawing.Bitmap device_screw_gun {
             get {
-                object obj = ResourceManager.GetObject("device_model", resourceCulture);
+                object obj = ResourceManager.GetObject("device_screw_gun", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap device_serial_port {
+            get {
+                object obj = ResourceManager.GetObject("device_serial_port", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -583,16 +603,6 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap serial_port_device {
-            get {
-                object obj = ResourceManager.GetObject("serial_port_device", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap software_license {
             get {
                 object obj = ResourceManager.GetObject("software_license", resourceCulture);
@@ -656,6 +666,16 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap workplace {
             get {
                 object obj = ResourceManager.GetObject("workplace", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap workstation {
+            get {
+                object obj = ResourceManager.GetObject("workstation", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -575,17 +575,17 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
                 confirmButton.Click += (s, e) => {
-                    _boltPopUpForm.DisposeForm();
+                    _boltPopUpForm.Dispose();
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");
                 deleteButton.Click += (s, e) => {
                     _currentSideButton.DeleteBolt();
-                    _boltPopUpForm.DisposeForm();
+                    _boltPopUpForm.Dispose();
                     ForceResizeRight();
                 };
                 CommonButton cancelButton = _boltPopUpForm.AddButton("取消");
                 cancelButton.Click += (s, e) => {
-                    _boltPopUpForm.DisposeForm();
+                    _boltPopUpForm.Dispose();
                 };
                 // Show form but make it transparent to create handles for its children
                 _boltPopUpForm.PretendToShowToCreateHandlesForChildren();

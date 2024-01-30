@@ -116,12 +116,12 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                callBackAction += _editEntityPopUpForm.DisposeForm;
+                callBackAction += _editEntityPopUpForm.Dispose;
                 AddOrUpdate(dto, callBackAction);
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {
-                _editEntityPopUpForm.DisposeForm();
+                _editEntityPopUpForm.Dispose();
             };
             // Show form but make it transparent to create handles for its children
             _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();

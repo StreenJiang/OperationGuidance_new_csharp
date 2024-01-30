@@ -159,7 +159,7 @@ namespace OperationGuidance_new.Views {
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {
-                _editEntityPopUpForm.DisposeForm();
+                _editEntityPopUpForm.Dispose();
             };
             // Show form but make it transparent to create handles for its children
             _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();
@@ -167,7 +167,7 @@ namespace OperationGuidance_new.Views {
             ResizePopUpForm();
             // Real show
             _editEntityPopUpForm.Show();
-            callBackAction += _editEntityPopUpForm.DisposeForm;
+            callBackAction += _editEntityPopUpForm.Dispose;
         }
         private void ResizePopUpForm() {
             if (_editEntityPopUpForm != null) {
