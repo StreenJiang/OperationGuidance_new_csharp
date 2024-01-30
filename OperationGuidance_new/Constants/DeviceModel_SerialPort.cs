@@ -3,10 +3,10 @@
 namespace OperationGuidance_new.Constants {
     public static class DeviceModel_SerialPort {
         public static string DEVICE_TYPE = DeviceTypes.SERIAL_PORT;
-        public static SerialPortCOM3 COM3 { get; } = new();
+        public static SerialPortScanner Scanner { get; } = new();
     }
 
-    public class SerialPortCOM3: ADeviceModel {
-        public SerialPortCOM3() : base("COM3") { }
+    public class SerialPortScanner: ADeviceModel {
+        public SerialPortScanner() : base("Scanner") { }
     }
 }

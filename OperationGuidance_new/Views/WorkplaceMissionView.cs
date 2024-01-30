@@ -213,7 +213,7 @@ namespace OperationGuidance_new.Views {
             int newHeight = (int) (Height * .7);
             int newWidth = (int) (newHeight * 2.25);
             _backButton.Size = new(newWidth, newHeight);
-            _backButton.Margin = new((Height - newHeight) / 2);
+            _backButton.Margin = new(0, (Height - newHeight) / 2, 0, 0);
         }
 
         protected override float GetResizeRatio() => .05F;
@@ -388,7 +388,7 @@ namespace OperationGuidance_new.Views {
             _barCodeTextBox.Click += barCodePopUp;
 
             void barCodePopUp(object? s, EventArgs e) {
-                if (_barCodePopUpForm == null) {
+                if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
                     _barCodePopUpForm = new(note, _barCodeTextBox) {
                         Title = "录入条码",
                         BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
@@ -718,7 +718,7 @@ namespace OperationGuidance_new.Views {
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
-            ReSizeContents();
+            ResizeContents();
             ResizeleftTop();
             ResizeLeftBottom();
             ResizeRightTop();
@@ -728,10 +728,10 @@ namespace OperationGuidance_new.Views {
             Invalidate();
         }
 
-        private void ReSizeContents() {
+        private void ResizeContents() {
             int wholeWidth = Width - Padding.Left * 2;
             int wholeHeight = Height - Padding.Top * 2;
-            int bottomHeight = (int) (wholeHeight * .09);
+            int bottomHeight = (int) (wholeHeight * .0825);
             int othersHeight = wholeHeight - bottomHeight - Padding.Top / 2;
             int leftWidth = (int) (wholeWidth * .78);
             int rightWidth = wholeWidth - leftWidth - Padding.Left / 2;

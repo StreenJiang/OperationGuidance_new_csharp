@@ -28,6 +28,14 @@ namespace OperationGuidance_service.Controllers {
         [Autowired]
         private DeviceCategoryService _deviceCategoryService;
         [Autowired]
+        private DeviceArmService _deviceArmService;
+        [Autowired]
+        private DeviceToolService _deviceToolService;
+        [Autowired]
+        private DeviceSerialPortService _deviceSerialPortService;
+        [Autowired]
+        private DeviceCommunicationService _deviceCommunicationService;
+        [Autowired]
         private DeviceModelService _deviceModelService;
         [Autowired]
         private WorkstationService _workstationService;
@@ -566,5 +574,158 @@ namespace OperationGuidance_service.Controllers {
             };
         }
         #endregion
+
+        #region 力臂相关
+        // 查询力臂列表
+        public QueryDeviceArmListRsp QueryDeviceArmList(QueryDeviceArmListReq req) {
+            List<DeviceArm> deviceCategories = _deviceArmService.QueryList(req.UserId);
+            List<DeviceArmDTO> deviceArmDTOs = new();
+            CommonUtils.ObjectConverter<DeviceArm, DeviceArmDTO>(deviceCategories, deviceArmDTOs);
+
+            return new() {
+                DeviceArmDTOs = deviceArmDTOs,
+            };
+        }
+        // 新增或修改力臂
+        public AddOrUpdateDeviceArmRsp AddOrUpdateDeviceArm(AddOrUpdateDeviceArmReq req) {
+            DeviceArmDTO deviceArmDTO = req.DeviceArmDTO;
+            DeviceArm deviceArm = new();
+            CommonUtils.ObjectConverter<DeviceArmDTO, DeviceArm>(deviceArmDTO, deviceArm);
+            DeviceArm? deviceArmNew = _deviceArmService.InsertOrUpdate(deviceArm);
+            if (deviceArmNew != null) {
+                deviceArmDTO.id = deviceArmNew.id;
+            }
+
+            return new() {
+                DeviceArmDTO = deviceArmDTO,
+            };
+        }
+        // 删除力臂
+        public DeleteDeviceArmByIdsRsp DeleteDeviceArm(DeleteDeviceArmByIdsReq req) {
+            int deletedRows = _deviceArmService.DeleteByIds(req.Ids);
+
+            DeleteDeviceArmByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 工具相关
+        // 查询工具列表
+        public QueryDeviceToolListRsp QueryDeviceToolList(QueryDeviceToolListReq req) {
+            List<DeviceTool> deviceCategories = _deviceToolService.QueryList(req.UserId);
+            List<DeviceToolDTO> deviceToolDTOs = new();
+            CommonUtils.ObjectConverter<DeviceTool, DeviceToolDTO>(deviceCategories, deviceToolDTOs);
+
+            return new() {
+                DeviceToolDTOs = deviceToolDTOs,
+            };
+        }
+        // 新增或修改工具
+        public AddOrUpdateDeviceToolRsp AddOrUpdateDeviceTool(AddOrUpdateDeviceToolReq req) {
+            DeviceToolDTO deviceToolDTO = req.DeviceToolDTO;
+            DeviceTool deviceTool = new();
+            CommonUtils.ObjectConverter<DeviceToolDTO, DeviceTool>(deviceToolDTO, deviceTool);
+            DeviceTool? deviceToolNew = _deviceToolService.InsertOrUpdate(deviceTool);
+            if (deviceToolNew != null) {
+                deviceToolDTO.id = deviceToolNew.id;
+            }
+
+            return new() {
+                DeviceToolDTO = deviceToolDTO,
+            };
+        }
+        // 删除工具
+        public DeleteDeviceToolByIdsRsp DeleteDeviceTool(DeleteDeviceToolByIdsReq req) {
+            int deletedRows = _deviceToolService.DeleteByIds(req.Ids);
+
+            DeleteDeviceToolByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 串口设备相关
+        // 查询串口设备列表
+        public QueryDeviceSerialPortListRsp QueryDeviceSerialPortList(QueryDeviceSerialPortListReq req) {
+            List<DeviceSerialPort> deviceCategories = _deviceSerialPortService.QueryList(req.UserId);
+            List<DeviceSerialPortDTO> deviceSerialPortDTOs = new();
+            CommonUtils.ObjectConverter<DeviceSerialPort, DeviceSerialPortDTO>(deviceCategories, deviceSerialPortDTOs);
+
+            return new() {
+                DeviceSerialPortDTOs = deviceSerialPortDTOs,
+            };
+        }
+        // 新增或修改串口设备
+        public AddOrUpdateDeviceSerialPortRsp AddOrUpdateDeviceSerialPort(AddOrUpdateDeviceSerialPortReq req) {
+            DeviceSerialPortDTO deviceSerialPortDTO = req.DeviceSerialPortDTO;
+            DeviceSerialPort deviceSerialPort = new();
+            CommonUtils.ObjectConverter<DeviceSerialPortDTO, DeviceSerialPort>(deviceSerialPortDTO, deviceSerialPort);
+            DeviceSerialPort? deviceSerialPortNew = _deviceSerialPortService.InsertOrUpdate(deviceSerialPort);
+            if (deviceSerialPortNew != null) {
+                deviceSerialPortDTO.id = deviceSerialPortNew.id;
+            }
+
+            return new() {
+                DeviceSerialPortDTO = deviceSerialPortDTO,
+            };
+        }
+        // 删除串口设备
+        public DeleteDeviceSerialPortByIdsRsp DeleteDeviceSerialPort(DeleteDeviceSerialPortByIdsReq req) {
+            int deletedRows = _deviceSerialPortService.DeleteByIds(req.Ids);
+
+            DeleteDeviceSerialPortByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region 通讯设备相关
+        // 查询通讯设备列表
+        public QueryDeviceCommunicationListRsp QueryDeviceCommunicationList(QueryDeviceCommunicationListReq req) {
+            List<DeviceCommunication> deviceCategories = _deviceCommunicationService.QueryList(req.UserId);
+            List<DeviceCommunicationDTO> deviceCommunicationDTOs = new();
+            CommonUtils.ObjectConverter<DeviceCommunication, DeviceCommunicationDTO>(deviceCategories, deviceCommunicationDTOs);
+
+            return new() {
+                DeviceCommunicationDTOs = deviceCommunicationDTOs,
+            };
+        }
+        // 新增或修改通讯设备
+        public AddOrUpdateDeviceCommunicationRsp AddOrUpdateDeviceCommunication(AddOrUpdateDeviceCommunicationReq req) {
+            DeviceCommunicationDTO deviceCommunicationDTO = req.DeviceCommunicationDTO;
+            DeviceCommunication deviceCommunication = new();
+            CommonUtils.ObjectConverter<DeviceCommunicationDTO, DeviceCommunication>(deviceCommunicationDTO, deviceCommunication);
+            DeviceCommunication? deviceCommunicationNew = _deviceCommunicationService.InsertOrUpdate(deviceCommunication);
+            if (deviceCommunicationNew != null) {
+                deviceCommunicationDTO.id = deviceCommunicationNew.id;
+            }
+
+            return new() {
+                DeviceCommunicationDTO = deviceCommunicationDTO,
+            };
+        }
+        // 删除通讯设备
+        public DeleteDeviceCommunicationByIdsRsp DeleteDeviceCommunication(DeleteDeviceCommunicationByIdsReq req) {
+            int deletedRows = _deviceCommunicationService.DeleteByIds(req.Ids);
+
+            DeleteDeviceCommunicationByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
     }
 }

@@ -82,9 +82,6 @@ namespace CustomLibrary.Forms {
             };
             _popUpFormBackboard.Owner.LocationChanged += (sender, eventArgs) => AfterSizeChanged(this, EventArgs.Empty);
             _popUpFormBackboard.Hide();
-            _popUpFormBackboard.Click += (s, e) => {
-                System.Console.WriteLine($"_title: {_title}");
-            };
 
             // Title panel
             _titlePanel = new() {

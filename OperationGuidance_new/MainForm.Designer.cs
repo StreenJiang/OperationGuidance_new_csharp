@@ -80,7 +80,7 @@ namespace OperationGuidance_new {
                 EventFuncs.GlobalMouseMove(sender, eventArgs);
             };
             // This event must be under above event, otherwise this will not triggered after view changing, don't knwo why
-            HookEvents.MouseClick += (sender, eventArgs) => {
+            HookEvents.MouseUp += (sender, eventArgs) => {
                 EventFuncs.GlobalMouseClick(sender, eventArgs);
             };
 
