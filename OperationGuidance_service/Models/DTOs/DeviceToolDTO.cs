@@ -6,6 +6,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? description { get; set; }
         public string? ip { get; set; }
         public int? port { get; set; }
-        public int? model { get; set; }
+        public int? type { get; set; }
     }
 }

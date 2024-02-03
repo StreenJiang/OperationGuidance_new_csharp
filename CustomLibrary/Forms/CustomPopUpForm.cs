@@ -50,6 +50,7 @@ namespace CustomLibrary.Forms {
         // Title panel
         public CustomContentPanel TitlePanel { get => _titlePanel; set => _titlePanel = value; }
         public string Title { get => _title; set => _title = value; }
+        public CloseButton CloseButton { get => _closeButton; set => _closeButton = value; }
         public bool HasTitleBar { get => TitlePanel.Visible; set => TitlePanel.Visible = value; }
         // Content panel
         public CustomContentPanel ContentPanel { get => _contentPanel; set => _contentPanel = value; }
@@ -168,11 +169,15 @@ namespace CustomLibrary.Forms {
         }
 
         public new void Show() {
-            Opacity = 1D;
             // Sometimes cursor will hide and don't know why for now
-            // Cursor.Show();
-            // _popUpFormBackboard.Show();
-            base.Show();
+            Cursor.Show();
+            base.Hide();
+            Opacity = 1D;
+            base.ShowDialog();
+        }
+
+        public new void Hide() {
+            base.Dispose();
         }
 
         public FunctionButton AddButton(string label) {
@@ -214,10 +219,10 @@ namespace CustomLibrary.Forms {
             _buttonsPanel.Height = GetButtonsPanelHeight();
             _contentPanel.Padding = GetContentPadding();
         }
-        private int GetTitlePanelHeight() => WidgetUtils.PopUpFormTitle();
+        private int GetTitlePanelHeight() => WidgetUtils.PopUpOrFloatingFormTitle();
         private int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.CommonButtonHeight();
-        private Padding GetContentPadding() => WidgetUtils.PopUpFormContentPadding();
-        private Padding GetButtonsPanelPadding() => WidgetUtils.PopUpFormButtonsPadding();
+        private Padding GetContentPadding() => WidgetUtils.PopUpOrFloatingFormContentPadding();
+        private Padding GetButtonsPanelPadding() => WidgetUtils.PopUpOrFloatingFormButtonsPadding();
 
         public void SetContentSizeAndSelfSize(Size contentSize) {
             ContentPanel.Height = contentSize.Height;
@@ -285,40 +290,40 @@ namespace CustomLibrary.Forms {
             _popUpFormBackboard.Dispose();
             EventFuncs.CurrentPopUpForm = null;
         }
+    }
 
-        private class CloseButton: CustomImageTextButtonBase {
-            private readonly float _closebuttonIconRatio = 0.75F;
+    public class CloseButton: CustomImageTextButtonBase {
+        private readonly float _closebuttonIconRatio = 0.75F;
 
-            public CloseButton() : base() {
-                Icon = CustomResources.button_close;
-                BlockHoverUp = true;
-            }
+        public CloseButton() : base() {
+            Icon = CustomResources.button_close;
+            BlockHoverUp = true;
+        }
 
-            protected override void ResizeIconImage() {
-                if (Icon != null) {
-                    int newSide = (int) (Height * _closebuttonIconRatio);
-                    Size newSize = new(newSide, newSide);
-                    ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newSize);
-                    // Recalculate image position
-                    ImageX = (int) Math.Ceiling((Width - newSize.Width) / 2D);
-                    ImageY = (Height - newSize.Height) / 2;
-                }
-            }
-
-            protected override void ResizeTextLabel() {
+        protected override void ResizeIconImage() {
+            if (Icon != null) {
+                int newSide = (int) (Height * _closebuttonIconRatio);
+                Size newSize = new(newSide, newSide);
+                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newSize);
+                // Recalculate image position
+                ImageX = (int) Math.Ceiling((Width - newSize.Width) / 2D);
+                ImageY = (Height - newSize.Height) / 2;
             }
         }
 
-        public class FunctionButton: CommonButton {
-            protected override void ResizeTextLabel() {
-                if (!IsDisposed) {
-                    if (Label != null) {
-                        Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
-                        using (Graphics g = CreateGraphics()) {
-                            LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                        }
-                        LabelY = (Height - Font.Height) / 2;
+        protected override void ResizeTextLabel() {
+        }
+    }
+
+    public class FunctionButton: CommonButton {
+        protected override void ResizeTextLabel() {
+            if (!IsDisposed) {
+                if (Label != null) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
+                    using (Graphics g = CreateGraphics()) {
+                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                     }
+                    LabelY = (Height - Font.Height) / 2;
                 }
             }
         }

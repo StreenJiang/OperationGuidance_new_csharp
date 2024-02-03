@@ -65,14 +65,15 @@ namespace OperationGuidance_new.Views {
             private bool _saved;
 
             // Contents
-            private CustomContentPanel _left;
-            private CustomContentPanel _leftTop;
-            private WorkplacePiece _leftBottom;
-            private WorkplacePiece _right;
-            private int? _littleTitleHeight;
+            private CustomContentPanel _top;
+            private CustomContentPanel _bottom;
+            private WorkplacePiece _bottomLeft;
+            private WorkplacePiece _bottomRight;
+            private int _littleTitleHeight;
 
-            // Left top
+            // top
             private CustomTextBoxGroup _missionName;
+            private CustomTextBoxGroup _missionPnCode;
             private CommonButton _buttonSave;
             private CommonButton _buttonNew;
             private CommonButton _buttonDelete;
@@ -92,7 +93,7 @@ namespace OperationGuidance_new.Views {
             private SideButton _currentSideButton;
             private SideButton _addNewSideButton;
 
-            // Left bottom
+            // Bottom left
             private LeftBottomContentPanel _leftBottomContentPanel;
             private ProductImageFile _currentProductImageFile;
             private int _imageOperationBufferLength;
@@ -102,12 +103,11 @@ namespace OperationGuidance_new.Views {
             private bool _needSaveBuffer;
             private BoltEditionPopUpForm _boltPopUpForm;
 
-            // Right
+            // Bottom right
             private CustomContentPanel _boltTitlePanel;
             private Label _boltTitleLabel;
             private RightContentPanel _rightContentPanel;
             private CustomVScrollingContentPanel _autoScrollContentOuterPanel;
-            // private BoltDetialPopUpForm _boltPopUpForm;
 
             public MissionEditionPage(MissionEditionView parent, ProductMissionDTO missionDTO) : base() {
                 _apis = SystemUtils.GetApis();
@@ -117,35 +117,28 @@ namespace OperationGuidance_new.Views {
                 _missionDTO = missionDTO;
 
                 InitializeContent();
-                InitializeLeftTop();
-                InitializeLeftBottom();
-                InitializeRight();
+                InitializeTop();
+                InitializeBottomLeft();
+                InitializeBottomRight();
             }
 
             private void InitializeContent() {
-                _left = new() {
+                _top = new() {
                     Parent = this,
+                    Padding = new(0),
+                };
+                _bottom = new() {
+                    Parent = this,
+                    Padding = new(0),
+                };
+                _bottomLeft = new() {
+                    Parent = _bottom,
                     Padding = new(0),
                     FlowDirection = FlowDirection.TopDown,
-                };
-                _leftTop = new() {
-                    Parent = _left,
-                    Padding = new(0),
-                };
-                // Place side title panel here to ensure ratio of bottom is correct
-                _sideTitlePanel = new() {
-                    Parent = _left,
-                    Padding = new(0),
-                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
-                };
-                _leftBottom = new() {
-                    Parent = _left,
-                    Padding = new(0),
                     OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
                 };
-
-                _right = new() {
-                    Parent = this,
+                _bottomRight = new() {
+                    Parent = _bottom,
                     Padding = new(0),
                     FlowDirection = FlowDirection.TopDown,
                     OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
@@ -154,29 +147,50 @@ namespace OperationGuidance_new.Views {
                 };
             }
 
-            private void InitializeLeftTop() {
+            private void InitializeTop() {
+                // 任务名称输入框
                 _missionName = new("任务名称") {
-                    Parent = _leftTop,
+                    Parent = _top,
                     BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                     ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                     BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                     BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                     NameAlignment = HorizontalAlignment.Left,
                 };
-                CustomTextBox textBox = _missionName.GetTextBox(0);
-                textBox.TextChanged += (sender, eventArgs) => {
+                CustomTextBox missionNameBox = _missionName.GetTextBox(0);
+                missionNameBox.SizeChanged += (sender, eventArgs) => missionNameBox.Box.SelectionStart = 0;
+                missionNameBox.TextChanged += (sender, eventArgs) => {
                     if (!_missionName.HasError) {
-                        _missionDTO.name = textBox.Text;
+                        _missionDTO.name = missionNameBox.Text;
                     }
                 };
-                textBox.Text = _missionDTO.name;
+                missionNameBox.Text = _missionDTO.name;
+                // PN码输入框
+                _missionPnCode = new("PN码") {
+                    Parent = _top,
+                    BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                    ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                    BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                    BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+                    NameAlignment = HorizontalAlignment.Left,
+                    NumberOnly = true,
+                };
+                CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
+                missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
+                missionPnCodeBox.TextChanged += (sender, eventArgs) => {
+                    if (!_missionPnCode.HasError) {
+                        _missionDTO.pn_code = missionPnCodeBox.Text;
+                    }
+                };
+                missionPnCodeBox.Text = _missionDTO.pn_code;
 
                 _buttonSave = new() {
-                    Parent = _leftTop,
+                    Parent = _top,
                     Label = "保存",
                     BlockHoverUp = true,
                 };
                 _buttonSave.Click += (sender, eventArgs) => {
+                    _currentProductImageFile.SaveSideInfo();
                     // Store to database
                     AddOrUpdateProductMissionReq req = new(_missionDTO);
                     AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
@@ -189,7 +203,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
                 _buttonPublish = new() {
-                    Parent = _leftTop,
+                    Parent = _top,
                     Label = "发布",
                     BlockHoverUp = true,
                 };
@@ -197,7 +211,7 @@ namespace OperationGuidance_new.Views {
                     // TODO: publish it (store tatus to database)
                 };
                 _buttonNew = new() {
-                    Parent = _leftTop,
+                    Parent = _top,
                     Label = "新增",
                     BlockHoverUp = true,
                 };
@@ -212,7 +226,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
                 _buttonDelete = new() {
-                    Parent = _leftTop,
+                    Parent = _top,
                     Label = "删除",
                     BlockHoverUp = true,
                 };
@@ -268,7 +282,7 @@ namespace OperationGuidance_new.Views {
 
             private ImageButton GenerateImageButton(string label, Image icon, EventHandler eventHandler) {
                 ImageButton button =new() {
-                    Parent = _leftTop,
+                    Parent = _top,
                     Label = label,
                     BlockHoverUp = true,
                     Icon = icon,
@@ -277,10 +291,16 @@ namespace OperationGuidance_new.Views {
                 return button;
             }
 
-            private void InitializeLeftBottom() {
-                _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "（请确保所有螺栓点位在最小范围内，以免分辨率很小时显示不全）") {
-                    Parent = _leftBottom,
+            private void InitializeBottomLeft() {
+                _sideTitlePanel = new() {
+                    Parent = _bottomLeft,
                     Margin = new(1, 1, 0, 0),
+                    Padding = new(0),
+                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
+                };
+                _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "（请确保所有螺栓点位在最小范围内，以免分辨率很小时显示不全）") {
+                    Parent = _bottomLeft,
+                    Margin = new(1, 0, 0, 0),
                     Padding = new(0),
                     BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
                 };
@@ -332,7 +352,7 @@ namespace OperationGuidance_new.Views {
                             // Reorder the edition buttons
                             boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num.Value));
                             // Do this to force fire SizeChanged event
-                            ResizeLeftBottom();
+                            ResizeBottomLeft();
                             ForceResizeRight();
 
                             // Save new boltDto to sideDto
@@ -575,6 +595,8 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
                 confirmButton.Click += (s, e) => {
+                    _boltPopUpForm.SaveTo(boltDTO);
+                    WidgetUtils.ShowNoticePopUp("已保存！");
                     _boltPopUpForm.Dispose();
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");
@@ -591,7 +613,7 @@ namespace OperationGuidance_new.Views {
                 _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
                 // Resize all widgets
                 ResizePopUpForm();
-                // Real show_editionPage
+                // Real yhow_editionPage
                 _boltPopUpForm.Show();
             }
 
@@ -606,9 +628,9 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            private void InitializeRight() {
+            private void InitializeBottomRight() {
                 _boltTitlePanel = new() {
-                    Parent = _right,
+                    Parent = _bottomRight,
                     Padding = new(0),
                     Margin = new(1, 1, 0, 0),
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
@@ -617,7 +639,7 @@ namespace OperationGuidance_new.Views {
                     Padding = new(0),
                 };
                 _autoScrollContentOuterPanel = new(null, _rightContentPanel) {
-                    Parent = _right,
+                    Parent = _bottomRight,
                     Margin = new(1, 0, 0, 0),
                     NeedsPadding = false,
                 };
@@ -648,7 +670,7 @@ namespace OperationGuidance_new.Views {
             private BoltEditionButton AddNewBoltEditionButton(SideButton sideButton, ProductBoltDTO boltDTO) {
                 BoltEditionButton boltEditionButton = new(boltDTO) {
                     Parent = _rightContentPanel,
-                    ForeColor = _right.ForeColor,
+                    ForeColor = _bottomRight.ForeColor,
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_BUTTON_BACK,
                     Visible = false,
                 };
@@ -739,30 +761,27 @@ namespace OperationGuidance_new.Views {
                 if (Parent != null && Parent.IsHandleCreated) {
                     CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView) Parent).OuterVScrollPanel;
                     if (outerVScrollPanel != null) {
-                        Padding outerPadding = outerVScrollPanel.OuterPanel.Padding;
-                        ResizeContent(outerPadding);
+                        ResizeContent(outerVScrollPanel.OuterPanel.Padding);
                         ResizeSideButtons();
-                        ResizeLeftTop();
-                        ResizeLeftBottom();
-                        ResizeRight();
+                        ResizeTop();
+                        ResizeBottomLeft();
+                        ResizeBottomRight();
                     }
                 }
             }
 
             private void ResizeContent(Padding outerPadding) {
-                int leftBottomHeight = (int) (Height * .805);
-                int leftWidth = (int) (Width * .8);
-                int rightWidth = Width - leftWidth - (outerPadding.Left - 1) / 2;
+                int topHeight = (int) (Height * .15);
+                int bottomHeight = Height - topHeight;
+                int bottomLeftWidth = (int) (Width * .8);
 
-                _left.Size = new(leftWidth, Height);
-                _left.Margin = new(0, 0, (outerPadding.Left - 1) / 2, 0);
+                _top.Size = new(_bottom.Width, topHeight);
 
-                _leftBottom.Size = new(_left.Width, leftBottomHeight);
-                _leftTop.Size = new(_left.Width, (int) ((_left.Height - _leftBottom.Height) * .76));
-                _littleTitleHeight = _left.Height - _leftBottom.Height - _leftTop.Height;
-                _sideTitlePanel.Size = new(_leftTop.Width, _littleTitleHeight.Value);
+                _bottom.Size = new(Width, bottomHeight);
+                _bottomLeft.Size = new(bottomLeftWidth, bottomHeight);
 
-                _right.Size = new(rightWidth, Height);
+                _bottomRight.Size = new(Width - bottomLeftWidth - (outerPadding.Left - 1) / 2, bottomHeight);
+                _bottomRight.Margin = new((outerPadding.Left) / 2, 0, 0, 0);
             }
 
             private void ResizeSideButtons() {
@@ -778,25 +797,29 @@ namespace OperationGuidance_new.Views {
                 _addNewSideButton.Size = new((int) (_sideTitlePanel.Width * .08), newHeight);
             }
 
-            private void ResizeLeftTop() {
+            private void ResizeTop() {
                 // Recalculate some variables
-                int missionNameWidth = _leftTop.Width / 2;
-                int buttonsWidth = missionNameWidth;
+                int textBoxWidth = (int) (_top.Width / 3.5);
+                int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxGap = (int) (textBoxHeight * .5);
+                int buttonsWidth = _top.Width - textBoxWidth * 2 - boxGap;
                 int buttonsHeight = WidgetUtils.CommonButtonHeight();
-                int hGap = (int) (buttonsHeight * .5);
+                int buttonGap = (int) (buttonsHeight * .5);
 
                 // Resize mission name box
-                _missionName.Size = new(missionNameWidth, WidgetUtils.TextOrComboBoxHeight());
+                _missionName.Size = new(textBoxWidth, textBoxHeight);
+                _missionPnCode.Size = new(textBoxWidth, textBoxHeight);
+                _missionPnCode.Margin = new(boxGap, 0, 0, 0);
 
                 // Resize common buttons
-                Size buttonSize =  new((int) ((buttonsWidth - hGap * 4) / 4), buttonsHeight);
+                Size buttonSize =  new((int) ((buttonsWidth - buttonGap * 4) / 4), buttonsHeight);
                 HandleCommonButton(_buttonSave);
                 HandleCommonButton(_buttonPublish);
                 HandleCommonButton(_buttonNew);
                 HandleCommonButton(_buttonDelete);
 
                 // Resize image buttons
-                int imageButtonSide = _leftTop.Height - buttonsHeight;
+                int imageButtonSide = _top.Height - buttonsHeight;
                 int imageMargin = (int) (imageButtonSide * .1);
                 Size imageButtonSize = new(imageButtonSide - imageMargin * 2, imageButtonSide - imageMargin * 2);
                 HandleImageButton(_imageButtonChoose);
@@ -811,7 +834,7 @@ namespace OperationGuidance_new.Views {
                 // Inner method for reuse
                 void HandleCommonButton(CommonButton button) {
                     button.Size = buttonSize;
-                    button.Margin = new(hGap, 0, 0, 0);
+                    button.Margin = new(buttonGap, 0, 0, 0);
                 }
                 // Inner method for reuse
                 void HandleImageButton(ImageButton button) {
@@ -820,8 +843,10 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            private void ResizeLeftBottom() {
-                _leftBottomContentPanel.Size = new(_leftBottom.Width - 2, _leftBottom.Height - 2);
+            private void ResizeBottomLeft() {
+                _littleTitleHeight = (int) (WidgetUtils.TextOrComboBoxHeight() * 1.1);
+                _sideTitlePanel.Size = new(_bottomLeft.Width - 2, _littleTitleHeight);
+                _leftBottomContentPanel.Size = new(_bottomLeft.Width - 2, _bottomLeft.Height - _littleTitleHeight - 2);
 
                 // Resize bolt buttons
                 int boltButtonRadius = _leftBottomContentPanel.MaxRectHeight / 24;
@@ -843,7 +868,7 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ResizePopUpForm() {
-                if (_boltPopUpForm != null) {
+                if (_boltPopUpForm != null && !_boltPopUpForm.IsDisposed) {
                     _boltPopUpForm.CalculateDetailProperties();
 
                     Control mainForm = WidgetUtils.MainPanel.Parent;
@@ -851,10 +876,11 @@ namespace OperationGuidance_new.Views {
                     Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
                     int boxHeight = WidgetUtils.TextOrComboBoxHeight();
                     int boxMargin = boxHeight / 5;
-                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                    int tableHeight = (int) Math.Ceiling((decimal) tablePanel.Controls.Count / tablePanel.ColumnCount) * (boxHeight + boxMargin * 2);
                     Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
                     int tableWidth = contentSize.Width - contentPadding.Size.Width;
                     _boltPopUpForm.BoxHeight = boxHeight;
+                    _boltPopUpForm.ButtonHeight = WidgetUtils.CommonButtonHeight();
                     _boltPopUpForm.BoxMargin = boxMargin;
                     _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
@@ -865,13 +891,13 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            private void ResizeRight() {
-                int controlWidth = _right.Width - 2;
-                _boltTitlePanel.Size = new(controlWidth, _littleTitleHeight.Value);
+            private void ResizeBottomRight() {
+                int controlWidth = _bottomRight.Width - 2;
+                _boltTitlePanel.Size = new(controlWidth, _littleTitleHeight);
                 _boltTitleLabel.Size = _boltTitlePanel.Size;
                 _boltTitleLabel.Font = new Font(WidgetsConfigs.SystemFontFamily, _boltTitleLabel.Height * .55F, FontStyle.Bold, GraphicsUnit.Pixel);
 
-                int contentHeight = _right.Height - _boltTitlePanel.Height - 1;
+                int contentHeight = _bottomRight.Height - _boltTitlePanel.Height - 2;
                 int boltButtonHeight = (int) (contentHeight * .06);
                 int boltButtonMargin = boltButtonHeight / 7;
 
@@ -881,7 +907,7 @@ namespace OperationGuidance_new.Views {
 
             private void ForceResizeRight() {
                 _autoScrollContentOuterPanel.Width -= 1;
-                ResizeRight();
+                ResizeBottomRight();
             }
         }
 

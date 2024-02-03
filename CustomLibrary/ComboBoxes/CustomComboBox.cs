@@ -122,6 +122,30 @@ namespace CustomLibrary.ComboBoxs {
                 return items;
             }
         }
+        public List<string> Names {
+            get {
+                List<string> names = new();
+                foreach (ComboBoxItem<T> item in _itemButtons) {
+                    if (item.Label == null || item.Label == _defaultLabel) {
+                        continue;
+                    }
+                    names.Add(item.Label);
+                } 
+                return names;
+            }
+        }
+        public Dictionary<string, T?> NamesAndItems {
+            get {
+                Dictionary<string, T?> namesAndItems = new();
+                foreach (ComboBoxItem<T> item in _itemButtons) {
+                    if (item.Label == null || item.Label == _defaultLabel) {
+                        continue;
+                    }
+                    namesAndItems.Add(item.Label, item.Object);
+                } 
+                return namesAndItems;
+            }
+        }
         public T? Value { get => GetChosenValue(); }
         #endregion
 
@@ -146,7 +170,7 @@ namespace CustomLibrary.ComboBoxs {
             };
             _noItem = true;
             _itemButtons = new() {
-                new("-无-", default(T), null)
+                new("-无-", default(T?), null)
             };
             _itemSelected += OnItemSelected;
 
@@ -251,7 +275,7 @@ namespace CustomLibrary.ComboBoxs {
         // Add default
         public void AddDefault() {
             if (_itemButtons.Count == 0 || _itemButtons[0].Label != _defaultLabel) {
-                _itemButtons.Insert(0, new(_defaultLabel, default(T), _selectButton) {
+                _itemButtons.Insert(0, new(_defaultLabel, default(T?), _selectButton) {
                     ForeColor = this.ForeColor,
                     BackColor = this.BackColor,
                     ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
@@ -294,7 +318,12 @@ namespace CustomLibrary.ComboBoxs {
 
         public void SetCurrent(int index) {
             if (!_noItem) {
-                int trueIndex = _needDefaultLabel ? index + 1 : index;
+                int trueIndex;
+                if (index == -1) {
+                    trueIndex = 0;
+                } else {
+                    trueIndex = _needDefaultLabel ? index + 1 : index;
+                }
                 if (_selectButton.SelectedItem != null) {
                     _selectButton.SelectedItem.SetToggle(false);
                 }
@@ -307,7 +336,7 @@ namespace CustomLibrary.ComboBoxs {
         public int IndexOf(T t) {
             int index = -1;
             if (!_noItem) {
-                ComboBoxItem<T>? item = _itemButtons.SingleOrDefault(item => t.Equals(item.Object));
+                ComboBoxItem<T>? item = _itemButtons.SingleOrDefault(item => item.Name != _defaultLabel && t.Equals(item.Object));
                 if (item != null) {
                     index = _itemButtons.IndexOf(item);
                     index = _needDefaultLabel ? index - 1 : index;
@@ -327,7 +356,7 @@ namespace CustomLibrary.ComboBoxs {
         }
 
         public T? GetChosenValue() {
-            T? t = default(T);
+            T? t = default(T?);
             if (_selectButton.SelectedItem != null) {
                 t = _selectButton.SelectedItem.Object;
             }
@@ -335,9 +364,7 @@ namespace CustomLibrary.ComboBoxs {
         }
         public bool IsDefaultValue() {
             if (!_noItem && _needDefaultLabel) {
-                if (_selectButton.SelectedItem != null) {
-                    return _selectButton.Label == _defaultLabel;
-                }
+                return _selectButton.SelectedItem == null || _selectButton.Label == _defaultLabel;
             }
             return false;
         }
@@ -513,7 +540,7 @@ namespace CustomLibrary.ComboBoxs {
                 if (_selectedItem != null) {
                     if (_showRealValue) {
                         I? obj = _selectedItem.Object;
-                        if (obj == null || obj.Equals(default(I))) {
+                        if (obj == null || obj.Equals(default(I?))) {
                             Label = _selectedItem?.Name;
                         } else {
                             Label = obj.ToString();

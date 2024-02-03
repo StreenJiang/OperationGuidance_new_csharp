@@ -1,24 +1,32 @@
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: BoltPopUpForm {
         private bool _modified;
-        private ProductBoltDTO _boltDTO;
 
-        private CustomTextBoxGroup _positionX;
-        private CustomTextBoxGroup _positionY;
+        private List<WorkstationDTO> _workstationsDTOs;
+        private CustomComboBoxGroup<WorkstationDTO> _workstation;
+        private CustomTextBoxGroup _position;
+        private string _retrievePositionButtonLabel = "读取坐标";
+        private string _retrievePositionButtonLabelLoading = "正在读取";
+        private CommonButton _retrieveCoordinatesBtn;
 
-        public bool Modified { get => _modified; }
-        protected CustomTextBoxGroup PositionX { get => _positionX; set => _positionX = value; }
-        protected CustomTextBoxGroup PositionY { get => _positionY; set => _positionY = value; }
+        public bool Modified => _modified;
+        protected CustomTextBoxGroup Position { get => _position; set => _position = value; }
 
         public BoltEditionPopUpForm(ProductBoltDTO boltDTO) : base(boltDTO) {
             _modified = false;
             
-            DescriptionBox.Enabled = true;
+            NameBox.Enabled = true;
             SpecificationBox.Enabled = true;
             ToolIdComboBox.Enabled = true;
             // ToolDescriptionBox.Enabled = true; // tool_description will be filling in automatically after filling in tool_id
@@ -26,7 +34,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             ProcedureSetBox.Enabled = true;
             TorqueBox.Enabled = true;
             AngleBox.Enabled = true;
-            _positionX = new("点位X坐标") {
+            // 站点
+            _workstation = new("站点") {
                 Parent = TablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
@@ -35,134 +44,171 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            _positionX.GetTextBox(0).NumberValidate = true;
-            _positionY = new("点位Y坐标") {
+            QueryWorkstationListRsp queryWorkstationListRsp = apis.QueryWorkstationList(new());
+            _workstationsDTOs = queryWorkstationListRsp.WorkstationsDTOs;
+            foreach (WorkstationDTO dto in _workstationsDTOs) {
+                _workstation.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+            }
+            // 点位坐标
+            _position = new("点位坐标") {
                 Parent = TablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.25,
+                Separator = ",",
                 NameAlignment = HorizontalAlignment.Right,
+                NumberOnly = true,
             };
-            _positionY.GetTextBox(0).NumberValidate = true;
-
-            CustomTextBox descriptionBox = DescriptionBox.GetTextBox(0);
-            descriptionBox.TextChanged += (s, e) => {
-                if (!DescriptionBox.HasError) {
-                    ModifiedBoltDTO.description = descriptionBox.Text;
-                }
+            _position.GetTextBox(0);
+            _position.AddTextBox();
+            _position.AddTextBox();
+            // 获取坐标按钮
+            _retrieveCoordinatesBtn = new() {
+                Parent = TablePanel,
+                Label = _retrievePositionButtonLabel,
             };
-
-            CustomTextBox specificationBox = SpecificationBox.GetTextBox(0);
-            specificationBox.TextChanged += (s, e) => {
-                if (!SpecificationBox.HasError) {
-                    if (specificationBox.Text != "" && specificationBox.Text != string.Empty) {
-                        ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
+            TablePanel.SetColumnSpan(_retrieveCoordinatesBtn, 2);
+            _retrieveCoordinatesBtn.SizeChanged += (sender, eventArgs) => {
+                _retrieveCoordinatesBtn.Margin = new(TablePanel.Width - _retrieveCoordinatesBtn.Width - TablePanel.Padding.Right - BoxMargin, BoxMargin, 0, 0);
+            };
+            _retrieveCoordinatesBtn.Click += async (sender, eventArgs) => {
+                bool labelChanging = true;
+                string dotStr = "";
+                using System.Windows.Forms.Timer timer = new();
+                timer.Interval = 350;
+                timer.Tick += (s, e) => {
+                    if (labelChanging) {
+                        if (dotStr.Length >= 3) {
+                            dotStr = ".";
+                        } else {
+                            dotStr += ".";
+                        }
+                        _retrieveCoordinatesBtn.Label = _retrievePositionButtonLabelLoading + dotStr;
                     } else {
-                        ModifiedBoltDTO.specification = 0;
+                        timer.Stop();
                     }
+                    _retrieveCoordinatesBtn.Invalidate();
+                };
+                _retrieveCoordinatesBtn.Enabled = false;
+                timer.Start();
+                WorkstationDTO? dto = _workstation.Value;
+                if (dto == null || _workstation.IsDefaultValue()) {
+                    WidgetUtils.ShowErrorPopUp("请先选择站点再尝试获取力臂坐标");
+                } else {
+                    Coordinates3D? coordinates = null;
+                    if (dto.arm_id != null) {
+                        ArmTask? armTask = MainUtils.TryGetArmTask(dto.arm_id.Value);
+                        if (armTask == null) {
+                            if (dto.arm_ip != null && dto.arm_port != null && dto.arm_type != null) {
+                                DeviceArm? deviceArm = DeviceType_Arm.GetById(dto.arm_type.Value);
+                                if (deviceArm != null) {
+                                    System.Console.WriteLine($"deviceArm.Name: {deviceArm.Name}");
+                                    armTask = await MainUtils.NewArmTask(dto.arm_id.Value, dto.arm_ip, dto.arm_port.Value, deviceArm.Commands.Select(c => c.GetMessage()).ToArray());
+                                    coordinates = await armTask.GetCurrentCoordinates();
+                                }
+                            }
+                        } else {
+                            if (!armTask.Connected) {
+                                await armTask.ConnectAsync();
+                            }
+                            coordinates = await armTask.GetCurrentCoordinates();
+                        }
+                    }
+                    
+                    labelChanging = false;
+                    if (coordinates != null) {
+                        _position.SetValue(0, coordinates.X + "");
+                        _position.SetValue(1, coordinates.Y + "");
+                        _position.SetValue(2, coordinates.Z + "");
+                        WidgetUtils.ShowNoticePopUp("读取成功！");
+                    } else {
+                        WidgetUtils.ShowWarningPopUp("读取失败，可能原因：\r\n1. 当前站点不存在\r\n2. 当前站点没有配置力臂\r\n3. 没有连接至指定力臂");
+                    }
+                    _retrieveCoordinatesBtn.Enabled = true;
+                    _retrieveCoordinatesBtn.Label = _retrievePositionButtonLabel;
+                    _retrieveCoordinatesBtn.Invalidate();
                 }
             };
 
+            // 点位描述
+            SetValue<string>(NameBox, 0, val => ModifiedBoltDTO.name = val);
+            // 螺栓规格
+            SetValue<float>(SpecificationBox, 0, val => ModifiedBoltDTO.specification = val);
+            // 批头规格
+            SetValue<float>(BitSpecificationBox, 0, val => ModifiedBoltDTO.bit_specification = val);
+            // pset 程序号
+            SetValue<int>(ProcedureSetBox, 0, val => ModifiedBoltDTO.parameters_set = val);
+            // 扭矩上下限
+            SetValue<float>(TorqueBox, 0, val => ModifiedBoltDTO.torque_min = val);
+            SetValue<float>(TorqueBox, 1, val => ModifiedBoltDTO.torque_max = val);
+            // 角度上下限
+            SetValue<float>(AngleBox, 0, val => ModifiedBoltDTO.angle_min = val);
+            SetValue<float>(AngleBox, 1, val => ModifiedBoltDTO.angle_max = val);
+            // 站点选择
+            _workstation.ItemSelected += () => {
+                if (!_workstation.IsDefaultValue() && _workstation.Value != null) {
+                    ModifiedBoltDTO.workstation_id = _workstation.Value.id;
+                } else {
+                    ModifiedBoltDTO.workstation_id = null;
+                }
+            };
+            // 螺栓坐标
+            SetValue<int>(_position, 0, val => {
+                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                position.X = val;
+                ModifiedBoltDTO.position = position.ToString();
+            });
+            SetValue<int>(_position, 1, val => {
+                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                position.Y = val;
+                ModifiedBoltDTO.position = position.ToString();
+            });
+            SetValue<int>(_position, 2, val => {
+                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                position.Z = val;
+                ModifiedBoltDTO.position = position.ToString();
+            });
+            // 选择工具联动修改工具描述信息
             ToolIdComboBox.ItemSelected += () => {
                 ModifiedBoltDTO.tool_id = ToolIdComboBox.Value;
-                // TODO: query tool info (device maybe) to set tool description
-                // ModifiedBoltDTO.description = "";
-            };
-
-            CustomTextBox bitSpecificationBox = BitSpecificationBox.GetTextBox(0);
-            bitSpecificationBox.TextChanged += (s, e) => {
-                if (!BitSpecificationBox.HasError) {
-                    if (bitSpecificationBox.Text != "" && bitSpecificationBox.Text != string.Empty) {
-                        ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
-                    } else {
-                        ModifiedBoltDTO.bit_specification = 0;
-                    }
+                DeviceToolDTO? deviceToolDTO = DeviceToolDTOs.SingleOrDefault(dto => dto.id == ToolIdComboBox.Value);
+                if (deviceToolDTO != null) {
+                    ToolDescriptionBox.SetValue(0, deviceToolDTO.description);
+                } else {
+                    ToolDescriptionBox.SetValue(0, "");
                 }
             };
 
-            CustomTextBox procedureSetBox = ProcedureSetBox.GetTextBox(0);
-            procedureSetBox.TextChanged += (s, e) => {
-                if (!ProcedureSetBox.HasError) {
-                    if (procedureSetBox.Text != "" && procedureSetBox.Text != string.Empty) {
-                        ModifiedBoltDTO.parameters_set = int.Parse(procedureSetBox.Text);
-                    } else {
-                        ModifiedBoltDTO.parameters_set = 0;
-                    }
+            // 检查是否DTO中已经有值，有的话则回填
+            if (boltDTO.workstation_id != null) {
+                WorkstationDTO? workstationDTO = _workstationsDTOs.SingleOrDefault(dto => dto.id == boltDTO.workstation_id.Value);
+                if (workstationDTO != null) {
+                    _workstation.SetCurrent(_workstation.IndexOf(workstationDTO));
                 }
-            };
+            }
+            Coordinates3D position = Coordinates3D.FromString(boltDTO.position);
+            _position.SetValue(0, position.X + "");
+            _position.SetValue(1, position.Y + "");
+            _position.SetValue(2, position.Z + "");
+        }
 
-            CustomTextBox torqueMinBox = TorqueBox.GetTextBox(0);
-            torqueMinBox.TextChanged += (s, e) => {
-                if (!TorqueBox.HasError) {
-                    if (torqueMinBox.Text != "" && torqueMinBox.Text != string.Empty) {
-                        ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
+        private void SetValue<V>(CustomTextBoxGroup boxGroup, int index, Action<V?> action1) {
+            CustomTextBox box = boxGroup.GetTextBox(index);
+            box.Box.TextChanged += (sender, eventArgs) => {
+                if (!boxGroup.HasError) {
+                    if (box.Text != "" && box.Text != string.Empty) {
+                        action1((V) Convert.ChangeType(box.Text, typeof(V)));
                     } else {
-                        ModifiedBoltDTO.torque_min = 0;
+                        action1(default(V));
                     }
-                }
-            };
-            CustomTextBox torqueMaxBox = TorqueBox.GetTextBox(1);
-            torqueMaxBox.TextChanged += (s, e) => {
-                if (!TorqueBox.HasError) {
-                    if (torqueMaxBox.Text != "" && torqueMaxBox.Text != string.Empty) {
-                        ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
-                    } else {
-                        ModifiedBoltDTO.torque_max = 0;
-                    }
-                }
-            };
-
-            CustomTextBox angleMinBox = AngleBox.GetTextBox(0);
-            angleMinBox.TextChanged += (s, e) => {
-                if (!AngleBox.HasError) {
-                    if (angleMinBox.Text != "" && angleMinBox.Text != string.Empty) {
-                        ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
-                    } else {
-                        ModifiedBoltDTO.angle_min = 0;
-                    }
-                }
-            };
-            CustomTextBox angleMaxBox = AngleBox.GetTextBox(1);
-            angleMaxBox.TextChanged += (s, e) => {
-                if (!AngleBox.HasError) {
-                    if (angleMaxBox.Text != "" && angleMaxBox.Text != string.Empty) {
-                        ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
-                    } else {
-                        ModifiedBoltDTO.angle_max = 0;
-                    }
-                }
-            };
-
-            Point position = CommonUtils.PointStringToPoint(boltDTO.position);
-            CustomTextBox positionX = _positionX.GetTextBox(0);
-            positionX.Text = position.X + "";
-            positionX.TextChanged += (s, e) => {
-                if (!_positionX.HasError) {
-                    if (positionX.Text != "" && positionX.Text != string.Empty) {
-                        position.X = int.Parse(positionX.Text);
-                    } else {
-                        position.X = 0;
-                    }
-                    ModifiedBoltDTO.position = position.ToString();
-                }
-            };
-            CustomTextBox positionY = _positionY.GetTextBox(0);
-            positionY.Text = position.Y + "";
-            positionY.TextChanged += (s, e) => {
-                if (!_positionY.HasError) {
-                    if (positionY.Text != "" && positionY.Text != string.Empty) {
-                        position.Y = int.Parse(positionY.Text);
-                    } else {
-                        position.Y = 0;
-                    }
-                    ModifiedBoltDTO.position = position.ToString();
                 }
             };
         }
 
         public bool ConfirmSave() {
-            return DescriptionBox.HasError 
+            return NameBox.HasError 
                 && SpecificationBox.HasError
                 && !ToolIdComboBox.IsError
                 && ToolDescriptionBox.HasError
@@ -170,9 +216,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 && ProcedureSetBox.HasError
                 && TorqueBox.HasError
                 && AngleBox.HasError
-                && _positionX.HasError
-                && _positionY.HasError;
+                && _position.HasError;
         }
-
     }
 }

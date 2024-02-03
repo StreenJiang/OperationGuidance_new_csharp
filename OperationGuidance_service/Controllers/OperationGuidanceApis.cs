@@ -126,27 +126,12 @@ namespace OperationGuidance_service.Controllers {
                             for (int k = 0 ; k < bolts.Count ; k++) {
                                 int? toolId = bolts[k].tool_id;
                                 if (toolId != null) {
-                                    Device? device = _deviceService.FindById(toolId.Value);
-                                    if (device != null) {
-                                        productBoltDTOs[i].tool_name = device.name;
-                                        productBoltDTOs[i].tool_description = device.description;
-                                        productBoltDTOs[i].tool_ip = device.ip;
-                                        productBoltDTOs[i].tool_port = device.port;
-
-                                        DeviceModel? type = _deviceModelService.FindById(device.model_id);
-                                        if (type != null) {
-                                            productBoltDTOs[i].tool_type_name = type.name;
-                                            DeviceCategory? category = _deviceCategoryService.FindById(type.category_id);
-                                            if (category != null) {
-                                                productBoltDTOs[i].tool_category_name = category.name;
-                                                productBoltDTOs[i].tool_category_icon_normal = category.icon_normal;
-                                                productBoltDTOs[i].tool_category_icon_error = category.icon_error;
-                                            }
-                                            Brand? brand = _brandService.FindById(type.brand_id);
-                                            if (brand != null) {
-                                                productBoltDTOs[i].tool_brand_name = brand.name;
-                                            }
-                                        }
+                                    DeviceTool? tool = _deviceToolService.FindById(toolId.Value);
+                                    if (tool != null) {
+                                        productBoltDTOs[i].tool_name = tool.name;
+                                        productBoltDTOs[i].tool_description = tool.description;
+                                        productBoltDTOs[i].tool_ip = tool.ip;
+                                        productBoltDTOs[i].tool_port = tool.port;
                                     }
                                 }
                             }
@@ -481,53 +466,47 @@ namespace OperationGuidance_service.Controllers {
 
             foreach (WorkstationDTO dto in workstationDTOs) {
                 if (dto.tool_id != null) {
-                    Device? device = _deviceService.FindById(dto.tool_id.Value);
-                    if (device != null) {
-                        dto.tool_name = device.name;
-                        dto.tool_description = device.description;
-                        dto.tool_ip = device.ip;
-                        dto.tool_port = device.port;
-                        dto.tool_device_model_id = device.model_id;
-                        DeviceModel? deviceModel = _deviceModelService.FindById(device.model_id);
-                        if (deviceModel != null) {
-                            dto.tool_device_model_name = deviceModel.name;
-                            dto.tool_device_category_id = deviceModel.category_id;
-                            DeviceCategory? deviceCategory = _deviceCategoryService.FindById(deviceModel.category_id);
-                            if (deviceCategory != null) {
-                                dto.tool_device_category_name = deviceCategory.name;
-                                dto.tool_can_manipulate = deviceCategory.can_manipulate;
-                            }
-                            dto.tool_brand_id = deviceModel.brand_id;
-                            Brand? brand = _brandService.FindById(deviceModel.brand_id);
-                            if (brand != null) {
-                                dto.tool_brand_name = brand.name;
-                            }
-                        }
+                    DeviceTool? tool = _deviceToolService.FindById(dto.tool_id.Value);
+                    if (tool != null) {
+                        dto.tool_name = tool.name;
+                        dto.tool_description = tool.description;
+                        dto.tool_ip = tool.ip;
+                        dto.tool_port = tool.port;
+                        dto.tool_type = tool.type;
                     }
                 }
                 if (dto.arm_id != null) {
-                    Device? device = _deviceService.FindById(dto.arm_id.Value);
-                    if (device != null) {
-                        dto.arm_name = device.name;
-                        dto.arm_description = device.description;
-                        dto.arm_ip = device.ip;
-                        dto.arm_port = device.port;
-                        dto.arm_device_model_id = device.model_id;
-                        DeviceModel? deviceModel = _deviceModelService.FindById(device.model_id);
-                        if (deviceModel != null) {
-                            dto.arm_device_model_name = deviceModel.name;
-                            dto.arm_device_category_id = deviceModel.category_id;
-                            DeviceCategory? deviceCategory = _deviceCategoryService.FindById(deviceModel.category_id);
-                            if (deviceCategory != null) {
-                                dto.arm_device_category_name = deviceCategory.name;
-                                dto.arm_can_manipulate = deviceCategory.can_manipulate;
-                            }
-                            dto.arm_brand_id = deviceModel.brand_id;
-                            Brand? brand = _brandService.FindById(deviceModel.brand_id);
-                            if (brand != null) {
-                                dto.arm_brand_name = brand.name;
-                            }
-                        }
+                    DeviceArm? arm = _deviceArmService.FindById(dto.arm_id.Value);
+                    if (arm != null) {
+                        dto.arm_name = arm.name;
+                        dto.arm_description = arm.description;
+                        dto.arm_ip = arm.ip;
+                        dto.arm_port = arm.port;
+                        dto.arm_type = arm.type;
+                    }
+                }
+                if (dto.serial_port_id != null) {
+                    DeviceSerialPort? serial_port = _deviceSerialPortService.FindById(dto.serial_port_id.Value);
+                    if (serial_port != null) {
+                        dto.serial_port_name = serial_port.name;
+                        dto.serial_port_description = serial_port.description;
+                        dto.serial_port_port_name = serial_port.port_name;
+                        dto.serial_port_baud_rate = serial_port.baud_rate;
+                        dto.serial_port_data_bit = serial_port.data_bit;
+                        dto.serial_port_parity = serial_port.parity;
+                        dto.serial_port_stop_bit = serial_port.stop_bit;
+                        dto.serial_port_data_type = serial_port.data_type;
+                        dto.serial_port_type = serial_port.type;
+                    }
+                }
+                if (dto.communication_id != null) {
+                    DeviceCommunication? communication = _deviceCommunicationService.FindById(dto.communication_id.Value);
+                    if (communication != null) {
+                        dto.communication_name = communication.name;
+                        dto.communication_description = communication.description;
+                        dto.communication_ip = communication.ip;
+                        dto.communication_port = communication.port;
+                        dto.communication_type = communication.type;
                     }
                 }
             }            

@@ -9,6 +9,7 @@ namespace CustomLibrary.TextBoxes {
         private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;
+        private Point _boxBeginLocation;
         private int _gapNameAndBox;
         private int _gapBoxes;
         private string _separator;
@@ -39,6 +40,7 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         public string TextName { get => this._textName; set => this._textName = value; }
+        public Point BoxBeginLocation { get => _boxBeginLocation; set => _boxBeginLocation = value; }
         public string Separator { 
             get => _separator; 
             set {
@@ -156,6 +158,7 @@ namespace CustomLibrary.TextBoxes {
                 BorderColor = _borderColor,
                 BorderColorError = _borderColorError,
                 Enabled = _enabled,
+                NumberOnly = NumberOnly,
             };
             box.BackColor = _boxBackColor;
             _textBoxes.Add(box);
@@ -204,7 +207,8 @@ namespace CustomLibrary.TextBoxes {
                 boxesRange = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
             }
             _textBoxesPanel.Size = new(boxesRange, Height - Padding.Size.Height);
-            _textBoxesPanel.Location = new(Width - Padding.Right - boxesRange, Padding.Top);
+            _boxBeginLocation = new(Width - Padding.Right - boxesRange, Padding.Top);
+            _textBoxesPanel.Location = _boxBeginLocation;
             // Find a optimal gap pixels
             int boxesCount = _textBoxes.Count;
             int separatorCount = _separators.Count;

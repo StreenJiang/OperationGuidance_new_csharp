@@ -8,6 +8,8 @@ namespace OperationGuidance_service.Models {
         public string name { get; set; } = "workstation_name";
         public int? tool_id { get; set; }
         public int? arm_id { get; set; }
+        public int? serial_port_id { get; set; }
+        public int? communication_id { get; set; }
         public int enabled { get; set; } = (int) YesOrNo.YES;
     }
 }

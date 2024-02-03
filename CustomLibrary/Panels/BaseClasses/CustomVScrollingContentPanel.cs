@@ -124,8 +124,8 @@ namespace CustomLibrary.Panels.BaseClasses {
             }
         }
 
-        // public override void VisibleToTrue() {
-        //     _contentPanel.VisibleToTrue();
-        // }
+        public override void VisibleToTrue() {
+            Size = Parent.Size;
+        }
     }
 }

@@ -1,18 +1,25 @@
 using System.Collections;
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Forms;
 using CustomLibrary.TextBoxes;
+using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltPopUpForm: CustomPopUpForm {
+        protected OperationGuidanceApis apis;
         private ProductBoltDTO _originalBoltDTO;
         private ProductBoltDTO _modifiedBoltDTO;
+        List<DeviceToolDTO> _deviceToolDTOs;
 
         private int _boxHeight;
         private int _boxMargin;
+        private int _buttonHeight;
         private TableLayoutPanel _tablePanel;
-        private CustomTextBoxGroup _descriptionBox;
+        private CustomTextBoxGroup _nameBox;
         private CustomTextBoxGroup _specificationBox;
         private CustomComboBoxGroup<int> _toolIdComboBox;
         private CustomTextBoxGroup _toolDescriptionBox;
@@ -23,11 +30,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public ProductBoltDTO OriginalBoltDTO { get => _originalBoltDTO; set => _originalBoltDTO = value; }
         public ProductBoltDTO ModifiedBoltDTO { get => _modifiedBoltDTO; set => _modifiedBoltDTO = value; }
+        public List<DeviceToolDTO> DeviceToolDTOs { get => _deviceToolDTOs; set => _deviceToolDTOs = value; }
 
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
+        public int ButtonHeight { get => _buttonHeight; set => _buttonHeight = value; }
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-        protected CustomTextBoxGroup DescriptionBox { get => _descriptionBox; set => _descriptionBox = value; }
+        protected CustomTextBoxGroup NameBox { get => _nameBox; set => _nameBox = value; }
         protected CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
         protected CustomComboBoxGroup<int> ToolIdComboBox { get => _toolIdComboBox; set => _toolIdComboBox = value; }
         protected CustomTextBoxGroup ToolDescriptionBox { get => _toolDescriptionBox; set => _toolDescriptionBox = value; }
@@ -37,6 +46,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected CustomTextBoxGroup AngleBox { get => _angleBox; set => _angleBox = value; }
 
         public BoltPopUpForm(ProductBoltDTO boltDTO) : base() {
+            apis = SystemUtils.GetApis();
             _originalBoltDTO = boltDTO;
             _modifiedBoltDTO = boltDTO.Clone<ProductBoltDTO>();
 
@@ -47,7 +57,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Padding = new(0),
                 ColumnCount = 2,
             };
-            _descriptionBox = new("螺栓点位描述") {
+            _nameBox = new("点位名称") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
@@ -68,7 +78,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Enabled = false,
             };
             _specificationBox.GetTextBox(0).NumberValidate = true;
-            _toolIdComboBox = new("工具ID") {
+            QueryDeviceToolListRsp queryDeviceToolListRsp = apis.QueryDeviceToolList(new());
+            _deviceToolDTOs = queryDeviceToolListRsp.DeviceToolDTOs;
+            Dictionary<string, int> toolIds = _deviceToolDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _toolIdComboBox = new("工具") {
                 Parent = _tablePanel,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
@@ -76,9 +89,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
-                ShowRealValue = true,
+                ShowRealValue = false,
                 Enabled = false,
             };
+            foreach (KeyValuePair<string, int> pair in toolIds) {
+                _toolIdComboBox.AddItem(pair.Key, pair.Value);
+            }
             _toolDescriptionBox = new("工具描述") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -98,9 +114,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
+                NumberOnly = true,
             };
-            _bitSpecificationBox.GetTextBox(0).NumberValidate = true;
-            _procedureSetBox = new("Pset") {
+            _procedureSetBox = new("程序号") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
@@ -109,8 +125,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
+                NumberOnly = true,
             };
-            _procedureSetBox.GetTextBox(0).NumberValidate = true;
             _torqueBox = new("扭矩范围") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -120,10 +136,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
+                NumberOnly = true,
             };
             _torqueBox.Separator = "~";
-            _torqueBox.GetTextBox(0).NumberValidate = true;
-            _torqueBox.AddTextBox().NumberValidate = true;
+            _torqueBox.GetTextBox(0);
+            _torqueBox.AddTextBox();
             _angleBox = new("角度范围") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -133,26 +150,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.25,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
+                NumberOnly = true,
             };
             _angleBox.Separator = "~";
-            _angleBox.GetTextBox(0).NumberValidate = true;
-            _angleBox.AddTextBox().NumberValidate = true;
+            _angleBox.GetTextBox(0);
+            _angleBox.AddTextBox();
 
-            _descriptionBox.SetValue(0, boltDTO.description);
+            _nameBox.SetValue(0, boltDTO.name);
             _specificationBox.SetValue(0, boltDTO.specification + "");
-            List<DeviceDTO> list = new() {
-                new() {
-                    id = 1,
-                    name = "啥啥啥力臂",
-                },
-                new() {
-                    id = 2,
-                    name = "啥啥啥工具",
-                },
-            };
-            _toolIdComboBox.AddItem(list[0].id + "（" + list[0].name + "）", list[0].id);
-            _toolIdComboBox.AddItem(list[1].id + "（" + list[1].name + "）", list[1].id);
-            _toolIdComboBox.SetCurrent(0);
+            if (boltDTO.tool_id != null && boltDTO.tool_id > 0) {
+                _toolIdComboBox.SetCurrent(_toolIdComboBox.IndexOf(boltDTO.tool_id.Value));
+                _toolDescriptionBox.SetValue(0, _deviceToolDTOs.Single(dto => dto.id == boltDTO.tool_id.Value).description);
+            }
             _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
             _procedureSetBox.SetValue(0, boltDTO.parameters_set + "");
             _torqueBox.SetValue(0, boltDTO.torque_min + "");
@@ -161,14 +170,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _angleBox.SetValue(1, boltDTO.angle_max + "");
         }
 
+        public void SaveTo(ProductBoltDTO dto) {
+            CommonUtils.ObjectConverter<ProductBoltDTO, ProductBoltDTO>(_modifiedBoltDTO, _originalBoltDTO);
+            CommonUtils.ObjectConverter<ProductBoltDTO, ProductBoltDTO>(_modifiedBoltDTO, dto);
+        }
+
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
             int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
-            IList list = _tablePanel.Controls;
-            for (int i = 0; i < list.Count; i++) {
-                Control? control = (Control?) list[i];
-                if (control != null) {
-                    control.Margin = new(_boxMargin);
+            foreach (Control control in _tablePanel.Controls) {
+                control.Margin = new(_boxMargin);
+                if (control.GetType() == typeof(CommonButton)) {
+                    control.Size = new((int) (_buttonHeight * 3.5), _buttonHeight);
+                } else {
                     control.Size = new(boxW, _boxHeight);
                 }
             }

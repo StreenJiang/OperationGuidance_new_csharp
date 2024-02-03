@@ -1,8 +1,31 @@
 ﻿using CustomLibrary.Constants;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Tasks;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        private static Dictionary<int, ArmTask> _armTasks = new();
+        public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
+
+        public static async Task<ArmTask> NewArmTask(int armId, string ip, int port, string[] commands) {
+            ArmTask task = new(ip, port, commands);
+            await task.ConnectAsync();
+            task.RunLoop();
+            _armTasks.Add(armId, task);
+            return task;
+        }
+        public static ArmTask GetArmTask(int armId) {
+            if (_armTasks.ContainsKey(armId)) {
+                return _armTasks[armId];
+            }
+            throw new ArgumentException($"ArmTask for armId<{armId}> has not been created.");
+        }
+        public static ArmTask? TryGetArmTask(int armId) {
+            if (_armTasks.ContainsKey(armId)) {
+                return _armTasks[armId];
+            }
+            return null;
+        }
         
         /// <summary>
         /// Get zooming ratio

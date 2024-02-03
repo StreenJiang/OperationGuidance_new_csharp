@@ -21,6 +21,13 @@ namespace CustomLibrary.Panels {
                         _menuPanel = (CustomMenuPanelBase) control;
                     } else if (_contentPanel == null && isSubClassOfContentPanelBase) {
                         _contentPanel = (CustomContentPanelBase) control;
+                        _contentPanel.ControlAdded += (sender, eventArgs) => {
+                            eventArgs.Control.VisibleChanged += (s, e) => {
+                                if (eventArgs.Control.Visible) {
+                                    eventArgs.Control.Size = _contentPanel.Size;
+                                }
+                            };
+                        };
                     } else {
                         this.Controls.Remove(control);
                     }
@@ -54,7 +61,7 @@ namespace CustomLibrary.Panels {
                 }
                 if (_contentPanel.Controls.Count > 0) {
                     foreach (Control control in _contentPanel.Controls) {
-                        if (control is CustomContentPanelBase && control is not CustomContentPanel) {
+                        if (control.Visible && control is CustomContentPanelBase && control is not CustomContentPanel) {
                             control.Size = _contentPanel.Size;
                         }
                     }

@@ -46,6 +46,8 @@ namespace CustomLibrary.TextBoxes {
         public bool IsError { get => _comboBox.IsError; }
         public event Action ItemSelected { add => _comboBox.ItemSelected += value; remove => _comboBox.ItemSelected -= value; }
         public List<T?> Items { get => _comboBox.Items; }
+        public List<string> Names { get => _comboBox.Names; }
+        public Dictionary<string, T?> NamesAndItems { get => _comboBox.NamesAndItems; }
         public T? Value { get => _comboBox.Value; }
 
         public CustomComboBoxGroup(string textName) : base() {

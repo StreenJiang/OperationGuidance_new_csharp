@@ -39,7 +39,10 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         public string? Label {
             get => this._label;
-            set => this._label = value;
+            set {
+                this._label = value;
+                ResizeTextLabel();
+            }
         }
         public int LabelX {
             get => this._labelX;
@@ -268,14 +271,13 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             // If disabled, then color should be lighter
             if (!this.Enabled) {
                 if (this._disableColor == null) {
-                    this._disableColor = WidgetUtils.DarkenColor(this.BackColor, .1);
+                    this._disableColor = WidgetUtils.LightColor(this.BackColor, .2);
+                    this._enabledSaveBackColor = this.BackColor;
                 }
-                this._enabledSaveBackColor = this.BackColor;
                 this.BackColor = this._disableColor.Value;
             } else {
                 if (this._enabledSaveBackColor != null) {
                     this.BackColor = this._enabledSaveBackColor.Value;
-                    this._enabledSaveBackColor = null;
                 }
             }
 

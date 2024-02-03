@@ -208,7 +208,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // SaveSideInfo();
         }
 
-        private void SaveSideInfo() {
+        public void SaveSideInfo() {
             if (_image != null) {
                 _sideDTO.image = CommonUtils.ImageToBase64(_image);
             }

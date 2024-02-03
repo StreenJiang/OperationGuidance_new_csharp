@@ -294,6 +294,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             return false;
         }
+        public override void VisibleToTrue() {
+            QueryAndRefresh();
+        }
         #endregion
     }
 }

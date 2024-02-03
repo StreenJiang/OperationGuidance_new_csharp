@@ -52,23 +52,28 @@ namespace OperationGuidance_new {
             OperationGuidanceApis apis = DependencyInjector.Provider.GetService<OperationGuidanceApis>();
             SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
 
-            // Main panel
+            // mainPanel
             mainPanel = new();
             mainPanel.Parent = this;
+            mainPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
+            mainPanel.Margin = new Padding(0);
+            mainPanel.Name = "mainPanel";
             // Store this mainPanel incase wherever needs to reach it
             WidgetUtils.MainPanel = mainPanel;
-            mainMenuPanel = new();
-            // Store this mainMenuPanel incase wherever needs to trigger it
-            WidgetUtils.MainMenuPanel = mainMenuPanel;
-            mainContentPanel = new();
             // mainMenuPanel
+            mainMenuPanel = new();
+            mainMenuPanel.Parent = mainPanel;
             mainMenuPanel.BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND;
             mainMenuPanel.MainMenuLogo = Properties.Resources.logo;
             mainMenuPanel.Margin = new Padding(0);
             mainMenuPanel.Name = "mainMenuPanel";
             mainMenuPanel.PanelDirection = MenuPanelDirection.TOP;
             // mainMenuPanel.OnlyIconMode = true;
+            // Store this mainMenuPanel incase wherever needs to trigger it
+            WidgetUtils.MainMenuPanel = mainMenuPanel;
             // mainContentPanel
+            mainContentPanel = new();
+            mainContentPanel.Parent = mainPanel;
             mainContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             mainContentPanel.Margin = new Padding(0);
             mainContentPanel.Name = "mainContentPanel";
@@ -207,16 +212,8 @@ namespace OperationGuidance_new {
                 mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
             }
 
-            // mainPanel
-            mainPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-            mainPanel.Controls.Add(mainMenuPanel);
-            mainPanel.Controls.Add(mainContentPanel);
-            mainPanel.Margin = new Padding(0);
-            mainPanel.Name = "mainPanel";
-
             // MainForm
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-            // Controls.Add(mainPanel);
             Size = new(1280, 720);
             ClientSize = new(1280, 720);
             MinimumSize = new Size(400, 300);

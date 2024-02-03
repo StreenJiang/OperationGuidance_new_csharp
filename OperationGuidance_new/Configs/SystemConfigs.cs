@@ -104,7 +104,7 @@ namespace OperationGuidance_new.Configs {
                             {Key_Icon, Properties.Resources.device_screw_gun},
                             {Key_Toggle_Button, true},
                             {Key_Click, null},
-                            {Key_View_Name, typeof(DeviceManagementView)},
+                            {Key_View_Name, typeof(DeviceToolView)},
                         },
                         new() {
                             {Key_ID, 504},
@@ -112,7 +112,7 @@ namespace OperationGuidance_new.Configs {
                             {Key_Icon, Properties.Resources.device_arm},
                             {Key_Toggle_Button, true},
                             {Key_Click, null},
-                            {Key_View_Name, typeof(DeviceManagementView)},
+                            {Key_View_Name, typeof(DeviceArmView)},
                         },
                         new() {
                             {Key_ID, 505},
@@ -120,7 +120,7 @@ namespace OperationGuidance_new.Configs {
                             {Key_Icon, Properties.Resources.device_communication},
                             {Key_Toggle_Button, true},
                             {Key_Click, null},
-                            {Key_View_Name, typeof(DeviceModelView)},
+                            {Key_View_Name, typeof(DeviceCommunicationView)},
                         },
                         new() {
                             {Key_ID, 506},
@@ -128,7 +128,7 @@ namespace OperationGuidance_new.Configs {
                             {Key_Icon, Properties.Resources.device_serial_port},
                             {Key_Toggle_Button, true},
                             {Key_Click, null},
-                            {Key_View_Name, typeof(DeviceCategoryView)},
+                            {Key_View_Name, typeof(DeviceSerialPortView)},
                         },
                         // new() {
                         //     {Key_ID, 507},

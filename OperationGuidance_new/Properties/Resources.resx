@@ -118,8 +118,23 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="aneng_arm" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_arm.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_arm_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_arm_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="aneng_arm_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_arm_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_communication" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_communication.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_communication_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_communication_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_communication_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_communication_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="aneng_control_box" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_control_box.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -136,11 +151,26 @@
   <data name="aneng_screw_gun" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_screw_gun.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="aneng_screw_gun_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_screw_gun_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="aneng_screw_gun_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_screw_gun_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="aneng_serial_port" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_serial_port.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_serial_port_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_serial_port_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_serial_port_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_serial_port_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="aneng_setter_selector" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_setter_selector.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_setter_selector_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_setter_selector_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="aneng_setter_selector_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_setter_selector_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

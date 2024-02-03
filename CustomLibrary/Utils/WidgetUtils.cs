@@ -281,15 +281,15 @@ namespace CustomLibrary.Utils {
             int thickness = (mainControl.Width + mainControl.Height) / 1200;
             return thickness > 0 ? thickness : 1;
         }
-        // Pop up form configs 
-        public static int PopUpFormTitle() => (int) (MainPanel.Height * .04);
-        public static int PopUpFormSubTitle() => (int) (MainPanel.Height * .0475);
-        public static Padding PopUpFormContentPadding() {
+        // Pop up / floating form configs 
+        public static int PopUpOrFloatingFormTitle() => (int) (MainPanel.Height * .04);
+        public static int PopUpOrFloatingFormSubTitle() => (int) (MainPanel.Height * .0475);
+        public static Padding PopUpOrFloatingFormContentPadding() {
             int hPadding = (int) (MainPanel.Width * .015);
             int vPadding = (int) (MainPanel.Height * .03);
             return new(hPadding, vPadding, hPadding, vPadding);
         }
-        public static Padding PopUpFormButtonsPadding() {
+        public static Padding PopUpOrFloatingFormButtonsPadding() {
             int hPadding = (int) (MainPanel.Width * .008);
             int vPadding = (int) (MainPanel.Height * .008);
             return new(hPadding, 0, hPadding, vPadding);
@@ -360,6 +360,9 @@ namespace CustomLibrary.Utils {
         }
         public static DialogResult ShowNoticePopUp(string message) {
             return MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        public static DialogResult ShowWarningPopUp(string message) {
+            return MessageBox.Show(null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         public static DialogResult ShowErrorPopUp(string message) {
             return MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);

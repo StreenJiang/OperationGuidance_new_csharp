@@ -54,10 +54,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             coverImage,
                             Properties.Resources.image_choose,
                             mission.name,
-ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
-ColorConfigs.COLOR_MISSION_BLOCK_BACKGROUND,
-ColorConfigs
-.COLOR_MISSION_BLOCK_IMAGE_BORDER
+                            ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
+                            ColorConfigs.COLOR_MISSION_BLOCK_BACKGROUND,
+                            ColorConfigs.COLOR_MISSION_BLOCK_IMAGE_BORDER
                         )
                     {
                         Parent = _missionsTable,

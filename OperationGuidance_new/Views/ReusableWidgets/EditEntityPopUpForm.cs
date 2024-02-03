@@ -67,7 +67,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             Padding contentPadding = ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
-            int subTitleHeight = WidgetUtils.PopUpFormSubTitle();
+            int subTitleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
             int subTitleMargin = subTitleHeight / 5;
             int tableHeight = 0;
             int previousRowIndex = -1;
@@ -155,7 +155,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ResizeSelf(int width) {
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
-            int titleHeight = WidgetUtils.PopUpFormSubTitle();
+            int titleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
             int titleMargin = titleHeight / 5;
             int tableHeight = 0;
             int previousRowIndex = -1;

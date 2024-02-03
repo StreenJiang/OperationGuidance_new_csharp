@@ -18,6 +18,8 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -32,6 +34,10 @@ namespace OperationGuidance_new.Views {
         private MissionListPanel _missionListPanel;
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;
+
+        private CustomTabPanel? _pagePanel;
+        private TopBar? _topBar;
+        private WorkplaceContent? _workplacePanel;
 
         public WorkplaceMissionView() : base() {
             // Get apis
@@ -127,26 +133,35 @@ namespace OperationGuidance_new.Views {
         }
 
         private void OpenWorkplaceView(ProductMissionDTO missionDTO) {
+            if (_pagePanel != null && !_pagePanel.IsDisposed) {
+                _pagePanel.Dispose();
+            }
+            if (_topBar != null && !_topBar.IsDisposed) {
+                _topBar.Dispose();
+            }
+            if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
+                _workplacePanel.Dispose();
+            }
             // Create a new view
-            CustomTabPanel page = new() {
+            _pagePanel = new() {
                 Parent = TopLevelControl,
                 Size = TopLevelControl.ClientSize,
             };
-            TopBar topBar = new(missionDTO.name) {
-                Parent = page,
+            _topBar = new(missionDTO.name) {
+                Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
                 MainMenuLogo = Properties.Resources.logo,
                 Margin = new Padding(0),
                 PanelDirection = MenuPanelDirection.TOP,
                 TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
             };
-            WorkplaceContent workplaceContent = new(missionDTO) {
-                Parent = page,
+            _workplacePanel = new(missionDTO) {
+                Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
                 Margin = new Padding(0),
                 PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
-            page.ResizeChildren();
+            _pagePanel.ResizeChildren();
             // Hide main panel
             WidgetUtils.MainPanel.Visible = false;
         }
@@ -241,7 +256,7 @@ namespace OperationGuidance_new.Views {
     }
 
     public class WorkplaceContent: CustomContentPanel {
-        private OperationGuidanceApis apis;
+        private OperationGuidanceApis _apis;
         private ProductMissionDTO _mission;
         private Image _defaultImage;
 
@@ -295,8 +310,6 @@ namespace OperationGuidance_new.Views {
         private Label _pageInfo;
 
         // Bottom
-        private List<DeviceDTO> _deviceDTOs;
-        private Dictionary<int, DeviceBlock> _deviceBlocks;
 
         public BoltButton CurrentWorkingButton {
             get => _currentChosenButton;
@@ -304,7 +317,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public WorkplaceContent(ProductMissionDTO mission) : base() {
-            apis = SystemUtils.GetApis();
+            _apis = SystemUtils.GetApis();
             _mission = mission;
             _defaultImage = Properties.Resources.image_choose;
             _productSideIndex = 0;
@@ -679,40 +692,29 @@ namespace OperationGuidance_new.Views {
         }
 
         private void InitializeBottom() {
-            _deviceBlocks = new();
-            // 查询所有设备信息
-            QueryDeviceListRsp rsp = apis.QueryDeviceList(new() {
-                UserId = SystemUtils.LoggedUserId()
-            });
-            _deviceDTOs = rsp.DeviceDTOs;
-            // Create device blocks
-            foreach (DeviceDTO deviceDTO in _deviceDTOs) {
-                DeviceBlock deviceBlock;
-                if (deviceDTO.category_id != null) {
-                    if (_deviceBlocks.ContainsKey(deviceDTO.category_id.Value)) {
-                        deviceBlock = _deviceBlocks[deviceDTO.category_id.Value];
-                    } else {
-                        deviceBlock = new DeviceBlock(
-                            ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, deviceDTO.category_name
-                        ) {
-                            Icon = CommonUtils.ImageBase64ToImage(deviceDTO.icon_normal),
-                            Parent = _bottom,
-                            Margin = new(0),
-                            Padding = new(0),
-                            ToggledButton = true,
-                            ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
-                        };
-                        deviceBlock.Click += (sender, eventArgs) => {
-                            try {
-                                deviceBlock.ShowPopUpForm();
-                            } finally {
-                                deviceBlock.SetToggle(false);
-                            }
-                        };
-                        _deviceBlocks.Add(deviceDTO.category_id.Value, deviceBlock);
-                    }
-                    deviceBlock.DeviceDTOs.Add(deviceDTO.id, deviceDTO);
+            List<DeviceCategory> deviceCategories = DeviceCategories.Elements;
+            foreach (DeviceCategory item in deviceCategories) {
+                if (item == DeviceCategories.TOOL) {
+                } else if (item == DeviceCategories.ARM) {
+                } else if (item == DeviceCategories.SERIAL_PORT) {
+                } else if (item == DeviceCategories.COMMUNICATION) {
+                } else {
                 }
+
+                DeviceBlock deviceBlock = new(_apis, item) {
+                    Parent = _bottom,
+                    Margin = new(0),
+                    Padding = new(0),
+                    ToggledButton = true,
+                    ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
+                };
+                deviceBlock.Click += (sender, eventArgs) => {
+                    try {
+                        deviceBlock.ShowPopUpForm();
+                    } finally {
+                        deviceBlock.SetToggle(false);
+                    }
+                };
             }
         }
 
@@ -731,7 +733,7 @@ namespace OperationGuidance_new.Views {
         private void ResizeContents() {
             int wholeWidth = Width - Padding.Left * 2;
             int wholeHeight = Height - Padding.Top * 2;
-            int bottomHeight = (int) (wholeHeight * .0825);
+            int bottomHeight = (int) (wholeHeight * .07);
             int othersHeight = wholeHeight - bottomHeight - Padding.Top / 2;
             int leftWidth = (int) (wholeWidth * .78);
             int rightWidth = wholeWidth - leftWidth - Padding.Left / 2;
@@ -741,11 +743,9 @@ namespace OperationGuidance_new.Views {
             _right.Size = new(rightWidth, othersHeight);
             _bottom.Size = new(wholeWidth, bottomHeight);
 
-            Size mainSize = WidgetUtils.MainPanel.Parent.Size;
-            double ratio = mainSize.Width / (double) mainSize.Height;
-            _leftBottom.Size = new(_left.Width, (int) (_left.Width / ratio));
+            _leftTop.Size = new(_left.Width, bottomHeight);
+            _leftBottom.Size = new(_left.Width, _left.Height - _leftTop.Height - Padding.Top / 2);
             _leftBottom.Margin = new(0, Padding.Top / 2, 0, 0);
-            _leftTop.Size = new(_left.Width, _left.Height - _leftBottom.Height - Padding.Top / 2);
 
             _rightTop.Size = new(_right.Width, (int) (_right.Height * .4));
             _rightMiddle.Size = new(_right.Width, (int) (_right.Height * .3));
@@ -762,7 +762,7 @@ namespace OperationGuidance_new.Views {
             _barCodePictureBox.Size = new(side, side);
 
             // 重设输入框
-            int newH = (int) (_leftTop.Height * .75);
+            int newH = (int) (_leftTop.Height * .85);
             _barCodeTextBox.Size = new(_leftTop.Width - side * 2, newH);
             _barCodeTextBox.Margin = new(0, (_leftTop.Height - newH) / 2, 0, 0);
 
@@ -1202,23 +1202,103 @@ namespace OperationGuidance_new.Views {
     }
 
     public class DeviceBlock: CustomImageTextButtonBase {
+        private OperationGuidanceApis _apis;
+        private DeviceCategory _category;
+        private List<WorkstationDTO> _workstationsDTOs;
+        private Dictionary<int, ArmTask> _armTasks = new();
+
         private readonly float _imageRatio = 0.75F;
         private Rectangle _borderRect;
         private Color _borderColor;
         private string _categoryName;
-        private Dictionary<int, DeviceDTO> _deviceDTOs;
         private DeviceDetailPopUpForm? _popUpForm;
+        private CustomFloatingForm? _floatingForm;
 
         public string CategoryName { get => _categoryName; set => _categoryName = value; }
-        public Dictionary<int, DeviceDTO> DeviceDTOs {
-            get => _deviceDTOs;
-        }
         public DeviceDetailPopUpForm? PopUpForm { get => _popUpForm; set => _popUpForm = value; }
 
-        public DeviceBlock(Color borderColor, string categoryName) : base() {
-            _categoryName = categoryName;
-            _borderColor = borderColor;
-            _deviceDTOs = new();
+        public DeviceBlock(OperationGuidanceApis apis, DeviceCategory category) : base() {
+            _apis = apis;
+            _category = category;
+            _categoryName = category.Name;
+            _borderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER;
+            Icon = category.IconEmpty;
+            // Load devices asynchronously to avoid delay UI creating
+            LoadDevicesAsync();
+        }
+
+        private async void LoadDevicesAsync() {
+            await Task.Run(async () => {
+                QueryWorkstationListRsp workstationListRsp = _apis.QueryWorkstationList(new());
+                _workstationsDTOs = workstationListRsp.WorkstationsDTOs;
+                if (_category == DeviceCategories.TOOL) {
+                    // TODO
+                } else if (_category == DeviceCategories.ARM) {
+                    QueryDeviceArmListRsp armListRsp = _apis.QueryDeviceArmList(new());
+                    List<DeviceArmDTO> armDTOs = armListRsp.DeviceArmDTOs;
+                    foreach (DeviceArmDTO armDto in armDTOs) {
+                        ArmTask? armTask = MainUtils.TryGetArmTask(armDto.id);
+                        if (armTask == null) {
+                            if (armDto.type != null && armDto.ip != null && armDto.port != null) {
+                                DeviceArm? deviceArm = DeviceType_Arm.GetById(armDto.type.Value);
+                                if (deviceArm != null) {
+                                    armTask = await MainUtils.NewArmTask(armDto.id, armDto.ip, armDto.port.Value, deviceArm.Commands.Select(c => c.GetMessage()).ToArray());
+                                }
+                            }
+                        }
+                        if (armTask != null) {
+                            if (!_armTasks.ContainsKey(armDto.id)) {
+                                _armTasks.Add(armDto.id, armTask);
+                            }
+                        }
+                    }
+                } else if (_category == DeviceCategories.SERIAL_PORT) {
+                    // TODO
+                } else if (_category == DeviceCategories.COMMUNICATION) {
+                    // TODO
+                } else {
+                    // TODO
+                }
+            });
+            // Keep listenging devices
+            ListeningDevicesAsync();
+        }
+
+        private async void ListeningDevicesAsync() {
+            await Task.Run(async () => {
+                while (!IsDisposed) {
+                    if (_category == DeviceCategories.TOOL) {
+                        // TODO
+                    } else if (_category == DeviceCategories.ARM) {
+                        if (_armTasks.Count == 0) {
+                            ResetIconByStatus(DeviceStatus.EMPTY);
+                            break;
+                        } else {
+                            bool hasError = false;
+                            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
+                                ArmTask task = pair.Value;
+                                task.RetrieveResult = Visible;
+                                if (!task.Connected) {
+                                    hasError = true;
+                                    break;
+                                }
+                            }
+                            if (hasError) {
+                                ResetIconByStatus(DeviceStatus.ERROR);
+                            } else {
+                                ResetIconByStatus(DeviceStatus.NORMAL);
+                            }
+                        }
+                    } else if (_category == DeviceCategories.SERIAL_PORT) {
+                        // TODO
+                    } else if (_category == DeviceCategories.COMMUNICATION) {
+                        // TODO
+                    } else {
+                        // TODO
+                    }
+                    await Task.Delay(500);
+                }
+            });
         }
 
         protected override void OnSizeChanged(EventArgs e) {
@@ -1226,13 +1306,66 @@ namespace OperationGuidance_new.Views {
             _borderRect = new(0, 0, Width, Height);
         }
 
-        public void ShowPopUpForm() {
-            if (_popUpForm == null || _popUpForm.IsDisposed) {
-                _popUpForm = new(ShowPopUpForm, _categoryName, DeviceDTOs.Values.ToList());
-                _popUpForm.PretendToShowToCreateHandlesForChildren();
-                ResizePopUpForm();
+        public void ResetIconByStatus(DeviceStatus status) {
+            switch (status) {
+                case DeviceStatus.NORMAL:
+                    Icon = _category.Icon;
+                    break;
+                case DeviceStatus.ERROR:
+                    Icon = _category.IconError;
+                    break;
+                case DeviceStatus.EMPTY:
+                    Icon = _category.IconEmpty;
+                    break;
             }
-            _popUpForm.Show();
+            ResizeIconImage();
+        }
+
+        protected override void OnMouseMove(MouseEventArgs mevent) {
+            base.OnMouseMove(mevent);
+            if (_floatingForm == null || _floatingForm.IsDisposed) {
+                int panelHeight = WidgetUtils.TextOrComboBoxHeight();
+                if (_category == DeviceCategories.TOOL) {
+                    // TODO
+                } else if (_category == DeviceCategories.ARM) {
+                    if (_armTasks.Count > 0) {
+                        _floatingForm = new ArmDetailFloatingForm(_categoryName, _armTasks, panelHeight);
+                    }
+                } else if (_category == DeviceCategories.SERIAL_PORT) {
+                    // TODO
+                } else if (_category == DeviceCategories.COMMUNICATION) {
+                    // TODO
+                } else {
+                    // TODO
+                }
+                if (_floatingForm != null) {
+                    _floatingForm.PretendToShowToCreateHandlesForChildren();
+                    // Resize
+                    _floatingForm.Width = (int) (WidgetUtils.MainPanel.Width * .2) + _floatingForm.ContentPanel.Padding.Size.Width;
+                    Size contentSize = new(_floatingForm.Width, panelHeight * _armTasks.Count + _floatingForm.ContentPanel.Padding.Size.Height);
+                    _floatingForm.SetContentSizeAndSelfSize(contentSize);
+                    // Relocate
+                    Point point = PointToScreen(Point.Empty);
+                    _floatingForm.Location = new(point.X - _floatingForm.Width + Width, point.Y - _floatingForm.Height);
+                    _floatingForm.Show();
+                }
+            }
+        }
+
+        protected override void OnMouseLeave(EventArgs e) {
+            base.OnMouseLeave(e);
+            if (_floatingForm != null && !_floatingForm.IsDisposed) {
+                _floatingForm.Dispose();
+            }
+        }
+
+        public void ShowPopUpForm() {
+            // if (_popUpForm == null || _popUpForm.IsDisposed) {
+            //     _popUpForm = new(ShowPopUpForm, _categoryName, DeviceDTOs.Values.ToList());
+            //     _popUpForm.PretendToShowToCreateHandlesForChildren();
+            //     ResizePopUpForm();
+            // }
+            // _popUpForm.Show();
         }
 
         private void ResizePopUpForm() {
@@ -1270,6 +1403,137 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void ResizeTextLabel() {
+        }
+    }
+
+    public class ArmDetailFloatingForm: CustomFloatingForm {
+        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
+        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
+
+        private List<CustomContentPanel> armDetailPanels = new();
+        private int _panelHeight;
+
+        public ArmDetailFloatingForm(string categoryName, Dictionary<int, ArmTask> armTasks, int panelHeight) {
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
+            Title = "设备连接信息 - " + categoryName;
+            ContentPanel.FlowDirection = FlowDirection.TopDown;
+            _panelHeight = panelHeight;
+
+            DisplayArmDetails(armTasks);
+        }
+        
+        private void DisplayArmDetails(Dictionary<int, ArmTask> armTasks) {
+            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .65F, FontStyle.Regular, GraphicsUnit.Pixel);
+
+            foreach (KeyValuePair<int, ArmTask> armTask in armTasks) {
+                CustomContentPanel panel = new() {
+                    Parent = ContentPanel,
+                };
+                ContentPanel.SizeChanged += (sender, eventArgs) => {
+                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
+                };
+                panel.Paint += (sender, eventArgs) => {
+                    Graphics g = eventArgs.Graphics;
+                    Image icon;
+                    ArmTask task = armTask.Value;
+                    if (task.Connected) {
+                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, _panelHeight, _panelHeight);
+                    } else {
+                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, _panelHeight, _panelHeight);
+                    }
+                    g.DrawImage(icon, new Point(0, 0));
+                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.5), 0));
+                };
+            }
+        }
+    }
+
+    public class ArmDetailPopUpForm: CustomPopUpForm {
+        private List<WorkstationDTO> _workstationDTOs;
+        private Dictionary<int, ArmTask> _armTasks;
+
+        private List<CoordinatesPanel> armPanels = new();
+
+        public ArmDetailPopUpForm(string categoryName, List<WorkstationDTO> workstationDTOs, Dictionary<int, ArmTask> armTasks) {
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
+            Title = "设备连接信息 - " + categoryName;
+            _workstationDTOs = workstationDTOs;
+            _armTasks = armTasks;
+            ContentPanel.FlowDirection = FlowDirection.TopDown;
+        }
+
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            Task.Run(() => {
+                BeginInvoke(() => {
+                    int panelHeight = WidgetUtils.TextOrComboBoxHeight();
+                    foreach (WorkstationDTO dto in _workstationDTOs) {
+                        if (dto.arm_id != null) {
+                            CoordinatesPanel panel = new(CommonUtils.CannotBeNull(dto.name)) {
+                                Parent = ContentPanel,
+                                Size = new(ContentPanel.Width, panelHeight),
+                            };
+                            armPanels.Add(panel);
+                            // Bind delegate 
+                            _armTasks[dto.arm_id.Value].ActionAfterReceiving += panel.SetCoordinates;
+                        }
+                    }
+                });
+            });
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+        }
+
+        private class CoordinatesPanel: CustomContentPanel {
+            private Label _workstationNameLabel;
+            private Label _workstationName;
+            private Label _coordinatesLabel;
+
+            public Label LabelX { get; set; }
+            public Label LabelY { get; set; }
+            public Label LabelZ { get; set; }
+
+            public CoordinatesPanel(string workstationName) {
+                _workstationNameLabel = new () {
+                    Parent = this,
+                    Text = "站点：",
+                };
+                _workstationName = new () {
+                    Parent = this,
+                    Text = workstationName,
+                };
+                _coordinatesLabel = new () {
+                    Parent = this,
+                    Text = "坐标：",
+                };
+                LabelX = new () {
+                    Parent = this,
+                };
+                LabelY = new () {
+                    Parent = this,
+                };
+                LabelZ = new () {
+                    Parent = this,
+                };
+            }
+
+            public void SetCoordinates(Coordinates3D coordinates) {
+                Task.Run(() => {
+                    BeginInvoke(() => {
+                        LabelX.Text = coordinates.X + "";
+                        LabelY.Text = coordinates.Y + "";
+                        if (coordinates.Z != 0) {
+                            LabelZ.Text = coordinates.Z + "";
+                        } else {
+                            if (LabelZ.Visible) {
+                                LabelZ.Hide();
+                            }
+                        }
+                    });
+                });
+            }
         }
     }
 

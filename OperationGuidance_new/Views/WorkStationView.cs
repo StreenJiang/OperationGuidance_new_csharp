@@ -5,12 +5,13 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Utils;
 using CustomLibrary.Configs;
-using OperationGuidance_service.Models.DTOs;
 using CustomLibrary.TextBoxes;
-using OperationGuidance_service.Models.Responses;
 using CustomLibrary.Utils;
 using OperationGuidance_service.Constants;
 using CustomLibrary.DataGridViewRelateds;
+using OperationGuidance_new.Constants;
+using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
 
 namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
@@ -22,6 +23,23 @@ namespace OperationGuidance_new.Views {
         private DataGridViewGroup<WorkstationVO> _dataGridView;
         // Add new pop up form
         private EditEntityPopUpForm<WorkstationDTO> _editEntityPopUpForm;
+        // Combo options
+        // Tool related
+        List<DeviceToolDTO> _toolDTOs;
+        Dictionary<string, int> _toolIdOptions;
+        Dictionary<string, int> _toolTypeOptions;
+        // Arm related
+        List<DeviceArmDTO> _armDTOs;
+        Dictionary<string, int> _armIdOptions;
+        Dictionary<string, int> _armTypeOptions;
+        // Communication related
+        List<DeviceCommunicationDTO> _communicationDTOs;
+        Dictionary<string, int> _communicationIdOptions;
+        Dictionary<string, int> _communicationTypeOptions;
+        // Serial port related
+        List<DeviceSerialPortDTO> _serialPortDTOs;
+        Dictionary<string, int> _serialPortIdOptions;
+        Dictionary<string, int> _serialPortTypeOptions;
         #endregion
 
         #region Constructors
@@ -42,37 +60,25 @@ namespace OperationGuidance_new.Views {
             _dataGridView = new() {
                 Parent = this,
             };
-            _dataGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value);
-            _dataGridView.AddTextBox("工具名称", false, (WorkstationVO vo, string? value) => vo.tool_name = value);
-            CustomComboBoxGroup<int?> toolModelOptions = _dataGridView.AddComboBox("工具型号", (WorkstationVO vo, int? value) => vo.tool_device_model_id = value, new() {});
-            _dataGridView.AddTextBox("力臂名称", false, (WorkstationVO vo, string? value) => vo.arm_name = value);
-            CustomComboBoxGroup<int?> armModelOptions = _dataGridView.AddComboBox("力臂型号", (WorkstationVO vo, int? value) => vo.arm_device_model_id = value, new() {});
 
-            // 工具型号和力臂型号的选项完善
-            QueryDeviceModelListRsp queryDeviceModelListRsp = apis.QueryDeviceModelList(new() {
-                UserId = SystemUtils.LoggedUserId(),
-            });
-            List<DeviceModelDTO> deviceModelDTOs = queryDeviceModelListRsp.DeviceModelDTOs;
-            deviceModelDTOs.Where(dto => dto.id == 1).ToList().ForEach(dto => {
-                if (dto.name != null) {
-                    toolModelOptions.AddItem(dto.name, dto.id);
-                }
-            });
-            deviceModelDTOs.Where(dto => dto.id == 2).ToList().ForEach(dto => {
-                if (dto.name != null) {
-                    armModelOptions.AddItem(dto.name, dto.id);
-                }
-            });
+            // 获取所有设备的类型选项
+            GetComboOptions();
+
+            _dataGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value).Ratio = 6.25;
+            _dataGridView.AddComboBox("工具类型", (WorkstationVO vo, int value) => vo.tool_type = value, _toolTypeOptions).Ratio = 6.25;
+            _dataGridView.AddComboBox("力臂类型", (WorkstationVO vo, int value) => vo.arm_type = value, _armTypeOptions).Ratio = 6.25;
+            _dataGridView.AddComboBox("串口设备类型", (WorkstationVO vo, int value) => vo.serial_port_type = value, _serialPortTypeOptions).Ratio = 6.25;
+            _dataGridView.AddComboBox("通讯设备类型", (WorkstationVO vo, int value) => vo.communication_type = value, _communicationTypeOptions).Ratio = 6.25;
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
                 List<WorkstationVO> vos = QueryList();
                 return vos
                     .Where(o => vo.name == null || o.name != null && o.name.Contains(vo.name))
-                    .Where(o => vo.tool_name == null || o.tool_name != null && o.tool_name.Contains(vo.tool_name))
-                    .Where(o => vo.tool_device_model_id == null || o.tool_device_model_id != null && o.tool_device_model_id == vo.tool_device_model_id)
-                    .Where(o => vo.arm_name == null || o.arm_name != null && o.arm_name.Contains(vo.arm_name))
-                    .Where(o => vo.arm_device_model_id == null || o.arm_device_model_id != null && o.arm_device_model_id == vo.arm_device_model_id)
+                    .Where(o => vo.tool_type == null || vo.tool_type == 0 || o.tool_type != null && o.tool_type == vo.tool_type)
+                    .Where(o => vo.arm_type == null || vo.arm_type == 0 || o.arm_type != null && o.arm_type == vo.arm_type)
+                    .Where(o => vo.serial_port_type == null || vo.serial_port_type == 0 || o.serial_port_type != null && o.serial_port_type == vo.serial_port_type)
+                    .Where(o => vo.communication_type == null || vo.communication_type == 0 || o.communication_type != null && o.communication_type == vo.communication_type)
                     .ToList();
             };
             _dataGridView.AddNewClick = (action) => {
@@ -117,13 +123,33 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Reusable methods
+        private void GetComboOptions() {
+            // 获取工具信息
+            QueryDeviceToolListRsp queryDeviceToolListRsp = apis.QueryDeviceToolList(new());
+            _toolDTOs = queryDeviceToolListRsp.DeviceToolDTOs;
+            _toolIdOptions = _toolDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _toolTypeOptions = DeviceType_Tool.Elements.ToDictionary(t => t.Name, t => t.Id);
+            // 获取力臂信息
+            QueryDeviceArmListRsp queryDeviceArmListRsp = apis.QueryDeviceArmList(new());
+            _armDTOs = queryDeviceArmListRsp.DeviceArmDTOs;
+            _armIdOptions = _armDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _armTypeOptions = DeviceType_Arm.Elements.ToDictionary(t => t.Name, t => t.Id);
+            // 获取通讯设备信息
+            QueryDeviceCommunicationListRsp queryDeviceCommunicationListRsp = apis.QueryDeviceCommunicationList(new());
+            _communicationDTOs = queryDeviceCommunicationListRsp.DeviceCommunicationDTOs;
+            _communicationIdOptions = _communicationDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _communicationTypeOptions = DeviceType_Communication.Elements.ToDictionary(t => t.Name, t => t.Id);
+            // 获取串口设备信息
+            QueryDeviceSerialPortListRsp queryDeviceSerialPortListRsp = apis.QueryDeviceSerialPortList(new());
+            _serialPortDTOs = queryDeviceSerialPortListRsp.DeviceSerialPortDTOs;
+            _serialPortIdOptions = _serialPortDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
+            _serialPortTypeOptions = DeviceType_SerialPort.Elements.ToDictionary(t => t.Name, t => t.Id);
+        }
         private void OpenEditEntityPopUpForm(string title, WorkstationDTO dto, Action callBackAction) {
             _editEntityPopUpForm = new(dto) {
                 Title = title,
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
-            QueryDeviceListRsp deviceRsp1 = apis.QueryDeviceList(new());
-            List<DeviceDTO> deviceDTOs = deviceRsp1.DeviceDTOs;
             // 添加字段
             CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
                 (WorkstationDTO dto, string? value) => dto.name = value ?? "");
@@ -141,27 +167,15 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> toolSubPanel = _editEntityPopUpForm.AddSubPanel("工具");
             // 工具选择
             ToggleButton toolToggle = toolSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            Dictionary<string, int> toolIds = deviceDTOs.Where(dto => dto.category_id == 1).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, toolIds);
-            toolSubPanel.TablePanel.SetColumnSpan(toolOptions, 2);
-            // 工具名称
-            CustomTextBoxGroup toolNameTextBox = toolSubPanel.AddTextBox("工具名称", false, 
-                (WorkstationDTO dto, string? value) => dto.tool_name = value ?? "");
-            toolNameTextBox.Enabled = false;
-            // 工具型号
-            QueryDeviceModelListRsp deviceModelRsp = apis.QueryDeviceModelList(new());
-            List<DeviceModelDTO> deviceModelDTOs = deviceModelRsp.DeviceModelDTOs;
-            Dictionary<string, int> toolModelOptions = deviceModelDTOs.Where(dto => dto.category_id == 1).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            CustomComboBoxGroup<int> toolModelNameTextBox = toolSubPanel.AddComboBox("工具型号", 
-                (WorkstationDTO dto, int value) => dto.tool_device_model_id = value, toolModelOptions);
-            toolModelNameTextBox.Enabled = false;
+            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, _toolIdOptions);
+            // 工具类型
+            CustomComboBoxGroup<int> toolTypeTextBox = toolSubPanel.AddComboBox("工具类型", (WorkstationDTO dto, int value) => dto.tool_type = value, _toolTypeOptions);
+            toolTypeTextBox.Enabled = false;
             // 工具IP
-            CustomTextBoxGroup toolIPTextBox = toolSubPanel.AddTextBox("工具IP", false, 
-                (WorkstationDTO dto, string? value) => dto.tool_ip = value ?? "");
+            CustomTextBoxGroup toolIPTextBox = toolSubPanel.AddTextBox("工具IP", false, (WorkstationDTO dto, string? value) => dto.tool_ip = value ?? "");
             toolIPTextBox.Enabled = false;
             // 工具端口
-            CustomTextBoxGroup toolPortTextBox = toolSubPanel.AddTextBox("工具端口", false, 
-                (WorkstationDTO dto, int? value) => dto.tool_port = value ?? 0);
+            CustomTextBoxGroup toolPortTextBox = toolSubPanel.AddTextBox("工具端口", false, (WorkstationDTO dto, int? value) => dto.tool_port = value ?? 0);
             toolPortTextBox.Enabled = false;
             if (dto.tool_id != null) {
                 toolOptions.SetCurrent(toolOptions.IndexOf(dto.tool_id.Value));
@@ -180,18 +194,15 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetToolValues() {
-                DeviceDTO? deviceDTO = deviceDTOs.SingleOrDefault(dto => dto.id == toolOptions.Value);
-                if (deviceDTO != null) {
-                    DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
-                    toolNameTextBox.SetValue(0, deviceDTO.name);
-                    toolModelNameTextBox.SetCurrent(toolModelNameTextBox.IndexOf(deviceModelDTO.id));
-                    toolIPTextBox.SetValue(0, deviceDTO.ip);
-                    toolPortTextBox.SetValue(0, deviceDTO.port + "");
+                DeviceToolDTO deviceToolDTO = _toolDTOs.Single(t => t.id == toolOptions.Value);
+                if (deviceToolDTO.type != null) {
+                    toolTypeTextBox.SetCurrent(toolTypeTextBox.IndexOf(deviceToolDTO.type.Value));
                 }
+                toolIPTextBox.SetValue(0, deviceToolDTO.ip);
+                toolPortTextBox.SetValue(0, deviceToolDTO.port + "");
             }
             void ResetToolValues() {
-                toolNameTextBox.SetValue(0, null);
-                toolModelNameTextBox.Reset();
+                toolTypeTextBox.Reset();
                 toolIPTextBox.SetValue(0, null);
                 toolPortTextBox.SetValue(0, null);
             }
@@ -207,8 +218,7 @@ namespace OperationGuidance_new.Views {
                     toolOptions.Reset();
                 }
                 ResizePopUpForm();
-                toolNameTextBox.ResizeChildren();
-                toolModelNameTextBox.ResizeChildren();
+                toolTypeTextBox.ResizeChildren();
                 toolIPTextBox.ResizeChildren();
                 toolPortTextBox.ResizeChildren();
                 toolOptions.ResizeChildren();
@@ -217,25 +227,15 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> armSubPanel = _editEntityPopUpForm.AddSubPanel("力臂");
             // 力臂选择
             ToggleButton armToggle = armSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            Dictionary<string, int> armIds = deviceDTOs.Where(dto => dto.category_id == 2).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox<int>("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, armIds);
-            armSubPanel.TablePanel.SetColumnSpan(armOptions, 2);
-            // 力臂名称
-            CustomTextBoxGroup armNameTextBox = armSubPanel.AddTextBox("力臂名称", false, 
-                (WorkstationDTO dto, string? value) => dto.arm_name = value == null ? "" : value);
-            armNameTextBox.Enabled = false;
-            // 力臂型号
-            Dictionary<string, int> armModelOptions = deviceModelDTOs.Where(dto => dto.category_id == 2).ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            CustomComboBoxGroup<int> armModelNameTextBox = armSubPanel.AddComboBox("力臂型号", 
-                (WorkstationDTO dto, int value) => dto.arm_device_model_id = value, armModelOptions);
-            armModelNameTextBox.Enabled = false;
+            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox<int>("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, _armIdOptions);
+            // 力臂类型
+            CustomComboBoxGroup<int> armTypeTextBox = armSubPanel.AddComboBox("力臂类型", (WorkstationDTO dto, int value) => dto.arm_type = value, _armTypeOptions);
+            armTypeTextBox.Enabled = false;
             // 力臂IP
-            CustomTextBoxGroup armIPTextBox = armSubPanel.AddTextBox("力臂IP", false, 
-                (WorkstationDTO dto, string? value) => dto.arm_ip = value == null ? "" : value);
+            CustomTextBoxGroup armIPTextBox = armSubPanel.AddTextBox("力臂IP", false, (WorkstationDTO dto, string? value) => dto.arm_ip = value == null ? "" : value);
             armIPTextBox.Enabled = false;
             // 力臂端口
-            CustomTextBoxGroup armPortTextBox = armSubPanel.AddTextBox("力臂端口", false, 
-                (WorkstationDTO dto, int? value) => dto.arm_port = value == null ? 0 : value);
+            CustomTextBoxGroup armPortTextBox = armSubPanel.AddTextBox("力臂端口", false, (WorkstationDTO dto, int? value) => dto.arm_port = value == null ? 0 : value);
             armPortTextBox.Enabled = false;
             if (dto.arm_id != null) {
                 armOptions.SetCurrent(armOptions.IndexOf(dto.arm_id.Value));
@@ -254,18 +254,15 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetArmValues() {
-                DeviceDTO? deviceDTO = deviceDTOs.SingleOrDefault(dto => dto.id == armOptions.Value);
-                if (deviceDTO != null) {
-                    DeviceModelDTO deviceModelDTO = deviceModelDTOs.Single(dto => dto.id == deviceDTO.model_id);
-                    armNameTextBox.SetValue(0, deviceDTO.name);
-                    armModelNameTextBox.SetCurrent(armModelNameTextBox.IndexOf(deviceModelDTO.id));
-                    armIPTextBox.SetValue(0, deviceDTO.ip);
-                    armPortTextBox.SetValue(0, deviceDTO.port + "");
+                DeviceArmDTO deviceArmDTO = _armDTOs.Single(dto => dto.id == armOptions.Value);
+                if (deviceArmDTO.type != null) {
+                    armTypeTextBox.SetCurrent(armTypeTextBox.IndexOf(deviceArmDTO.type.Value));
                 }
+                armIPTextBox.SetValue(0, deviceArmDTO.ip);
+                armPortTextBox.SetValue(0, deviceArmDTO.port + "");
             }
             void ResetArmValues() {
-                armNameTextBox.SetValue(0, null);
-                armModelNameTextBox.Reset();
+                armTypeTextBox.Reset();
                 armIPTextBox.SetValue(0, null);
                 armPortTextBox.SetValue(0, null);
             }
@@ -281,16 +278,185 @@ namespace OperationGuidance_new.Views {
                     armOptions.Reset();
                 }
                 ResizePopUpForm();
-                armNameTextBox.ResizeChildren();
-                armModelNameTextBox.ResizeChildren();
+                armTypeTextBox.ResizeChildren();
                 armIPTextBox.ResizeChildren();
                 armPortTextBox.ResizeChildren();
                 armOptions.ResizeChildren();
+            };
+            // 通讯设备部分
+            SubPanel<WorkstationDTO> communicationSubPanel = _editEntityPopUpForm.AddSubPanel("通讯设备");
+            // 通讯设备选择
+            ToggleButton communicationToggle = communicationSubPanel.TitlePanel.AddRightButton<ToggleButton>();
+            CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox<int>("请选择通讯设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
+            // 通讯设备类型
+            CustomComboBoxGroup<int> communicationTypeTextBox = communicationSubPanel.AddComboBox("通讯设备类型", 
+                (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationTypeOptions);
+            communicationTypeTextBox.Enabled = false;
+            // 通讯设备IP
+            CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("通讯设备IP", false, 
+                (WorkstationDTO dto, string? value) => dto.communication_ip = value == null ? "" : value);
+            communicationIPTextBox.Enabled = false;
+            // 通讯设备端口
+            CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("通讯设备端口", false, 
+                (WorkstationDTO dto, int? value) => dto.communication_port = value == null ? 0 : value);
+            communicationPortTextBox.Enabled = false;
+            if (dto.communication_id != null) {
+                communicationOptions.SetCurrent(communicationOptions.IndexOf(dto.communication_id.Value));
+                SetCommunicationValues();
+                communicationToggle.Checked = true;
+            } else {
+                communicationSubPanel.TablePanel.Hide();
+                ResetCommunicationValues();
+            }
+            // 通讯设备选择事件：选择后自动填入
+            communicationOptions.ItemSelected += () => {
+                if (!communicationOptions.IsDefaultValue()) {
+                    SetCommunicationValues();
+                } else {
+                    ResetCommunicationValues();
+                }
+            };
+            void SetCommunicationValues() {
+                DeviceCommunicationDTO deviceCommunicationDTO = _communicationDTOs.Single(dto => dto.id == communicationOptions.Value);
+                if (deviceCommunicationDTO.type != null) {
+                    communicationTypeTextBox.SetCurrent(communicationTypeTextBox.IndexOf(deviceCommunicationDTO.type.Value));
+                }
+                communicationIPTextBox.SetValue(0, deviceCommunicationDTO.ip);
+                communicationPortTextBox.SetValue(0, deviceCommunicationDTO.port + "");
+            }
+            void ResetCommunicationValues() {
+                communicationTypeTextBox.Reset();
+                communicationIPTextBox.SetValue(0, null);
+                communicationPortTextBox.SetValue(0, null);
+            }
+            // 是否显示通讯设备开关事件
+            int communicationChosenIndexCache = -1;
+            communicationToggle.CheckedChanged += (sender, eventArgs) => {
+                if (communicationToggle.Checked) {
+                    communicationSubPanel.TablePanel.Show();
+                    communicationOptions.SetCurrent(communicationChosenIndexCache);
+                } else {
+                    communicationSubPanel.TablePanel.Hide();
+                    communicationChosenIndexCache = communicationOptions.GetCurrentIndex();
+                    communicationOptions.Reset();
+                }
+                ResizePopUpForm();
+                communicationTypeTextBox.ResizeChildren();
+                communicationIPTextBox.ResizeChildren();
+                communicationPortTextBox.ResizeChildren();
+                communicationOptions.ResizeChildren();
+            };
+            // 串口设备部分
+            SubPanel<WorkstationDTO> serialPortSubPanel = _editEntityPopUpForm.AddSubPanel("串口设备");
+            // 串口选择
+            ToggleButton serialPortToggle = serialPortSubPanel.TitlePanel.AddRightButton<ToggleButton>();
+            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox<int>("请选择串口设备", (WorkstationDTO dto, int value) => dto.serial_port_id = value, _serialPortIdOptions);
+            // 串口类型
+            CustomComboBoxGroup<int> serialPortTypeTextBox = serialPortSubPanel.AddComboBox("串口类型", 
+                (WorkstationDTO dto, int value) => dto.serial_port_type = value, _serialPortTypeOptions);
+            serialPortTypeTextBox.Enabled = false;
+            // 串口号
+            CustomTextBoxGroup serialPortPortNameTextBox = serialPortSubPanel.AddTextBox("串口号", false, 
+                (WorkstationDTO dto, string? value) => dto.serial_port_port_name = value ?? "");
+            serialPortPortNameTextBox.Enabled = false;
+            // 波特率
+            CustomTextBoxGroup serialPortBaudRateTextBox = serialPortSubPanel.AddTextBox("波特率", false, 
+                (WorkstationDTO dto, int? value) => dto.serial_port_baud_rate = value ?? 0);
+            serialPortBaudRateTextBox.Enabled = false;
+            // 数据位
+            CustomTextBoxGroup serialPortDataBitTextBox = serialPortSubPanel.AddTextBox("数据位", false, 
+                (WorkstationDTO dto, int? value) => dto.serial_port_data_bit = value == null ? 0 : value);
+            serialPortDataBitTextBox.Enabled = false;
+            // 校验位
+            CustomTextBoxGroup serialPortParityTextBox = serialPortSubPanel.AddTextBox("校验位", false, 
+                (WorkstationDTO dto, int? value) => dto.serial_port_parity = value == null ? 0 : value);
+            serialPortParityTextBox.Enabled = false;
+            // 停止位
+            CustomTextBoxGroup serialPortStopBitTextBox = serialPortSubPanel.AddTextBox("停止位", false, 
+                (WorkstationDTO dto, int? value) => dto.serial_port_stop_bit = value == null ? 0 : value);
+            serialPortStopBitTextBox.Enabled = false;
+            // 数据类型
+            CustomTextBoxGroup serialPortDataTypeTextBox = serialPortSubPanel.AddTextBox("数据类型", false, 
+                (WorkstationDTO dto, int? value) => dto.serial_port_data_type = value == null ? 0 : value);
+            serialPortDataTypeTextBox.Enabled = false;
+            if (dto.serial_port_id != null) {
+                foreach (KeyValuePair<string, int> pair in serialPortOptions.NamesAndItems) {
+                    System.Console.WriteLine($"{pair.Key}: {pair.Value}");
+                }
+                serialPortOptions.SetCurrent(serialPortOptions.IndexOf(dto.serial_port_id.Value));
+                SetSerialPortValues();
+                serialPortToggle.Checked = true;
+            } else {
+                serialPortSubPanel.TablePanel.Hide();
+                ResetSerialPortValues();
+            }
+            // 串口选择事件：选择后自动填入
+            serialPortOptions.ItemSelected += () => {
+                if (!serialPortOptions.IsDefaultValue()) {
+                    SetSerialPortValues();
+                } else {
+                    ResetSerialPortValues();
+                }
+            };
+            void SetSerialPortValues() {
+                DeviceSerialPortDTO deviceSerialPortDTO = _serialPortDTOs.Single(dto => dto.id == serialPortOptions.Value);
+                if (deviceSerialPortDTO.type != null) {
+                    serialPortTypeTextBox.SetCurrent(serialPortTypeTextBox.IndexOf(deviceSerialPortDTO.type.Value));
+                }
+                serialPortPortNameTextBox.SetValue(0, deviceSerialPortDTO.port_name);
+                serialPortBaudRateTextBox.SetValue(0, deviceSerialPortDTO.baud_rate + "");
+                serialPortDataBitTextBox.SetValue(0, deviceSerialPortDTO.data_bit + "");
+                serialPortParityTextBox.SetValue(0, deviceSerialPortDTO.parity + "");
+                serialPortStopBitTextBox.SetValue(0, deviceSerialPortDTO.stop_bit + "");
+                serialPortDataTypeTextBox.SetValue(0, deviceSerialPortDTO.data_type + "");
+            }
+            void ResetSerialPortValues() {
+                serialPortTypeTextBox.Reset();
+                serialPortPortNameTextBox.SetValue(0, null);
+                serialPortBaudRateTextBox.SetValue(0, null);
+                serialPortDataBitTextBox.SetValue(0, null);
+                serialPortParityTextBox.SetValue(0, null);
+                serialPortStopBitTextBox.SetValue(0, null);
+                serialPortDataTypeTextBox.SetValue(0, null);
+            }
+            // 是否显示串口开关事件
+            int serialPortChosenIndexCache = -1;
+            serialPortToggle.CheckedChanged += (sender, eventArgs) => {
+                if (serialPortToggle.Checked) {
+                    serialPortSubPanel.TablePanel.Show();
+                    serialPortOptions.SetCurrent(serialPortChosenIndexCache);
+                } else {
+                    serialPortSubPanel.TablePanel.Hide();
+                    serialPortChosenIndexCache = serialPortOptions.GetCurrentIndex();
+                    serialPortOptions.Reset();
+                }
+                ResizePopUpForm();
+                serialPortTypeTextBox.ResizeChildren();
+                serialPortPortNameTextBox.ResizeChildren();
+                serialPortBaudRateTextBox.ResizeChildren();
+                serialPortDataBitTextBox.ResizeChildren();
+                serialPortParityTextBox.ResizeChildren();
+                serialPortStopBitTextBox.ResizeChildren();
+                serialPortDataTypeTextBox.ResizeChildren();
+                serialPortOptions.ResizeChildren();
             };
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
+                if (dto.tool_id == 0) {
+                    dto.tool_id = null;
+                }
+                if (dto.arm_id == 0) {
+                    dto.arm_id = null;
+                }
+                if (dto.serial_port_id == 0) {
+                    dto.serial_port_id = null;
+                }
+                System.Console.WriteLine($"dto.serial_port_id: {dto.serial_port_id}");
+                if (dto.communication_id == 0) {
+                    dto.communication_id = null;
+                }
                 callBackAction += _editEntityPopUpForm.Dispose;
                 AddOrUpdate(dto, callBackAction);
             };

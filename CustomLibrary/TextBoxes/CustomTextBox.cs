@@ -92,6 +92,10 @@ namespace CustomLibrary.TextBoxes {
         public bool NumberOnly { get => _numberOnly; set => _numberOnly = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
         public bool IsError { get => _isError; set => _isError = value; }
+        public new event EventHandler TextChanged {
+            add => _box.TextChanged += value;
+            remove => _box.TextChanged -= value;
+        }
         #endregion
 
         #region Constructors
@@ -211,7 +215,7 @@ namespace CustomLibrary.TextBoxes {
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             int boxWidthTemp = Width - Padding.Size.Width;
             if (!Multiline) {
-                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .53F, 
+                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .54F, 
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;
@@ -228,15 +232,14 @@ namespace CustomLibrary.TextBoxes {
                 _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
             } else {
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
-                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .53F, 
+                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .54F, 
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;
-                int hPadding = (int) (textBoxHeight / 4);
-                int vPadding = (int) (textBoxHeight / 4);
+                int hPadding = (int) (textBoxHeight / 6);
+                int vPadding = (int) (textBoxHeight / 6);
                 _box.Size = new(boxWidthTemp - hPadding * 2, Height - vPadding * 2);
-                _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
-                _box.Location = new(hPadding, vPadding);
+                _box.Location = new(hPadding, (int) (vPadding * .85));
             }
 
             // Create border rectangle if border color is not null
