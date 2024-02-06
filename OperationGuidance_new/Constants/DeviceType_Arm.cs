@@ -38,17 +38,14 @@
     }
 
     public class DeviceArm: DeviceTypeBase {
-        public List<Command> Commands;
         public Command COMMAND_READ_X_HEX;
         public Command COMMAND_READ_Y_HEX;
         public Command? COMMAND_READ_Z_HEX;
         public DeviceArm(int id, string name, string[] commands) : base(id, name) {
             COMMAND_READ_X_HEX = new(commands[0]);
             COMMAND_READ_Y_HEX = new(commands[1]);
-            Commands = new() {
-                COMMAND_READ_X_HEX,
-                COMMAND_READ_Y_HEX,
-            };
+            Commands.Add(COMMAND_READ_X_HEX);
+            Commands.Add(COMMAND_READ_Y_HEX);
             if (commands.Length == 3) {
                 COMMAND_READ_Z_HEX = new(commands[2]);
                 Commands.Add(COMMAND_READ_Z_HEX);

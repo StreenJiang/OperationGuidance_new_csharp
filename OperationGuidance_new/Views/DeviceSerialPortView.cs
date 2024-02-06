@@ -105,6 +105,36 @@ namespace OperationGuidance_new.Views {
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
+            // 串口号
+            Dictionary<string, string> portNames = new();
+            Dictionary<string, string> portNamesDict = ConnectionUtils.GetSerialPorts();
+            foreach (KeyValuePair<string, string> pair in portNamesDict) {
+                portNames.Add(pair.Value, pair.Key);
+            }
+            CustomComboBoxGroup<string>? portFullName = null;
+            portFullName = _editEntityPopUpForm.AddComboBox("串口", SetPortName, portNames);
+            void SetPortName(DeviceSerialPortDTO dto, string? value) {
+                if (portFullName != null) {
+                    dto.port_full_name = value == null ? "" : portFullName.Key;
+                }
+            }
+            portFullName.Ratio = 6;
+            // 串口全名
+            CustomTextBoxGroup portName = _editEntityPopUpForm.AddTextBox("串口号", false, 
+                (DeviceSerialPortDTO dto, string? value) => dto.port_name = value ?? "");
+            portName.Ratio = 6;
+            portName.Enabled = false;
+            if (dto.port_name != null) {
+                portFullName.SetCurrent(portFullName.IndexOf(dto.port_name));
+                portName.SetValue(0, dto.port_name);
+            }
+            portFullName.ItemSelected += () => {
+                if (!portFullName.IsDefaultValue() && portFullName.Value != null) {
+                    portName.SetValue(0, portFullName.Value);
+                } else {
+                    portName.SetValue(0, "");
+                }
+            };
             // 设备类型
             Dictionary<string, int> toolTypes = DeviceType_SerialPort.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("设备类型", 
@@ -113,18 +143,7 @@ namespace OperationGuidance_new.Views {
             if (dto.type != null) {
                 type.SetCurrent(type.IndexOf(dto.type.Value));
             }
-            // 串口号
-            Dictionary<string, string> portNames = new();
-            Dictionary<string, string> portNamesDict = ConnectionUtils.GetSerialPorts();
-            foreach (KeyValuePair<string, string> pair in portNamesDict) {
-                portNames.Add(pair.Value, pair.Key);
-            }
-            CustomComboBoxGroup<string> portName = _editEntityPopUpForm.AddComboBox("串口号", 
-                (DeviceSerialPortDTO dto, string? value) => dto.port_name = value ?? "", portNames);
-            portName.Ratio = 6;
-            if (dto.port_name != null) {
-                portName.SetCurrent(portName.IndexOf(dto.port_name));
-            }
+            // 波特率
             Dictionary<string, int> baudRates = new() {
                 { "4800", 4800 },
                 { "9600", 9600 },
@@ -140,6 +159,7 @@ namespace OperationGuidance_new.Views {
             if (dto.baud_rate != null) {
                 baudRate.SetCurrent(baudRate.IndexOf(dto.baud_rate.Value));
             }
+            // 数据位
             Dictionary<string, int> dataBits = new() {
                 // { "5", 5 },
                 { "6", 6 },
@@ -152,6 +172,7 @@ namespace OperationGuidance_new.Views {
             if (dto.data_bit != null) {
                 dataBit.SetCurrent(dataBit.IndexOf(dto.data_bit.Value));
             }
+            // 校验位
             Dictionary<string, int> parities = new();
             Parity[] parityValues = Enum.GetValues<Parity>();
             foreach (Parity value in parityValues) {
@@ -163,6 +184,7 @@ namespace OperationGuidance_new.Views {
             if (dto.parity != null) {
                 parity.SetCurrent(parity.IndexOf(dto.parity.Value));
             }
+            // 停止位
             Dictionary<string, int> stopBits = new();
             StopBits[] stopBitsValues = Enum.GetValues<StopBits>();
             foreach (StopBits value in stopBitsValues) {
@@ -174,6 +196,7 @@ namespace OperationGuidance_new.Views {
             if (dto.stop_bit != null) {
                 stopBit.SetCurrent(stopBit.IndexOf(dto.stop_bit.Value));
             }
+            // 数据类型
             Dictionary<string, int> dataTypes = new();
             DataTypes[] dataTypesValues = Enum.GetValues<DataTypes>();
             foreach (DataTypes value in dataTypesValues) {
@@ -185,6 +208,7 @@ namespace OperationGuidance_new.Views {
             if (dto.data_type != null) {
                 dataType.SetCurrent(dataType.IndexOf(dto.data_type.Value));
             }
+            // 无效字符
             CustomTextBoxGroup invalidChar = _editEntityPopUpForm.AddTextBox("无效字符", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.invalid_char = value ?? "");
             invalidChar.Ratio = 6;

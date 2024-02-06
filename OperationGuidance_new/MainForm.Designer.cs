@@ -17,6 +17,7 @@ using OperationGuidance_new.Utils;
 using CustomLibrary.Forms;
 using CustomLibrary.Events;
 using CustomLibrary.Configs;
+using OperationGuidance_new.Tasks;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -49,8 +50,10 @@ namespace OperationGuidance_new {
 
         private void InitializeComponentManually() {
             // Get login user info
-            OperationGuidanceApis apis = DependencyInjector.Provider.GetService<OperationGuidanceApis>();
+            OperationGuidanceApis apis = SystemUtils.GetApis();
             SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
+            // Initialize all tasks for devices
+            TaskInitializer.Init();
 
             // mainPanel
             mainPanel = new();

@@ -22,6 +22,7 @@
         public static Color COLOR_TEXT_BOX_FOREGROUND => COLOR_444444;
         public static Color COLOR_TEXT_BOX_BACKGROUND => COLOR_FEFEFE;
         public static Color COLOR_WORKPLACE_BOLT_NUMBER => COLOR_444444;
+        public static Color COLOR_WORKPLACE_BOLT_NUMBER_WHIE => COLOR_FEFEFE;
         public static Color COLOR_WORKPLACE_BOLT_BG_WAITING => COLOR_D9D9D9;
         public static Color COLOR_WORKPLACE_BOLT_BG_WORKING => COLOR_FAFF18;
         public static Color COLOR_WORKPLACE_BOLT_BG_DONE => COLOR_2AB514;

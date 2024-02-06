@@ -1,16 +1,27 @@
-﻿using CustomLibrary.Constants;
+﻿using System.IO.Ports;
+using CustomLibrary.Constants;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
+        private static Dictionary<int, ToolTask> _toolTasks = new();
+        public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
+        private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
+        public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
 
-        public static async Task<ArmTask> NewArmTask(int armId, string ip, int port, string[] commands) {
-            ArmTask task = new(ip, port, commands);
+        public static void NewArmTask(int armId, string ip, int port, DeviceArm arm) {
+            ArmTask task = new(ip, port, arm);
+            task.Connect();
+            _armTasks.Add(armId, task);
+        }
+        public static async Task<ArmTask> NewArmTaskAsync(int armId, string ip, int port, DeviceArm arm) {
+            ArmTask task = new(ip, port, arm);
             await task.ConnectAsync();
-            task.RunLoop();
             _armTasks.Add(armId, task);
             return task;
         }
@@ -26,7 +37,59 @@ namespace OperationGuidance_new.Utils {
             }
             return null;
         }
+
+        public static void NewToolTask(int toolId, string ip, int port, DeviceTool tool) {
+            ToolTask task = new(ip, port, tool);
+            task.Connect();
+            _toolTasks.Add(toolId, task);
+        }
+        public static async Task<ToolTask> NewToolTaskAsync(int toolId, string ip, int port, DeviceTool tool) {
+            ToolTask task = new(ip, port, tool);
+            await task.ConnectAsync();
+            _toolTasks.Add(toolId, task);
+            return task;
+        }
+        public static ToolTask GetToolTask(int toolId) {
+            if (_toolTasks.ContainsKey(toolId)) {
+                return _toolTasks[toolId];
+            }
+            throw new ArgumentException($"ToolTask for toolId<{toolId}> has not been created.");
+        }
+        public static ToolTask? TryGetToolTask(int toolId) {
+            if (_toolTasks.ContainsKey(toolId)) {
+                return _toolTasks[toolId];
+            }
+            return null;
+        }
         
+        public static void NewSerialPortTask(int serialPortId, string fullName, 
+                string portName, int baudRate, Parity parity, int dataBits, 
+                StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {
+            SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
+            task.Connect();
+            _serialPortTasks.Add(serialPortId, task);
+        }
+        public static async Task<SerialPortTask> NewSerialPortTaskAsync(int serialPortId, string fullName, 
+                string portName, int baudRate, Parity parity, int dataBits, 
+                StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {
+            SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
+            await task.ConnectAsync();
+            _serialPortTasks.Add(serialPortId, task);
+            return task;
+        }
+        public static SerialPortTask GetSerialPortTask(int serialPortId) {
+            if (_serialPortTasks.ContainsKey(serialPortId)) {
+                return _serialPortTasks[serialPortId];
+            }
+            throw new ArgumentException($"SerialPortTask for serialPortId<{serialPortId}> has not been created.");
+        }
+        public static SerialPortTask? TryGetSerialPortTask(int serialPortId) {
+            if (_serialPortTasks.ContainsKey(serialPortId)) {
+                return _serialPortTasks[serialPortId];
+            }
+            return null;
+        }
+
         /// <summary>
         /// Get zooming ratio
         /// </summary>

@@ -319,5 +319,10 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             _up = !flag;
             Refresh();
         }
+
+        // Set 'selectable' to false mess 'SetStyle' up to block base.PerformClick, so NEW a new one
+        public new void PerformClick() {
+            OnClick(EventArgs.Empty);
+        }
     }
 }

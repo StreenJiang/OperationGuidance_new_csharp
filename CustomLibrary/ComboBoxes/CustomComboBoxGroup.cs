@@ -48,7 +48,8 @@ namespace CustomLibrary.TextBoxes {
         public List<T?> Items { get => _comboBox.Items; }
         public List<string> Names { get => _comboBox.Names; }
         public Dictionary<string, T?> NamesAndItems { get => _comboBox.NamesAndItems; }
-        public T? Value { get => _comboBox.Value; }
+        public string Key => _comboBox.Key;
+        public T? Value => _comboBox.Value;
 
         public CustomComboBoxGroup(string textName) : base() {
             Margin = new(0);

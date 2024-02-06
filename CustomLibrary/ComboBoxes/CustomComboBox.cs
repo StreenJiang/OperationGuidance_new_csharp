@@ -146,7 +146,8 @@ namespace CustomLibrary.ComboBoxs {
                 return namesAndItems;
             }
         }
-        public T? Value { get => GetChosenValue(); }
+        public string Key => GetShowingValue();
+        public T? Value => GetChosenValue();
         #endregion
 
         #region Events
@@ -355,6 +356,13 @@ namespace CustomLibrary.ComboBoxs {
             return index;
         }
 
+        public string GetShowingValue() {
+            string showingValue = "";
+            if (_selectButton.Label != null) {
+                showingValue = _selectButton.Label;
+            }
+            return showingValue;
+        }
         public T? GetChosenValue() {
             T? t = default(T?);
             if (_selectButton.SelectedItem != null) {

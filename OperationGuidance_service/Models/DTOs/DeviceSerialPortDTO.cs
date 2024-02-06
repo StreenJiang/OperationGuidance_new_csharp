@@ -6,6 +6,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? description { get; set; }
         public int? type { get; set; }
         public string? port_name { get; set; }
+        public string? port_full_name { get; set; }
         public int? baud_rate { get; set; }
         public int? data_bit { get; set; }
         public int? parity { get; set; }

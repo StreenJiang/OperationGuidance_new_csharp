@@ -74,11 +74,13 @@
     }
 
     public class DeviceTypeBase {
+        public List<Command> Commands;
         public int Id { get; }
         public string Name { get; }
         public DeviceTypeBase(int id, string name) {
             Id = id;
             Name = name;
+            Commands = new();
         }
     }
 

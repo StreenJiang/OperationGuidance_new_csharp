@@ -121,20 +121,6 @@ namespace OperationGuidance_service.Controllers {
                             List<ProductBoltDTO> productBoltDTOs = new();
                             CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts, productBoltDTOs);
                             productSideDTO.Bolts = productBoltDTOs;
-
-                            // 循环每个螺栓点位查询工具信息
-                            for (int k = 0 ; k < bolts.Count ; k++) {
-                                int? toolId = bolts[k].tool_id;
-                                if (toolId != null) {
-                                    DeviceTool? tool = _deviceToolService.FindById(toolId.Value);
-                                    if (tool != null) {
-                                        productBoltDTOs[i].tool_name = tool.name;
-                                        productBoltDTOs[i].tool_description = tool.description;
-                                        productBoltDTOs[i].tool_ip = tool.ip;
-                                        productBoltDTOs[i].tool_port = tool.port;
-                                    }
-                                }
-                            }
                         }
                     }
                 }

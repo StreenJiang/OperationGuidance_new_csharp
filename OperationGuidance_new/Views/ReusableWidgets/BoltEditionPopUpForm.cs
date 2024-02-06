@@ -2,7 +2,6 @@ using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
@@ -28,8 +27,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             
             NameBox.Enabled = true;
             SpecificationBox.Enabled = true;
-            ToolIdComboBox.Enabled = true;
-            // ToolDescriptionBox.Enabled = true; // tool_description will be filling in automatically after filling in tool_id
             BitSpecificationBox.Enabled = true;
             ProcedureSetBox.Enabled = true;
             TorqueBox.Enabled = true;
@@ -41,7 +38,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.25,
+                Ratio = 7,
                 NameAlignment = HorizontalAlignment.Right,
             };
             QueryWorkstationListRsp queryWorkstationListRsp = apis.QueryWorkstationList(new());
@@ -56,7 +53,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                Ratio = 6.25,
+                Ratio = 7,
                 Separator = ",",
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -96,23 +93,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 WorkstationDTO? dto = _workstation.Value;
                 if (dto == null || _workstation.IsDefaultValue()) {
                     WidgetUtils.ShowErrorPopUp("请先选择站点再尝试获取力臂坐标");
+                    labelChanging = false;
                 } else {
                     Coordinates3D? coordinates = null;
                     if (dto.arm_id != null) {
                         ArmTask? armTask = MainUtils.TryGetArmTask(dto.arm_id.Value);
-                        if (armTask == null) {
-                            if (dto.arm_ip != null && dto.arm_port != null && dto.arm_type != null) {
-                                DeviceArm? deviceArm = DeviceType_Arm.GetById(dto.arm_type.Value);
-                                if (deviceArm != null) {
-                                    System.Console.WriteLine($"deviceArm.Name: {deviceArm.Name}");
-                                    armTask = await MainUtils.NewArmTask(dto.arm_id.Value, dto.arm_ip, dto.arm_port.Value, deviceArm.Commands.Select(c => c.GetMessage()).ToArray());
-                                    coordinates = await armTask.GetCurrentCoordinates();
-                                }
-                            }
-                        } else {
-                            if (!armTask.Connected) {
-                                await armTask.ConnectAsync();
-                            }
+                        if (armTask != null) {
                             coordinates = await armTask.GetCurrentCoordinates();
                         }
                     }
@@ -126,10 +112,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     } else {
                         WidgetUtils.ShowWarningPopUp("读取失败，可能原因：\r\n1. 当前站点不存在\r\n2. 当前站点没有配置力臂\r\n3. 没有连接至指定力臂");
                     }
-                    _retrieveCoordinatesBtn.Enabled = true;
-                    _retrieveCoordinatesBtn.Label = _retrievePositionButtonLabel;
-                    _retrieveCoordinatesBtn.Invalidate();
                 }
+                _retrieveCoordinatesBtn.Enabled = true;
+                _retrieveCoordinatesBtn.Label = _retrievePositionButtonLabel;
+                _retrieveCoordinatesBtn.Invalidate();
             };
 
             // 点位描述
@@ -170,16 +156,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 position.Z = val;
                 ModifiedBoltDTO.position = position.ToString();
             });
-            // 选择工具联动修改工具描述信息
-            ToolIdComboBox.ItemSelected += () => {
-                ModifiedBoltDTO.tool_id = ToolIdComboBox.Value;
-                DeviceToolDTO? deviceToolDTO = DeviceToolDTOs.SingleOrDefault(dto => dto.id == ToolIdComboBox.Value);
-                if (deviceToolDTO != null) {
-                    ToolDescriptionBox.SetValue(0, deviceToolDTO.description);
-                } else {
-                    ToolDescriptionBox.SetValue(0, "");
-                }
-            };
 
             // 检查是否DTO中已经有值，有的话则回填
             if (boltDTO.workstation_id != null) {
@@ -210,8 +186,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool ConfirmSave() {
             return NameBox.HasError 
                 && SpecificationBox.HasError
-                && !ToolIdComboBox.IsError
-                && ToolDescriptionBox.HasError
                 && BitSpecificationBox.HasError
                 && ProcedureSetBox.HasError
                 && TorqueBox.HasError

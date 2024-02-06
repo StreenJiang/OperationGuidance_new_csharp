@@ -2,144 +2,138 @@ using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using OperationGuidance_new.Constants;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
-    public class ArmTask {
+    public class ArmTask: ATaskBase {
         #region Fields
-        private readonly int LoopingInterval = 25;
-        private readonly int AuotReconnectingTrialDelay = 1000; // 断线重连尝试间隔
+        private readonly int ReceiveTimeout = 500;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private string[] _coordinateCommands;
-        private string _currentCommand;
+        private DeviceArm _arm;
         private Coordinates3D? _currentCoordinates;
         private Action<Coordinates3D> _actionAfterReceiving;
         #endregion
 
         #region Properties
+        // Override properties
+        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
+        // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
-        public bool CloseConnectionManually { get; set; } = false;
         public Queue<string> Commands { get; set; } = new();
         public string? Result { get; set; }
         public bool RetrieveResult { get; set; } = false;
-        public bool Connected => socketClient != null && socketClient.Connected;
-        public event Action<Coordinates3D> ActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
+        public Action<Coordinates3D> ActionAfterReceiving { get => _actionAfterReceiving; set => _actionAfterReceiving = value; }
+        public event Action<Coordinates3D> OnActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
         #endregion
 
-        public ArmTask(string ip, int port, string[] commands) {
+        #region Constructors
+        public ArmTask(string ip, int port, DeviceArm arm) {
             _ip = ip;
             _port = port;
-            _coordinateCommands = commands;
+            _arm = arm;
             _actionAfterReceiving += c => {};
         }
+        #endregion
 
-        private void RunTask() {
+        #region Override methods
+        protected override void RunTask() {
             Task.Run(async () => {
                 try {
-                    while (Connected && !CloseConnectionManually) {
+                    while (Connected) {
                         // Check if any command
                         if (Commands.Count > 0) {
-                            _currentCommand = Commands.Dequeue();
+                            string command = Commands.Dequeue();
                             // Send command to controller
-                            await socketClient.SendAsync(HexStrToBytes(_currentCommand), SocketFlags.None);
+                            await socketClient.SendAsync(HexStrToBytes(command), SocketFlags.None);
                             // Check response
-                            CheckResponse();
+                            try {
+                                byte[] msgBytes = new byte[1024 * 1024];
+                                int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                if (msgLen >= 5) {
+                                    Result = BytesToHexStr(msgBytes.Take(msgLen).ToArray());
+                                } else {
+                                    Result = "";
+                                }
+                            } catch (Exception e) {
+                                System.Console.WriteLine($"No data received...");
+                            }
                         }
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while running task for connection<{_ip}-{_port}>: {e}");
+                    System.Console.WriteLine($"Error while running task for connection<{_ip}: {_port}>: {e}");
                 } finally {
-                    System.Console.WriteLine($"Disconnected to {_ip}-{_port}");
+                    System.Console.WriteLine($"Disconnected to {_ip}: {_port}");
                     if (socketClient != null) {
-                        if (!CloseConnectionManually) {
-                            while (!ConnectToController()) {
-                                await Task.Delay(AuotReconnectingTrialDelay);
-                                System.Console.WriteLine($"Trying to reconnect to {_ip}-{_port}...");
-                            }
-                            RunTask();
-                        } else {
-                            socketClient.Close();
-                            socketClient = null;
-                        }
+                        socketClient.Close();
+                        socketClient = null;
+                    }
+                    if (CloseConnectionManually) {
+                        System.Console.WriteLine($"Socket connection<{_ip}: {_port}> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
         }
-
-        private async void CheckResponse() {
-            if (Connected && !CloseConnectionManually) {
-                try {
-                    byte[] msgBytes = new byte[1024 * 1024];
-                    int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                    if (msgLen >= 5) {
-                        Result = BytesToHexStr(msgBytes.Take(msgLen).ToArray());
-                    } else {
-                        Result = "";
+        public override void Connect() {
+            Task.Run(async () => {
+                while (true) {
+                    if (!Connected) {
+                        if (ConnectToServer()) {
+                            RunTask();
+                            RunLoop();
+                        } else {
+                            System.Console.WriteLine($"Trying to reconnect to {_ip}: {_port}...");
+                        }
                     }
-                } catch (Exception e) {
-                    System.Console.WriteLine($"No data received...");
+                    await Task.Delay(AuotReconnectingTrialDelay);
                 }
+            });
+        }
+        public override void CloseConnection() {
+            if (Connected) {
+                CloseConnectionManually = true;
+                socketClient.Close();
+                Result = null;
+                Commands.Clear();
+                System.Console.WriteLine($"Close connection<{_ip}: {_port}> manually...");
+            } else {
+                System.Console.WriteLine($"Connection<{_ip}: {_port}> already closed...");
             }
         }
+        #endregion
 
-        private bool ConnectToController() {
+        #region Methods
+        private bool ConnectToServer() {
+            if (Connected) {
+                System.Console.WriteLine($"Already connecting to {_ip}: {_port}, please don't connect repeatedly.");
+                return false;
+            }
+
+            System.Console.WriteLine($"Connecting to {_ip}: {_port}");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
-            if (Connected) {
-                System.Console.WriteLine($"Already connecting to {_ip}-{_port}, please don't connect repeatedly.");
-                return false;
-            }
-            System.Console.WriteLine($"Connecting to {_ip}-{_port}");
             // 1. check ping
             pingSuccess = PingHost(_ip);
             if (pingSuccess) {
                 // 2. check socket
                 try {
                     socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socketClient.ReceiveTimeout = 500;
+                    socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    System.Console.WriteLine($"Connected to {_ip}-{_port} successfully");
+                    System.Console.WriteLine($"Connected to {_ip}: {_port} successfully");
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while connecting to {_ip}-{_port}: {e}");
+                    System.Console.WriteLine($"Error while connecting to {_ip}: {_port}: {e}");
                 }
             } else {
-                System.Console.WriteLine($"Failed to connect to {_ip}-{_port}");
+                System.Console.WriteLine($"Failed to ping {_ip}: {_port}");
             }
             return pingSuccess && connectSuccess;
         }
-
-        private async Task<bool> ConnectToControllerAsync() {
-            bool pingSuccess = false;
-            bool connectSuccess = false;
-
-            if (Connected) {
-                System.Console.WriteLine($"Already connecting to {_ip}-{_port}, please don't connect repeatedly.");
-                return false;
-            }
-            System.Console.WriteLine($"Connecting to {_ip}-{_port}");
-            // 1. check ping
-            pingSuccess = PingHost(_ip);
-            if (pingSuccess) {
-                // 2. check socketResult
-                try {
-                    socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socketClient.ReceiveTimeout = 500;
-                    await socketClient.ConnectAsync(IPAddress.Parse(_ip), _port);
-                    connectSuccess = true;
-                } catch (Exception e) {
-                    System.Console.WriteLine($"Error while connecting to {_ip}-{_port}: {e}");
-                }
-            } else {
-                System.Console.WriteLine($"Failed to connect to {_ip}-{_port}");
-            }
-            return pingSuccess && connectSuccess;
-        }
-
         private bool PingHost(string namrOrAddress) {
             Ping? pinger = null;
             try {
@@ -147,7 +141,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error while pinging to {_ip}-{_port}: {pe}");
+                System.Console.WriteLine($"Ping error while pinging to {_ip}: {_port}: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -155,49 +149,29 @@ namespace OperationGuidance_new.Tasks {
                 }
             }
         }
-
-        public void Connect() {
-            if (ConnectToController()) {
-                RunTask();
-            }
-        }
-        
-        public async Task ConnectAsync() {
-            if (await ConnectToControllerAsync()) {
-                RunTask();
-            }
-        }
-
-        public void CloseConnection() {
-            if (Connected) {
-                CloseConnectionManually = true;
-                socketClient.Close();
-                Result = null;
-                Commands.Clear();
-                System.Console.WriteLine($"Close connection<{_ip}-{_port}> manually...");
-            } else {
-                System.Console.WriteLine($"Connection<{_ip}-{_port}> already closed...");
-            }
-        }
-
         public void SendCommand(string command) {
             Commands.Enqueue(command);
         }
-        
         public async Task<string?> SendCommandAsync(string command) {
+            Result = null;
             SendCommand(command);
 
             string? result = null;
+            int trialTime = 0;
             while (Connected && result == null) {
+                if (trialTime > ReceiveTimeout) {
+                    System.Console.WriteLine("Can't get any response at all, probably some other connection robbed it...");
+                    break;
+                }
                 result = Result;
                 if (result == null) {
                     await Task.Delay(LoopingInterval);
+                    trialTime += LoopingInterval;
                 }
             }
             Result = null;
             return result;
         }
-
         public async Task<Coordinates3D?> GetCurrentCoordinates() { 
             RetrieveResult = true;
             await Task.Delay(100);
@@ -205,27 +179,23 @@ namespace OperationGuidance_new.Tasks {
             RetrieveResult = false;
             return coordinates;
         }
-
         private async Task<Coordinates3D?> GetCoordinatesAsync() {
             Coordinates3D? coordinates = null;
             if (Connected) {
                 coordinates = new();
-                string? x = await SendCommandAsync(_coordinateCommands[0]);
+                string? x = await SendCommandAsync(_arm.COMMAND_READ_X_HEX.GetMessage());
                 if (x != null) {
                     coordinates.X = ParseResult(x);
                 }
-                string? y = await SendCommandAsync(_coordinateCommands[1]);
+                string? y = await SendCommandAsync(_arm.COMMAND_READ_Y_HEX.GetMessage());
                 if (y != null) {
                     coordinates.Y = ParseResult(y);
                 }
-                if (_coordinateCommands.Count() == 3) {
-                    string? z = await SendCommandAsync(_coordinateCommands[2]);
+                if (_arm.COMMAND_READ_Z_HEX != null) {
+                    string? z = await SendCommandAsync(_arm.COMMAND_READ_Z_HEX.GetMessage());
                     if (z != null) {
                         coordinates.Z = ParseResult(z);
                     }
-                }
-                if (_currentCoordinates == null || !_currentCoordinates.Equals(coordinates)) {
-                    System.Console.WriteLine($"coordinates: {coordinates.ToString()}");
                 }
                 if (_actionAfterReceiving.GetInvocationList().Length > 0) {
                     _actionAfterReceiving(coordinates);
@@ -233,37 +203,36 @@ namespace OperationGuidance_new.Tasks {
             }
             return coordinates;
         }
-
-        public void RunLoop() {
+        private void RunLoop() {
             Task.Run(async () => {
-                while (!CloseConnectionManually) {
-                    if (RetrieveResult) {
-                        _currentCoordinates = await GetCoordinatesAsync();
-                    } else {
-                        await Task.Delay(LoopingInterval);
+                try {
+                    while (!CloseConnectionManually) {
+                        if (RetrieveResult) {
+                            _currentCoordinates = await GetCoordinatesAsync();
+                        } else {
+                            await Task.Delay(LoopingInterval);
+                        }
                     }
+                } catch (Exception e) {
+                    System.Console.WriteLine($"Error occurred while looping for coordinates, e: {e}");
+                    throw e;
+                } finally {
+                    System.Console.WriteLine("Loop stops...");
                 }
-                System.Console.WriteLine($"................................");
             });
         }
-
         private int ParseResult(string result) {
             int coordinate = 0;
             if (result != null && result != "") {
                 string lowData = result.Substring(6, 4);
                 string HighData = result.Substring(10, 4);
                 if (lowData != "ffff" && HighData != "ffff") {
-                    coordinate = int.Parse((lowData), NumberStyles.HexNumber);
+                    coordinate = int.Parse(lowData, NumberStyles.HexNumber);
                     // coordinate = Convert.ToInt32(lowData, 16);
                 }
             }
             return coordinate;
         }
-
-        public static byte[] HexStrToBytes(string hexStr) => Enumerable.Range(0, hexStr.Length / 2)
-            .Select(x => Convert.ToByte(hexStr.Substring(x * 2, 2), 16))
-            .ToArray();
-
-        public static string BytesToHexStr(byte[] bytes) => Convert.ToHexString(bytes).ToLower();
+        #endregion
     }
 }

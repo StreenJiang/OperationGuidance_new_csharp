@@ -24,6 +24,8 @@ namespace OperationGuidance_new.ViewObjects {
         }
         [GridColumn("串口号")]
         public string? port_name { get; set; }
+        [GridColumn("串口全名")]
+        public string? port_full_name { get; set; }
         [GridColumn("波特率")]
         public int? baud_rate { get; set; }
         [GridColumn("数据位")]

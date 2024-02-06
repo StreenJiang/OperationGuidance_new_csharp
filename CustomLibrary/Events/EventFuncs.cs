@@ -58,7 +58,6 @@ namespace CustomLibrary.Events {
 
                         // Control失去焦点
                         if (CurrentActiveControl != null && !CurrentActiveControl.IsDisposed && CurrentActiveControl.Visible) {
-                            System.Console.WriteLine($"CurrentActiveControl: {CurrentActiveControl}");
                             Rectangle rectangleToScreen = new(CurrentActiveControl.PointToScreen(Point.Empty), CurrentActiveControl.Size);
                             // 判断鼠标点击的坐标是否在弹框范围外
                             if (!rectangleToScreen.Contains(point)) {

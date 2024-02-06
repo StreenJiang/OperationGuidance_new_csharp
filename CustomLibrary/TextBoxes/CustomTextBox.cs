@@ -152,10 +152,12 @@ namespace CustomLibrary.TextBoxes {
                             _errorProvider.SetError(_box, "请输入数字");
                             _box.Width = _boxErrorWidth;
                             _isError = true;
+                            ShowErrorToolTip();
                             Invalidate();
                             return;
                         }
                     }
+                    HideErrorToolTip();
                     _isError = false;
                     _errorProvider.SetError(_box, "");
                     _box.Width = _boxOriginalWidth;

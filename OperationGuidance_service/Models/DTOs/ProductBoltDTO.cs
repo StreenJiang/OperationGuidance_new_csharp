@@ -12,12 +12,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? position { get; set; }
         public float? location_x_percent { get; set; }
         public float? location_y_percent { get; set; }
-        public int? tool_id { get; set; }
-        public string? tool_name { get; set; }
-        public string? tool_description { get; set; }
-        public int? tool_type { get; set; }
-        public string? tool_ip { get; set; }
-        public int? tool_port { get; set; }
         public float? bit_specification { get; set; }
         public int? parameters_set { get; set; }
         public float? torque_min { get; set; }

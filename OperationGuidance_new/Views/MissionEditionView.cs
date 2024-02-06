@@ -198,6 +198,8 @@ namespace OperationGuidance_new.Views {
                         _saved = true;
                         _missionDTO = rsp.ProductMissionDTO;
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        // 保存后跳转至任务列表界面
+                        WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                     } else {
                         MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -238,8 +240,7 @@ namespace OperationGuidance_new.Views {
                         if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                             MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             // 删除后跳转至任务列表界面
-                            CustomChildMenuFirstButton missionListButton = WidgetUtils.GetChildMenu(101);
-                            missionListButton.TriggerClick(EventArgs.Empty);
+                            WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                         } else {
                             MessageBox.Show(null, "删除失败！错误信息：" + rsp.RsponseMessage, "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
@@ -619,6 +620,7 @@ namespace OperationGuidance_new.Views {
 
             private void SideButonClick(SideButton sideButton) {
                 if (sideButton != _currentSideButton) {
+                    _currentSideButton.ProductImageFileNew.SaveSideInfo();
                     _currentSideButton.SetToggle(false);
                     sideButton.SetToggle(true);
                     _currentSideButton = sideButton;
