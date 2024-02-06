@@ -18,6 +18,7 @@ using CustomLibrary.Forms;
 using CustomLibrary.Events;
 using CustomLibrary.Configs;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_service.Database;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -52,8 +53,6 @@ namespace OperationGuidance_new {
             // Get login user info
             OperationGuidanceApis apis = SystemUtils.GetApis();
             SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
-            // Initialize all tasks for devices
-            TaskInitializer.Init();
 
             // mainPanel
             mainPanel = new();
@@ -217,13 +216,24 @@ namespace OperationGuidance_new {
 
             // MainForm
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-            Size = new(1280, 720);
-            ClientSize = new(1280, 720);
+            string resolution = MainUtils.Settings.Read(IniFileKeys.Resolution);
+            if (!string.IsNullOrEmpty(resolution)) {
+                string[] strings = resolution.Split(",");
+                int width = int.Parse(strings[0].Trim());
+                int height = int.Parse(strings[1].Trim());
+                Size = new(width, height);
+                ClientSize = new(width, height);
+            } else {
+                Size = new(1280, 720);
+                ClientSize = new(1280, 720);
+            }
             MinimumSize = new Size(400, 300);
             Name = "MainForm";
             Text = "MainForm";
             CenterToScreen();
 
+            // Initialize all tasks for devices
+            TaskInitializer.Init();
 
             // Test
             //ProductMissionListReq req = new();
@@ -231,8 +241,6 @@ namespace OperationGuidance_new {
             //ProductMissionListRsp productMissionListRsp = apis.QueryProductMissionListRsp(req);
 
             //string b = CommonUtils.ImageToBase64(Properties.Resources.aneng_arm_error);
-
-            Console.WriteLine();
         }
 
         #endregion

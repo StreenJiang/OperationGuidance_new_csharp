@@ -4,10 +4,13 @@ using CustomLibrary.Constants;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Configs;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
         #region Fields
+        private readonly IniFile _settings;
         private readonly float _contentHGapRatio = 0.025F;
         private readonly float _contentVGapRatio = 0.05F;
         private readonly float _contentHPaddingRatio = 0.15F;
@@ -28,10 +31,13 @@ namespace OperationGuidance_new.Views {
         private TitlePanel _storageTitlePanel;
         private CustomContentPanel _storageContentPanel;
         private CustomTextBoxGroup _storageTextBox;
+        private CommonButton _storageBrowseButton;
+        private CommonButton _storageConfirmButton;
         #endregion
 
         #region Constructors
         public VariableSettingsView() {
+            _settings = MainUtils.Settings;
             // Default values
             FlowDirection = FlowDirection.TopDown;
 
@@ -127,6 +133,7 @@ namespace OperationGuidance_new.Views {
                             mainParent.Size = newSize;
                             mainParent.ClientSize = newSize;
                             mainParent.Location = new((screenSize.Width - newSize.Width) / 2, (screenSize.Height - newSize.Height) / 2);
+                            _settings.Write(IniFileKeys.Resolution, $"{newSize.Width}, {newSize.Height}");
                         }
                     }
                 }
@@ -153,7 +160,37 @@ namespace OperationGuidance_new.Views {
                 NameAlignment = HorizontalAlignment.Right,
                 Ratio = 7.25,
             };
-            _storageTextBox.GetTextBox(0).Box.Text = Directory.GetCurrentDirectory();
+            string dataStoragePath = _settings.Read(IniFileKeys.DataStoragePath);
+            if (string.IsNullOrEmpty(dataStoragePath)) {
+                dataStoragePath = Directory.GetCurrentDirectory() + "\\";
+            }
+            _storageTextBox.SetValue(0, dataStoragePath);
+            _storageBrowseButton = new() {
+                Parent = _storageContentPanel,
+                Label = "浏览",
+            };
+            _storageBrowseButton.Click += (sender, eventArgs) => {
+                FolderBrowserDialog dialog = new() {
+                    ShowNewFolderButton = true,
+                    SelectedPath = dataStoragePath,
+                };
+                if (dialog.ShowDialog() == DialogResult.OK) {
+                    _storageTextBox.SetValue(0, dialog.SelectedPath + "\\");
+                }
+            };
+            _storageConfirmButton = new() {
+                Parent = _storageContentPanel,
+                Label = "保存",
+            };
+            _storageConfirmButton.Click += (sender, eventArgs) => {
+                string newPath = _storageTextBox.GetTextBox(0).Box.Text;
+                if (!Directory.Exists(newPath)) {
+                    WidgetUtils.ShowErrorPopUp("当前路径不合法或不存在！");
+                } else {
+                    _settings.Write(IniFileKeys.DataStoragePath, _storageTextBox.GetTextBox(0).Box.Text);
+                    WidgetUtils.ShowNoticePopUp("切换存储路径成功！");
+                }
+            };
         }
         #endregion
 
@@ -170,8 +207,8 @@ namespace OperationGuidance_new.Views {
             _resolutionOptionsBox.Size = new((int) (Width - _resolutionContentPanel.Padding.Size.Width - _contentHGap) / 2, boxHeight);
             _resolutionOptionsBox.Margin = new(0, 0, _contentHGap / 2, 0);
             _resolutionConfirmButton.Height = WidgetUtils.CommonButtonHeight();
-            int labelWidth = TextRenderer.MeasureText(_resolutionConfirmButton.Label, _resolutionConfirmButton.Font).Width;
-            _resolutionConfirmButton.Width = (int) (labelWidth + _resolutionConfirmButton.Height * 1.2);
+            int confirmButtonLabelWidth = TextRenderer.MeasureText(_resolutionConfirmButton.Label, _resolutionConfirmButton.Font).Width;
+            _resolutionConfirmButton.Width = (int) (confirmButtonLabelWidth + _resolutionConfirmButton.Height * 1.2);
             _resolutionConfirmButton.Margin = new(_contentHGap / 2, 0, 0, 0);
             // Resize outer panel
             _resolutionPanel.Size = new(Width, _resolutionTitlePanel.Height + _resolutionContentPanel.Height);
@@ -187,6 +224,16 @@ namespace OperationGuidance_new.Views {
             // Resize box and button
             _storageTextBox.Size = new((int) (Width - _resolutionContentPanel.Padding.Size.Width - _contentHGap) / 2, boxHeight);
             _storageTextBox.Margin = new(0, 0, _contentHGap / 2, 0);
+            // Resize browse button
+            _storageBrowseButton.Height = WidgetUtils.CommonButtonHeight();
+            int browseButtonLabelWidth = TextRenderer.MeasureText(_storageBrowseButton.Label, _storageBrowseButton.Font).Width;
+            _storageBrowseButton.Width = (int) (browseButtonLabelWidth + _storageBrowseButton.Height * 1.2);
+            _storageBrowseButton.Margin = new(_contentHGap / 2, 0, 0, 0);
+            // Resize confirm button
+            _storageConfirmButton.Height = WidgetUtils.CommonButtonHeight();
+            int confirmButtonLabelWidth = TextRenderer.MeasureText(_storageConfirmButton.Label, _storageConfirmButton.Font).Width;
+            _storageConfirmButton.Width = (int) (confirmButtonLabelWidth + _storageConfirmButton.Height * 1.2);
+            _storageConfirmButton.Margin = new(_contentHGap / 2, 0, 0, 0);
             // Resize outer panel
             _storagePanel.Size = new(Width, _resolutionTitlePanel.Height + _resolutionContentPanel.Height);
         }

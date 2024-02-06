@@ -7,13 +7,13 @@ using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static IniFile Settings { get; set; } = new();
+
+        static MainUtils() {
+        }
+
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
-        private static Dictionary<int, ToolTask> _toolTasks = new();
-        public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
-        private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
-        public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
-
         public static void NewArmTask(int armId, string ip, int port, DeviceArm arm) {
             ArmTask task = new(ip, port, arm);
             task.Connect();
@@ -38,6 +38,8 @@ namespace OperationGuidance_new.Utils {
             return null;
         }
 
+        private static Dictionary<int, ToolTask> _toolTasks = new();
+        public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
         public static void NewToolTask(int toolId, string ip, int port, DeviceTool tool) {
             ToolTask task = new(ip, port, tool);
             task.Connect();
@@ -62,6 +64,8 @@ namespace OperationGuidance_new.Utils {
             return null;
         }
         
+        private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
+        public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
         public static void NewSerialPortTask(int serialPortId, string fullName, 
                 string portName, int baudRate, Parity parity, int dataBits, 
                 StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {

@@ -20,7 +20,7 @@ namespace CustomLibrary.Panels {
         protected override void DoAfterResizing(object? sender, EventArgs eventArgs) {
             if (_penBorderColor != null) {
                 int padding = 0;
-                if (_autoPadding) {
+                if (_autoPadding && this.TopLevelControl != null) {
                     padding = WidgetUtils.ContentInnerBorderMargin(this.TopLevelControl.Width, this.TopLevelControl.Height);
                 }
                 // Recalcuate rectangle

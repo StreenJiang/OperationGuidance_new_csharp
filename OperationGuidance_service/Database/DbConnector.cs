@@ -2,30 +2,22 @@ using System.Data.SQLite;
 
 namespace OperationGuidance_service.Database {
     public class DbConnector {
-        private static readonly string _databaseName = "database.db";
-        private static string _defaultDatabasePath = "\\OperationGuidance_service\\Database\\";
-        private static string? _customDatabasePath;
-
-        public static string? CustomDatabasePath { get => _customDatabasePath; set => _customDatabasePath = value; }
+        private static readonly string DatabaseName = "database.db";
+        private static readonly string _selfFolder = "Database\\";
+        private static string _defaultDatabasePath = "\\OperationGuidance_service\\" + _selfFolder;
 
         private static string GetCurrentDataSourcePath() {
-            string dataBasePath;
-            if (_customDatabasePath != null) {
-                dataBasePath = _customDatabasePath;
-            } else {
-                string currentProjectDirectory = Directory.GetCurrentDirectory();
-                string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
-                if (currentProjectDirectory.Contains(visualStudioDebugPath)) {
-                    currentProjectDirectory = currentProjectDirectory.Replace(visualStudioDebugPath, "");
-                }
-                dataBasePath = currentProjectDirectory + _defaultDatabasePath;
+            string currentProjectDirectory = Directory.GetCurrentDirectory();
+            string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
+            if (currentProjectDirectory.Contains(visualStudioDebugPath)) {
+                currentProjectDirectory = currentProjectDirectory.Replace(visualStudioDebugPath, "");
             }
-            return dataBasePath;
+            return currentProjectDirectory + _defaultDatabasePath;
         }
 
         public static SQLiteConnection GetConnection() {
             string dataSourcePath = GetCurrentDataSourcePath();
-            string dataSource = dataSourcePath + _databaseName;
+            string dataSource = dataSourcePath + DatabaseName;
             if (!File.Exists(dataSource)) {
                 ExecuteSqlFile();
             }
@@ -39,7 +31,7 @@ namespace OperationGuidance_service.Database {
             if (!Directory.Exists(dataSourcePath)) {
                 Directory.CreateDirectory(dataSourcePath);
             }
-            string dataSource = dataSourcePath + _databaseName;
+            string dataSource = dataSourcePath + DatabaseName;
             string commandText = Resource.init;
             using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True;"))
             using (SQLiteCommand command = conn.CreateCommand()) {
@@ -48,7 +40,7 @@ namespace OperationGuidance_service.Database {
                     command.CommandText = commandText;
                     command.ExecuteNonQuery();
                 } catch (Exception e) {
-                    throw new Exception($"Data source = {GetCurrentDataSourcePath()}");
+                    throw new Exception($"e: {e}, Data source = {GetCurrentDataSourcePath()}");
                 } finally { 
                     conn.Close();
                 }

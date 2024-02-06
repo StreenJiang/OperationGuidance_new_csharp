@@ -19,6 +19,8 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_new.Extensions;
+using OperationGuidance_service.Models;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -216,10 +218,14 @@ namespace OperationGuidance_new.Views {
                         _workplace.Activated = false;
                         WidgetUtils.MainPanel.Visible = true;
                         Parent.Visible = false;
+                        _workplace.Dispose();
                     }
                 } else {
                     WidgetUtils.MainPanel.Visible = true;
                     Parent.Visible = false;
+                    if (_workplace != null && !_workplace.IsDisposed) {
+                        _workplace.Dispose();
+                    }
                 }
             };
         }
@@ -290,6 +296,7 @@ namespace OperationGuidance_new.Views {
         private Dictionary<int, SerialPortTask> _serialPortTasks = new();
         private string? _barCodeMessage;
         private TighteningData? _tighteningData;
+        private List<OperationDataDTO> _dataNeedToBeStored = new();
 
         private CustomContentPanel _left;
         private CustomContentPanel _right;
@@ -792,7 +799,13 @@ namespace OperationGuidance_new.Views {
                             contentSize.Width = (int) (WidgetUtils.MainPanel.Width * .65);
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
-                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(deviceBlock.CategoryName, _workstationsDTOs, _toolTasks);
+                                    int? currentWorkstationId = null;
+                                    int? currentPset = null;
+                                    if (_currentWorkingBolt != null) {
+                                        currentWorkstationId = _currentWorkingBolt.BoltDTO.workstation_id;
+                                        currentPset = _currentWorkingBolt.BoltDTO.parameters_set;
+                                    }
+                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(deviceBlock.CategoryName, _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
                                     ToolOperationPopUpForm popUpForm = (ToolOperationPopUpForm) deviceBlock.PopUpForm;
@@ -870,7 +883,7 @@ namespace OperationGuidance_new.Views {
                                 serialPortTask.ActionAfterDataReceived = async msg => {
                                     await Task.Run(() => {
                                         BeginInvoke(async () => {
-                                            if (!_activated || _finished) {
+                                            if (!IsDisposed && !_activated || _finished) {
                                                 DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
                                                 // 无效字符校验
                                                 if (dto.invalid_char != null) {
@@ -978,10 +991,30 @@ namespace OperationGuidance_new.Views {
 
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
+            // Store all data left
+            StoreTighteningData();
             foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
                 // Clear all delegates once this workplace handle has been destroyed to ensure running performance
                 pair.Value.ActionAfterReceiving = new(c => {});
             }
+            _serialPortTasks = MainUtils.SerialPortTasks;
+            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
+                pair.Value.ActionAfterDataReceived = new(c => {});
+            }
+        }
+
+        private async void StoreTighteningData() {
+            await Task.Run(() => {
+                bool succeed = _dataNeedToBeStored.ExportToExcelFile("test.xlsx");
+                // 由于 excel 文件如果被人为开启会导致数据存储出错，因此先判断是否成功再进行后续操作
+                if (succeed) {
+                    _dataNeedToBeStored.ExportToTextFile("test.txt");
+                    _dataNeedToBeStored.Clear();
+                } else {
+                    WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
+                }
+            });
         }
 
         // 根据index切换点位
@@ -1044,28 +1077,42 @@ namespace OperationGuidance_new.Views {
         private async void DoAfterRecevingTighteningDataAsync(TighteningData data) {
             await Task.Run(() => {
                 BeginInvoke(() => {
-                    _tighteningData = data;
-                    _torque.Text = _tighteningData.Torque + "";
-                    _angle.Text = _tighteningData.Angle + "";
-
                     if (_currentWorkingBolt != null) {
-                        bool tighteningCompleted = true;
+                        _tighteningData = data;
+                        _torque.Text = _tighteningData.torque + "";
+                        _angle.Text = _tighteningData.angle + "";
+
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                        OperationDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
+                        WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id);
+                        dataDTO.workstation_id = workstationDTO.id;
+                        dataDTO.workstation_name = workstationDTO.name;
+                        int? toolId = workstationDTO.tool_id;
+                        DeviceToolDTO toolDTO = _tools.Single(t => t.id == toolId);
+                        dataDTO.tool_name = toolDTO.name;
+                        dataDTO.tool_ip = toolDTO.ip;
+                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type.Value).Name;
+                        dataDTO.product_sied_id = _sides[_currentSideIndex].id;
+                        dataDTO.bolt_serial_num = boltDTO.serial_num;
+                        _dataNeedToBeStored.Add(dataDTO);
+
+                        bool tighteningCompleted = true;
                         // 检查返回的拧紧状态是否为成功
-                        if (_tighteningData.TighteningStatus != null && _tighteningData.TighteningStatus != (int) TighteningStatus.OK) {
+                        if (_tighteningData.tightening_status != null && _tighteningData.tightening_status != (int) TighteningStatus.OK) {
                             tighteningCompleted = false;
                         }
                         // 检查控制器返回数据与螺栓点位配置的数据是否一致
                         // 程序号（pset）校验
-                        if (boltDTO.parameters_set != _tighteningData.ParameterSetNumber) {
+                        if (boltDTO.parameters_set != _tighteningData.parameter_set_number) {
                             tighteningCompleted = false;
                         }
                         // 扭矩校验
-                        if (boltDTO.torque_max > 0 && (_tighteningData.Torque < boltDTO.torque_min || _tighteningData.Torque > boltDTO.torque_max)) {
+                        if (boltDTO.torque_max > 0 && (_tighteningData.torque < boltDTO.torque_min || _tighteningData.torque > boltDTO.torque_max)) {
                             tighteningCompleted = false;
                         }
                         // 角度校验
-                        if (boltDTO.angle_max > 0 && (_tighteningData.Angle < boltDTO.angle_min || _tighteningData.Angle > boltDTO.angle_max)) {
+                        if (boltDTO.angle_max > 0 && (_tighteningData.angle < boltDTO.angle_min || _tighteningData.angle > boltDTO.angle_max)) {
                             tighteningCompleted = false;
                         }
                         // 切换下一个点位
@@ -1074,34 +1121,29 @@ namespace OperationGuidance_new.Views {
                             _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                             _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                             // 当前点位完成后先把设备的状态都复原
-                            if (boltDTO.workstation_id != null) {
-                                WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id.Value);
-                                int? toolId = workstationDTO.tool_id;
-                                if (toolId != null) {
-                                    _toolTasks[toolId.Value].SendLock();
-                                    // 力臂
-                                    int? armId = workstationDTO.arm_id;
-                                    if (armId != null) {
-                                        ArmTask armTask = _armTasks[armId.Value];
-                                        // 修改点位状态并切换点位
-                                        _currentWorkingBolt.BoltStatus = BoltStatus.DONE;
-                                        int currentIndex = _allBolts.IndexOf(_currentWorkingBolt);
-                                        if (currentIndex != _allBolts.Count - 1) {
-                                            _currentWorkingBolt = SwitchBolt(currentIndex + 1);
-                                        } else {
-                                            // 已经打完最后一个点位，任务完成
-                                            _activated = false;
-                                            _finished = true;
-                                            _currentWorkingBolt = null;
-                                            armTask.RetrieveResult = false;
-                                            armTask.OnActionAfterReceiving -= ActionAfterArmDataReceived;
-                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED;
-                                            _workingProcessPanel.BoltSerialNum = null;
-                                            // 扭矩角度数据显示panel背景颜色改回黑色
-                                            _torque.ForeColor = Color.Black;
-                                            _angle.ForeColor = Color.Black;
-                                        }
-                                    }
+                            _toolTasks[toolId.Value].SendLock();
+                            // 力臂
+                            int? armId = workstationDTO.arm_id;
+                            if (armId != null) {
+                                ArmTask armTask = _armTasks[armId.Value];
+                                // 修改点位状态并切换点位
+                                _currentWorkingBolt.BoltStatus = BoltStatus.DONE;
+                                int currentIndex = _allBolts.IndexOf(_currentWorkingBolt);
+                                if (currentIndex != _allBolts.Count - 1) {
+                                    _currentWorkingBolt = SwitchBolt(currentIndex + 1);
+                                } else {
+                                    // 已经打完最后一个点位，任务完成
+                                    _activated = false;
+                                    _finished = true;
+                                    _currentWorkingBolt = null;
+                                    armTask.RetrieveResult = false;
+                                    armTask.OnActionAfterReceiving -= ActionAfterArmDataReceived;
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED;
+                                    _workingProcessPanel.BoltSerialNum = null;
+                                    // 扭矩角度数据显示panel背景颜色改回黑色
+                                    _torque.ForeColor = Color.Black;
+                                    _angle.ForeColor = Color.Black;
+                                    StoreTighteningData();
                                 }
                             }
                         } else {

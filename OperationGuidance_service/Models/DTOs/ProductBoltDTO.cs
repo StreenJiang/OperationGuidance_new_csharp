@@ -7,8 +7,8 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? name { get; set; } = string.Empty;
         public float? specification { get; set; }
         public int? workstation_id { get; set; }
-        public int? workstation_name { get; set; }
-        public int? workstation_description { get; set; }
+        public string? workstation_name { get; set; }
+        public string? workstation_description { get; set; }
         public string? position { get; set; }
         public float? location_x_percent { get; set; }
         public float? location_y_percent { get; set; }

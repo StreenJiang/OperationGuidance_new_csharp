@@ -70,6 +70,7 @@ namespace OperationGuidance_new.Tasks {
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
+                        Commands.Clear();
                     }
                     if (CloseConnectionManually) {
                         System.Console.WriteLine($"Socket connection<{_ip}: {_port}> has been closed manually, won't try to reconnecte anymore.");
@@ -206,7 +207,7 @@ namespace OperationGuidance_new.Tasks {
         private void RunLoop() {
             Task.Run(async () => {
                 try {
-                    while (!CloseConnectionManually) {
+                    while (Connected) {
                         if (RetrieveResult) {
                             _currentCoordinates = await GetCoordinatesAsync();
                         } else {

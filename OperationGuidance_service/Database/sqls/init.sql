@@ -10,38 +10,22 @@
  Target Server Version : 3030001
  File Encoding         : 65001
 
- Date: 26/12/2023 12:27:43
+ Date: 07/02/2024 03:32:59
 */
 
 PRAGMA foreign_keys = false;
 
 -- ----------------------------
--- Table structure for brand
+-- Table structure for device_arm
 -- ----------------------------
-DROP TABLE IF EXISTS "brand";
-CREATE TABLE "brand" (
+DROP TABLE IF EXISTS "device_arm";
+CREATE TABLE "device_arm" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "description" text(512),
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
-);
-
--- ----------------------------
--- Table structure for device
--- ----------------------------
-DROP TABLE IF EXISTS "device";
-CREATE TABLE "device" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "name" text(128),
-  "description" text(512),
-  "model_id" integer,
   "ip" text(16),
   "port" integer(8),
+  "type" integer(4),
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -51,18 +35,16 @@ CREATE TABLE "device" (
 );
 
 -- ----------------------------
--- Table structure for device_category
+-- Table structure for device_communication
 -- ----------------------------
-DROP TABLE IF EXISTS "device_category";
-CREATE TABLE "device_category" (
+DROP TABLE IF EXISTS "device_communication";
+CREATE TABLE "device_communication" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "description" text(512),
-  "can_manipulate" integer(1),
-  "icon_normal" text(2048),
-  "icon_normal_name" text(128),
-  "icon_error" text(2048),
-  "icon_error_name" text(128),
+  "ip" text(16),
+  "port" integer(8),
+  "type" integer(4),
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -72,15 +54,126 @@ CREATE TABLE "device_category" (
 );
 
 -- ----------------------------
--- Table structure for device_model
+-- Table structure for device_serial_port
 -- ----------------------------
-DROP TABLE IF EXISTS "device_model";
-CREATE TABLE "device_model" (
+DROP TABLE IF EXISTS "device_serial_port";
+CREATE TABLE "device_serial_port" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "description" text(512),
-  "category_id" integer,
-  "brand_id" integer,
+  "type" integer(4),
+  "port_name" text(32),
+  "port_full_name" text(128),
+  "baud_rate" integer(32),
+  "data_bit" integer(4),
+  "parity" integer(4),
+  "stop_bit" integer(4),
+  "data_type" integer(4),
+  "invalid_char" text(128),
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Table structure for device_tool
+-- ----------------------------
+DROP TABLE IF EXISTS "device_tool";
+CREATE TABLE "device_tool" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "name" text(128),
+  "description" text(512),
+  "ip" text(16),
+  "port" integer(8),
+  "type" integer(4),
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Table structure for operation_data
+-- ----------------------------
+DROP TABLE IF EXISTS "operation_data";
+CREATE TABLE "operation_data" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "workstation_id" integer(16),
+  "workstation_name" text(64),
+  "tool_name" text(64),
+  "tool_ip" text(64),
+  "tool_type" text(64),
+  "gun_num" text(64),
+  "product_sied_id" integer(16),
+  "bolt_serial_num" integer(16),
+  "tightening_count" integer(16),
+  "work_group_id" integer(16),
+  "work_group_name" text(64),
+  "work_group_count" integer(16),
+  "work_group_size" integer(16),
+  "work_group_status" integer(16),
+  "data_package_stamp" text(64),
+  "cell_id" integer(16),
+  "channel_id" integer(16),
+  "torque_controller_name" text(64),
+  "vin_number" text(64),
+  "job_id" integer(16),
+  "parameter_set_number" integer(16),
+  "strategy" integer(16),
+  "strategy_options" integer(16),
+  "batch_size" integer(16),
+  "batch_counter" integer(16),
+  "tightening_status" integer(16),
+  "batch_status" integer(16),
+  "torque_status" integer(16),
+  "angle_status" integer(16),
+  "rundown_status" integer(16),
+  "rundown_torque_status" integer(16),
+  "rundown_angle_status" integer(16),
+  "current_monitoring_status" integer(16),
+  "self_tap_status" integer(16),
+  "prevail_torque_monitoring_status" integer(16),
+  "prevail_torque_compensate_status" integer(16),
+  "tightening_error_status" integer(16),
+  "torque_min_limit" real(16),
+  "torque_max_limit" real(16),
+  "torque_final_target" real(16),
+  "torque" real(16),
+  "angle_min" integer(16),
+  "angle_max" integer(16),
+  "angle_final_target" integer(16),
+  "angle" integer(16),
+  "rundown_angle_min" integer(16),
+  "rundown_angle_max" integer(16),
+  "rundown_angle" integer(16),
+  "rundown_angle_target" integer(16),
+  "rundown_torque_min" integer(16),
+  "rundown_torque_max" integer(16),
+  "rundown_torque" integer(16),
+  "rundown_torque_target" integer(16),
+  "current_monitoring_min" integer(16),
+  "current_monitoring_max" integer(16),
+  "current_monitoring_value" integer(16),
+  "self_tap_min" real(16),
+  "self_tap_max" real(16),
+  "self_tap_torque" real(16),
+  "prevail_torque_monitoring_min" real(16),
+  "prevail_torque_monitoring_max" real(16),
+  "prevail_torque" real(16),
+  "tightening_id" integer(16),
+  "job_sequence_number" integer(16),
+  "sync_tightening_id" integer(16),
+  "tool_serial_number" text(64),
+  "timestamp" text(64),
+  "date_or_time_of_last_change_in_parameter_set_settings" text(64),
+  "parameter_set_name" text(64),
+  "torque_values_unit" integer(16),
+  "result_type" integer(16),
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -98,12 +191,11 @@ CREATE TABLE "product_bolt" (
   "side_id" integer,
   "serial_num" integer,
   "name" text(128),
-  "description" text(512),
   "specification" real(16),
+  "workstation_id" integer,
   "position" text(32),
   "location_x_percent" real(8),
   "location_y_percent" real(8),
-  "tool_id" integer,
   "bit_specification" real(16),
   "parameters_set" integer(8),
   "torque_min" real(16),
@@ -171,35 +263,9 @@ CREATE TABLE "workstation" (
   "name" text(128),
   "tool_id" integer,
   "arm_id" integer,
+  "serial_port_id" integer,
+  "communication_id" integer,
   "enabled" integer(1),
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
-);
-
-
--- ----------------------------
--- Table structure for operation_data
--- ----------------------------
-DROP TABLE IF EXISTS "operation_data";
-CREATE TABLE "operation_data" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "procedure_set" integer(8),
-  "tightened_status" text(32),
-  "torque_status" text(32),
-  "angle_status" text(32),
-  "torque" real(32),
-  "torque_max" real(32),
-  "angle" real(32),
-  "angle_max" real(32),
-  "angle_target" real(32),
-  "angle_min" real(32),
-  "batch_current" integer(8),
-  "batch_sum" integer(8),
-  "batch_status" text(32),
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -231,38 +297,6 @@ CREATE TABLE "user_account_info" (
 -- Records of user_account_info
 -- ----------------------------
 INSERT INTO "user_account_info" VALUES (1, NULL, 'Admin', NULL, 'root', 'root', -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
-
--- ----------------------------
--- Auto increment value for brand
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for device
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for device_category
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for device_model
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for product
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for product_bolt
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for product_mission
--- ----------------------------
-
--- ----------------------------
--- Auto increment value for product_side
--- ----------------------------
 
 -- ----------------------------
 -- Auto increment value for user_account_info
