@@ -335,6 +335,17 @@ namespace OperationGuidance_service.Controllers {
                 OperationDataDTOs = operationDataDTOs,
             };
         }
+        // 批量数据插入
+        public BatchAddOperationDataRsp BatchAddOperationData(BatchAddOperationDataReq req) {
+            List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
+            List<OperationData> operationDatas = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationData>(operationDataDTOs, operationDatas);
+            int num = _operationDataService.AddBatch(operationDatas);
+
+            return new() {
+                Num = num,
+            };
+        }
         #endregion
 
         #region 力臂相关

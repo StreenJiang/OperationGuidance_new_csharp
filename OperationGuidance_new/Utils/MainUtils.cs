@@ -4,12 +4,14 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static IniFile Settings { get; set; } = new();
 
-        static MainUtils() {
+        public static string GetStorageFileName() {
+            return DateTime.Now.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD);
         }
 
         private static Dictionary<int, ArmTask> _armTasks = new();

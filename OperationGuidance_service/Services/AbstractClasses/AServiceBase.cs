@@ -32,6 +32,10 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return this.Wrapper.Add(entity);
         }
 
+        public int AddBatch(List<T> entities) {
+            return this.Wrapper.AddBatch(entities);
+        }
+
         public T? UpdateEntity(T entity) {
             return this.Wrapper.Update(entity);
         }

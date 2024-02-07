@@ -2,7 +2,7 @@ using System.Reflection;
 using ClosedXML.Excel;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
-using OperationGuidance_service.Models;
+using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Extensions {
     public static class ExtenstionMethods {

@@ -1,6 +1,6 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
-namespace OperationGuidance_service.Models {
+namespace OperationGuidance_service.Models.DTOs {
     public class OperationDataDTO: ADTOBase {
         // 其他信息字段, 带“*”号的不确定哪来的
         public int? workstation_id { get; set; }                                            // 站点编号

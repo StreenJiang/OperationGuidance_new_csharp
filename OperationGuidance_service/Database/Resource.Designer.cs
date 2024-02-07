@@ -73,17 +73,17 @@ namespace OperationGuidance_service.Database {
         /// Target Server Version : 3030001
         /// File Encoding         : 65001
         ///
-        /// Date: 26/12/2023 12:27:43
+        /// Date: 07/02/2024 03:32:59
         ///*/
         ///
         ///PRAGMA foreign_keys = false;
         ///
         ///-- ----------------------------
-        ///-- Table structure for brand
+        ///-- Table structure for device_arm
         ///-- ----------------------------
-        ///DROP TABLE IF EXISTS &quot;brand&quot;;
-        ///CREATE TABLE &quot;brand&quot; (
-        ///  &quot;id&quot; integer NOT NULL [rest of string was truncated]&quot;;.
+        ///DROP TABLE IF EXISTS &quot;device_arm&quot;;
+        ///CREATE TABLE &quot;device_arm&quot; (
+        ///  &quot;id&quot; i [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string init {
             get {

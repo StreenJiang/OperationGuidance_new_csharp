@@ -1006,10 +1006,11 @@ namespace OperationGuidance_new.Views {
 
         private async void StoreTighteningData() {
             await Task.Run(() => {
-                bool succeed = _dataNeedToBeStored.ExportToExcelFile("test.xlsx");
+                bool succeed = _dataNeedToBeStored.ExportToExcelFile($"{MainUtils.GetStorageFileName()}.xlsx");
                 // 由于 excel 文件如果被人为开启会导致数据存储出错，因此先判断是否成功再进行后续操作
                 if (succeed) {
-                    _dataNeedToBeStored.ExportToTextFile("test.txt");
+                    _apis.BatchAddOperationData(new(_dataNeedToBeStored));
+                    _dataNeedToBeStored.ExportToTextFile($"{MainUtils.GetStorageFileName()}.txt");
                     _dataNeedToBeStored.Clear();
                 } else {
                     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
