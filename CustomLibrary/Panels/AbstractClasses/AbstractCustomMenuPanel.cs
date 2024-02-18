@@ -1,6 +1,5 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Constants;
-using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 
 namespace CustomLibrary.Panels.AbstractClasses
@@ -94,8 +93,11 @@ namespace CustomLibrary.Panels.AbstractClasses
 
         // Recalculate size
         public void ResizeSelf() {
+            if (Parent == null) {
+                return;
+            }
             if (_panelDirection != null) {
-                Size parentSize = this.Parent.Size;
+                Size parentSize = Parent.Size;
                 switch (_panelDirection) {
                     case MenuPanelDirection.TOP:
                     case MenuPanelDirection.BOTTOM:

@@ -84,10 +84,6 @@ namespace OperationGuidance_new.Views {
         }
         protected override void AddOrUpdate(OperationDataDTO dto, Action action) {}
         protected override void Delete(List<int> ids) {}
-        protected override void OnHandleCreated(EventArgs e) {
-            base.OnHandleCreated(e);
-            _dataGridView.DataSource = QueryList();
-        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _dataGridView.Size = contentSize;

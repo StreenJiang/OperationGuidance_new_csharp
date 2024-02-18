@@ -8,23 +8,21 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? tool_name { get; set; }                                              // 工具名称
         public string? tool_ip { get; set; }                                                // 工具IP
         public string? tool_type { get; set; }                                              // 工具类别
-        public string? gun_num { get; set; }                                                // * 枪(轴)号
+        public string? gun_num { get; set; }                                                // 枪(轴)号（多把枪的情况）
         public int? product_sied_id { get; set; }                                           // 产品面号
         public int? bolt_serial_num { get; set; }                                           // 点位号
-        public int? tightening_count { get; set; }                                          // * 拧紧计数
-        public int? work_group_id { get; set; }                                             // * 工作组号
+        public int? tightening_count { get; set; }                                          // 拧紧计数（根据需求来）
         public string? work_group_name { get; set; }                                        // * 工作组名
         public int? work_group_count { get; set; }                                          // * 工作组计数
         public int? work_group_size { get; set; }                                           // * 工作组总数量
         public int? work_group_status { get; set; }                                         // * 工作组状态
-        public string? data_package_stamp { get; set; }                                     // * 数据包戳记
 
         // 数据报文字段，带“*”号的都是返回报文中不存在的字段
         public int? cell_id { get; set; }                                                   //
         public int? channel_id { get; set; }                                                //
         public string? torque_controller_name { get; set; }                                 //
         public string? vin_number { get; set; }                                             // 条码
-        public int? job_id { get; set; }                                                    //
+        public int? job_id { get; set; }                                                    // 工作组号
         public int? parameter_set_number { get; set; }                                      // 程序号
         public int? strategy { get; set; }                                                  //
         public int? strategy_options { get; set; }                                          //
@@ -67,7 +65,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public float? prevail_torque_monitoring_min { get; set; }                           // 
         public float? prevail_torque_monitoring_max { get; set; }                           // 
         public float? prevail_torque { get; set; }                                          // 
-        public int? tightening_id { get; set; }                                             // 
+        public int? tightening_id { get; set; }                                             // 数据包戳记
         public int? job_sequence_number { get; set; }                                       // 
         public int? sync_tightening_id { get; set; }                                        // 
         public string? tool_serial_number { get; set; }                                     //

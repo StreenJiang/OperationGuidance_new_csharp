@@ -143,6 +143,27 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             RefreshImage();
         }
 
+        public void ImageMoveUp() {
+            Point locationOffset = new(0, -(int) (_containerMaxRect.Height * ConfigsVariables.IMAGE_MOVEMENT_STEP));
+            _locationOffset.Offset(locationOffset);
+            RefreshImage();
+        }
+        public void ImageMoveDown() {
+            Point locationOffset = new(0, (int) (_containerMaxRect.Height * ConfigsVariables.IMAGE_MOVEMENT_STEP));
+            _locationOffset.Offset(locationOffset);
+            RefreshImage();
+        }
+        public void ImageMoveLeft() {
+            Point locationOffset = new(-(int) (_containerMaxRect.Height * ConfigsVariables.IMAGE_MOVEMENT_STEP), 0);
+            _locationOffset.Offset(locationOffset);
+            RefreshImage();
+        }
+        public void ImageMoveRight() {
+            Point locationOffset = new((int) (_containerMaxRect.Height * ConfigsVariables.IMAGE_MOVEMENT_STEP), 0);
+            _locationOffset.Offset(locationOffset);
+            RefreshImage();
+        }
+
         public void ImageCrop() {
             // Get real time displayed image, and will have its size and location
             Image? imageDisplay = GetDisplayImage();

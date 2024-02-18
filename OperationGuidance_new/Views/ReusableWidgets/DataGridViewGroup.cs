@@ -178,10 +178,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _extraButtons.Add(extraButton);
             return extraButton;
         }
-        private void QueryAndRefresh() {
-            // TODO: try to use background worker here
-            _voGridView.DataSource = _queryData(_filterParametersVO);
-        }
+        private void QueryAndRefresh() => _voGridView.DataSource = _queryData(_filterParametersVO);
         private List<int> GetSelectedIds() {
             List<int> ids = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;

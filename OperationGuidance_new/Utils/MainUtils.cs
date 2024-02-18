@@ -16,13 +16,13 @@ namespace OperationGuidance_new.Utils {
 
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
-        public static void NewArmTask(int armId, string ip, int port, DeviceArm arm) {
-            ArmTask task = new(ip, port, arm);
+        public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceArm arm) {
+            ArmTask task = new(armName, ip, port, arm);
             task.Connect();
             _armTasks.Add(armId, task);
         }
-        public static async Task<ArmTask> NewArmTaskAsync(int armId, string ip, int port, DeviceArm arm) {
-            ArmTask task = new(ip, port, arm);
+        public static async Task<ArmTask> NewArmTaskAsync(int armId, string? armName, string ip, int port, DeviceArm arm) {
+            ArmTask task = new(armName, ip, port, arm);
             await task.ConnectAsync();
             _armTasks.Add(armId, task);
             return task;
@@ -42,13 +42,13 @@ namespace OperationGuidance_new.Utils {
 
         private static Dictionary<int, ToolTask> _toolTasks = new();
         public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
-        public static void NewToolTask(int toolId, string ip, int port, DeviceTool tool) {
-            ToolTask task = new(ip, port, tool);
+        public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTool tool) {
+            ToolTask task = new(toolName, ip, port, tool);
             task.Connect();
             _toolTasks.Add(toolId, task);
         }
-        public static async Task<ToolTask> NewToolTaskAsync(int toolId, string ip, int port, DeviceTool tool) {
-            ToolTask task = new(ip, port, tool);
+        public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTool tool) {
+            ToolTask task = new(toolName, ip, port, tool);
             await task.ConnectAsync();
             _toolTasks.Add(toolId, task);
             return task;
@@ -94,6 +94,16 @@ namespace OperationGuidance_new.Utils {
                 return _serialPortTasks[serialPortId];
             }
             return null;
+        }
+
+        public static TextBox? EventLogTextArea { get; set; }
+        public static void PrintEventLog(string message) {
+            System.Console.WriteLine(message);
+            if (EventLogTextArea != null) {
+                EventLogTextArea.BeginInvoke(() => {
+                    EventLogTextArea.AppendText(message + "\r\n");
+                });
+            }
         }
 
         /// <summary>

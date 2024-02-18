@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
@@ -31,11 +32,13 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Constructors
-        public ArmTask(string ip, int port, DeviceArm arm) {
+        public ArmTask(string? name, string ip, int port, DeviceArm arm) {
+            _device_name = name;
             _ip = ip;
             _port = port;
             _arm = arm;
             _actionAfterReceiving += c => {};
+            Status = DISCONNECTED;
         }
         #endregion
 
@@ -59,49 +62,46 @@ namespace OperationGuidance_new.Tasks {
                                     Result = "";
                                 }
                             } catch (Exception e) {
-                                System.Console.WriteLine($"No data received...");
+                                MainUtils.PrintEventLog($"No data received...");
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while running task for connection<{_ip}: {_port}>: {e}");
+                    MainUtils.PrintEventLog($"Error while running task for connection<ARM[{_device_name} - {_ip}: {_port}]>: {e}");
                 } finally {
-                    System.Console.WriteLine($"Disconnected to {_ip}: {_port}");
+                    MainUtils.PrintEventLog($"Disconnected to ARM[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                         Commands.Clear();
                     }
                     if (CloseConnectionManually) {
-                        System.Console.WriteLine($"Socket connection<{_ip}: {_port}> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.PrintEventLog($"Socket connection<ARM[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
         }
-        public override void Connect() {
-            Task.Run(async () => {
-                while (true) {
-                    if (!Connected) {
-                        if (ConnectToServer()) {
-                            RunTask();
-                            RunLoop();
-                        } else {
-                            System.Console.WriteLine($"Trying to reconnect to {_ip}: {_port}...");
-                        }
+        public override Task Connect() {
+            return Task.Run(async () => {
+                while (!Connected) {
+                    Status = CONNECTING;
+                    if (ConnectToServer()) {
+                        RunTask();
+                        RunLoop();
+                        Status = CONNECTED;
+                        break;
                     }
                     await Task.Delay(AuotReconnectingTrialDelay);
                 }
             });
         }
         public override void CloseConnection() {
+            MainUtils.PrintEventLog($"Close connection<ARM[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 CloseConnectionManually = true;
                 socketClient.Close();
                 Result = null;
                 Commands.Clear();
-                System.Console.WriteLine($"Close connection<{_ip}: {_port}> manually...");
-            } else {
-                System.Console.WriteLine($"Connection<{_ip}: {_port}> already closed...");
             }
         }
         #endregion
@@ -109,11 +109,11 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToServer() {
             if (Connected) {
-                System.Console.WriteLine($"Already connecting to {_ip}: {_port}, please don't connect repeatedly.");
+                MainUtils.PrintEventLog($"Already connecting to ARM[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            System.Console.WriteLine($"Connecting to {_ip}: {_port}");
+            MainUtils.PrintEventLog($"Connecting to ARM[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
@@ -126,12 +126,12 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    System.Console.WriteLine($"Connected to {_ip}: {_port} successfully");
+                    MainUtils.PrintEventLog($"Connected to ARM[{_device_name} - {_ip}: {_port}] successfully");
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while connecting to {_ip}: {_port}: {e}");
+                    MainUtils.PrintEventLog($"Error while connecting to ARM[{_device_name} - {_ip}: {_port}]: {e}");
                 }
             } else {
-                System.Console.WriteLine($"Failed to ping {_ip}: {_port}");
+                MainUtils.PrintEventLog($"Failed to ping ARM[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
         }
@@ -142,7 +142,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error while pinging to {_ip}: {_port}: {pe}");
+                MainUtils.PrintEventLog($"Ping error while pinging to ARM[{_device_name} - {_ip}: {_port}]: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -161,7 +161,7 @@ namespace OperationGuidance_new.Tasks {
             int trialTime = 0;
             while (Connected && result == null) {
                 if (trialTime > ReceiveTimeout) {
-                    System.Console.WriteLine("Can't get any response at all, probably some other connection robbed it...");
+                    MainUtils.PrintEventLog("Can't get any response at all, probably some other connection robbed it...");
                     break;
                 }
                 result = Result;
@@ -215,10 +215,10 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error occurred while looping for coordinates, e: {e}");
+                    MainUtils.PrintEventLog($"Error occurred while looping for coordinates, e: {e}");
                     throw e;
                 } finally {
-                    System.Console.WriteLine("Loop stops...");
+                    MainUtils.PrintEventLog("Loop stops...");
                 }
             });
         }

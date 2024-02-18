@@ -234,6 +234,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
             }
+            // _gridView.VirtualMode = true;
             _gridView.Columns.AddRange(columnRange);
             _gridView.Columns[0].Frozen = true;
         }
@@ -466,32 +467,36 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         private void Paging(int currentPage, int pageSize) {
             ClearAllToggleButtonCells();
-            BindingSource bindingSource = new();
-            if (_dataSource.Count > 0) {
-                bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
-            } else {
-                bindingSource.DataSource = null;
-            }
-            LoadDataAsynchronously(bindingSource);
+            Task.Run(() => {
+                BeginInvoke(() => {
+                    if (IsHandleCreated) {
+                        BindingSource bindingSource = new();
+                        if (_dataSource.Count > 0) {
+                            bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
+                        } else {
+                            bindingSource.DataSource = null;
+                        }
+                        LoadDataAsync(bindingSource);
+                    }
+                });
+            });
         }
-        private void LoadDataAsynchronously(BindingSource bindingSource) {
-            if (IsHandleCreated) {
-                new Thread(new ThreadStart(() => {
-                    Invoke(new EventHandler(delegate(object? sender, EventArgs eventArgs) {
+        private void LoadDataAsync(BindingSource bindingSource) {
+            Task.Run(() => {
+                BeginInvoke(() => {
+                    if (IsHandleCreated) {
                         _gridView.DataSource = bindingSource;
                         ResetPageInfo();
                         ResizeChildren();
-                    }), new object[2] { this, null });
-                })).Start();
-            }
+                        System.Console.WriteLine("888888888888888888888888888");
+                    }
+                });
+            });
+            System.Console.WriteLine("999999999999999999999999999");
         }
         #endregion
 
         #region Override methods
-        protected override void OnHandleCreated(EventArgs e) {
-            base.OnHandleCreated(e);
-            Paging(_currentPage, _pageSize);
-        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
             foreach (DataGridViewColumn column in _gridView.Columns) {
@@ -510,7 +515,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int newHeaderHeight = WidgetUtils.GridViewHeaderRowHeight();
             if (newHeaderHeight >= 4) {
                 _gridView.ColumnHeadersHeight = newHeaderHeight;
-                _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
+                _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
                 // Check if any image column exists
                 foreach (DataGridViewColumn column in _gridView.Columns) {
                     if (column is DataGridViewImageColumn imageColumn) {
@@ -525,7 +530,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 foreach (DataGridViewRow row in _gridView.Rows) {
                     row.Height = newContentHeight;
                 }
-                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
+                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
             }
             // Page info panel height
             int newPageInfoHeight = WidgetUtils.GridViewPageInfoHeight();

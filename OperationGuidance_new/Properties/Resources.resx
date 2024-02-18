@@ -223,6 +223,18 @@
   <data name="device_serial_port" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\device_serial_port.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="direction_down" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\direction_down.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_left" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\direction_left.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_right" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\direction_right.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_up" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\direction_up.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="event_log" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\event_log.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

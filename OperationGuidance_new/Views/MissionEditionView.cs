@@ -83,6 +83,10 @@ namespace OperationGuidance_new.Views {
             private ImageButton _imageButtonZoomOut;
             private ImageButton _imageButtonRotateAntiClockwise;
             private ImageButton _imageButtonRotateClockwise;
+            private ImageButton _imageButtonMoveUp;
+            private ImageButton _imageButtonMoveDown;
+            private ImageButton _imageButtonMoveLeft;
+            private ImageButton _imageButtonMoveRight;
             private ImageButton _imageButtonCrop;
             private ImageButton _imageButtonUndo;
             private ImageButton _imageButtonReset;
@@ -269,6 +273,22 @@ namespace OperationGuidance_new.Views {
                 _imageButtonRotateAntiClockwise = GenerateImageButton("逆时旋转", Properties.Resources.image_rotate_anticlockwise, (sender, eventArgs) => {
                     _currentProductImageFile.SaveCurrent();
                     _currentProductImageFile.ImageRotateAntiClockwise();
+                });
+                _imageButtonMoveUp = GenerateImageButton("向上移动", Properties.Resources.direction_up, (sender, eventArgs) => {
+                    _currentProductImageFile.SaveCurrent();
+                    _currentProductImageFile.ImageMoveUp();
+                });
+                _imageButtonMoveDown = GenerateImageButton("向下移动", Properties.Resources.direction_down, (sender, eventArgs) => {
+                    _currentProductImageFile.SaveCurrent();
+                    _currentProductImageFile.ImageMoveDown();
+                });
+                _imageButtonMoveLeft = GenerateImageButton("向左移动", Properties.Resources.direction_left, (sender, eventArgs) => {
+                    _currentProductImageFile.SaveCurrent();
+                    _currentProductImageFile.ImageMoveLeft();
+                });
+                _imageButtonMoveRight = GenerateImageButton("向右移动", Properties.Resources.direction_right, (sender, eventArgs) => {
+                    _currentProductImageFile.SaveCurrent();
+                    _currentProductImageFile.ImageMoveRight();
                 });
                 _imageButtonCrop = GenerateImageButton("裁剪图片", Properties.Resources.image_crop, (sender, eventArgs) => {
                     _currentProductImageFile.SaveCurrent();
@@ -829,6 +849,10 @@ namespace OperationGuidance_new.Views {
                 HandleImageButton(_imageButtonZoomIn);
                 HandleImageButton(_imageButtonRotateClockwise);
                 HandleImageButton(_imageButtonRotateAntiClockwise);
+                HandleImageButton(_imageButtonMoveUp);
+                HandleImageButton(_imageButtonMoveDown);
+                HandleImageButton(_imageButtonMoveLeft);
+                HandleImageButton(_imageButtonMoveRight);
                 HandleImageButton(_imageButtonCrop);
                 HandleImageButton(_imageButtonUndo);
                 HandleImageButton(_imageButtonReset);

@@ -61,8 +61,11 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
             };
 
-            // 获取所有设备的类型选项
-            GetComboOptions();
+            // 获取所有设备的类型
+            _toolTypeOptions = DeviceType_Tool.Elements.ToDictionary(t => t.Name, t => t.Id);
+            _armTypeOptions = DeviceType_Arm.Elements.ToDictionary(t => t.Name, t => t.Id);
+            _communicationTypeOptions = DeviceType_Communication.Elements.ToDictionary(t => t.Name, t => t.Id);
+            _serialPortTypeOptions = DeviceType_SerialPort.Elements.ToDictionary(t => t.Name, t => t.Id);
 
             _dataGridView.AddTextBox("站点名称", false, (WorkstationVO vo, string? value) => vo.name = value).Ratio = 6.25;
             _dataGridView.AddComboBox("工具类型", (WorkstationVO vo, int value) => vo.tool_type = value, _toolTypeOptions).Ratio = 6.25;
@@ -128,24 +131,22 @@ namespace OperationGuidance_new.Views {
             QueryDeviceToolListRsp queryDeviceToolListRsp = apis.QueryDeviceToolList(new());
             _toolDTOs = queryDeviceToolListRsp.DeviceToolDTOs;
             _toolIdOptions = _toolDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _toolTypeOptions = DeviceType_Tool.Elements.ToDictionary(t => t.Name, t => t.Id);
             // 获取力臂信息
             QueryDeviceArmListRsp queryDeviceArmListRsp = apis.QueryDeviceArmList(new());
             _armDTOs = queryDeviceArmListRsp.DeviceArmDTOs;
             _armIdOptions = _armDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _armTypeOptions = DeviceType_Arm.Elements.ToDictionary(t => t.Name, t => t.Id);
             // 获取通讯设备信息
             QueryDeviceCommunicationListRsp queryDeviceCommunicationListRsp = apis.QueryDeviceCommunicationList(new());
             _communicationDTOs = queryDeviceCommunicationListRsp.DeviceCommunicationDTOs;
             _communicationIdOptions = _communicationDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _communicationTypeOptions = DeviceType_Communication.Elements.ToDictionary(t => t.Name, t => t.Id);
             // 获取串口设备信息
             QueryDeviceSerialPortListRsp queryDeviceSerialPortListRsp = apis.QueryDeviceSerialPortList(new());
             _serialPortDTOs = queryDeviceSerialPortListRsp.DeviceSerialPortDTOs;
             _serialPortIdOptions = _serialPortDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _serialPortTypeOptions = DeviceType_SerialPort.Elements.ToDictionary(t => t.Name, t => t.Id);
         }
         private void OpenEditEntityPopUpForm(string title, WorkstationDTO dto, Action callBackAction) {
+            // 获取所有设备的类型选项
+            GetComboOptions();
             _editEntityPopUpForm = new(dto) {
                 Title = title,
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,

@@ -366,3 +366,6 @@ FodyWeavers.xsd
 *.db
 # Ignore db files in directory bellow
 # OperationGuidance_new/Database/
+
+# Ignore operation data storage
+OperationGuidance_new/OperationDataStorage/

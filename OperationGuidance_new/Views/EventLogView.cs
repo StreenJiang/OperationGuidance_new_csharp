@@ -1,5 +1,6 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Panels;
+using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Views {
@@ -14,7 +15,7 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
                 ReadOnly = true,
             };
-            _multiLineGroup.Text = "测试数据...\r\n测试数据...\r\n测试数据...\r\n测试数据...\r\n测试数据...\r\n测试数据...\r\n";
+            MainUtils.EventLogTextArea = _multiLineGroup.TextBox.Box;
             CommonButton netButton = _multiLineGroup.AddButton("网络");
             netButton.Click += (sender, eventArgs) => {
                 _multiLineGroup.Text += "<网络>按钮点击...\r\n";

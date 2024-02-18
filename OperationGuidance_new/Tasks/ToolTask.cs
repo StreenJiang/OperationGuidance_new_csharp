@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
@@ -30,12 +31,14 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Constructors
-        public ToolTask(string ip, int port, DeviceTool tool) {
+        public ToolTask(string? name, string ip, int port, DeviceTool tool) {
+            _device_name = name;
             _ip = ip;
             _port = port;
             _tool = tool;
             Commands = new();
             Locked = false;
+            Status = DISCONNECTED;
         }
         #endregion
 
@@ -53,7 +56,7 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (_tool.COMMAND_HEART_ASCII != null &&HeartBeatCounter >= 5000) {
                                 HeartBeatCounter = 0;
-                                System.Console.WriteLine("Send heart beat command to keep alive...");
+                                MainUtils.PrintEventLog("Send heart beat command to keep alive...");
                                 // Send heart beat command to controller
                                 Commands.Enqueue(_tool.COMMAND_HEART_ASCII.GetMessage());
                             }
@@ -63,15 +66,15 @@ namespace OperationGuidance_new.Tasks {
                         HeartBeatCounter += LoopingInterval;
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error: {e}");
+                    MainUtils.PrintEventLog($"Error: {e}");
                 } finally {
-                    System.Console.WriteLine($"Disconnected to {_ip}: {_port}");
+                    MainUtils.PrintEventLog($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                     }
                     if (CloseConnectionManually) {
-                        System.Console.WriteLine($"Socket connection<{_ip}: {_port}> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.PrintEventLog($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -81,11 +84,11 @@ namespace OperationGuidance_new.Tasks {
                         try {
                             Result = await CheckResultAsync();
                         } catch (Exception e) {
-                            System.Console.WriteLine($"No data received... e: {e}");
+                            MainUtils.PrintEventLog($"No data received... e: {e}");
                         }
                     }
                 } finally {
-                    System.Console.WriteLine($"Disconnected while waiting responses...");
+                    MainUtils.PrintEventLog($"Disconnected while waiting responses...");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
@@ -93,29 +96,26 @@ namespace OperationGuidance_new.Tasks {
                 }
             });
         }
-        public override void Connect() {
-            Task.Run(async () => {
-                while (true) {
-                    if (!Connected) {
-                        if (ConnectToServer()) {
-                            RunTask();
-                        } else {
-                            System.Console.WriteLine($"Trying to reconnect to {_ip}: {_port}...");
-                        }
+        public override Task Connect() {
+            return Task.Run(async () => {
+                while (!Connected) {
+                    Status = CONNECTING;
+                    if (ConnectToServer()) {
+                        RunTask();
+                        Status = CONNECTED;
+                        break;
                     }
                     await Task.Delay(AuotReconnectingTrialDelay);
                 }
             });
         }
         public override void CloseConnection() {
+            MainUtils.PrintEventLog($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 CloseConnectionManually = true;
                 socketClient.Close();
                 Result = null;
                 Commands.Clear();
-                System.Console.WriteLine($"Close connection<{_ip}: {_port}> manually...");
-            } else {
-                System.Console.WriteLine($"Connection<{_ip}: {_port}> already closed...");
             }
         }
         #endregion
@@ -134,11 +134,11 @@ namespace OperationGuidance_new.Tasks {
         }
         private bool ConnectToServer() {
             if (Connected) {
-                System.Console.WriteLine($"Already connecting to {_ip}: {_port}, please don't connect repeatedly.");
+                MainUtils.PrintEventLog($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            System.Console.WriteLine($"Connecting to {_ip}: {_port}");
+            MainUtils.PrintEventLog($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
             bool sendConnectMsgSuceess = false;
@@ -174,17 +174,17 @@ namespace OperationGuidance_new.Tasks {
                             string mid2 = response2.Substring(4, 4);
                             enableMsgSuccess = mid2 == "0002" || mid2 == "0005";
                             if (enableMsgSuccess) {
-                                System.Console.WriteLine($"Successfully connect to {_ip}: {_port}");
+                                MainUtils.PrintEventLog($"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
                                 // Lock tool to keep safe
                                 SendLock();
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Connect error: {e}");
+                    MainUtils.PrintEventLog($"Connect error: {e}");
                 }
             } else {
-                System.Console.WriteLine($"Failed to connect to {_ip}: {_port}");
+                MainUtils.PrintEventLog($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess && sendConnectMsgSuceess && enableMsgSuccess;
         }
@@ -195,7 +195,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error: {pe}");
+                MainUtils.PrintEventLog($"Ping error: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -214,7 +214,7 @@ namespace OperationGuidance_new.Tasks {
             int trialTime = 0;
             while (Connected && result == null) {
                 if (trialTime > ReceiveTimeout) {
-                    System.Console.WriteLine("Can't get any response at all, probably some other connection robbed it...");
+                    MainUtils.PrintEventLog("Can't get any response at all, probably some other connection robbed it...");
                     break;
                 }
                 result = Result;
@@ -231,7 +231,7 @@ namespace OperationGuidance_new.Tasks {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
             } else if (_tool.COMMAND_PSET_ASCII != null) {
                 string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
-                System.Console.WriteLine($"Send pset command: {command}");
+                MainUtils.PrintEventLog($"Send pset command: {command}");
                 SendCommand(command);
             }
         }
@@ -240,9 +240,9 @@ namespace OperationGuidance_new.Tasks {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
             } else if (_tool.COMMAND_PSET_ASCII != null) {
                 string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
-                System.Console.WriteLine($"Send pset command: {command}");
+                MainUtils.PrintEventLog($"Send pset command: {command}");
                 string? result = await SendCommandAsync(command);
-                System.Console.WriteLine($"Send pset command - result: {result}");
+                MainUtils.PrintEventLog($"Send pset command - result: {result}");
                 return result != null && _tool.GetMidFromResult(result) == "0005";
             }
             return false;
@@ -250,7 +250,7 @@ namespace OperationGuidance_new.Tasks {
         public async void SendLock() {
             if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
                 string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
-                System.Console.WriteLine($"Send lock command: {command}");
+                MainUtils.PrintEventLog($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = true;
@@ -260,9 +260,9 @@ namespace OperationGuidance_new.Tasks {
         public async Task<bool> SendLockAsync() {
             if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
                 string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
-                System.Console.WriteLine($"Send lock command: {command}");
+                MainUtils.PrintEventLog($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
-                System.Console.WriteLine($"Send lock command - result: {result}");
+                MainUtils.PrintEventLog($"Send lock command - result: {result}");
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = true;
                     return true;
@@ -274,7 +274,7 @@ namespace OperationGuidance_new.Tasks {
         public async void SendUnlock() {
             if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
                 string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
-                System.Console.WriteLine($"Send unlock command: {command}");
+                MainUtils.PrintEventLog($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = false;
@@ -284,9 +284,9 @@ namespace OperationGuidance_new.Tasks {
         public async Task<bool> SendUnlockAsync() {
             if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
                 string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
-                System.Console.WriteLine($"Send unlock command: {command}");
+                MainUtils.PrintEventLog($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
-                System.Console.WriteLine($"Send unlock command - result: {result}");
+                MainUtils.PrintEventLog($"Send unlock command - result: {result}");
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = false;
                     return true;

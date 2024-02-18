@@ -295,8 +295,8 @@ namespace CustomLibrary.Utils {
             return new(hPadding, 0, hPadding, vPadding);
         }
         // Grid view configs
-        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Height * .036);
-        public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .034);
+        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Height * .04);
+        public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .0375);
         public static int GridViewContentColumnMaxWidth() => (int) (MainPanel.Width * .2);
         public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);
 
