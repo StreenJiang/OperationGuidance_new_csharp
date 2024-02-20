@@ -228,7 +228,7 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> armSubPanel = _editEntityPopUpForm.AddSubPanel("力臂");
             // 力臂选择
             ToggleButton armToggle = armSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox<int>("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, _armIdOptions);
+            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, _armIdOptions);
             // 力臂类型
             CustomComboBoxGroup<int> armTypeTextBox = armSubPanel.AddComboBox("力臂类型", (WorkstationDTO dto, int value) => dto.arm_type = value, _armTypeOptions);
             armTypeTextBox.Enabled = false;
@@ -288,14 +288,14 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> communicationSubPanel = _editEntityPopUpForm.AddSubPanel("通讯设备");
             // 通讯设备选择
             ToggleButton communicationToggle = communicationSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox<int>("请选择通讯设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
+            CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox("请选择通讯设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
             // 通讯设备类型
             CustomComboBoxGroup<int> communicationTypeTextBox = communicationSubPanel.AddComboBox("通讯设备类型", 
                 (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationTypeOptions);
             communicationTypeTextBox.Enabled = false;
             // 通讯设备IP
             CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("通讯设备IP", false, 
-                (WorkstationDTO dto, string? value) => dto.communication_ip = value == null ? "" : value);
+                (WorkstationDTO dto, string? value) => dto.communication_ip = value ??"");
             communicationIPTextBox.Enabled = false;
             // 通讯设备端口
             CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("通讯设备端口", false, 
@@ -351,7 +351,8 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> serialPortSubPanel = _editEntityPopUpForm.AddSubPanel("串口设备");
             // 串口选择
             ToggleButton serialPortToggle = serialPortSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox<int>("请选择串口设备", (WorkstationDTO dto, int value) => dto.serial_port_id = value, _serialPortIdOptions);
+            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox("请选择串口设备", 
+                (WorkstationDTO dto, int value) => dto.serial_port_id = value, _serialPortIdOptions);
             // 串口类型
             CustomComboBoxGroup<int> serialPortTypeTextBox = serialPortSubPanel.AddComboBox("串口类型", 
                 (WorkstationDTO dto, int value) => dto.serial_port_type = value, _serialPortTypeOptions);
@@ -445,18 +446,10 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                if (dto.tool_id == 0) {
-                    dto.tool_id = null;
-                }
-                if (dto.arm_id == 0) {
-                    dto.arm_id = null;
-                }
-                if (dto.serial_port_id == 0) {
-                    dto.serial_port_id = null;
-                }
-                if (dto.communication_id == 0) {
-                    dto.communication_id = null;
-                }
+                if (dto.tool_id == 0) dto.tool_id = null;
+                if (dto.arm_id == 0) dto.arm_id = null;
+                if (dto.serial_port_id == 0) dto.serial_port_id = null;
+                if (dto.communication_id == 0) dto.communication_id = null;
                 callBackAction += _editEntityPopUpForm.Dispose;
                 AddOrUpdate(dto, callBackAction);
                 _editEntityPopUpForm.Hide();

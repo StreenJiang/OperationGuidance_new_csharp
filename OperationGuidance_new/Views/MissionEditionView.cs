@@ -96,6 +96,7 @@ namespace OperationGuidance_new.Views {
             private List<SideButton> _sideButtons;
             private SideButton _currentSideButton;
             private SideButton _addNewSideButton;
+            private readonly float _sideButtonWidthRatio = 1.4F;
 
             // Bottom left
             private LeftBottomContentPanel _leftBottomContentPanel;
@@ -468,7 +469,7 @@ namespace OperationGuidance_new.Views {
                 if (_missionDTO.ProductSides != null) {
                     if (_missionDTO.ProductSides.Count == 0) {
                         ProductSideDTO sideDTO = new() {
-                            name = "产品图片1",
+                            name = "产品面1",
                             Bolts = new(),
                         };
                         _missionDTO.ProductSides.Add(sideDTO);
@@ -516,6 +517,31 @@ namespace OperationGuidance_new.Views {
                     BackColor = Color.Transparent,
                     ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
+                    BoltButtonRadius = _leftBottomContentPanel.MaxRectHeight / 24,
+                };
+                sideButton.Deleted += () => {
+                    sideDTO.deleted = (int) YesOrNo.YES;
+                    if (sideDTO.id == -1) {
+                        // 将没有存入数据库的数据直接从缓存中去掉，已存入数据库的数据需要修改deleted字段使其变成已删除
+                        CommonUtils.CannotBeNull(_missionDTO.ProductSides).Remove(sideDTO);
+                    }
+                    int index = _sideButtons.IndexOf(sideButton);
+                    if (_sideButtons.Count == 1) {
+                        _sideButtons.Remove(sideButton);
+                        // close first then create a new one
+                        Action<EventArgs>? singleClickDelegate = _addNewSideButton.SingleClickDelegate;
+                        if (singleClickDelegate != null) {
+                            singleClickDelegate(EventArgs.Empty);
+                        }
+                    } else if (index < _sideButtons.Count - 1) {
+                        SideButonClick(_sideButtons[index + 1]);
+                        // click first then close
+                        _sideButtons.Remove(sideButton);
+                    } else {
+                        SideButonClick(_sideButtons[index - 1]);
+                        // click first then close
+                        _sideButtons.Remove(sideButton);
+                    }
                 };
                 sideButton.SingleClickDelegate += (eventArgs) => SideButonClick(sideButton);
                 sideButton.DoubleClickDelegate += (eventArgs) => {
@@ -529,25 +555,25 @@ namespace OperationGuidance_new.Views {
                     box.Location = new((sideButton.Width - box.Width) / 2, (int) (((sideButton.Height - box.Height) / 2) * .9));
                     box.KeyUp += (sender, eventArgs) => {
                         if (eventArgs.KeyCode == Keys.Enter) {
-                            RenameAndResize();
+                            RenameAndResizeCurrent();
                             box.Dispose();
                         } else if (eventArgs.KeyCode == Keys.Escape) {
                             box.Dispose();
                         }
                     };
                     box.LostFocus += (sender, eventArgs) => {
-                        RenameAndResize();
+                        RenameAndResizeCurrent();
                         box.Dispose();
                     };
                     box.Focus();
                     EventFuncs.CurrentActiveControl = box;
-                    void RenameAndResize() {
+                    void RenameAndResizeCurrent() {
                         if (box.Text != null && box.Text != string.Empty) {
                             sideButton.Label = box.Text;
                             sideDTO.name = box.Text;
                             using (Graphics g = CreateGraphics()) {
                                 int btnLabelWidth = (int) g.MeasureString(sideButton.Label, sideButton.Font).Width;
-                                sideButton.Width = (int) (btnLabelWidth + sideButton.Height * 1.2);
+                                sideButton.Width = (int) (btnLabelWidth + sideButton.Height * _sideButtonWidthRatio);
                             }
                         }
                     }
@@ -813,7 +839,7 @@ namespace OperationGuidance_new.Views {
                     sideButton.Height = newHeight;
                     using (Graphics g = CreateGraphics()) {
                         int btnLabelWidth = (int) g.MeasureString(sideButton.Label, sideButton.Font).Width;
-                        sideButton.Width = (int) (btnLabelWidth + newHeight * 1.2);
+                        sideButton.Width = (int) (btnLabelWidth + newHeight * _sideButtonWidthRatio);
                     }
                 }
                 _addNewSideButton.Size = new((int) (_sideTitlePanel.Width * .08), newHeight);
@@ -974,6 +1000,14 @@ namespace OperationGuidance_new.Views {
         }
 
         public class SideButton: CommonButton {
+            private Image _closeImage = Properties.Resources.button_close;
+            private Rectangle? _imageRect;
+            private Image? _imageShowing;
+            private Action _onDeleted;
+
+            private bool _blockClick = false;
+            private Color? _originalBackColor;
+            private Color? _triggeredBackColor;
             private ProductSideDTO? _sideDTO;
             private LeftBottomContentPanel _container;
             private ProductImageFile _productImageFile;
@@ -993,6 +1027,7 @@ namespace OperationGuidance_new.Views {
             // Tip of each side button, to tell that it can be double clicked to rename
             private ToolTip? _toolTip;
 
+            public event Action Deleted { add => _onDeleted += value; remove => _onDeleted -= value; }
             public ProductSideDTO? SideDTO { get => _sideDTO; set => _sideDTO = value; }
             public ProductImageFile ProductImageFile { set => _productImageFile = value; }
             public ProductImageFile ProductImageFileNew { get => _productImageFileNew; }
@@ -1008,10 +1043,10 @@ namespace OperationGuidance_new.Views {
             public int Milliseconds { get; set; }
             public Timer ClickTimer { get; set; }
             private bool Fired { get; set; }
-            public MouseEventArgs? EventArgs { get; set; }
+            public EventArgs? EventArgs { get; set; }
 
-            public Action<MouseEventArgs>? SingleClickDelegate;
-            public Action<MouseEventArgs>? DoubleClickDelegate;
+            public Action<EventArgs>? SingleClickDelegate;
+            public Action<EventArgs>? DoubleClickDelegate;
 
             public SideButton(string buttonName) {
                 Label = buttonName;
@@ -1080,6 +1115,17 @@ namespace OperationGuidance_new.Views {
             }
 
             public new void SetToggle(bool flag) {
+                if (_originalBackColor == null) {
+                    _originalBackColor = BackColor;
+                }
+                if (_triggeredBackColor == null) {
+                    _triggeredBackColor = WidgetUtils.LightColor(BackColor, .5F);
+                }
+                if (flag) {
+                    BackColor = _triggeredBackColor.Value;
+                } else {
+                    BackColor = _originalBackColor.Value;
+                }
                 base.SetToggle(flag);
 
                 _productImageFileNew.RefreshImage();
@@ -1132,7 +1178,7 @@ namespace OperationGuidance_new.Views {
                 if (this.Label != null) {
                     ChangeFontStyle();
                     using (Graphics g = CreateGraphics()) {
-                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
+                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
                     }
                     this.LabelY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
                 }
@@ -1142,15 +1188,68 @@ namespace OperationGuidance_new.Views {
                 this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .5), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
             }
 
-            protected override void OnMouseUp(MouseEventArgs mevent) {
-                if (mevent.Button == MouseButtons.Left) {
-                    if (ClickTimes == 0) {
-                        EventArgs = mevent;
-                        ClickTimer.Start();
-                    }
-                    ClickTimes++;
+            protected override void OnMouseEnter(EventArgs e) {
+                base.OnMouseEnter(e);
+                if (ToggleBarRect != null) {
+                    int closeBtnSide = (int) ((Height - ToggleBarRect.Value.Height) * .8);
+                    Size imageSize = new(closeBtnSide, closeBtnSide);
+                    Point imageLocation = new(Width - closeBtnSide, (Height - ToggleBarRect.Value.Height - closeBtnSide) / 2);
+                    _imageRect = new(imageLocation, imageSize);
+                    _imageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_closeImage, imageSize);
                 }
-                base.OnMouseUp(mevent);
+            }
+            protected override void OnMouseLeave(EventArgs e) {
+                base.OnMouseLeave(e);
+                _imageRect = null;
+                _imageShowing = null;
+            }
+            protected override void OnMouseMove(MouseEventArgs mevent) {
+                base.OnMouseMove(mevent);
+                if (_imageRect != null) {
+                    if (EventFuncs.MouseInArea(new(PointToScreen(_imageRect.Value.Location), _imageRect.Value.Size))) {
+                        if (!_blockClick) {
+                            _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
+                        }
+                        _blockClick = true;
+                    } else {
+                        if (_blockClick) {
+                            _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
+                        }
+                        _blockClick = false;
+                    }
+                    Invalidate();
+                }
+            }
+            protected override void OnMouseDown(MouseEventArgs mevent) {
+                if (!_blockClick) {
+                    base.OnMouseDown(mevent);
+                } else if (_imageRect != null) {
+                    _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
+                    Invalidate();
+                }
+            }
+            protected override void OnMouseUp(MouseEventArgs mevent) {
+                if (!_blockClick) {
+                    if (mevent.Button == MouseButtons.Left) {
+                        if (ClickTimes == 0) {
+                            EventArgs = mevent;
+                            ClickTimer.Start();
+                        }
+                        ClickTimes++;
+                    }
+                    base.OnMouseUp(mevent);
+                } else if (_imageRect != null) {
+                    _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
+                    Invalidate();
+                    Dispose();
+                    _onDeleted();
+                }
+            }
+            protected override void PaintAfter(PaintEventArgs e) {
+                if (_imageShowing != null && _imageRect != null) {
+                    e.Graphics.DrawImage(_imageShowing, _imageRect.Value.Location);
+                }
+                base.PaintAfter(e);
             }
         }
 

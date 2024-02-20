@@ -466,10 +466,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
         private void Paging(int currentPage, int pageSize) {
-            ClearAllToggleButtonCells();
-            Task.Run(() => {
-                BeginInvoke(() => {
-                    if (IsHandleCreated) {
+            if (IsHandleCreated) {
+                ClearAllToggleButtonCells();
+                Task.Run(() => {
+                    BeginInvoke(() => {
                         BindingSource bindingSource = new();
                         if (_dataSource.Count > 0) {
                             bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
@@ -477,9 +477,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             bindingSource.DataSource = null;
                         }
                         LoadDataAsync(bindingSource);
-                    }
+                    });
                 });
-            });
+            }
         }
         private void LoadDataAsync(BindingSource bindingSource) {
             if (IsHandleCreated) {

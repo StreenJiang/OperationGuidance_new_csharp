@@ -1,12 +1,11 @@
 ﻿using CustomLibrary.Buttons;
-using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
-using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 
-namespace CustomLibrary.Forms {
+namespace CustomLibrary.Forms
+{
 
     [System.ComponentModel.DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomPopUpForm: Form {
@@ -292,29 +291,6 @@ namespace CustomLibrary.Forms {
             base.OnHandleDestroyed(e);
             _popUpFormBackboard.Dispose();
             EventFuncs.CurrentPopUpForm = null;
-        }
-    }
-
-    public class CloseButton: CustomImageTextButtonBase {
-        private readonly float _closebuttonIconRatio = 0.75F;
-
-        public CloseButton() : base() {
-            Icon = CustomResources.button_close;
-            BlockHoverUp = true;
-        }
-
-        protected override void ResizeIconImage() {
-            if (Icon != null) {
-                int newSide = (int) (Height * _closebuttonIconRatio);
-                Size newSize = new(newSide, newSide);
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newSize);
-                // Recalculate image position
-                ImageX = (int) Math.Ceiling((Width - newSize.Width) / 2D);
-                ImageY = (Height - newSize.Height) / 2;
-            }
-        }
-
-        protected override void ResizeTextLabel() {
         }
     }
 

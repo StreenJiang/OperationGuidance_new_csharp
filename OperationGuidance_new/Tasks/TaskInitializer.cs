@@ -38,9 +38,9 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.PrintEventLog($"Disconnected to TOOL[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
+                                    MainUtils.Log($"Disconnected to TOOL[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
                                     await toolTask.Connect();
-                                    MainUtils.PrintEventLog($"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port}]");
+                                    MainUtils.Log($"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
                             }
                         }
@@ -66,9 +66,9 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.PrintEventLog($"Disconnected to ARM[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
+                                    MainUtils.Log($"Disconnected to ARM[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
                                     await armTask.Connect();
-                                    MainUtils.PrintEventLog($"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port}]");
+                                    MainUtils.Log($"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
                             }
                         }
@@ -98,9 +98,9 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (!serialPortTask.Connected && serialPortTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.PrintEventLog($"Disconnected to SerialPort[{dto.name}], trying to reconnect...");
+                                    MainUtils.Log($"Disconnected to SerialPort[{dto.name}], trying to reconnect...");
                                     await serialPortTask.Connect();
-                                    MainUtils.PrintEventLog($"Reconnected to SerialPort[{dto.name}]");
+                                    MainUtils.Log($"Reconnected to SerialPort[{dto.name}]");
                                 });
                             }
                         }
@@ -126,9 +126,9 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.PrintEventLog($"Disconnected to communication[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
+                                    MainUtils.Log($"Disconnected to communication[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
                                     await communicationTask.Connect();
-                                    MainUtils.PrintEventLog($"Reconnected to communication[{dto.name} - {dto.ip}: {dto.port}]");
+                                    MainUtils.Log($"Reconnected to communication[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
                             }
                         }

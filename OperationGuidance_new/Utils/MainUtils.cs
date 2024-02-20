@@ -125,9 +125,9 @@ namespace OperationGuidance_new.Utils {
         }
 
         public static TextBox? EventLogTextArea { get; set; }
-        public static void PrintEventLog(string message) {
+        public static void Log(string message, bool printToView = true) {
             System.Console.WriteLine(message);
-            if (EventLogTextArea != null) {
+            if (EventLogTextArea != null && printToView) {
                 EventLogTextArea.BeginInvoke(() => {
                     EventLogTextArea.AppendText(message + "\r\n");
                 });

@@ -25,9 +25,10 @@ namespace CustomLibrary.Events {
             _clickActions.Add(action);
         }
 
+        public static bool MouseInArea(Rectangle rectangleToScreen) => rectangleToScreen.Contains(RealTimePoint);
+
         public static void GlobalMouseClick(object? sender, EventArgs eventArgs) {
             if (GetCursorPos(out POINT point)) {
-                RealTimePoint = point;
                 if (MainForm != null && !MainForm.IsDisposed) {
                     Rectangle mainFormRectangleToScreen = new(MainForm.PointToScreen(Point.Empty), MainForm.ClientSize);
                     if (mainFormRectangleToScreen.Contains(point)) {
@@ -75,6 +76,7 @@ namespace CustomLibrary.Events {
 
         public static void GlobalMouseMove(object? sender, EventArgs eventArgs) {
             if (GetCursorPos(out POINT point)) {
+                RealTimePoint = point;
                 if (MainForm != null && !MainForm.IsDisposed) {
                     try {
                         Point e = Point.Empty;

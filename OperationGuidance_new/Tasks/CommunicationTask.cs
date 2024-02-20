@@ -57,21 +57,21 @@ namespace OperationGuidance_new.Tasks {
                                     Result = "";
                                 }
                             } catch (Exception e) {
-                                MainUtils.PrintEventLog($"No data received...");
+                                MainUtils.Log($"No data received...");
                             }
                         }
                     }
                 } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
+                    MainUtils.Log($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
                 } finally {
-                    MainUtils.PrintEventLog($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    MainUtils.Log($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                         Commands.Clear();
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.PrintEventLog($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.Log($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -90,7 +90,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.PrintEventLog($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
+            MainUtils.Log($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 CloseConnectionManually = true;
                 socketClient.Close();
@@ -103,11 +103,11 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToServer() {
             if (Connected) {
-                MainUtils.PrintEventLog($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                MainUtils.Log($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            MainUtils.PrintEventLog($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+            MainUtils.Log($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
@@ -120,12 +120,12 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    MainUtils.PrintEventLog($"Connected to COMMUNICATION[{_device_name} - {_ip}: {_port}] successfully");
+                    MainUtils.Log($"Connected to COMMUNICATION[{_device_name} - {_ip}: {_port}] successfully");
                 } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
+                    MainUtils.Log($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }
             } else {
-                MainUtils.PrintEventLog($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                MainUtils.Log($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
         }
@@ -136,7 +136,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                MainUtils.PrintEventLog($"Ping error: {pe}");
+                MainUtils.Log($"Ping error: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -155,7 +155,7 @@ namespace OperationGuidance_new.Tasks {
             int trialTime = 0;
             while (Connected && result == null) {
                 if (trialTime > ReceiveTimeout) {
-                    MainUtils.PrintEventLog("Can't get any response at all, probably some other connection robbed it...");
+                    MainUtils.Log("Can't get any response at all, probably some other connection robbed it...");
                     break;
                 }
                 result = Result;

@@ -178,6 +178,34 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             if (form is not null && form.WindowState == FormWindowState.Minimized) {
                 return;
             }
+            if (_toggleButton && _toggleBar) {
+                if (_toggleBar) {
+                    // Draw toggle bar if needed
+                    int coordinate = _conerRadius > 0 ? 1 : 0;
+                    if (_toggleBarDirection == null) {
+                        _toggleBarDirection = ToggleBarDirectionEnum.LEFT;
+                    }
+                    switch (_toggleBarDirection) {
+                        case ToggleBarDirectionEnum.LEFT:
+                            _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
+                            toggleBarRect = new Rectangle(coordinate, coordinate, _barThickness, Height);
+                            break;
+                        case ToggleBarDirectionEnum.RIGHT:
+                            _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
+                            toggleBarRect = new Rectangle(Width - _barThickness - coordinate, coordinate, _barThickness, Height);
+                            break;
+                        case ToggleBarDirectionEnum.BOTTOM:
+                            _barThickness = (int) (Height * _toggleBarHorizontalHeightRatio);
+                            toggleBarRect = new Rectangle(coordinate, Height - _barThickness - coordinate, Width, _barThickness);
+                            break;
+                        case ToggleBarDirectionEnum.TOP:
+                        default:
+                            _barThickness = (int) (Height * _toggleBarHorizontalHeightRatio);
+                            toggleBarRect = new Rectangle(coordinate, coordinate, Width, _barThickness);
+                            break;
+                    }
+                }
+            }
             // Resize font
             ResizeTextLabel();
         }
@@ -226,31 +254,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                         }
                         BackColor = _toggledColor.Value;
                     }
-                    if (_toggleBar) {
-                        // Draw toggle bar if needed
-                        int coordinate = _conerRadius > 0 ? 1 : 0;
-                        if (_toggleBarDirection == null) {
-                            _toggleBarDirection = ToggleBarDirectionEnum.LEFT;
-                        }
-                        switch (_toggleBarDirection) {
-                            case ToggleBarDirectionEnum.LEFT:
-                                _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
-                                toggleBarRect = new Rectangle(coordinate, coordinate, _barThickness, Height);
-                                break;
-                            case ToggleBarDirectionEnum.RIGHT:
-                                _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
-                                toggleBarRect = new Rectangle(Width - _barThickness - coordinate, coordinate, _barThickness, Height);
-                                break;
-                            case ToggleBarDirectionEnum.BOTTOM:
-                                _barThickness = (int) (Height * _toggleBarHorizontalHeightRatio);
-                                toggleBarRect = new Rectangle(coordinate, Height - _barThickness - coordinate, Width, _barThickness);
-                                break;
-                            case ToggleBarDirectionEnum.TOP:
-                            default:
-                                _barThickness = (int) (Height * _toggleBarHorizontalHeightRatio);
-                                toggleBarRect = new Rectangle(coordinate, coordinate, Width, _barThickness);
-                                break;
-                        }
+                    if (_toggleBar && toggleBarRect != null) {
                         e.Graphics.FillRectangle(new SolidBrush(_toggleBarColor == null ? ForeColor : _toggleBarColor.Value), toggleBarRect.Value);
                     }
                 } else {

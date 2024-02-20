@@ -53,15 +53,15 @@ namespace OperationGuidance_new.Tasks {
                         await Task.Delay(LoopingInterval);
                     }
                 } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error: {e}");
+                    MainUtils.Log($"Error: {e}");
                 } finally {
-                    MainUtils.PrintEventLog($"Disconnected to SerialPort[{_device_name}]");
+                    MainUtils.Log($"Disconnected to SerialPort[{_device_name}]");
                     if (serialPortClient != null) {
                         serialPortClient.Close();
                         serialPortClient = null;
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.PrintEventLog($"Serial port device connection<SerialPort[{_device_name}]> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.Log($"Serial port device connection<SerialPort[{_device_name}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -80,7 +80,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.PrintEventLog($"Close serial port<SerialPort[{_device_name}]> manually...");
+            MainUtils.Log($"Close serial port<SerialPort[{_device_name}]> manually...");
             if (Connected) {
                 CloseConnectionManually = true;
                 serialPortClient.Close();
@@ -107,12 +107,12 @@ namespace OperationGuidance_new.Tasks {
                             byte[] data = new byte[2048];
                             int msgLen = serialPortClient.Read(data, 0, data.Length);
                             string result = Encoding.ASCII.GetString(data, 0, msgLen).Trim();
-                            MainUtils.PrintEventLog($"Data received from serial port<SerialPort[{_device_name}]>, result: {result}");
+                            MainUtils.Log($"Data received from serial port<SerialPort[{_device_name}]>, result: {result}");
                             if (_actionAfterDataReceived != null) {
                                 _actionAfterDataReceived(result);
                             }
                         } catch (Exception e) {
-                            MainUtils.PrintEventLog($"Error occurred whlie receiving data from serial port<SerialPort[{_device_name}]>, e: {e}");
+                            MainUtils.Log($"Error occurred whlie receiving data from serial port<SerialPort[{_device_name}]>, e: {e}");
                         }
                     };
                     serialPortClient.Open();
@@ -121,7 +121,7 @@ namespace OperationGuidance_new.Tasks {
                     return false;
                 }
             } catch (Exception e) {
-                MainUtils.PrintEventLog($"Failed to connect to SerialPort[{_device_name}], e: {e}");
+                MainUtils.Log($"Failed to connect to SerialPort[{_device_name}], e: {e}");
                 return false;
             }
         }
