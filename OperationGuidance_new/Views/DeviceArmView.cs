@@ -104,12 +104,20 @@ namespace OperationGuidance_new.Views {
             }
             CustomTextBoxGroup ip = _editEntityPopUpForm.AddTextBox("IP地址", false, 
                 (DeviceArmDTO dto, string? value) => dto.ip = value ?? "");
+            CustomTextBox ipBox = ip.GetTextBox(0);
+            ipBox.TextChanged += (sender, eventArgs) => {
+                ipBox.IsError = !ArgumentValidator.ValidateIPv4(ipBox.Text);
+            };
             ip.Ratio = 6;
-            if (dto.description != null) {
+            if (dto.ip != null) {
                 ip.SetValue(0, dto.ip);
             }
             CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false, 
                 (DeviceArmDTO dto, int? value) => dto.port = value ?? 0);
+            CustomTextBox portBox = port.GetTextBox(0);
+            portBox.TextChanged += (sender, eventArgs) => {
+                portBox.IsError = !ArgumentValidator.ValidatePortInWindows(portBox.Text);
+            };
             port.Ratio = 6;
             if (dto.port != null) {
                 port.SetValue(0, dto.port + "");
@@ -122,11 +130,17 @@ namespace OperationGuidance_new.Views {
                 type.SetCurrent(type.IndexOf(dto.type.Value));
             }
 
-
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                AddOrUpdate(dto, callBackAction);
+                if (ipBox.IsError) {
+                    WidgetUtils.ShowErrorPopUp("IP地址格式错误！");
+                } else if (portBox.IsError) {
+                    WidgetUtils.ShowErrorPopUp("端口设置出错！");
+                } else {
+                    AddOrUpdate(dto, callBackAction);
+                    _editEntityPopUpForm.Hide();
+                }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

@@ -23,7 +23,7 @@ namespace OperationGuidance_new {
                 return;
             }
             foreach (Control control in Controls) {
-                if (this.IsHandleCreated) {
+                if (IsHandleCreated && !IsDisposed && !control.IsDisposed) {
                     control.Size = this.ClientSize;
                 }
             }

@@ -133,6 +133,9 @@
   <data name="button_restore" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\button_restore.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="calendar_fill" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\calendar_fill.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="combo_collapse" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\combo_collapse.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

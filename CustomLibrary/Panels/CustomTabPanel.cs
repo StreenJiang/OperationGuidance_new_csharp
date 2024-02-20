@@ -43,7 +43,7 @@ namespace CustomLibrary.Panels {
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            if (_menuPanel != null && _contentPanel != null) {
+            if (!IsDisposed && _menuPanel != null && _contentPanel != null) {
                 // Repositoin menu panel
                 _menuPanel.ChangePosition();
                 // Resize menu panel
@@ -61,7 +61,8 @@ namespace CustomLibrary.Panels {
                 }
                 if (_contentPanel.Controls.Count > 0) {
                     foreach (Control control in _contentPanel.Controls) {
-                        if (control.Visible && control is CustomContentPanelBase && control is not CustomContentPanel) {
+                        if (!control.IsDisposed && control.Visible 
+                                && control is CustomContentPanelBase && control is not CustomContentPanel) {
                             control.Size = _contentPanel.Size;
                         }
                     }

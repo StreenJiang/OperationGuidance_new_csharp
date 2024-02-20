@@ -1,46 +1,35 @@
 using CustomLibrary.Configs;
 using System.ComponentModel;
 
-namespace CustomLibrary.TextBoxes {
+namespace CustomLibrary.DateTimePickers {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
-    public class CustomTextBoxGroup: UserControl {
+    public class CustomDatePickerGroup: UserControl {
         private bool _enabled;
-        private bool _readOnly;
         private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;
-        private Point _boxBeginLocation;
-        private int _gapNameAndBox;
-        private int _gapBoxes;
+        private Point _pickerBeginLocation;
+        private int _gapNameAndPicker;
+        private int _gapPickers;
         private string _separator;
         private List<SeparatorControl> _separators;
 
-        private bool _numberValidate;
-        private bool _numberOnly;
         private double? _ratio;
-        private FlowLayoutPanel _textBoxesPanel;
-        private List<CustomTextBox> _textBoxes;
-        private Color _boxBackColor;
+        private FlowLayoutPanel _pickersPanel;
+        private List<CustomDatePicker> _pickers;
+        private Color _pickerBackColor;
         private Color? _disabledBackColor;
         private Color? _borderColor;
-        private Color? _borderColorError;
 
         public new bool Enabled { 
             get => _enabled;
             set {
                 _enabled = value;
-                SetTextBoxesProperties((textBox) => textBox.Enabled = value);
-            }
-        }
-        public bool ReadOnly {
-            get => _readOnly;
-            set {
-                _readOnly = value;
-                SetTextBoxesProperties((textBox) => textBox.ReadOnly = value);
+                SetPickersProperties((picker) => picker.Enabled = value);
             }
         }
         public string TextName { get => this._textName; set => this._textName = value; }
-        public Point BoxBeginLocation { get => _boxBeginLocation; set => _boxBeginLocation = value; }
+        public Point PickerBeginLocation { get => _pickerBeginLocation; set => _pickerBeginLocation = value; }
         public string Separator { 
             get => _separator; 
             set {
@@ -48,7 +37,7 @@ namespace CustomLibrary.TextBoxes {
                 SetSeparatorsProperties((separator) => separator.Text = value );
             }
         }
-        public List<CustomTextBox> TextBoxes { get => _textBoxes; }
+        public List<CustomDatePicker> Pickers { get => _pickers; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
         public new Control Parent { 
@@ -58,28 +47,21 @@ namespace CustomLibrary.TextBoxes {
                 BackColor = value.BackColor;
             } 
         }
-        public Color BoxBackColor { 
-            get => _boxBackColor;
+        public Color PickerBackColor { 
+            get => _pickerBackColor;
             set {
-                _boxBackColor = value;
-                SetTextBoxesProperties((textBox) => textBox.BackColor = value);
+                _pickerBackColor = value;
+                SetPickersProperties((picker) => picker.BackColor = value);
             }
         }
         public Color? BorderColor { 
             get => _borderColor;
             set {
                 _borderColor = value;
-                SetTextBoxesProperties((textBox) => textBox.BorderColor = value);
+                SetPickersProperties((picker) => picker.BorderColor = value);
             }
         }
-        public Color? BorderColorError { 
-            get => _borderColorError; 
-            set {
-                _borderColorError = value;
-                SetTextBoxesProperties((textBox) => textBox.BorderColorError = value);
-            }
-        }
-        public int GapNameAndBox { get => this._gapNameAndBox; set => this._gapNameAndBox = value; }
+        public int GapNameAndPicker { get => this._gapNameAndPicker; set => this._gapNameAndPicker = value; }
         public HorizontalAlignment NameAlignment {
             get => this._nameAlignment;
             set {
@@ -89,34 +71,10 @@ namespace CustomLibrary.TextBoxes {
                 this._nameAlignment = value;
             }
         }
-        public bool HasError {
-            get {
-                foreach (CustomTextBox textBox in _textBoxes) {
-                    if (textBox.IsError) {
-                        return textBox.IsError;
-                    }
-                }
-                return false;
-            }
-        }
-        public bool NumberValidate { 
-            get => _numberValidate; 
-            set {
-                _numberValidate = value;
-                SetTextBoxesProperties((textBox) => textBox.NumberValidate = value);
-            }
-        }
-        public bool NumberOnly { 
-            get => _numberOnly; 
-            set {
-                _numberOnly = value;
-                SetTextBoxesProperties((textBox) => textBox.NumberOnly = value);
-            }
-        }
 
-        private void SetTextBoxesProperties(Action<CustomTextBox> setProperty) {
-            foreach (CustomTextBox textBox in _textBoxes) {
-                setProperty(textBox);
+        private void SetPickersProperties(Action<CustomDatePicker> setProperty) {
+            foreach (CustomDatePicker picker in _pickers) {
+                setProperty(picker);
             }
         }
         private void SetSeparatorsProperties(Action<SeparatorControl> setProperty) {
@@ -125,54 +83,52 @@ namespace CustomLibrary.TextBoxes {
             }
         }
 
-        public CustomTextBoxGroup(string textName) : base() {
+        public CustomDatePickerGroup(string textName) : base() {
             Margin = new(0);
             // Initialize fields
             _enabled = true;
             _textName = textName;
             _nameWidth = 0;
             _nameAlignment = HorizontalAlignment.Left;
-            // Initialize text boxes
-            _textBoxesPanel = new() {
+            // Initialize text pickers
+            _pickersPanel = new() {
                 Parent = this,
                 Margin = new(0),
             };
-            _textBoxes = new();
+            _pickers = new();
             _separator = "";
             _separators = new();
-            // Add a default box
-            AddTextBox();
+            _borderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER;
+            // Add a default picker
+            AddPicker();
         }
 
-        public CustomTextBox AddTextBox() {
-            if (_textBoxes.Count >= 1) {
+        public CustomDatePicker AddPicker() {
+            if (_pickers.Count >= 1) {
                 _separators.Add(new() {
-                    Parent = _textBoxesPanel,
+                    Parent = _pickersPanel,
                     Text = _separator,
                 });
             }
-            CustomTextBox box = new() {
-                Parent = _textBoxesPanel,
-                BorderStyle = BorderStyle.None,
-                BackColor = _boxBackColor,
+            CustomDatePicker picker = new() {
+                Parent = _pickersPanel,
+                BackColor = _pickerBackColor,
                 BorderColor = _borderColor,
-                BorderColorError = _borderColorError,
                 Enabled = _enabled,
-                NumberOnly = NumberOnly,
             };
-            _textBoxes.Add(box);
+            _pickers.Add(picker);
             if (IsHandleCreated) {
                 ResizeChildren(this, EventArgs.Empty);
             }
-            return box;
+            return picker;
         }
 
-        public CustomTextBox GetTextBox(int index) {
-            return _textBoxes[index];
+        public CustomDatePicker GetPicker(int index) {
+            return _pickers[index];
         }
 
         public void SetValue(int index, string? value) {
-            _textBoxes[index].Text = value != null ? value : "";
+            _pickers[index].Text = value != null ? value : "";
         }
 
         protected override void OnHandleCreated(EventArgs e) {
@@ -184,8 +140,8 @@ namespace CustomLibrary.TextBoxes {
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
             Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
-            // Calculate gap between name and box
-            _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
+            // Calculate gap between name and picker
+            _gapNameAndPicker = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
             Size separatorSize = new(0, Height - Padding.Size.Height);
             using (Graphics g = CreateGraphics()) {
@@ -198,28 +154,28 @@ namespace CustomLibrary.TextBoxes {
                 separator.Size = separatorSize;
                 separator.Font = Font;
             });
-            // Calculate width of combo box
-            int boxesRange;
+            // Calculate width of combo picker
+            int pickersRange;
             if (_ratio != null) {
-                boxesRange = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
+                pickersRange = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
             } else {
-                boxesRange = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
+                pickersRange = Width - _nameWidth - Padding.Size.Width - _gapNameAndPicker;
             }
-            _textBoxesPanel.Size = new(boxesRange, Height - Padding.Size.Height);
-            _boxBeginLocation = new(Width - Padding.Right - boxesRange, Padding.Top);
-            _textBoxesPanel.Location = _boxBeginLocation;
+            _pickersPanel.Size = new(pickersRange, Height - Padding.Size.Height);
+            _pickerBeginLocation = new(Width - Padding.Right - pickersRange, Padding.Top);
+            _pickersPanel.Location = _pickerBeginLocation;
             // Find a optimal gap pixels
-            int boxesCount = _textBoxes.Count;
+            int pickersCount = _pickers.Count;
             int separatorCount = _separators.Count;
             int pixels = 0;
             int curr = 0;
             int hMarginTemp = 0;
             while (true) {
-                if ((boxesRange - (separatorSize.Width + pixels) * separatorCount) % boxesCount == 0) {
+                if ((pickersRange - (separatorSize.Width + pixels) * separatorCount) % pickersCount == 0) {
                     int prev = curr;
                     curr = pixels;
-                    if (curr > _gapNameAndBox / 2) {
-                        if (Math.Abs(curr - _gapNameAndBox / 2) > Math.Abs(prev - _gapNameAndBox / 2)) {
+                    if (curr > _gapNameAndPicker / 2) {
+                        if (Math.Abs(curr - _gapNameAndPicker / 2) > Math.Abs(prev - _gapNameAndPicker / 2)) {
                             hMarginTemp = prev;
                         } else {
                             hMarginTemp = curr;
@@ -232,13 +188,13 @@ namespace CustomLibrary.TextBoxes {
             int vMarginTemp = (Height - separatorSize.Height) / 2;
             SetSeparatorsProperties((separator) => separator.Margin = new(hMarginTemp, vMarginTemp, hMarginTemp, vMarginTemp));
 
-            // Recalculate size and location of boxes
-            int boxWidth = (boxesRange - ((separatorSize.Width + hMarginTemp * 2) * separatorCount)) / boxesCount;
-            SetTextBoxesProperties((textBox) => textBox.Size = new(boxWidth, _textBoxesPanel.Height));
+            // Recalculate size and location of pickers
+            int pickerWidth = (pickersRange - ((separatorSize.Width + hMarginTemp * 2) * separatorCount)) / pickersCount;
+            SetPickersProperties((picker) => picker.Size = new(pickerWidth, _pickersPanel.Height));
 
             if (_separators.Count > 0) {
                 // If there are any remaining pixels, split them into separate separators
-                int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
+                int remainingWidth = _pickersPanel.Width - pickerWidth * pickersCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
                 int indexTemp = 0;
                 while (remainingWidth > 0) {
                     _separators[indexTemp].Width += 1;
@@ -255,14 +211,14 @@ namespace CustomLibrary.TextBoxes {
             // Draw name
             int x = Padding.Left;
             if (_nameAlignment == HorizontalAlignment.Right) {
-                x = _textBoxesPanel.Location.X - _nameWidth - _gapNameAndBox;
+                x = _pickersPanel.Location.X - _nameWidth - _gapNameAndPicker;
             }
             e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
         }
 
         protected override void OnForeColorChanged(EventArgs e) {
             base.OnForeColorChanged(e);
-            SetTextBoxesProperties((textBox) => textBox.ForeColor = ForeColor);
+            SetPickersProperties((picker) => picker.ForeColor = ForeColor);
             SetSeparatorsProperties((separator) => separator.ForeColor = ForeColor);
         }
 

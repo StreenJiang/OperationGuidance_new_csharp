@@ -454,12 +454,12 @@ namespace OperationGuidance_new.Views {
                 if (dto.serial_port_id == 0) {
                     dto.serial_port_id = null;
                 }
-                System.Console.WriteLine($"dto.serial_port_id: {dto.serial_port_id}");
                 if (dto.communication_id == 0) {
                     dto.communication_id = null;
                 }
                 callBackAction += _editEntityPopUpForm.Dispose;
                 AddOrUpdate(dto, callBackAction);
+                _editEntityPopUpForm.Hide();
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

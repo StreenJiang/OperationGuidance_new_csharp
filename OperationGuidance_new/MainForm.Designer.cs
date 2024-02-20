@@ -224,8 +224,9 @@ namespace OperationGuidance_new {
                 Size = new(width, height);
                 ClientSize = new(width, height);
             } else {
-                Size = new(1280, 720);
-                ClientSize = new(1280, 720);
+                Size screenSize = WidgetUtils.GetScreenResolution();
+                Size = screenSize;
+                ClientSize = screenSize;
             }
             MinimumSize = new Size(400, 300);
             Name = "MainForm";

@@ -1,6 +1,6 @@
 ﻿using CustomLibrary.Buttons;
+using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -38,11 +38,27 @@ namespace OperationGuidance_new.Views {
         private void InitializeGridView() {
             _dataGridView = new() {
                 Parent = this,
+                FiltersTableColumnNums = 2,
             };
             // 搜索条件
-            CustomTextBoxGroup dateFitler = _dataGridView.AddSeparateTextBox("日期", "~", false, 
+            CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_min = value, 
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_max = value);
+            CustomDatePicker date_min = dateFitler.GetPicker(0);
+            CustomDatePicker date_max = dateFitler.GetPicker(1);
+            date_min.ValueChanged += (sender, eventArgs) => {
+                if (date_max.Value != null && date_min.Value > date_max.Value) {
+                    date_min.Value = null;
+                    WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
+                }
+            };
+            date_max.ValueChanged += (sender, eventArgs) => {
+                if (date_min.Value != null && date_max.Value < date_min.Value) {
+                    date_max.Value = null;
+                    WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
+                }
+            };
+
             CommonButton commonButton = _dataGridView.AddExtraButton("导出");
             commonButton.Click += (sender, eventArgs) => {
                 WidgetUtils.ShowNoticePopUp("Export button has not been set.");

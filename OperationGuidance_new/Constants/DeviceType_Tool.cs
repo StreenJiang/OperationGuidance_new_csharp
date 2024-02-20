@@ -1,7 +1,7 @@
 ﻿namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
-        public static List<DeviceTool> Elements = new();
-        private static T AddNew<T>() where T: DeviceTool, new() {
+        public static List<DeviceTypeTool> Elements = new();
+        private static T AddNew<T>() where T: DeviceTypeTool, new() {
             T type = new();
             Elements.Add(type);
             return type;
@@ -12,8 +12,8 @@
         public static ToolPF6000OP PF6000_OP { get; } = AddNew<ToolPF6000OP>();
         public static ToolSudongX7 SudongX7 { get; } = AddNew<ToolSudongX7>();
 
-        public static DeviceTool? GetById(int id) {
-            foreach (DeviceTool type in Elements) {
+        public static DeviceTypeTool? GetById(int id) {
+            foreach (DeviceTypeTool type in Elements) {
                 if (type.Id == id) {
                     return type;
                 }
@@ -21,7 +21,7 @@
             return null;
         }
         public static string? GetNameById(int id) {
-            foreach (DeviceTool type in Elements) {
+            foreach (DeviceTypeTool type in Elements) {
                 if (type.Id == id) {
                     return type.Name;
                 }
@@ -29,7 +29,7 @@
             return null;
         }
         public static int? GetIdByName(string name) {
-            foreach (DeviceTool type in Elements) {
+            foreach (DeviceTypeTool type in Elements) {
                 if (type.Name == name) {
                     return type.Id;
                 }
@@ -38,7 +38,7 @@
         }
     }
 
-    public abstract class DeviceTool: DeviceTypeBase {
+    public abstract class DeviceTypeTool: DeviceTypeBase {
         public Command? COMMAND_CONNECT_ASCII;
         public Command? COMMAND_DATA_ASCII;
         public Command? COMMAND_HEART_ASCII;
@@ -46,13 +46,13 @@
         public Command? COMMAND_UNLOCK_ASCII;
         public Command? COMMAND_PSET_ASCII;
         public Command? COMMAND_SEND_BARCODE_ASCII;
-        public DeviceTool(int id, string name) : base(id, name) { }
+        public DeviceTypeTool(int id, string name) : base(id, name) { }
 
         public abstract string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null);
         public abstract string GetMidFromResult(string result);
     }
 
-    public class ToolPF4000: DeviceTool {
+    public class ToolPF4000: DeviceTypeTool {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII           = new("00200001003         \x00");
             COMMAND_DATA_ASCII              = new("002000600031        \x00");
@@ -152,7 +152,7 @@
         }
     }
 
-    public class ToolPF6000OP: DeviceTool {
+    public class ToolPF6000OP: DeviceTypeTool {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII           = new("00200001006         \x00");
             COMMAND_DATA_ASCII              = new("002000600031        \x00");
@@ -186,7 +186,7 @@
         }
     }
 
-    public class ToolSudongX7: DeviceTool {
+    public class ToolSudongX7: DeviceTypeTool {
         public ToolSudongX7() : base(3, "SudongX7") { }
 
         public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {

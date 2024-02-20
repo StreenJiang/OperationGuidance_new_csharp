@@ -109,7 +109,9 @@ namespace OperationGuidance_new.Views {
             Dictionary<string, string> portNames = new();
             Dictionary<string, string> portNamesDict = ConnectionUtils.GetSerialPorts();
             foreach (KeyValuePair<string, string> pair in portNamesDict) {
-                portNames.Add(pair.Value, pair.Key);
+                if (!_dataDTOList.Select(dto => dto.port_name).Contains(pair.Key)) {
+                    portNames.Add(pair.Value, pair.Key);
+                }
             }
             CustomComboBoxGroup<string>? portFullName = null;
             portFullName = _editEntityPopUpForm.AddComboBox("串口", SetPortName, portNames);
@@ -220,6 +222,7 @@ namespace OperationGuidance_new.Views {
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
                 AddOrUpdate(dto, callBackAction);
+                _editEntityPopUpForm.Hide();
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

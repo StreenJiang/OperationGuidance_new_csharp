@@ -31,9 +31,11 @@ namespace CustomLibrary.Configs {
             // 16 : 9
             { new Size(1280, 720), WidthHeightRatio.SixteenNine }, // 720P
             { new Size(1366, 768), WidthHeightRatio.SixteenNine }, // WXGA
-            { new Size(1360, 768), WidthHeightRatio.SixteenNine },
             { new Size(1600, 900), WidthHeightRatio.SixteenNine },
             { new Size(1920, 1080), WidthHeightRatio.SixteenNine }, // 1080P
+            { new Size(2560, 1440), WidthHeightRatio.SixteenNine }, // 1440P (QHD/2K)
+            { new Size(3840, 2160), WidthHeightRatio.SixteenNine }, // 2160P (4K)
+            { new Size(7680, 4320), WidthHeightRatio.SixteenNine }, // 4320P (8K)
             // 16 : 10
             { new Size(800, 480), WidthHeightRatio.SixtennTen }, // WVGA
             { new Size(1024, 600), WidthHeightRatio.SixtennTen }, // WSVGA

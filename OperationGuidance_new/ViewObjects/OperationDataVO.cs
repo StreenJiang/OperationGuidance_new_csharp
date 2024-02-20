@@ -17,7 +17,7 @@ namespace OperationGuidance_new.ViewObjects {
         public int? bolt_serial_num { get; set; }                                           // 点位号
         [GridColumn("程序号")]
         public int? parameter_set_number { get; set; }                                      // 程序号
-        [GridColumn("程序号")]
+        [GridColumn("程序名称")]
         public string? parameter_set_name { get; set; }                                     // 程序名
         [GridColumn("批次总数量")]
         public int? batch_size { get; set; }                                                // 批次总数量

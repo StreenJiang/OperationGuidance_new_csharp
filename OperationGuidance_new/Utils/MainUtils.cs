@@ -4,24 +4,26 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_service.Constants;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD = "yyyy-MM-dd";
+
         public static IniFile Settings { get; set; } = new();
 
         public static string GetStorageFileName() {
-            return DateTime.Now.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD);
+            return DateTime.Now.ToString(DATETIME_FORMAT_YYYY_MM_DD);
         }
 
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
-        public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceArm arm) {
+        public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
             ArmTask task = new(armName, ip, port, arm);
             task.Connect();
             _armTasks.Add(armId, task);
         }
-        public static async Task<ArmTask> NewArmTaskAsync(int armId, string? armName, string ip, int port, DeviceArm arm) {
+        public static async Task<ArmTask> NewArmTaskAsync(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
             ArmTask task = new(armName, ip, port, arm);
             await task.ConnectAsync();
             _armTasks.Add(armId, task);
@@ -42,12 +44,12 @@ namespace OperationGuidance_new.Utils {
 
         private static Dictionary<int, ToolTask> _toolTasks = new();
         public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
-        public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTool tool) {
+        public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolName, ip, port, tool);
             task.Connect();
             _toolTasks.Add(toolId, task);
         }
-        public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTool tool) {
+        public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolName, ip, port, tool);
             await task.ConnectAsync();
             _toolTasks.Add(toolId, task);
@@ -70,14 +72,14 @@ namespace OperationGuidance_new.Utils {
         public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
         public static void NewSerialPortTask(int serialPortId, string fullName, 
                 string portName, int baudRate, Parity parity, int dataBits, 
-                StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {
+                StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
             SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             task.Connect();
             _serialPortTasks.Add(serialPortId, task);
         }
         public static async Task<SerialPortTask> NewSerialPortTaskAsync(int serialPortId, string fullName, 
                 string portName, int baudRate, Parity parity, int dataBits, 
-                StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {
+                StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
             SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             await task.ConnectAsync();
             _serialPortTasks.Add(serialPortId, task);
@@ -92,6 +94,32 @@ namespace OperationGuidance_new.Utils {
         public static SerialPortTask? TryGetSerialPortTask(int serialPortId) {
             if (_serialPortTasks.ContainsKey(serialPortId)) {
                 return _serialPortTasks[serialPortId];
+            }
+            return null;
+        }
+
+        private static Dictionary<int, CommunicationTask> _communicationTasks = new();
+        public static Dictionary<int, CommunicationTask> CommunicationTasks => _communicationTasks;
+        public static void NewCommunicationTask(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
+            CommunicationTask task = new(communicationName, ip, port, communication);
+            task.Connect();
+            _communicationTasks.Add(communicationId, task);
+        }
+        public static async Task<CommunicationTask> NewCommunicationTaskAsync(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
+            CommunicationTask task = new(communicationName, ip, port, communication);
+            await task.ConnectAsync();
+            _communicationTasks.Add(communicationId, task);
+            return task;
+        }
+        public static CommunicationTask GetCommunicationTask(int communicationId) {
+            if (_communicationTasks.ContainsKey(communicationId)) {
+                return _communicationTasks[communicationId];
+            }
+            throw new ArgumentException($"CommunicationTask for communicationId<{communicationId}> has not been created.");
+        }
+        public static CommunicationTask? TryGetCommunicationTask(int communicationId) {
+            if (_communicationTasks.ContainsKey(communicationId)) {
+                return _communicationTasks[communicationId];
             }
             return null;
         }

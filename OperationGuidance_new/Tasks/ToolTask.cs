@@ -13,7 +13,7 @@ namespace OperationGuidance_new.Tasks {
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTool _tool;
+        private DeviceTypeTool _tool;
         private int HeartBeatCounter = 0;
         private Action<TighteningData>? _actionAfterAnalysis;
         #endregion
@@ -31,7 +31,7 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Constructors
-        public ToolTask(string? name, string ip, int port, DeviceTool tool) {
+        public ToolTask(string? name, string ip, int port, DeviceTypeTool tool) {
             _device_name = name;
             _ip = ip;
             _port = port;

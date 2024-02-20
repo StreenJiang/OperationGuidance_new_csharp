@@ -1,5 +1,5 @@
 using OperationGuidance_new.Attributes;
-using OperationGuidance_service.Utils;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.ViewObjects.AbstractClasses {
     public abstract class AVOBase {
@@ -16,7 +16,7 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
             set {
                 _create_time = value;
                 if (value != null) {
-                    string_create_time = value.Value.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+                    string_create_time = value.Value.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
                 }
             }
         }
@@ -28,7 +28,7 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
             set {
                 _modify_time = value;
                 if (value != null) {
-                    string_modify_time = value.Value.ToString(CommonUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+                    string_modify_time = value.Value.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
                 }
             } 
         }

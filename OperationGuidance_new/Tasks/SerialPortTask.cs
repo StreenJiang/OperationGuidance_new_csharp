@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Tasks {
         private int _dataBits;
         private StopBits _stopBits;
         private SerialPort? serialPortClient;
-        private DeviceSerialPort _serialPort;
+        private DeviceTypeSerialPort _serialPort;
         private Action<string>? _actionAfterDataReceived;
         #endregion
 
@@ -32,7 +32,7 @@ namespace OperationGuidance_new.Tasks {
 
         #region Constructors
         public SerialPortTask(string fullName, string portName, int baudRate, Parity parity, int dataBits, 
-                StopBits stopBits, DataTypes dataType, DeviceSerialPort serialPort) {
+                StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
             _device_name = fullName;
             _portName = portName;
             _baudRate = baudRate;

@@ -76,8 +76,15 @@ namespace CustomLibrary.Panels.BaseClasses {
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            if (TopLevelControl == null) {
+                return;
+            }
             // Recalculate all inner controls
             this._vScrollBar.Height = this.Height;
+            this._vScrollBar.Width = WidgetUtils.MainPanel.Width / 55;
+            if (this._vScrollBar.Width < 12) {
+                this._vScrollBar.Width = 12;
+            }
 
             // Check if needs scrollbar
             bool needsScrollBar = this._vScrollBar.Visible || this._alwaysShowScrollBar;

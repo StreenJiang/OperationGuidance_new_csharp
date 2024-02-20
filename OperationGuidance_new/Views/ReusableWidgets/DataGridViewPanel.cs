@@ -482,17 +482,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             });
         }
         private void LoadDataAsync(BindingSource bindingSource) {
-            Task.Run(() => {
-                BeginInvoke(() => {
-                    if (IsHandleCreated) {
+            if (IsHandleCreated) {
+                Task.Run(() => {
+                    BeginInvoke(() => {
                         _gridView.DataSource = bindingSource;
                         ResetPageInfo();
                         ResizeChildren();
-                        System.Console.WriteLine("888888888888888888888888888");
-                    }
+                    });
                 });
-            });
-            System.Console.WriteLine("999999999999999999999999999");
+            }
         }
         #endregion
 

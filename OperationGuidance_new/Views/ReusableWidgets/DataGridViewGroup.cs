@@ -1,5 +1,6 @@
 using System.Reflection;
 using CustomLibrary.Buttons;
+using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
@@ -10,7 +11,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #region Fields
         // Common fields
         private T _filterParametersVO;
-        private readonly int _filtersTableColumnNums = 3;
+        private int _filtersTableColumnNums = 3;
         private int _textOrComboHeight;
         private int _buttonHeight;
         private int _contentVerticalGap;
@@ -38,6 +39,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Properties
+        public int FiltersTableColumnNums { get => _filtersTableColumnNums; set => _filtersTableColumnNums = value; }
         public DataGridViewPanel<T> VoGridView { get => _voGridView; set => _voGridView = value; }
         public List<CommonButton> ExtraButtons { get => _extraButtons; }
         public List<T> DataSource { get => _voGridView.DataSource; set => _voGridView.DataSource = value; }
@@ -131,6 +133,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         if (methodInfo != null) {
                             methodInfo.Invoke(control, null);
                         }
+                    } else if (control is CustomDatePickerGroup pickerGroup) {
+                        foreach (CustomDatePicker picker in pickerGroup.Pickers) {
+                            picker.Value = null;
+                        }
                     }
                 }
             };
@@ -169,6 +175,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
             return WidgetUtils.AddComboBox(_filtersTablePanel, _filterParametersVO, boxName, propertySetter, items);
+        }
+        public CustomDatePickerGroup AddDatePicker(string pickerName, Action<T, DateTime?> propertySetter) {
+            return WidgetUtils.AddDatePicker(_filtersTablePanel, _filterParametersVO, pickerName, propertySetter);
+        }
+        public CustomDatePickerGroup AddSeparateDatePicker(string pickerName, string separator, Action<T, DateTime?> propertySetter1, Action<T, DateTime?> propertySetter2) {
+            return WidgetUtils.AddSeparateDatePicker(_filtersTablePanel, _filterParametersVO, pickerName, separator, propertySetter1, propertySetter2);
         }
         public CommonButton AddExtraButton(string buttonName) {
             CommonButton extraButton = new() {

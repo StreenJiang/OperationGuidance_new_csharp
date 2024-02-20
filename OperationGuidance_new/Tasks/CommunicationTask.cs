@@ -1,21 +1,17 @@
-using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
-    public class ArmTask: ATaskBase {
+    public class CommunicationTask: ATaskBase {
         #region Fields
         private readonly int ReceiveTimeout = 500;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTypeArm _arm;
-        private Coordinates3D? _currentCoordinates;
-        private Action<Coordinates3D> _actionAfterReceiving;
+        private DeviceTypeCommunication _comminucation;
         #endregion
 
         #region Properties
@@ -24,20 +20,19 @@ namespace OperationGuidance_new.Tasks {
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
-        public Queue<string> Commands { get; set; } = new();
+        public Queue<string> Commands { get; set; }
         public string? Result { get; set; }
-        public bool RetrieveResult { get; set; } = false;
-        public Action<Coordinates3D> ActionAfterReceiving { get => _actionAfterReceiving; set => _actionAfterReceiving = value; }
-        public event Action<Coordinates3D> OnActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
+        public bool Locked { get; set; }
         #endregion
 
         #region Constructors
-        public ArmTask(string? name, string ip, int port, DeviceTypeArm arm) {
+        public CommunicationTask(string? name, string ip, int port, DeviceTypeCommunication communication) {
             _device_name = name;
             _ip = ip;
             _port = port;
-            _arm = arm;
-            _actionAfterReceiving += c => {};
+            _comminucation = communication;
+            Commands = new();
+            Locked = false;
             Status = DISCONNECTED;
         }
         #endregion
@@ -67,16 +62,16 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error while running task for connection<ARM[{_device_name} - {_ip}: {_port}]>: {e}");
+                    MainUtils.PrintEventLog($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
                 } finally {
-                    MainUtils.PrintEventLog($"Disconnected to ARM[{_device_name} - {_ip}: {_port}]");
+                    MainUtils.PrintEventLog($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                         Commands.Clear();
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.PrintEventLog($"Socket connection<ARM[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.PrintEventLog($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -87,7 +82,6 @@ namespace OperationGuidance_new.Tasks {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
                         RunTask();
-                        RunLoop();
                         Status = CONNECTED;
                         break;
                     }
@@ -96,7 +90,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.PrintEventLog($"Close connection<ARM[{_device_name} - {_ip}: {_port}]> manually...");
+            MainUtils.PrintEventLog($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 CloseConnectionManually = true;
                 socketClient.Close();
@@ -109,11 +103,11 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToServer() {
             if (Connected) {
-                MainUtils.PrintEventLog($"Already connecting to ARM[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                MainUtils.PrintEventLog($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            MainUtils.PrintEventLog($"Connecting to ARM[{_device_name} - {_ip}: {_port}]");
+            MainUtils.PrintEventLog($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
@@ -126,12 +120,12 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    MainUtils.PrintEventLog($"Connected to ARM[{_device_name} - {_ip}: {_port}] successfully");
+                    MainUtils.PrintEventLog($"Connected to COMMUNICATION[{_device_name} - {_ip}: {_port}] successfully");
                 } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error while connecting to ARM[{_device_name} - {_ip}: {_port}]: {e}");
+                    MainUtils.PrintEventLog($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }
             } else {
-                MainUtils.PrintEventLog($"Failed to ping ARM[{_device_name} - {_ip}: {_port}]");
+                MainUtils.PrintEventLog($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
         }
@@ -142,7 +136,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                MainUtils.PrintEventLog($"Ping error while pinging to ARM[{_device_name} - {_ip}: {_port}]: {pe}");
+                MainUtils.PrintEventLog($"Ping error: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -172,67 +166,6 @@ namespace OperationGuidance_new.Tasks {
             }
             Result = null;
             return result;
-        }
-        public async Task<Coordinates3D?> GetCurrentCoordinates() { 
-            RetrieveResult = true;
-            await Task.Delay(100);
-            Coordinates3D? coordinates = _currentCoordinates;
-            RetrieveResult = false;
-            return coordinates;
-        }
-        private async Task<Coordinates3D?> GetCoordinatesAsync() {
-            Coordinates3D? coordinates = null;
-            if (Connected) {
-                coordinates = new();
-                string? x = await SendCommandAsync(_arm.COMMAND_READ_X_HEX.GetMessage());
-                if (x != null) {
-                    coordinates.X = ParseResult(x);
-                }
-                string? y = await SendCommandAsync(_arm.COMMAND_READ_Y_HEX.GetMessage());
-                if (y != null) {
-                    coordinates.Y = ParseResult(y);
-                }
-                if (_arm.COMMAND_READ_Z_HEX != null) {
-                    string? z = await SendCommandAsync(_arm.COMMAND_READ_Z_HEX.GetMessage());
-                    if (z != null) {
-                        coordinates.Z = ParseResult(z);
-                    }
-                }
-                if (_actionAfterReceiving.GetInvocationList().Length > 0) {
-                    _actionAfterReceiving(coordinates);
-                }
-            }
-            return coordinates;
-        }
-        private void RunLoop() {
-            Task.Run(async () => {
-                try {
-                    while (Connected) {
-                        if (RetrieveResult) {
-                            _currentCoordinates = await GetCoordinatesAsync();
-                        } else {
-                            await Task.Delay(LoopingInterval);
-                        }
-                    }
-                } catch (Exception e) {
-                    MainUtils.PrintEventLog($"Error occurred while looping for coordinates, e: {e}");
-                    throw e;
-                } finally {
-                    MainUtils.PrintEventLog("Loop stops...");
-                }
-            });
-        }
-        private int ParseResult(string result) {
-            int coordinate = 0;
-            if (result != null && result != "") {
-                string lowData = result.Substring(6, 4);
-                string HighData = result.Substring(10, 4);
-                if (lowData != "ffff" && HighData != "ffff") {
-                    coordinate = int.Parse(lowData, NumberStyles.HexNumber);
-                    // coordinate = Convert.ToInt32(lowData, 16);
-                }
-            }
-            return coordinate;
         }
         #endregion
     }

@@ -15,6 +15,7 @@ namespace CustomLibrary.TextBoxes {
         private Color _originalBackColor;
         private Color _disabledBackColor;
         private Color? _borderColor;
+        private Color? _borderColorError;
         private FontStyle? _boxFontStyle;
         private readonly int _borderThickness = 1;
 
@@ -25,7 +26,6 @@ namespace CustomLibrary.TextBoxes {
         private int _boxErrorWidth;
         private ErrorProvider _errorProvider;
         private Image? _iconShowing;
-        private Color? _borderColorError;
         private ToolTip _errorTip;
         private Timer _errorBorderTimer;
         private int _timerCount;
@@ -91,7 +91,13 @@ namespace CustomLibrary.TextBoxes {
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
         public bool NumberOnly { get => _numberOnly; set => _numberOnly = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
-        public bool IsError { get => _isError; set => _isError = value; }
+        public bool IsError { 
+            get => _isError; 
+            set {
+                _isError = value; 
+                Invalidate();
+            }
+        }
         public new event EventHandler TextChanged {
             add => _box.TextChanged += value;
             remove => _box.TextChanged -= value;

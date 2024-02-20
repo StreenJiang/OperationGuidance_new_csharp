@@ -208,14 +208,14 @@ namespace OperationGuidance_new.Views {
                         MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 };
-                _buttonPublish = new() {
-                    Parent = _top,
-                    Label = "发布",
-                    BlockHoverUp = true,
-                };
-                _buttonPublish.Click += (sender, eventArgs) => {
-                    // TODO: publish it (store tatus to database)
-                };
+                // _buttonPublish = new() {
+                //     Parent = _top,
+                //     Label = "发布",
+                //     BlockHoverUp = true,
+                // };
+                // _buttonPublish.Click += (sender, eventArgs) => {
+                //     // TODO: publish it (store tatus to database)
+                // };
                 _buttonNew = new() {
                     Parent = _top,
                     Label = "新增",
@@ -834,9 +834,9 @@ namespace OperationGuidance_new.Views {
                 _missionPnCode.Margin = new(boxGap, 0, 0, 0);
 
                 // Resize common buttons
-                Size buttonSize =  new((int) ((buttonsWidth - buttonGap * 4) / 4), buttonsHeight);
+                Size buttonSize =  new((int) ((buttonsWidth - buttonGap * 3) / 3), buttonsHeight);
                 HandleCommonButton(_buttonSave);
-                HandleCommonButton(_buttonPublish);
+                // HandleCommonButton(_buttonPublish);
                 HandleCommonButton(_buttonNew);
                 HandleCommonButton(_buttonDelete);
 
@@ -865,7 +865,7 @@ namespace OperationGuidance_new.Views {
                 // Inner method for reuse
                 void HandleImageButton(ImageButton button) {
                     button.Size = imageButtonSize;
-                    button.Margin = new(imageMargin, imageMargin, imageMargin, imageMargin);
+                    button.Margin = new(0, imageMargin, imageMargin, imageMargin);
                 }
             }
 

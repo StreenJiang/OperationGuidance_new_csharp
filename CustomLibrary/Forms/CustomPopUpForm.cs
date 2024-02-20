@@ -258,6 +258,9 @@ namespace CustomLibrary.Forms {
         }
 
         private void AfterSizeChanged(object? sender, EventArgs eventArgs) {
+            if (WidgetUtils.MainPanel == null || WidgetUtils.MainPanel.IsDisposed) {
+                return;
+            }
             _popUpFormBackboard.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
             int x = _popUpFormBackboard.Location.X;
             int y = _popUpFormBackboard.Location.Y;

@@ -11,9 +11,10 @@ namespace CustomLibrary.ComboBoxs {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomComboBox<T>: UserControl {
         #region Fields
-        private readonly int _collapseStep = 20; // How many pixels increase/decrease each interval
-        private readonly int _collapseSpend = 30; // How many milliseconds will the collapse cost
+        private readonly int _timerInterval = 10; // How many milliseconds will the collapse cost
+        private readonly int _collapseSpend = 50; // How many milliseconds will the collapse cost
         private readonly int _maxItemsShown = 8; // Maximum of shown items, will has scroll bar if greater than this number
+        private int _collapseStep; // How many pixels increase/decrease each interval
         private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
         private Form? _itemsOuterForm;
@@ -176,6 +177,7 @@ namespace CustomLibrary.ComboBoxs {
             _itemSelected += OnItemSelected;
 
             _collapseTimer = new();
+            _collapseTimer.Interval = _timerInterval;
             _collapseTimer.Tick += TimerTick;
             _selectButton.Click += (sender, eventArgs) => {
                 if (!_selectButton.IsCollapsed) {
@@ -244,9 +246,9 @@ namespace CustomLibrary.ComboBoxs {
         }
         #endregion
 
-        private void ResetInterval() {
+        private void ResetCollapseStep() {
             if (_itemsPanelHeight != 0) {
-                _collapseTimer.Interval = (int) (_collapseSpend / ((decimal) _itemsPanelHeight / _collapseStep));
+                _collapseStep = _itemsPanelHeight / (_collapseSpend / _timerInterval);
             }
         }
 
@@ -269,7 +271,7 @@ namespace CustomLibrary.ComboBoxs {
                 ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
             });
             // Reset timer interval
-            ResetInterval();
+            ResetCollapseStep();
             // Return item index (from 0 to end, ignore first default button)
             return _itemButtons.Count - (_needDefaultLabel ? 2 : 1);
         }
@@ -282,7 +284,7 @@ namespace CustomLibrary.ComboBoxs {
                     ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
                 });
                 // Reset timer interval
-                ResetInterval();
+                ResetCollapseStep();
             }
         }
         // Remove default
@@ -290,7 +292,7 @@ namespace CustomLibrary.ComboBoxs {
             if (_itemButtons.Count != 0 && _itemButtons[0].Label == _defaultLabel) {
                 _itemButtons.RemoveAt(0);
                 // Reset timer interval
-                ResetInterval();
+                ResetCollapseStep();
             }
         }
 
@@ -425,7 +427,7 @@ namespace CustomLibrary.ComboBoxs {
                         properWidth = item.ProperWidth;
                     }
                 }
-                if (properWidth > 0) {
+                if (properWidth > 0 && properWidth > Width) {
                     if (_itemsScrollPanel.VScrollBar.Visible) {
                         _itemsOuterForm.Width = properWidth + _itemsScrollPanel.VScrollBar.Width;
                     } else {
@@ -468,7 +470,7 @@ namespace CustomLibrary.ComboBoxs {
                 _itemsPanelHeight = _itemHeight * _itemButtons.Count;
             }
             _itemsScrollPanelHeight = _itemsPanelHeight + Padding.Size.Height;
-            ResetInterval();
+            ResetCollapseStep();
 
             _selectButton.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _selectButton.Location = new(Padding.Left, Padding.Top);
@@ -728,6 +730,7 @@ namespace CustomLibrary.ComboBoxs {
                 if (this.Label != null) {
                     this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .53F, FontStyle.Regular, GraphicsUnit.Pixel);
                     int hPadding = (int) (Height / 3.5);
+                    _properWidth = 0; // This one has to be set to 0 manually, don't know where and why it's been set to a non-zero value, it's really weird
                     using (Graphics g = CreateGraphics()) {
                         float labelWidth = g.MeasureString(Label, Font).Width;
                         if (labelWidth >= (Width * .975) - hPadding * 2) {

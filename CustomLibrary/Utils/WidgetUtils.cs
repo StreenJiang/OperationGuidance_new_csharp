@@ -1,6 +1,7 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Constants;
+using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using System.Drawing.Drawing2D;
@@ -455,6 +456,26 @@ namespace CustomLibrary.Utils {
                 boxGroup.AddItem(current.Key, current.Value);
             }
             return boxGroup;
+        }
+        public static CustomDatePickerGroup AddDatePicker<T>(Control parent, T t, string boxName, Action<T, DateTime?> propertySetter) {
+            CustomDatePickerGroup pickerGroup = new(boxName) {
+                Parent = parent,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+            };
+            pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter(t, pickerGroup.GetPicker(0).Value);
+            return pickerGroup;
+        }
+        public static CustomDatePickerGroup AddSeparateDatePicker<T>(Control parent, T t, string boxName, string separator, Action<T, DateTime?> propertySetter1, Action<T, DateTime?> propertySetter2) {
+            CustomDatePickerGroup pickerGroup = new(boxName) {
+                Parent = parent,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+            };
+            pickerGroup.AddPicker();
+            pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter1(t, pickerGroup.GetPicker(0).Value);
+            pickerGroup.GetPicker(1).ValueChanged += (sender, eventArgs) => propertySetter2(t, pickerGroup.GetPicker(1).Value);
+            return pickerGroup;
         }
         public static ToggleButtonGroup AddToggleButton<T>(Control parent, T t, string toggleButtonName, Action<T, bool> propertySetter) {
             ToggleButtonGroup toggleButton = new(toggleButtonName) {

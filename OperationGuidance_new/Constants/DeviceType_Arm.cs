@@ -11,8 +11,8 @@
         public static ArmCF01 CF01 { get; } = AddNew<ArmCF01>();
         public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
 
-        public static DeviceArm? GetById(int id) {
-            foreach (DeviceArm type in Elements) {
+        public static DeviceTypeArm? GetById(int id) {
+            foreach (DeviceTypeArm type in Elements) {
                 if (type.Id == id) {
                     return type;
                 }
@@ -37,11 +37,11 @@
         }
     }
 
-    public class DeviceArm: DeviceTypeBase {
+    public class DeviceTypeArm: DeviceTypeBase {
         public Command COMMAND_READ_X_HEX;
         public Command COMMAND_READ_Y_HEX;
         public Command? COMMAND_READ_Z_HEX;
-        public DeviceArm(int id, string name, string[] commands) : base(id, name) {
+        public DeviceTypeArm(int id, string name, string[] commands) : base(id, name) {
             COMMAND_READ_X_HEX = new(commands[0]);
             COMMAND_READ_Y_HEX = new(commands[1]);
             Commands.Add(COMMAND_READ_X_HEX);
@@ -53,11 +53,11 @@
         }
     }
 
-    public class ArmCF01: DeviceArm {
+    public class ArmCF01: DeviceTypeArm {
         public ArmCF01() : base(1, "CF01", new string[] { "010300030002340B", "0203000300023438" }) { }
     }
 
-    public class ArmCF03: DeviceArm {
+    public class ArmCF03: DeviceTypeArm {
         public ArmCF03() : base(2, "CF03", new string[] { "010300030002340B", "0203000300023438", "030300000002c5e9" }) { }
     }
 }

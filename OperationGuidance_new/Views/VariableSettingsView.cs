@@ -59,7 +59,7 @@ namespace OperationGuidance_new.Views {
             // Resizes
             ResizeResolutionPanel();
             ResizeStoragePanel();
-        }
+       }
         public override void VisibleToTrue() {
             base.VisibleToTrue();
             // Reset current resolution
@@ -98,16 +98,23 @@ namespace OperationGuidance_new.Views {
             };
             Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
             Size screenSize = WidgetUtils.GetScreenResolution();
+            bool hasFullScreenResolution = false;
             while (enumerator.MoveNext()) {
                 KeyValuePair<Size, SizeRatioNRectColor> current = enumerator.Current;
                 if (current.Key.Width > screenSize.Width || current.Key.Height > screenSize.Height) {
                     continue;
                 }
-                string itemName = $"{current.Key.Width} x {current.Key.Height}（{current.Value.WidthRatio} x {current.Value.HeightRatio}）";
+                string itemName = $"{current.Key.Width} x {current.Key.Height}";
                 if (current.Key.Width == screenSize.Width && current.Key.Height == screenSize.Height) {
                     itemName += "（全屏）";
+                    hasFullScreenResolution = true;
+                } else {
+                    itemName += $"（{current.Value.WidthRatio} x {current.Value.HeightRatio}）";
                 }
                 _resolutionOptionsBox.AddItem(itemName, current);
+            }
+            if (!hasFullScreenResolution) {
+                _resolutionOptionsBox.AddItem($"{screenSize.Width} x {screenSize.Height}（全屏）", new KeyValuePair<Size, SizeRatioNRectColor>(screenSize, new()));
             }
             _resolutionConfirmButton = new() {
                 Parent = _resolutionContentPanel,

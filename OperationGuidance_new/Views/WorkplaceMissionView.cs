@@ -178,7 +178,9 @@ namespace OperationGuidance_new.Views {
             rsp = apis.QueryProductMissionListRsp(req);
             // 过滤掉某些产品面图片没有配置的不合格的任务
             _productMissionDTOs = rsp.ProductMissionsDTOs
-                .Where(dto => dto.ProductSides == null || dto.ProductSides.Where(side => side.image == null || side.image == "").Count() == 0)
+                .Where(dto => CommonUtils.CannotBeNull(dto.ProductSides).
+                        Where(side => side.image == null || side.image == "" 
+                            || side.Bolts == null || side.Bolts.Count == 0).Count() == 0)
                 .ToList();
         }
     }
@@ -293,6 +295,7 @@ namespace OperationGuidance_new.Views {
         private Dictionary<int, ArmTask> _armTasks = new();
         private Dictionary<int, ToolTask> _toolTasks = new();
         private Dictionary<int, SerialPortTask> _serialPortTasks = new();
+        private Dictionary<int, CommunicationTask> _communicationTask = new();
         private string? _barCodeMessage;
         private TighteningData? _tighteningData;
         private List<OperationDataDTO> _dataNeedToBeStored = new();
@@ -750,7 +753,7 @@ namespace OperationGuidance_new.Views {
                     if (deviceBlock.FloatingForm == null || deviceBlock.FloatingForm.IsDisposed) {
                         int panelHeight = WidgetUtils.TextOrComboBoxHeight();
                         Size contentSize = new();
-                        contentSize.Width = (int) (WidgetUtils.MainPanel.Width * .2);
+                        contentSize.Width = (int) (WidgetUtils.MainPanel.Width * .225);
                         if (deviceBlock.Category == DeviceCategories.TOOL) {
                             if (_toolTasks.Count > 0) {
                                 deviceBlock.BlockHoverUp = false;
@@ -767,12 +770,15 @@ namespace OperationGuidance_new.Views {
                             }
                         } else if (deviceBlock.Category == DeviceCategories.SERIAL_PORT) {
                             if (_serialPortTasks.Count > 0) {
-                                contentSize.Width = (int) (WidgetUtils.MainPanel.Width * .325);
+                                contentSize.Width = (int) (WidgetUtils.MainPanel.Width * .45);
                                 deviceBlock.FloatingForm = new SerialPortDetailFloatingForm(deviceBlock.CategoryName, _serialPortTasks, panelHeight);
                                 contentSize.Height = panelHeight * _serialPortTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
                             }
                         } else if (deviceBlock.Category == DeviceCategories.COMMUNICATION) {
-                            // TODO
+                            if (_communicationTask.Count > 0) {
+                                deviceBlock.FloatingForm = new CommunicationDetailFloatingForm(deviceBlock.CategoryName, _communicationTask, panelHeight);
+                                contentSize.Height = panelHeight * _communicationTask.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
+                            }
                         } else {
                             // TODO
                         }
@@ -907,7 +913,7 @@ namespace OperationGuidance_new.Views {
                             }
                         }
                     } else if (category == DeviceCategories.COMMUNICATION) {
-                        // TODO
+                        _communicationTask= MainUtils.CommunicationTasks;
                     } else {
                         // TODO
                     }
@@ -930,7 +936,7 @@ namespace OperationGuidance_new.Views {
                             } else if (category == DeviceCategories.SERIAL_PORT) {
                                 Check(block, _serialPortTasks.Values.ToList());
                             } else if (category == DeviceCategories.COMMUNICATION) {
-                                // TODO
+                                Check(block, _communicationTask.Values.ToList());
                             } else {
                                 // TODO
                             }
@@ -1100,22 +1106,27 @@ namespace OperationGuidance_new.Views {
                         _dataNeedToBeStored.Add(dataDTO);
 
                         bool tighteningCompleted = true;
+                        string errorMsg = "";
                         // 检查返回的拧紧状态是否为成功
                         if (_tighteningData.tightening_status != null && _tighteningData.tightening_status != (int) TighteningStatus.OK) {
                             tighteningCompleted = false;
+                            errorMsg = "NOK";
                         }
                         // 检查控制器返回数据与螺栓点位配置的数据是否一致
                         // 程序号（pset）校验
                         if (boltDTO.parameters_set != _tighteningData.parameter_set_number) {
                             tighteningCompleted = false;
+                            errorMsg = "程序要设置出错";
                         }
                         // 扭矩校验
                         if (boltDTO.torque_max > 0 && (_tighteningData.torque < boltDTO.torque_min || _tighteningData.torque > boltDTO.torque_max)) {
                             tighteningCompleted = false;
+                            errorMsg = "扭矩未达标不通过";
                         }
                         // 角度校验
                         if (boltDTO.angle_max > 0 && (_tighteningData.angle < boltDTO.angle_min || _tighteningData.angle > boltDTO.angle_max)) {
                             tighteningCompleted = false;
+                            errorMsg = "角度未达标不通过";
                         }
                         // 切换下一个点位
                         if (tighteningCompleted) {
@@ -1153,6 +1164,8 @@ namespace OperationGuidance_new.Views {
                             _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                             _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                             _currentWorkingBolt.BoltStatus = BoltStatus.ERROR;
+                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ERROR;
+                            _workingProcessPanel.StatusDesc = errorMsg;
                         }
                     }
                 });
@@ -1161,14 +1174,16 @@ namespace OperationGuidance_new.Views {
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
-            ResizeContents();
-            ResizeleftTop();
-            ResizeLeftBottom();
-            ResizeRightTop();
-            ResizeRightMiddle();
-            ResizeRightBottom();
-            ResizeBottom();
-            Invalidate();
+            if (IsHandleCreated && !IsDisposed) {
+                ResizeContents();
+                ResizeleftTop();
+                ResizeLeftBottom();
+                ResizeRightTop();
+                ResizeRightMiddle();
+                ResizeRightBottom();
+                ResizeBottom();
+                Invalidate();
+            }
         }
 
         private void ResizeContents() {
@@ -1275,7 +1290,7 @@ namespace OperationGuidance_new.Views {
             // Reset font size
             ResetRightBottomTitleFont();
             // Resize product side image
-            int imageWholeHeight = (int) ((_rightBottom.Height - 2 - _productSideTitle.Height) * .8);
+            int imageWholeHeight = (int) ((_rightBottom.Height - 2 - _productSideTitle.Height) * .815);
             int vPadding = (int) (imageWholeHeight * .1);
             int imageHeight = imageWholeHeight - vPadding * 2;
             if (_missionImages.Count > 0) {
@@ -1443,6 +1458,9 @@ namespace OperationGuidance_new.Views {
         private TightenOrLoosen _tightenOrLoosen;
         private BoltStatus _boltStatus;
 
+        public TightenOrLoosen TightenOrLoosen { get => _tightenOrLoosen; set => _tightenOrLoosen = value; }
+        public int? BoltSerialNum { get => _boltSerialNum; set => _boltSerialNum = value; }
+        public string StatusDesc { get => _statusDesc; set => _statusDesc = value; }
         public WorkplaceProcessStatus WorkplaceProcessStatus {
             get => _workplaceProcessStatus;
             set {
@@ -1465,6 +1483,10 @@ namespace OperationGuidance_new.Views {
                         _statusDesc = "未在指定坐标位置";
                         _picturePanel.Visible = false;
                         break;
+                    case WorkplaceProcessStatus.OPERATION_ERROR:
+                        _statusTxt = "NOK";
+                        _picturePanel.Visible = false;
+                        break;
                     case WorkplaceProcessStatus.NG:
                         _statusTxt = "任务中断";
                         _picturePanel.Visible = false;
@@ -1478,8 +1500,6 @@ namespace OperationGuidance_new.Views {
                 }
             }
         }
-        public TightenOrLoosen TightenOrLoosen { get => _tightenOrLoosen; set => _tightenOrLoosen = value; }
-        public int? BoltSerialNum { get => _boltSerialNum; set => _boltSerialNum = value; }
 
         public WorkingProcessPanel() : base() {
             _clockwiseIcon = Properties.Resources.processing_clockwise;
@@ -1515,10 +1535,14 @@ namespace OperationGuidance_new.Views {
                     while (!IsDisposed) {
                         switch (_workplaceProcessStatus) {
                             case WorkplaceProcessStatus.UNACTIVATED:
-                                BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_THEME.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
+                                }
                                 break;
                             case WorkplaceProcessStatus.OPERATION_ENABLE:
-                                BackColor = ColorConfigs.COLOR_WORKING_PROCESS_WHITE;
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_WHITE.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_WHITE;
+                                }
                                 // 旋转图标
                                 if (_tightenOrLoosen == TightenOrLoosen.TIGHTEN) {
                                     _rotateAngle += 15;
@@ -1531,13 +1555,24 @@ namespace OperationGuidance_new.Views {
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
                             case WorkplaceProcessStatus.OPERATION_DISABLE:
-                                BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                }
+                                break;
+                            case WorkplaceProcessStatus.OPERATION_ERROR:
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                }
                                 break;
                             case WorkplaceProcessStatus.NG:
-                                BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                }
                                 break;
                             case WorkplaceProcessStatus.FINISHED:
-                                BackColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_GREEN.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
+                                }
                                 break;
                             default:
                                 break;
@@ -1550,7 +1585,9 @@ namespace OperationGuidance_new.Views {
 
         protected override void OnSizeChanged(EventArgs e) {
             base.OnSizeChanged(e);
-            InvokeResizing();
+            if (IsHandleCreated && !IsDisposed) {
+                InvokeResizing();
+            }
         }
 
         private void InvokeResizing() {
@@ -1613,14 +1650,13 @@ namespace OperationGuidance_new.Views {
                     graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint);
                     break;
                 case WorkplaceProcessStatus.OPERATION_DISABLE:
-                    // graphics.FillRectangle(new SolidBrush(_correctColor), _borderRect);
+                case WorkplaceProcessStatus.OPERATION_ERROR:
                     statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 3);
                     graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
                     statusDescPoint = new Point((Width - statusDescWidth) / 2, _borderSize + _picturePanelHeight + _statusDescFont.Height / 2);
                     graphics.DrawString(_statusDesc, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusDescPoint);
                     break;
                 case WorkplaceProcessStatus.FINISHED:
-                    // graphics.FillRectangle(new SolidBrush(_correctColor), _borderRect);
                     statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 2);
                     graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
                     break;
@@ -1724,8 +1760,9 @@ namespace OperationGuidance_new.Views {
                     } else {
                         icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
                     }
-                    g.DrawImage(icon, new Point(0, (_panelHeight - imageSide) / 2));
-                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), 0));
+                    int imageY = (_panelHeight - imageSide) / 2;
+                    g.DrawImage(icon, new Point(0, imageY));
+                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
                 };
             }
         }
@@ -1849,8 +1886,9 @@ namespace OperationGuidance_new.Views {
                     } else {
                         icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
                     }
-                    g.DrawImage(icon, new Point(0, (_panelHeight - imageSide) / 2));
-                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), 0));
+                    int imageY = (_panelHeight - imageSide) / 2;
+                    g.DrawImage(icon, new Point(0, imageY));
+                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
                 };
             }
         }
@@ -2023,8 +2061,52 @@ namespace OperationGuidance_new.Views {
                     } else {
                         icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
                     }
-                    g.DrawImage(icon, new Point(0, (_panelHeight - imageSide) / 2));
-                    g.DrawString($"{task.PortName} - {task.FullName}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), 0));
+                    int imageY = (_panelHeight - imageSide) / 2;
+                    g.DrawImage(icon, new Point(0, imageY));
+                    g.DrawString($"{task.PortName} - {task.FullName}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
+                };
+            }
+        }
+    }
+
+    public class CommunicationDetailFloatingForm: CustomFloatingForm {
+        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
+        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
+
+        private int _panelHeight;
+
+        public CommunicationDetailFloatingForm(string categoryName, Dictionary<int, CommunicationTask> armTasks, int panelHeight) {
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
+            Title = "设备连接信息 - " + categoryName;
+            ContentPanel.FlowDirection = FlowDirection.TopDown;
+            _panelHeight = panelHeight;
+
+            DisplayCommunicationDetails(armTasks);
+        }
+
+        private void DisplayCommunicationDetails(Dictionary<int, CommunicationTask> armTasks) {
+            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
+
+            foreach (KeyValuePair<int, CommunicationTask> armTask in armTasks) {
+                CustomContentPanel panel = new() {
+                    Parent = ContentPanel,
+                };
+                ContentPanel.SizeChanged += (sender, eventArgs) => {
+                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
+                };
+                panel.Paint += (sender, eventArgs) => {
+                    Graphics g = eventArgs.Graphics;
+                    Image icon;
+                    CommunicationTask task = armTask.Value;
+                    int imageSide = (int) (_panelHeight * .8);
+                    if (task.Connected) {
+                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, imageSide, imageSide);
+                    } else {
+                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
+                    }
+                    int imageY = (_panelHeight - imageSide) / 2;
+                    g.DrawImage(icon, new Point(0, imageY));
+                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
                 };
             }
         }

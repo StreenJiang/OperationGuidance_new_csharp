@@ -113,6 +113,16 @@ namespace CustomLibrary.Resources {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap calendar_fill {
+            get {
+                object obj = ResourceManager.GetObject("calendar_fill", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap combo_collapse {
             get {
                 object obj = ResourceManager.GetObject("combo_collapse", resourceCulture);

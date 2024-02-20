@@ -118,6 +118,7 @@ namespace OperationGuidance_new.Views {
             confirmButton.Click += (s, e) => {
                 callBackAction += _editEntityPopUpForm.Dispose;
                 AddOrUpdate(dto, callBackAction);
+                _editEntityPopUpForm.Hide();
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {
