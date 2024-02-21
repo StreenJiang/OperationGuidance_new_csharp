@@ -1003,9 +1003,10 @@ namespace OperationGuidance_new.Views {
             private Image _closeImage = Properties.Resources.button_close;
             private Rectangle? _imageRect;
             private Image? _imageShowing;
+            private bool _down = false;
             private Action _onDeleted;
 
-            private bool _blockClick = false;
+            private bool _pressingClose = false;
             private Color? _originalBackColor;
             private Color? _triggeredBackColor;
             private ProductSideDTO? _sideDTO;
@@ -1198,6 +1199,21 @@ namespace OperationGuidance_new.Views {
                     _imageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_closeImage, imageSize);
                 }
             }
+            private void ClickAnimation(bool goDown) {
+                if (_imageRect != null) {
+                    if (goDown) {
+                        if (!_down) {
+                            _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
+                            _down = true;
+                        }
+                    } else {
+                        if (_down && !IsPressing) {
+                            _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
+                            _down = false;
+                        }
+                    }
+                }
+            }
             protected override void OnMouseLeave(EventArgs e) {
                 base.OnMouseLeave(e);
                 _imageRect = null;
@@ -1207,29 +1223,29 @@ namespace OperationGuidance_new.Views {
                 base.OnMouseMove(mevent);
                 if (_imageRect != null) {
                     if (EventFuncs.MouseInArea(new(PointToScreen(_imageRect.Value.Location), _imageRect.Value.Size))) {
-                        if (!_blockClick) {
-                            _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
-                        }
-                        _blockClick = true;
+                        _pressingClose = true;
                     } else {
-                        if (_blockClick) {
-                            _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
-                        }
-                        _blockClick = false;
+                        ClickAnimation(false);
+                        _pressingClose = false;
                     }
                     Invalidate();
                 }
             }
             protected override void OnMouseDown(MouseEventArgs mevent) {
-                if (!_blockClick) {
-                    base.OnMouseDown(mevent);
-                } else if (_imageRect != null) {
-                    _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
+                if (_pressingClose) {
+                    BlockHoverDown = true;
+                } else {
+                    BlockHoverDown = false;
+                }
+                base.OnMouseDown(mevent);
+                if (_pressingClose && _imageRect != null) {
+                    ClickAnimation(true);
                     Invalidate();
                 }
             }
             protected override void OnMouseUp(MouseEventArgs mevent) {
-                if (!_blockClick) {
+                base.OnMouseUp(mevent);
+                if (!_pressingClose) {
                     if (mevent.Button == MouseButtons.Left) {
                         if (ClickTimes == 0) {
                             EventArgs = mevent;
@@ -1237,9 +1253,8 @@ namespace OperationGuidance_new.Views {
                         }
                         ClickTimes++;
                     }
-                    base.OnMouseUp(mevent);
-                } else if (_imageRect != null) {
-                    _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
+                } else if (_pressingClose && _imageRect != null) {
+                    ClickAnimation(false);
                     Invalidate();
                     Dispose();
                     _onDeleted();
