@@ -9,7 +9,7 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
         [GridColumn("最后修改人")]
         public string? modifier { get; set; }
         [GridColumn("创建时间")]
-        public string? string_create_time { get; set; }
+        public virtual string? string_create_time { get; set; }
         private DateTime? _create_time;
         public DateTime? create_time { 
             get => _create_time;
@@ -21,7 +21,7 @@ namespace OperationGuidance_new.ViewObjects.AbstractClasses {
             }
         }
         [GridColumn("最后修改时间")]
-        public string? string_modify_time { get; set; }
+        public virtual string? string_modify_time { get; set; }
         private DateTime? _modify_time;
         public DateTime? modify_time { 
             get => _modify_time; 

@@ -81,10 +81,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             }
             // Recalculate all inner controls
             this._vScrollBar.Height = this.Height;
-            this._vScrollBar.Width = WidgetUtils.MainPanel.Width / 55;
-            if (this._vScrollBar.Width < 12) {
-                this._vScrollBar.Width = 12;
-            }
+            this._vScrollBar.Width = WidgetUtils.ScrollBarThickness();
 
             // Check if needs scrollbar
             bool needsScrollBar = this._vScrollBar.Visible || this._alwaysShowScrollBar;

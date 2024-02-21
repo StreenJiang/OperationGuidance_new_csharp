@@ -11,8 +11,8 @@ namespace CustomLibrary.TextBoxes {
         private HorizontalAlignment _nameAlignment;
         private Point _boxBeginLocation;
         private int _gapNameAndBox;
-        private int _gapBoxes;
         private string _separator;
+        private Size _separatorSize;
         private List<SeparatorControl> _separators;
 
         private bool _numberValidate;
@@ -40,6 +40,7 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         public string TextName { get => this._textName; set => this._textName = value; }
+        protected int NameWidth { get => _nameWidth; set => _nameWidth = value; }
         public Point BoxBeginLocation { get => _boxBeginLocation; set => _boxBeginLocation = value; }
         public string Separator { 
             get => _separator; 
@@ -48,7 +49,10 @@ namespace CustomLibrary.TextBoxes {
                 SetSeparatorsProperties((separator) => separator.Text = value );
             }
         }
+        protected FlowLayoutPanel TextBoxesPanel { get => _textBoxesPanel; set => _textBoxesPanel = value; }
         public List<CustomTextBox> TextBoxes { get => _textBoxes; }
+        public Size SeparatorSize { get => _separatorSize; set => _separatorSize = value; }
+        protected List<SeparatorControl> Separators { get => _separators; set => _separators = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
         public new Control Parent { 
@@ -160,6 +164,7 @@ namespace CustomLibrary.TextBoxes {
                 Enabled = _enabled,
                 NumberOnly = NumberOnly,
             };
+            // box.BackColor = _boxBackColor;
             _textBoxes.Add(box);
             if (IsHandleCreated) {
                 ResizeChildren(this, EventArgs.Empty);
@@ -187,27 +192,19 @@ namespace CustomLibrary.TextBoxes {
             // Calculate gap between name and box
             _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
-            Size separatorSize = new(0, Height - Padding.Size.Height);
+            _separatorSize = new(0, Height - Padding.Size.Height);
             using (Graphics g = CreateGraphics()) {
                 _nameWidth = (int) g.MeasureString(_textName, Font).Width;
                 if (_separator.Length > 0) {
-                    separatorSize.Width = (int) g.MeasureString(_separator, Font).Width;
+                    _separatorSize.Width = (int) g.MeasureString(_separator, Font).Width;
                 }
             }
             SetSeparatorsProperties((separator) => {
-                separator.Size = separatorSize;
+                separator.Size = _separatorSize;
                 separator.Font = Font;
             });
             // Calculate width of combo box
-            int boxesRange;
-            if (_ratio != null) {
-                boxesRange = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
-            } else {
-                boxesRange = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
-            }
-            _textBoxesPanel.Size = new(boxesRange, Height - Padding.Size.Height);
-            _boxBeginLocation = new(Width - Padding.Right - boxesRange, Padding.Top);
-            _textBoxesPanel.Location = _boxBeginLocation;
+            int boxesRange = GetBoxesRange();
             // Find a optimal gap pixels
             int boxesCount = _textBoxes.Count;
             int separatorCount = _separators.Count;
@@ -215,7 +212,7 @@ namespace CustomLibrary.TextBoxes {
             int curr = 0;
             int hMarginTemp = 0;
             while (true) {
-                if ((boxesRange - (separatorSize.Width + pixels) * separatorCount) % boxesCount == 0) {
+                if ((boxesRange - (_separatorSize.Width + pixels) * separatorCount) % boxesCount == 0) {
                     int prev = curr;
                     curr = pixels;
                     if (curr > _gapNameAndBox / 2) {
@@ -229,16 +226,16 @@ namespace CustomLibrary.TextBoxes {
                 }
                 pixels++;
             }
-            int vMarginTemp = (Height - separatorSize.Height) / 2;
+            int vMarginTemp = (Height - _separatorSize.Height) / 2;
             SetSeparatorsProperties((separator) => separator.Margin = new(hMarginTemp, vMarginTemp, hMarginTemp, vMarginTemp));
 
             // Recalculate size and location of boxes
-            int boxWidth = (boxesRange - ((separatorSize.Width + hMarginTemp * 2) * separatorCount)) / boxesCount;
+            int boxWidth = (boxesRange - ((_separatorSize.Width + hMarginTemp * 2) * separatorCount)) / boxesCount;
             SetTextBoxesProperties((textBox) => textBox.Size = new(boxWidth, _textBoxesPanel.Height));
 
             if (_separators.Count > 0) {
                 // If there are any remaining pixels, split them into separate separators
-                int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (separatorSize.Width + hMarginTemp * 2) * separatorCount;
+                int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (_separatorSize.Width + hMarginTemp * 2) * separatorCount;
                 int indexTemp = 0;
                 while (remainingWidth > 0) {
                     _separators[indexTemp].Width += 1;
@@ -246,6 +243,19 @@ namespace CustomLibrary.TextBoxes {
                     remainingWidth--;
                 }
             }
+        }
+
+        protected virtual int GetBoxesRange() {
+            int boxesRangeTemp;
+            if (_ratio != null) {
+                boxesRangeTemp = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
+            } else {
+                boxesRangeTemp = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
+            }
+            _textBoxesPanel.Size = new(boxesRangeTemp, Height - Padding.Size.Height);
+            _boxBeginLocation = new(Width - Padding.Right - boxesRangeTemp, Padding.Top);
+            _textBoxesPanel.Location = _boxBeginLocation;
+            return boxesRangeTemp;
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -271,7 +281,7 @@ namespace CustomLibrary.TextBoxes {
             BackColor = Parent.BackColor;
         }
 
-        private class SeparatorControl: UserControl {
+        protected class SeparatorControl: UserControl {
             protected override void OnPaint(PaintEventArgs e) {
                 e.Graphics.Clear(BackColor);
                 base.OnPaint(e);

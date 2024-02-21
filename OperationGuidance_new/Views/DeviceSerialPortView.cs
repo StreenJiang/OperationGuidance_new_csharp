@@ -2,7 +2,7 @@ using System.IO.Ports;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
+using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.ViewObjects;
@@ -12,6 +12,7 @@ using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
+using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public class DeviceSerialPortView: CustomDataGridViewOuterPanel<DeviceSerialPortDTO, ViewObjects.DeviceSerialPortVO> {

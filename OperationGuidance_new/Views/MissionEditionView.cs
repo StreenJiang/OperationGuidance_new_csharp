@@ -6,7 +6,6 @@ using CustomLibrary.Constants;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
-using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -17,6 +16,7 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using Timer = System.Windows.Forms.Timer;
+using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView: CustomContentPanel {

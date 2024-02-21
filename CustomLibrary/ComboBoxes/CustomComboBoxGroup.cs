@@ -1,8 +1,7 @@
-using CustomLibrary.ComboBoxs;
 using CustomLibrary.Configs;
 using System.ComponentModel;
 
-namespace CustomLibrary.TextBoxes {
+namespace CustomLibrary.ComboBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomComboBoxGroup<T>: UserControl {
         private string _textName;
@@ -11,12 +10,16 @@ namespace CustomLibrary.TextBoxes {
         private int _gapNameAndBox;
 
         private double? _ratio;
+        private FlowLayoutPanel _elementsPanel;
         private CustomComboBox<T> _comboBox;
 
         public new bool Enabled { get => _comboBox.Enabled; set => _comboBox.Enabled = value; }
         public bool NeedDefaultLabel { get => _comboBox.NeedDefaultLabel; set => _comboBox.NeedDefaultLabel = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
+        public int GapNameAndBox { get => _gapNameAndBox; set => _gapNameAndBox = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
+        public FlowLayoutPanel ElementsPanel { get => _elementsPanel; set => _elementsPanel = value; }
+        protected CustomComboBox<T> ComboBox { get => _comboBox; set => _comboBox = value; }
         public new Color BackColor { get; private set; }
         public new Control Parent { 
             get => base.Parent; 
@@ -57,9 +60,13 @@ namespace CustomLibrary.TextBoxes {
             _textName = textName;
             _nameWidth = 0;
             _nameAlignment = HorizontalAlignment.Left;
+            _elementsPanel = new() {
+                Parent = this,
+                Margin = new(0),
+            };
             // Initialize combo box
             _comboBox = new();
-            _comboBox.Parent = this;
+            _comboBox.Parent = _elementsPanel;
         }
 
         public int AddItem(string itemName, T? obj) => _comboBox.AddItem(itemName, obj);
@@ -89,16 +96,21 @@ namespace CustomLibrary.TextBoxes {
                 _nameWidth = (int) g.MeasureString(_textName, Font).Width;
             }
             // Calculate width of combo box
+            int boxWidth = GetBoxWidth();
+            // Resize combo box first to get font of it
+            _comboBox.Size = new(boxWidth, _elementsPanel.Height);
+        }
+
+        protected virtual int GetBoxWidth() {
             int boxWidth;
             if (_ratio != null) {
                 boxWidth = (int) ((Width - Padding.Size.Width) * _ratio.Value / 10);
             } else {
                 boxWidth = Width - _nameWidth - Padding.Size.Width - _gapNameAndBox;
             }
-            // Resize combo box first to get font of it
-            _comboBox.Size = new(boxWidth, Height - Padding.Size.Height);
-            // Relocate combo box
-            _comboBox.Location = new(Width - boxWidth - Padding.Right, (Height - _comboBox.Height) / 2);
+            _elementsPanel.Size = new(boxWidth, Height - Padding.Size.Height);
+            _elementsPanel.Location = new(Width - boxWidth - Padding.Right, (Height - _elementsPanel.Height) / 2);
+            return boxWidth;
         }
 
         protected override void OnPaint(PaintEventArgs e) {

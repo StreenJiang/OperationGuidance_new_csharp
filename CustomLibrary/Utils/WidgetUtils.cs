@@ -3,9 +3,10 @@ using CustomLibrary.Configs;
 using CustomLibrary.Constants;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
+using CustomLibrary.ComboBoxes;
 using System.Drawing.Drawing2D;
 using System.Reflection;
+using CustomLibrary.TextBoxes;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
@@ -267,6 +268,13 @@ namespace CustomLibrary.Utils {
         }
 
         // Content configs 
+        public static int ScrollBarThickness() {
+            int thickness = WidgetUtils.MainPanel.Height / 43;
+            if (thickness < 12) {
+                thickness = 12;
+            }
+            return thickness;
+        }
         public static int ContentTitle() => (int) (MainPanel.Height * .052);
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
         public static Padding ContentPadding() {
@@ -296,7 +304,7 @@ namespace CustomLibrary.Utils {
             return new(hPadding, 0, hPadding, vPadding);
         }
         // Grid view configs
-        public static int GridViewHeaderRowHeight() => (int) (MainPanel.Height * .04);
+        public static int GridViewHeaderHeight() => (int) (MainPanel.Height * .04);
         public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .0375);
         public static int GridViewContentColumnMaxWidth() => (int) (MainPanel.Width * .2);
         public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);

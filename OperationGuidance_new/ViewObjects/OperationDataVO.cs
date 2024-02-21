@@ -68,5 +68,13 @@ namespace OperationGuidance_new.ViewObjects {
 
         public DateTime? filter_create_time_min { get; set; }
         public DateTime? filter_create_time_max { get; set; }
+
+        // 覆盖base的属性
+        [GridColumn("操作员")]
+        public new string? creator { get; set; }
+        [GridColumn("数据生成时间")]
+        public override string? string_create_time { get; set; }
+        public new string? modifier { get; set; }
+        public new string? string_modify_time { get; set; }
     }
 }

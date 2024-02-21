@@ -3,10 +3,10 @@ using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.DataGridViewRelateds;
 using CustomLibrary.Panels;
-using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
+using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
@@ -234,7 +234,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
             }
-            // _gridView.VirtualMode = true;
             _gridView.Columns.AddRange(columnRange);
             _gridView.Columns[0].Frozen = true;
         }
@@ -510,7 +509,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             }
             // Grid header height
-            int newHeaderHeight = WidgetUtils.GridViewHeaderRowHeight();
+            int newHeaderHeight = WidgetUtils.GridViewHeaderHeight();
             if (newHeaderHeight >= 4) {
                 _gridView.ColumnHeadersHeight = newHeaderHeight;
                 _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
@@ -528,7 +527,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 foreach (DataGridViewRow row in _gridView.Rows) {
                     row.Height = newContentHeight;
                 }
-                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
+                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
             }
             // Page info panel height
             int newPageInfoHeight = WidgetUtils.GridViewPageInfoHeight();

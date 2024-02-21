@@ -7,7 +7,7 @@ using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using Timer = System.Windows.Forms.Timer;
 
-namespace CustomLibrary.ComboBoxs {
+namespace CustomLibrary.ComboBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomComboBox<T>: UserControl {
         #region Fields
