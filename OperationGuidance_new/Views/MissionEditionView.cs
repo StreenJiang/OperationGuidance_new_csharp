@@ -357,7 +357,12 @@ namespace OperationGuidance_new.Views {
                         if (_currentSideButton.DeletedSerialNum.Count > 0) {
                             boltDTO.serial_num = _currentSideButton.DeletedSerialNum.Dequeue();
                         } else {
-                            boltDTO.serial_num = _currentSideButton.BoltButtons.Count + 1;
+                            for (int serialNum = 1; serialNum <= _currentSideButton.BoltSerialNums.Count + 1; serialNum++) {
+                                if (!_currentSideButton.BoltSerialNums.Contains(serialNum)) {
+                                    boltDTO.serial_num = serialNum;
+                                    break;
+                                }
+                            }
                         }
                         if (boltDTO.serial_num != null) {
                             _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num.Value);
@@ -722,6 +727,10 @@ namespace OperationGuidance_new.Views {
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_BUTTON_BACK,
                     Visible = false,
                 };
+                boltEditionButton.Deleted += () => {
+                    sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
+                    _currentSideButton.DeleteBolt();
+                };
                 boltEditionButton.SingleClickDelegate += (eventArgs) => {
                     sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
                     OpenBoltPopUpForm(boltDTO);
@@ -950,8 +959,11 @@ namespace OperationGuidance_new.Views {
                 _boltTitleLabel.Font = new Font(WidgetsConfigs.SystemFontFamily, _boltTitleLabel.Height * .55F, FontStyle.Bold, GraphicsUnit.Pixel);
 
                 int contentHeight = _bottomRight.Height - _boltTitlePanel.Height - 2;
-                int boltButtonHeight = (int) (contentHeight * .06);
+                int boltButtonHeight = (int) (contentHeight * .055);
                 int boltButtonMargin = boltButtonHeight / 7;
+                _rightContentPanel.BoltButtonHeight = boltButtonHeight;
+                _rightContentPanel.BoltButtonMargin = boltButtonMargin;
+                _rightContentPanel.BoltButtonWidth = controlWidth - boltButtonMargin * 2;
 
                 _rightContentPanel.NewHeight = (boltButtonHeight + boltButtonMargin) * _currentSideButton.BoltEditionButtons.Count;
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
@@ -999,14 +1011,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class SideButton: CommonButton {
-            private Image _closeImage = Properties.Resources.button_close;
-            private Rectangle? _imageRect;
-            private Image? _imageShowing;
-            private bool _down = false;
-            private Action _onDeleted;
-
-            private bool _pressingClose = false;
+        public class SideButton: ClosableButton {
             private Color? _originalBackColor;
             private Color? _triggeredBackColor;
             private ProductSideDTO? _sideDTO;
@@ -1028,7 +1033,6 @@ namespace OperationGuidance_new.Views {
             // Tip of each side button, to tell that it can be double clicked to rename
             private ToolTip? _toolTip;
 
-            public event Action Deleted { add => _onDeleted += value; remove => _onDeleted -= value; }
             public ProductSideDTO? SideDTO { get => _sideDTO; set => _sideDTO = value; }
             public ProductImageFile ProductImageFile { set => _productImageFile = value; }
             public ProductImageFile ProductImageFileNew { get => _productImageFileNew; }
@@ -1186,66 +1190,11 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ChangeFontStyle() {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .5), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
-            }
-
-            protected override void OnMouseEnter(EventArgs e) {
-                base.OnMouseEnter(e);
-                if (ToggleBarRect != null) {
-                    int closeBtnSide = (int) ((Height - ToggleBarRect.Value.Height) * .8);
-                    Size imageSize = new(closeBtnSide, closeBtnSide);
-                    Point imageLocation = new(Width - closeBtnSide, (Height - ToggleBarRect.Value.Height - closeBtnSide) / 2);
-                    _imageRect = new(imageLocation, imageSize);
-                    _imageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_closeImage, imageSize);
-                }
-            }
-            private void ClickAnimation(bool goDown) {
-                if (_imageRect != null) {
-                    if (goDown) {
-                        if (!_down) {
-                            _imageRect = new(new(_imageRect.Value.X + 1, _imageRect.Value.Y + 1), _imageRect.Value.Size);
-                            _down = true;
-                        }
-                    } else {
-                        if (_down && !IsPressing) {
-                            _imageRect = new(new(_imageRect.Value.X - 1, _imageRect.Value.Y - 1), _imageRect.Value.Size);
-                            _down = false;
-                        }
-                    }
-                }
-            }
-            protected override void OnMouseLeave(EventArgs e) {
-                base.OnMouseLeave(e);
-                _imageRect = null;
-                _imageShowing = null;
-            }
-            protected override void OnMouseMove(MouseEventArgs mevent) {
-                base.OnMouseMove(mevent);
-                if (_imageRect != null) {
-                    if (EventFuncs.MouseInArea(new(PointToScreen(_imageRect.Value.Location), _imageRect.Value.Size))) {
-                        _pressingClose = true;
-                    } else {
-                        ClickAnimation(false);
-                        _pressingClose = false;
-                    }
-                    Invalidate();
-                }
-            }
-            protected override void OnMouseDown(MouseEventArgs mevent) {
-                if (_pressingClose) {
-                    BlockHoverDown = true;
-                } else {
-                    BlockHoverDown = false;
-                }
-                base.OnMouseDown(mevent);
-                if (_pressingClose && _imageRect != null) {
-                    ClickAnimation(true);
-                    Invalidate();
-                }
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .45), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
             }
             protected override void OnMouseUp(MouseEventArgs mevent) {
                 base.OnMouseUp(mevent);
-                if (!_pressingClose) {
+                if (!PressingClose) {
                     if (mevent.Button == MouseButtons.Left) {
                         if (ClickTimes == 0) {
                             EventArgs = mevent;
@@ -1253,18 +1202,7 @@ namespace OperationGuidance_new.Views {
                         }
                         ClickTimes++;
                     }
-                } else if (_pressingClose && _imageRect != null) {
-                    ClickAnimation(false);
-                    Invalidate();
-                    Dispose();
-                    _onDeleted();
                 }
-            }
-            protected override void PaintAfter(PaintEventArgs e) {
-                if (_imageShowing != null && _imageRect != null) {
-                    e.Graphics.DrawImage(_imageShowing, _imageRect.Value.Location);
-                }
-                base.PaintAfter(e);
             }
         }
 
@@ -1422,6 +1360,13 @@ namespace OperationGuidance_new.Views {
 
         public class RightContentPanel: CustomContentPanel {
             private List<SideButton> _sideButtons;
+            private int _boltButtonHeight;
+            private int _boltButtonMargin;
+            private int _boltButtonWidth;
+
+            public int BoltButtonHeight { get => _boltButtonHeight; set => _boltButtonHeight = value; }
+            public int BoltButtonMargin { get => _boltButtonMargin; set => _boltButtonMargin = value; }
+            public int BoltButtonWidth { get => _boltButtonWidth; set => _boltButtonWidth = value; }
 
             public RightContentPanel(List<SideButton> sideButtons) {
                 _sideButtons = sideButtons;
@@ -1429,13 +1374,10 @@ namespace OperationGuidance_new.Views {
 
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (OuterVScrollPanel != null) {
-                    int boltButtonHeight = (int) (OuterVScrollPanel.Height * .06);
-                    int boltButtonMargin = boltButtonHeight / 7;
-                    int boltButtonWidth = Width - boltButtonMargin * 2;
                     foreach (SideButton sideButton in _sideButtons) {
                         foreach (BoltEditionButton boltEditionButton in sideButton.BoltEditionButtons.Values) {
-                            boltEditionButton.Size = new(boltButtonWidth, boltButtonHeight);
-                            boltEditionButton.Margin = new(boltButtonMargin, boltButtonMargin, boltButtonMargin, 0);
+                            boltEditionButton.Size = new(_boltButtonWidth, _boltButtonHeight);
+                            boltEditionButton.Margin = new(_boltButtonMargin, _boltButtonMargin, _boltButtonMargin, 0);
                         }
                     }
                 }
@@ -1446,7 +1388,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class BoltEditionButton: CommonButton {
+        public class BoltEditionButton: ClosableButton {
             private ProductBoltDTO _boltDTO;
             public ProductBoltDTO BoltDTO { get => _boltDTO; set => _boltDTO = value; }
 
@@ -1500,33 +1442,26 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void ResizeTextLabel() {
-                if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .4), FontStyle.Regular, GraphicsUnit.Pixel);
+                if (this.Label != null && Height > 0) {
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .45), FontStyle.Regular, GraphicsUnit.Pixel);
                     using (Graphics g = CreateGraphics()) {
                         this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
                     }
-                    this.LabelY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
+                    this.LabelY = (int) ((this.Height - this.Font.Height) / 2);
                 }
             }
 
             protected override void OnMouseUp(MouseEventArgs mevent) {
-                if (mevent.Button == MouseButtons.Left) {
-                    if (ClickTimes == 0) {
-                        EventArgs = mevent;
-                        ClickTimer.Start();
-                    }
-                    ClickTimes++;
-                }
                 base.OnMouseUp(mevent);
-            }
-        }
-
-        public class BoltLocationInfo {
-            private Point _boltLocation;
-
-            public Point GetDisplayLocation() {
-                // TODO: do some calculation here
-                return new();
+                if (!PressingClose) {
+                    if (mevent.Button == MouseButtons.Left) {
+                        if (ClickTimes == 0) {
+                            EventArgs = mevent;
+                            ClickTimer.Start();
+                        }
+                        ClickTimes++;
+                    }
+                }
             }
         }
     }
