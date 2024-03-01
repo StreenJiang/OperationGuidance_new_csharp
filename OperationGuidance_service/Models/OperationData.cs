@@ -30,7 +30,7 @@ namespace OperationGuidance_service.Models {
         public int? strategy_options { get; set; }                                          //
         public int? batch_size { get; set; }                                                // 批次总数量
         public int? batch_counter { get; set; }                                             // 批次计数
-        public int? tightening_status { get; set; }                                         // 最终状态（待确认）
+        public int? tightening_status { get; set; }                                         // 最终状态
         public int? batch_status { get; set; }                                              // 批次状态
         public int? torque_status { get; set; }                                             // 最终扭力状态
         public int? angle_status { get; set; }                                              // 最终角度状态
@@ -54,10 +54,10 @@ namespace OperationGuidance_service.Models {
         public int? rundown_angle_max { get; set; }                                         // 贴合角度上限
         public int? rundown_angle { get; set; }                                             // 贴合角度
         public int? rundown_angle_target { get; set; } = 0;                                 // * 贴合角度目标值
-        public int? rundown_torque_min { get; set; } = 0;                                   // * 贴合扭力下限
-        public int? rundown_torque_max { get; set; } = 0;                                   // * 贴合扭力上限
-        public int? rundown_torque { get; set; } = 0;                                       // * 贴合扭力
-        public int? rundown_torque_target { get; set; } = 0;                                // * 贴合扭力目标值
+        public float? rundown_torque_min { get; set; } = 0;                                 // * 贴合扭力下限
+        public float? rundown_torque_max { get; set; } = 0;                                 // * 贴合扭力上限
+        public float? rundown_torque { get; set; } = 0;                                     // * 贴合扭力
+        public float? rundown_torque_target { get; set; } = 0;                              // * 贴合扭力目标值
         public int? current_monitoring_min { get; set; }                                    //
         public int? current_monitoring_max { get; set; }                                    //
         public int? current_monitoring_value { get; set; }                                  //

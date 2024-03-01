@@ -11,6 +11,9 @@ using CustomLibrary.TextBoxes;
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
         #region Feilds 
+        private Panel _gridViewPanel;
+        private HScrollBar? _hScrollBar;
+        private VScrollBar? _vScrollBar;
         private DataGridView _gridView;
         private Panel _blankPanel;
         private Panel _pageInfoPanel;
@@ -28,6 +31,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _currentPage;
         private int _pageSize;
         private int _totalPages;
+        private Action<DataGridView>? _initializeColumnHeader;
         private List<T> _dataSource;
         #endregion
 
@@ -48,6 +52,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Paging(_currentPage, _pageSize);
             }
         }
+        public Action<DataGridView>? InitializeColumnHeader { get => _initializeColumnHeader; set => _initializeColumnHeader = value; }
         public List<T> DataSource {
             get => _dataSource;
             set {
@@ -59,112 +64,30 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Constructors
-        public DataGridViewPanel() {
+        public DataGridViewPanel(Action<DataGridView>? initializeColumnHeader = null) {
+            _initializeColumnHeader = initializeColumnHeader;
             // Self properties
             AutoPadding = false;
             Padding = new(1);
             PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER;
             // Data source
             _dataSource = new();
-            // Page info
-            _pageSize = 20;
-            _currentPage = 1;
-            _pageInfoPanel = new() {
-                Parent = this,
-                Margin = new(0),
-                Padding = new(0),
-                BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9),
-            };
-            _pageInfoContentPanel = new() {
-                Parent = _pageInfoPanel,
-                Margin = new(0),
-                Padding = new(0),
-                Dock = DockStyle.Right,
-            };
-            _dataCountInfo = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                AutoSize = true,
-            };
-            _countPerPage = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                AutoSize = true,
-            };
-            _first = new() {
-                Parent = _pageInfoContentPanel,
-                Icon = Properties.Resources.page_btn_backward_fast,
-            };
-            _first.Click += (sender, evnetArgs) => {
-                if (_currentPage != 1) {
-                    CurrentPage = 1;
-                }
-            };
-            _backward = new() {
-                Parent = _pageInfoContentPanel,
-                Icon = Properties.Resources.page_btn_backward,
-            };
-            _backward.Click += (sender, evnetArgs) => {
-                if (_currentPage > 1) {
-                    CurrentPage--;
-                }
-            };
-            _pageInfo = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                AutoSize = true,
-            };
-            _forward = new() {
-                Parent = _pageInfoContentPanel,
-                Icon = Properties.Resources.page_btn_forward,
-            };
-            _forward.Click += (sender, evnetArgs) => {
-                if (_currentPage < _totalPages) {
-                    CurrentPage++;
-                }
-            };
-            _last = new() {
-                Parent = _pageInfoContentPanel,
-                Icon = Properties.Resources.page_btn_forward_fast,
-            };
-            _last.Click += (sender, evnetArgs) => {
-                if (_currentPage != _totalPages) {
-                    CurrentPage = _totalPages;
-                }
-            };
-            _jumpToText = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                Text = "跳转至第",
-                AutoSize = true,
-            };
-            _jumpToBox = new() {
-                Parent = _pageInfoContentPanel,
-                NumberOnly = true,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _jumpToTextRight = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                Text = "页",
-                AutoSize = true,
-            };
             // Data grid view
-            InitializeGridView();
+            InitializeGridView(initializeColumnHeader);
+            // Page info
+            InitializePagePanel();
             Paging(1, _pageSize);
         }
         #endregion
 
         #region Initialization methods
-        private void InitializeGridView() {
-            _gridView = new() {
+        private void InitializeGridView(Action<DataGridView>? initializeColumnHeader) {
+            _gridViewPanel = new() {
                 Parent = this,
+                Margin = new(0),
+            };
+            _gridView = new() {
+                Parent = _gridViewPanel,
                 Margin = new(0),
                 ReadOnly = true,
                 BorderStyle = BorderStyle.None,
@@ -180,25 +103,30 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 AutoGenerateColumns = false,
                 RowHeadersVisible = false,
                 EnableHeadersVisualStyles = false,
+                ScrollBars = ScrollBars.None,
             };
-            _gridView.BringToFront();
             _gridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .15);
             _gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
             _gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _gridView.ColumnHeadersDefaultCellStyle.BackColor;
+            _gridView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            _gridView.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             _gridView.RowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F0F0F0");
             _gridView.RowsDefaultCellStyle.SelectionBackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .8);
             _gridView.RowsDefaultCellStyle.SelectionForeColor = WidgetUtils.DarkenColor(ColorTranslator.FromHtml("#E86C10"), .7);
             _gridView.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#FEFEFE");
             _gridView.BackgroundColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .975);
             // Initialize column headers
-            InitializeColumnHeaders();
+            if (initializeColumnHeader != null) {
+                initializeColumnHeader(_gridView);
+            } else {
+                InitializeColumnHeaders();
+            }
             InitializeEventBindings();
             InitializeOthers();
         }
         private void InitializeColumnHeaders() {
             DataGridViewColumn[] columnRange = {};
-            Type type = typeof(T);
-            List<PropertyInfo> props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
+            List<PropertyInfo> props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
             foreach (PropertyInfo property in props) {
                 IEnumerable<Attribute> enumerable = property.GetCustomAttributes();
                 foreach (Attribute attribute in enumerable) {
@@ -326,6 +254,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
                 columnsPainted.Add(eventArgs.ColumnIndex);
                 rowsPainted.Add(eventArgs.RowIndex);
+                // 不知道为啥自定义column的值设置的时候，这个offset会被重置为0，所以在这里手动设置一下
+                if (_hScrollBar != null && _gridView.HorizontalScrollingOffset != _hScrollBar.Value) {
+                    _gridView.HorizontalScrollingOffset = _hScrollBar.Value;
+                }
             };
             Tuple<int, int> cellDirectionDown = new(-1, -1);
             Tuple<int, int> cellDirectionUp = new(-1, -1);
@@ -389,6 +321,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 rowChanged = false;
                 columnChanged = false;
             };
+            _gridView.Scroll += (sender, eventArgs) => {
+                if (_vScrollBar != null && _vScrollBar.Visible && eventArgs.ScrollOrientation == ScrollOrientation.VerticalScroll) {
+                    _vScrollBar.Value = eventArgs.NewValue;
+                }
+            };
             _gridView.CellValueChanged += (sender, eventArgs) => {
                 DataGridViewCell cell = _gridView.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
                 Console.WriteLine("Value change to: " + cell.Value);
@@ -434,6 +371,126 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             };
         }
+        private void InitializePagePanel() {
+            // Page info
+            _pageSize = 20;
+            _currentPage = 1;
+            _pageInfoPanel = new() {
+                Parent = this,
+                Margin = new(0),
+                Padding = new(0),
+                BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9),
+            };
+            _pageInfoContentPanel = new() {
+                Parent = _pageInfoPanel,
+                Margin = new(0),
+                Padding = new(0),
+                Dock = DockStyle.Right,
+            };
+            _dataCountInfo = new() {
+                Parent = _pageInfoContentPanel,
+                Margin = new(0),
+                Padding = new(0),
+                AutoSize = true,
+            };
+            _countPerPage = new() {
+                Parent = _pageInfoContentPanel,
+                Margin = new(0),
+                Padding = new(0),
+                AutoSize = true,
+            };
+            _first = new() {
+                Parent = _pageInfoContentPanel,
+                Icon = Properties.Resources.page_btn_backward_fast,
+            };
+            _first.Click += (sender, evnetArgs) => {
+                if (_currentPage != 1) {
+                    CurrentPage = 1;
+                }
+            };
+            _backward = new() {
+                Parent = _pageInfoContentPanel,
+                Icon = Properties.Resources.page_btn_backward,
+            };
+            _backward.Click += (sender, evnetArgs) => {
+                if (_currentPage > 1) {
+                    CurrentPage--;
+                }
+            };
+            _pageInfo = new() {
+                Parent = _pageInfoContentPanel,
+                Margin = new(0),
+                Padding = new(0),
+                AutoSize = true,
+            };
+            _forward = new() {
+                Parent = _pageInfoContentPanel,
+                Icon = Properties.Resources.page_btn_forward,
+            };
+            _forward.Click += (sender, evnetArgs) => {
+                if (_currentPage < _totalPages) {
+                    CurrentPage++;
+                }
+            };
+            _last = new() {
+                Parent = _pageInfoContentPanel,
+                Icon = Properties.Resources.page_btn_forward_fast,
+            };
+            _last.Click += (sender, evnetArgs) => {
+                if (_currentPage != _totalPages) {
+                    CurrentPage = _totalPages;
+                }
+            };
+            _jumpToText = new() {
+                Parent = _pageInfoContentPanel,
+                Margin = new(0),
+                Padding = new(0),
+                Text = "跳转至第",
+                AutoSize = true,
+            };
+            _jumpToBox = new() {
+                Parent = _pageInfoContentPanel,
+                NumberOnly = true,
+                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+            };
+            _jumpToBox.Box.KeyUp += async (sender, eventArgs) => {
+                if (eventArgs.KeyCode == Keys.Enter && !string.IsNullOrEmpty(_jumpToBox.Box.Text)) {
+                    int page = int.Parse(_jumpToBox.Box.Text);
+                    if (page >= 1 && page <= _totalPages) {
+                        _currentPage = page;
+                        Paging(page, _pageSize);
+                        eventArgs.Handled = true;
+                    } else {
+                        _jumpToBox.IsError = true;
+                        await Task.Delay(2000);
+                        _jumpToBox.IsError = false;
+                    }
+                    _jumpToBox.Box.Text = "";
+                }
+            };
+            _jumpToBox.Box.LostFocus += async (sender, eventArgs) => {
+                if (!string.IsNullOrEmpty(_jumpToBox.Box.Text)) {
+                    int page = int.Parse(_jumpToBox.Box.Text);
+                    if (page >= 1 && page <= _totalPages) {
+                        _currentPage = page;
+                        Paging(page, _pageSize);
+                    } else {
+                        _jumpToBox.IsError = true;
+                        await Task.Delay(2000);
+                        _jumpToBox.IsError = false;
+                    }
+                    _jumpToBox.Box.Text = "";
+                }
+            };
+            _jumpToTextRight = new() {
+                Parent = _pageInfoContentPanel,
+                Margin = new(0),
+                Padding = new(0),
+                Text = "页",
+                AutoSize = true,
+            };
+        }
         private void InitializeOthers() {
             _blankPanel = new() {
                 Parent = _gridView,
@@ -445,6 +502,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Reusable methods
+        public void ResetColumnHeaders() {
+            if (_initializeColumnHeader != null) {
+                _initializeColumnHeader(_gridView);
+                Paging(_currentPage, _pageSize);
+            }
+        }
         private void ClearAllToggleButtonCells() {
             foreach (DataGridViewRow row in _gridView.Rows) {
                 foreach (DataGridViewCell cell in row.Cells) {
@@ -465,49 +528,30 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
         private void Paging(int currentPage, int pageSize) {
+            System.Console.WriteLine($"========================================== Paging");
             if (IsHandleCreated) {
-                ClearAllToggleButtonCells();
-                Task.Run(() => {
-                    BeginInvoke(() => {
-                        BindingSource bindingSource = new();
-                        if (_dataSource.Count > 0) {
-                            bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
-                        } else {
-                            bindingSource.DataSource = null;
-                        }
-                        LoadDataAsync(bindingSource);
-                    });
-                });
+                BeginInvoke(new Action(ClearAllToggleButtonCells));
+                BindingSource bindingSource = new();
+                if (_dataSource.Count > 0) {
+                    bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
+                } else {
+                    bindingSource.DataSource = null;
+                }
+                BeginInvoke(new Action<BindingSource>(LoadDataAsync), bindingSource);
             }
         }
         private void LoadDataAsync(BindingSource bindingSource) {
+            System.Console.WriteLine($"========================================== LoadDataAsync");
             if (IsHandleCreated) {
-                Task.Run(() => {
-                    BeginInvoke(() => {
-                        _gridView.DataSource = bindingSource;
-                        ResetPageInfo();
-                        ResizeChildren();
-                    });
-                });
+                _gridView.DataSource = bindingSource;
+                BeginInvoke(new Action(ResetPageInfo));
+                BeginInvoke(new Action(ResizeChildren));
             }
         }
         #endregion
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
-            foreach (DataGridViewColumn column in _gridView.Columns) {
-                if (column.Width == columnMaxWidth) {
-                    continue;
-                } else if (column.Width > columnMaxWidth) {
-                    if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None) {
-                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                    }
-                    column.Width = columnMaxWidth;
-                } else if (column.AutoSizeMode == DataGridViewAutoSizeColumnMode.None) {
-                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-                }
-            }
             // Grid header height
             int newHeaderHeight = WidgetUtils.GridViewHeaderHeight();
             if (newHeaderHeight >= 4) {
@@ -520,6 +564,22 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         System.Console.WriteLine("Need to resize image column here");
                     }
                 }
+            }
+            int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
+            int padding = newHeaderHeight / 2;
+            foreach (DataGridViewColumn column in _gridView.Columns) {
+                if (column.Width == columnMaxWidth) {
+                    continue;
+                } else if (column.Width > columnMaxWidth) {
+                    if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None) {
+                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                    }
+                    column.Width = columnMaxWidth;
+                } else if (column.AutoSizeMode == DataGridViewAutoSizeColumnMode.None) {
+                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+                }
+                column.HeaderCell.Style.Padding = new(padding, 0, padding, 0);
+                column.DefaultCellStyle.Padding = new(padding, 0, padding, 0);
             }
             // Grid content height
             int newContentHeight = WidgetUtils.GridViewContentRowHeight();
@@ -566,7 +626,66 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _pageInfoContentPanel.Size = new(sumWidth, newPageInfoHeight);
             }
             // Grid size
-            _gridView.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height - newPageInfoHeight);
+            _gridViewPanel.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height - newPageInfoHeight);
+            int columnsWidth = 0;
+            foreach (DataGridViewColumn column in _gridView.Columns) {
+                column.SortMode = DataGridViewColumnSortMode.NotSortable;
+                columnsWidth += column.Width;
+            }
+            int rowsHeight = 0;
+            foreach (DataGridViewRow row in _gridView.Rows) {
+                rowsHeight += row.Height;
+            }
+            // Check for scroll bar
+            int scrollBarThickness = WidgetUtils.ScrollBarThickness();
+            if (columnsWidth > _gridViewPanel.Width) {
+                if (_hScrollBar == null) {
+                    _hScrollBar = new() {
+                        Parent = _gridViewPanel,
+                        Margin = new(0),
+                    };
+                }
+                _hScrollBar.Size = new(_gridViewPanel.Width, scrollBarThickness);
+                _hScrollBar.Location = new(0, _gridViewPanel.Height - scrollBarThickness);
+                _hScrollBar.ValueChanged += (sender, eventArgs) => {
+                    _gridView.HorizontalScrollingOffset = _hScrollBar.Value;
+                };
+                _hScrollBar.Show();
+                WidgetUtils.CalculateScrollBar(_hScrollBar, _gridViewPanel.Width, columnsWidth);
+            } else {
+                _hScrollBar?.Hide();
+            }
+            if (rowsHeight > _gridViewPanel.Height - newHeaderHeight) {
+                if (_vScrollBar == null) {
+                    _vScrollBar = new() {
+                        Parent = _gridViewPanel,
+                        Margin = new(0),
+                    };
+                }
+                _vScrollBar.Size = new(scrollBarThickness, _gridViewPanel.Height);
+                _vScrollBar.Location = new(_gridViewPanel.Width - scrollBarThickness, 0);
+                _vScrollBar.ValueChanged += (sender, eventArgs) => {
+                    _gridView.FirstDisplayedScrollingRowIndex = _vScrollBar.Value;
+                };
+                // _vScrollBar.Scroll += (sender, eventArgs) => {
+                //     _gridView.FirstDisplayedScrollingRowIndex = eventArgs.NewValue;
+                // };
+                _vScrollBar.Show();
+                _vScrollBar.Maximum = _gridView.RowCount;
+                _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
+                _vScrollBar.SmallChange = 1;
+                // WidgetUtils.CalculateScrollBar(_vScrollBar, _gridViewPanel.Height, rowsHeight);
+            } else {
+                _vScrollBar?.Hide();
+            }
+            _gridView.Size = new(_gridViewPanel.Width - (_vScrollBar?.Width ?? 0), _gridViewPanel.Height - (_hScrollBar?.Height ?? 0));
+            if (_vScrollBar != null && _vScrollBar.Visible && _hScrollBar != null && _hScrollBar.Visible){
+                _hScrollBar.Width -= scrollBarThickness;
+                _vScrollBar.Height -= scrollBarThickness;
+                WidgetUtils.CalculateScrollBar(_hScrollBar, _gridView.Width, columnsWidth);
+                // WidgetUtils.CalculateScrollBar(_vScrollBar, _gridView.Height, rowsHeight);
+            }
+            System.Console.WriteLine($"========================================== Resize done: Size = {Size}");
         }
         #endregion
     }

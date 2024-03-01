@@ -38,7 +38,11 @@ namespace CustomLibrary.Panels.BaseClasses {
             _newHeight = 0;
         }
 
-        public override void VisibleToTrue() => ResizeChildren();
+        public override void VisibleToTrue() {
+            if (IsHandleCreated) {
+                ResizeChildren();
+            }
+        }
         public override void VisibleToFalse() {}
         public virtual bool CheckNeedsScrollBar(int parentNewHeight) => throw new NotImplementedException();
     }

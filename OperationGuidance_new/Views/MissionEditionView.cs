@@ -95,7 +95,7 @@ namespace OperationGuidance_new.Views {
             private CustomContentPanel _sideTitlePanel;
             private List<SideButton> _sideButtons;
             private SideButton _currentSideButton;
-            private SideButton _addNewSideButton;
+            private AddNewSideButton _addNewSideButton;
             private readonly float _sideButtonWidthRatio = 1.4F;
 
             // Bottom left
@@ -492,8 +492,9 @@ namespace OperationGuidance_new.Views {
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_NEW,
                     ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
+                    BlockHoverUp = true,
                 };
-                _addNewSideButton.SingleClickDelegate += (eventArgs) => {
+                _addNewSideButton.MouseUp += (sender, eventArgs) => {
                     ProductSideDTO sideDTO = new() {
                         name = "产品图片" + (_sideButtons.Count + 1),
                         Bolts = new(),
@@ -534,10 +535,7 @@ namespace OperationGuidance_new.Views {
                     if (_sideButtons.Count == 1) {
                         _sideButtons.Remove(sideButton);
                         // close first then create a new one
-                        Action<EventArgs>? singleClickDelegate = _addNewSideButton.SingleClickDelegate;
-                        if (singleClickDelegate != null) {
-                            singleClickDelegate(EventArgs.Empty);
-                        }
+                        _addNewSideButton.PerformClick();
                     } else if (index < _sideButtons.Count - 1) {
                         SideButonClick(_sideButtons[index + 1]);
                         // click first then close
@@ -645,11 +643,18 @@ namespace OperationGuidance_new.Views {
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
                 // 添加按钮
-                CommonButton confirmButton = _boltPopUpForm.AddButton("保存信息");
+                CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
-                    _boltPopUpForm.SaveTo(boltDTO);
-                    WidgetUtils.ShowNoticePopUp("已保存！");
-                    _boltPopUpForm.Dispose();
+                    string pset = _boltPopUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
+                    _boltPopUpForm.ParameterSetBox.CheckError(0, string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0);
+                    _boltPopUpForm.Workstation.SetError(_boltPopUpForm.Workstation.Value == null); 
+                    if (!_boltPopUpForm.ConfirmSave()) {
+                        WidgetUtils.ShowErrorPopUp("请检查内容是否正确！");
+                    } else {
+                        _boltPopUpForm.SaveTo(boltDTO);
+                        WidgetUtils.ShowNoticePopUp("已保存！");
+                        _boltPopUpForm.Dispose();
+                    }
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");
                 deleteButton.Click += (s, e) => {
@@ -657,7 +662,7 @@ namespace OperationGuidance_new.Views {
                     _boltPopUpForm.Dispose();
                     ForceResizeRight();
                 };
-                CommonButton cancelButton = _boltPopUpForm.AddButton("取消");
+                CommonButton cancelButton = _boltPopUpForm.AddButton("关闭");
                 cancelButton.Click += (s, e) => {
                     _boltPopUpForm.Dispose();
                 };
@@ -774,20 +779,16 @@ namespace OperationGuidance_new.Views {
 
             protected override void OnHandleCreated(EventArgs e) {
                 base.OnHandleCreated(e);
-                ResizeChildrenAfterAllHandlesCreated();
+                BeginInvoke(new(ResizeChildrenAfterAllHandlesCreated));
             }
 
             protected void ResizeChildrenAfterAllHandlesCreated() {
-                Task.Run(() => {
-                    BeginInvoke(() => {
-                        bool checkAllHandlesCreated = false;
-                        while (!checkAllHandlesCreated) {
-                            checkAllHandlesCreated = AllControlHandlesCreated(this);
-                        }
-                        Size = Parent.Size;
-                        ResizeChildren();
-                    });
-                });
+                bool checkAllHandlesCreated = false;
+                while (!checkAllHandlesCreated) {
+                    checkAllHandlesCreated = AllControlHandlesCreated(this);
+                }
+                Size = Parent.Size;
+                ResizeChildren();
             }
 
             private bool AllControlHandlesCreated(Control parent) {
@@ -1011,7 +1012,23 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class SideButton: ClosableButton {
+
+        public class AddNewSideButton: CommonButton {
+            public AddNewSideButton(string buttonName) {
+                Label = buttonName;
+                ConerRadius = 0;
+            }
+            protected override void ResizeTextLabel() {
+                if (this.Label != null) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .45), FontStyle.Regular, GraphicsUnit.Pixel);
+                    using (Graphics g = CreateGraphics()) {
+                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
+                    }
+                    this.LabelY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
+                }
+            }
+        }
+        public class SideButton: DeletableButton {
             private Color? _originalBackColor;
             private Color? _triggeredBackColor;
             private ProductSideDTO? _sideDTO;
@@ -1388,7 +1405,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class BoltEditionButton: ClosableButton {
+        public class BoltEditionButton: DeletableButton {
             private ProductBoltDTO _boltDTO;
             public ProductBoltDTO BoltDTO { get => _boltDTO; set => _boltDTO = value; }
 

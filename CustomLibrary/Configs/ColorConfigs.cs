@@ -45,6 +45,8 @@
         public static Color COLOR_MISSION_EDITION_BUTTON_BACK => COLOR_DDDDDD;
         public static Color COLOR_TITLE_UNDERLINE => COLOR_BBBBBB;
         public static Color COLOR_USER_INFO_NAME => COLOR_E86C10;
+        public static Color COLOR_FIELD_TOGGLE_FOREGROUND => COLOR_444444;
+        public static Color COLOR_FIELD_TOGGLE_FOREGROUND_INVISIBLE => COLOR_BBBBBB;
 
 
         // Color contants definition

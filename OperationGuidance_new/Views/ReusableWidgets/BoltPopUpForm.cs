@@ -19,7 +19,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private CustomTextBoxGroup _nameBox;
         private CustomTextBoxGroup _specificationBox;
         private CustomTextBoxGroup _bitSpecificationBox;
-        private CustomTextBoxGroup _procedureSetBox;
+        private CustomTextBoxGroup _parameterSetBox;
         private CustomTextBoxGroup _torqueBox;
         private CustomTextBoxGroup _angleBox;
 
@@ -30,12 +30,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
         public int ButtonHeight { get => _buttonHeight; set => _buttonHeight = value; }
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-        protected CustomTextBoxGroup NameBox { get => _nameBox; set => _nameBox = value; }
-        protected CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
-        protected CustomTextBoxGroup BitSpecificationBox { get => _bitSpecificationBox; set => _bitSpecificationBox = value; }
-        protected CustomTextBoxGroup ProcedureSetBox { get => _procedureSetBox; set => _procedureSetBox = value; }
-        protected CustomTextBoxGroup TorqueBox { get => _torqueBox; set => _torqueBox = value; }
-        protected CustomTextBoxGroup AngleBox { get => _angleBox; set => _angleBox = value; }
+        public CustomTextBoxGroup NameBox { get => _nameBox; set => _nameBox = value; }
+        public CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
+        public CustomTextBoxGroup BitSpecificationBox { get => _bitSpecificationBox; set => _bitSpecificationBox = value; }
+        public CustomTextBoxGroup ParameterSetBox { get => _parameterSetBox; set => _parameterSetBox = value; }
+        public CustomTextBoxGroup TorqueBox { get => _torqueBox; set => _torqueBox = value; }
+        public CustomTextBoxGroup AngleBox { get => _angleBox; set => _angleBox = value; }
 
         public BoltPopUpForm(ProductBoltDTO boltDTO) : base() {
             apis = SystemUtils.GetApis();
@@ -81,7 +81,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Enabled = false,
                 NumberOnly = true,
             };
-            _procedureSetBox = new("程序号") {
+            _parameterSetBox = new("程序号") {
                 Parent = _tablePanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
@@ -124,7 +124,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _nameBox.SetValue(0, boltDTO.name);
             _specificationBox.SetValue(0, boltDTO.specification + "");
             _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
-            _procedureSetBox.SetValue(0, boltDTO.parameters_set + "");
+            _parameterSetBox.SetValue(0, boltDTO.parameters_set + "");
             _torqueBox.SetValue(0, boltDTO.torque_min + "");
             _torqueBox.SetValue(1, boltDTO.torque_max + "");
             _angleBox.SetValue(0, boltDTO.angle_min + "");

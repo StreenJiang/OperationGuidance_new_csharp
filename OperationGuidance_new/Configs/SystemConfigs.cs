@@ -178,16 +178,13 @@ namespace OperationGuidance_new.Configs {
                         },
                         new() {
                             {Key_ID, 602},
-                            {Key_Name, "注销账户"},
+                            {Key_Name, "退出登录"},
                             {Key_Icon, Properties.Resources.mission_edition},
                             {Key_Toggle_Button, false},
                             {
                                 Key_Click, new EventHandler(
                                     (sender, EventArgs) => {
-                                        DialogResult result = MessageBox.Show(null, "确定要注销当前账户吗？", "账户注销", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                                        if (result == DialogResult.Yes) {
-                                            WidgetUtils.ShowNoticePopUp("注销账户成功！");
-                                        }
+                                        DialogResult result = MessageBox.Show(null, "确定要退出登录吗？", "退出登录", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                     }
                                 )
                             },

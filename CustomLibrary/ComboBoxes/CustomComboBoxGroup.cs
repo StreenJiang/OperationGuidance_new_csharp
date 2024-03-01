@@ -77,6 +77,7 @@ namespace CustomLibrary.ComboBoxes {
         public int GetCurrentIndex() => _comboBox.GetCurrentIndex();
         public bool IsDefaultValue() => _comboBox.IsDefaultValue();
         public void SetError(bool isError) => _comboBox.IsError = isError;
+        public void CheckError(bool flag) => _comboBox.CheckError(flag);
         public void Reset() => _comboBox.Reset();
         public static string ResetName() => CustomComboBox<T>.ResetName();
 
@@ -120,7 +121,7 @@ namespace CustomLibrary.ComboBoxes {
             // Draw name
             int x = Padding.Left;
             if (_nameAlignment == HorizontalAlignment.Right) {
-                x = _comboBox.Location.X - _nameWidth - _gapNameAndBox;
+                x = _elementsPanel.Location.X - _nameWidth - _gapNameAndBox;
             }
             e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
         }

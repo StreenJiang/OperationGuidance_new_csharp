@@ -65,11 +65,6 @@ namespace CustomLibrary.Forms
 
         public CustomPopUpForm() : base() {
             Control mainParent = WidgetUtils.MainPanel.Parent;
-             // Initialize self
-            Owner = _popUpFormBackboard;
-            StartPosition = FormStartPosition.Manual;
-            FormBorderStyle = FormBorderStyle.None;
-            ShowInTaskbar = false;
             // Initialize backboard
             _popUpFormBackboard = new() {
                 Owner = (Form) mainParent,
@@ -82,6 +77,11 @@ namespace CustomLibrary.Forms
             };
             _popUpFormBackboard.Owner.LocationChanged += (sender, eventArgs) => AfterSizeChanged(this, EventArgs.Empty);
             _popUpFormBackboard.Hide();
+             // Initialize self
+            Owner = _popUpFormBackboard;
+            StartPosition = FormStartPosition.Manual;
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
 
             // Title panel
             _titlePanel = new() {
@@ -171,6 +171,8 @@ namespace CustomLibrary.Forms
             // Sometimes cursor will hide and don't know why for now
             Cursor.Show();
             base.Hide();
+            _popUpFormBackboard.Show();
+            EventFuncs.CurrentPopUpForm = this;
             Opacity = 1D;
             base.ShowDialog();
         }
@@ -257,11 +259,12 @@ namespace CustomLibrary.Forms
         }
 
         private void AfterSizeChanged(object? sender, EventArgs eventArgs) {
-            if (WidgetUtils.MainPanel == null || WidgetUtils.MainPanel.IsDisposed) {
+            if (WidgetUtils.MainPanel == null || WidgetUtils.MainPanel.IsDisposed || _popUpFormBackboard.IsDisposed) {
                 return;
             }
             _popUpFormBackboard.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
             int x = _popUpFormBackboard.Location.X;
+                EventFuncs.CurrentPopUpForm = this;
             int y = _popUpFormBackboard.Location.Y;
             int width = _popUpFormBackboard.Width;
             int height = _popUpFormBackboard.Height;
@@ -277,20 +280,12 @@ namespace CustomLibrary.Forms
             }
         }
 
-        protected override void OnVisibleChanged(EventArgs e) {
-            base.OnVisibleChanged(e);
-            _popUpFormBackboard.Visible = Visible;
-            if (Visible) {
-                EventFuncs.CurrentPopUpForm = this;
-            } else {
-                EventFuncs.CurrentPopUpForm = null;
-            }
-        }
-
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
             _popUpFormBackboard.Dispose();
             EventFuncs.CurrentPopUpForm = null;
+            WidgetUtils.MainForm.TopMost = true;
+            WidgetUtils.MainForm.TopMost = false;
         }
     }
 

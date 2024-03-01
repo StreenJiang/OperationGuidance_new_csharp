@@ -120,16 +120,12 @@ namespace OperationGuidance_new.Views {
                 portBox.IsError = !ArgumentValidator.ValidatePortInWindows(portBox.Text);
             };
             port.Ratio = 6;
-            if (dto.port != null) {
-                port.SetValue(0, dto.port + "");
-            }
-            Dictionary<string, int> toolTypes = DeviceType_Arm.Elements.ToDictionary(e => e.Name, e => e.Id);
+            port.SetValue(0, dto.port + "");
+            Dictionary<string, int> armTypes = DeviceType_Arm.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("力臂类型", 
-                (DeviceArmDTO dto, int value) => dto.type = value, toolTypes);
+                (DeviceArmDTO dto, int value) => dto.type = value, armTypes);
             type.Ratio = 6;
-            if (dto.type != null) {
-                type.SetCurrent(type.IndexOf(dto.type.Value));
-            }
+            type.SetCurrent(type.IndexOf(dto.type));
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");

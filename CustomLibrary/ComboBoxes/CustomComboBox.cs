@@ -32,6 +32,9 @@ namespace CustomLibrary.ComboBoxes {
         private Color? _borderColor;
         private Color? _borderColorError;
         private bool _isError;
+        private Timer _errorBorderTimer;
+        private int _errorBorderTimerInterval = 100;
+        private int _timerCount;
         private FontStyle? _boxFontStyle;
         private readonly string _defaultLabel = "-请选择-";
         private bool _needDefaultLabel;
@@ -243,6 +246,18 @@ namespace CustomLibrary.ComboBoxes {
                 _collapseTimer.Start();
             };
             EventFuncs.AddClickAction(ItemsPanelAutoClose);
+            _errorBorderTimer = new() {
+                Interval = _errorBorderTimerInterval,
+            };
+            _errorBorderTimer.Tick += (sender, eventArgs) => {
+                _timerCount += _errorBorderTimerInterval;
+                if (_timerCount >= 2000) {
+                    _isError = false;
+                    Invalidate();
+                    _timerCount = 0;
+                    _errorBorderTimer.Stop();
+                }
+            };
         }
         #endregion
 
@@ -382,6 +397,15 @@ namespace CustomLibrary.ComboBoxes {
         public ComboBoxItem<T>? GetChosenItem() {
             return _selectButton.SelectedItem;
         }
+
+        public void CheckError(bool flag) {
+            // Use property to update appearance
+            if (flag) {
+                IsError = true;
+                _timerCount = 0;
+                _errorBorderTimer.Start();
+            }
+        }        
 
         private void TimerTick(object? sender, EventArgs eventArgs) {
             if (_itemsOuterForm == null || _itemsScrollPanel == null) {

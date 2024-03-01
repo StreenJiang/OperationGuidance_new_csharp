@@ -38,7 +38,9 @@ namespace CustomLibrary.Buttons {
                 this._nameAlignment = value;
             }
         }
-        public bool Checked { get => _toggleButton.Checked; set => _toggleButton.Checked= value; }
+        public bool Checked { get => _toggleButton.Checked; set => _toggleButton.Checked = value; }
+        public ToggleButton ToggleButton { get => _toggleButton; set => _toggleButton = value; }
+
         public event EventHandler CheckedChanged { add => _toggleButton.CheckedChanged += value; remove => _toggleButton.CheckedChanged -= value; }
 
         public ToggleButtonGroup(string textName) : base() {

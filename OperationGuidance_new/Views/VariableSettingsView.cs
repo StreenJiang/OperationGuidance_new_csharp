@@ -1,16 +1,17 @@
-﻿using System.Reflection;
-using CustomLibrary.Buttons;
+﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Constants;
-using CustomLibrary.DataGridViewRelateds;
 using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
-using OperationGuidance_new.ViewObjects;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Forms;
+using OperationGuidance_new.Views.ReusableWidgets;
+using Newtonsoft.Json;
+using CustomLibrary.Panels.BaseClasses;
+using CustomLibrary.Events;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
@@ -37,8 +38,10 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _storageFileNameTextBox;
         private CustomTextBoxButtonGroup _storagePathTextBox;
         private CommonButtonGroup _storageFieldsButton;
-        private DataGridView _fieldsGridView;
         #endregion
+
+        private List<OperationDataField> Fields { get; set; } = new();
+        private List<int> SortConfig { get; set; }
 
         #region Constructors
         public VariableSettingsView() {
@@ -143,6 +146,7 @@ namespace OperationGuidance_new.Views {
                         }
                         _settings.Write(IniFileKeys.Resolution, $"{newSize.Width}, {newSize.Height}");
                     }
+                    ResizeChildren();
                 }
             };
         }
@@ -155,6 +159,23 @@ namespace OperationGuidance_new.Views {
                 Parent = _storagePanel,
                 UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
             };
+            SortConfig = MainUtils.GetSortConfig();
+            Fields = MainUtils.GetOperationDataFields(SortConfig);
+            _storageTitlePanel.AddRightButton<TitlePanel.RightButton>("保存").Click += (sender, eventArgs) => {
+                string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
+                if (!Directory.Exists(newPath)) {
+                    WidgetUtils.ShowErrorPopUp("当前存储路径不合法或不存在！");
+                    return;
+                }
+                string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
+                string fieldsSortConfig = JsonConvert.SerializeObject(SortConfig);
+                // Save
+                _settings.Write(IniFileKeys.DataStorageNameFormat, nameFormat);
+                _settings.Write(IniFileKeys.DataStoragePath, newPath);
+                _settings.Write(IniFileKeys.DataStorageFieldsSort, fieldsSortConfig);
+                _settings.Write(IniFileKeys.DataStorageFieldsSortCurr, null);
+                WidgetUtils.ShowNoticePopUp("存储参数配置信息保存成功！");
+            };
             _storageContentPanel = new() {
                 Parent = _storagePanel,
             };
@@ -166,6 +187,7 @@ namespace OperationGuidance_new.Views {
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.5,
             };
+            _storageFileNameTextBox.SetValue(0, MainUtils.GetStorageFileName());
             _storagePathTextBox = new("数据存储路径") {
                 Parent = _storageContentPanel,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -174,10 +196,7 @@ namespace OperationGuidance_new.Views {
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.5,
             };
-            string dataStoragePath = _settings.Read(IniFileKeys.DataStoragePath);
-            if (string.IsNullOrEmpty(dataStoragePath)) {
-                dataStoragePath = Directory.GetCurrentDirectory() + "\\";
-            }
+            string dataStoragePath = MainUtils.GetStoragePath();
             _storagePathTextBox.SetValue(0, dataStoragePath);
             _storagePathTextBox.AddButton("浏览").Click += (sender, eventArgs) => {
                 FolderBrowserDialog dialog = new() {
@@ -188,23 +207,352 @@ namespace OperationGuidance_new.Views {
                     _storagePathTextBox.SetValue(0, dialog.SelectedPath + "\\");
                 }
             };
-            _storagePathTextBox.AddButton("保存").Click += (sender, eventArgs) => {
-                string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
-                if (!Directory.Exists(newPath)) {
-                    WidgetUtils.ShowErrorPopUp("当前路径不合法或不存在！");
-                } else {
-                    _settings.Write(IniFileKeys.DataStoragePath, _storagePathTextBox.GetTextBox(0).Box.Text);
-                    WidgetUtils.ShowNoticePopUp("切换存储路径成功！");
-                }
-            };
             _storageFieldsButton = new("数据存储字段") {
                 Parent = _storageContentPanel,
                 Ratio = 8.5,
             };
             CommonButton storageFieldsButton = _storageFieldsButton.GetButton(0);
             storageFieldsButton.Label = "配置字段";
-            _fieldsGridView = new() {
-                Parent = _storageContentPanel,
+            storageFieldsButton.MouseUp += (sender, eventArgs) => {
+                PopUpFieldsConfigurationForm(SortConfig, Fields);
+            };
+            _storageFieldsButton.AddButton("字段预览").MouseUp += (sender, eventArgs) => {
+                PopUpFieldsPreviewForm(Fields);
+            };
+        }
+        private void PopUpFieldsConfigurationForm(List<int> sortConfig, List<OperationDataField> fields) {
+            FieldsConfiguration configPanel = new(fields);
+            CustomPopUpForm form = new() {
+                Title = "配置数据字段",
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+            };
+            CommonButton confirmButton = form.AddButton("确定");
+            confirmButton.Click += (s, e) => {
+                (SortConfig, Fields) = configPanel.UpdateSortAndFields();
+                form.Dispose();
+            };
+            CommonButton closeButton = form.AddButton("关闭");
+            closeButton.Click += (s, e) => {
+                form.Dispose();
+            };
+            form.PretendToShowToCreateHandlesForChildren();
+            CustomVScrollingContentPanel scrollPanel = new(ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, configPanel) {
+                Parent = form.ContentPanel,
+            };
+            // Calculate size
+            Padding contentPadding = form.ContentPanel.Padding;
+            int buttonHeight = WidgetUtils.CommonButtonHeight();
+            int buttonMargin = buttonHeight / 5;
+            Size contentSize = new((int) (WidgetUtils.MainPanel.Width * .4), (int) (WidgetUtils.MainPanel.Height * .6));
+            configPanel.ToggleButtonHeight = buttonHeight;
+            configPanel.ButtonMargin = buttonMargin;
+            scrollPanel.Size = new(contentSize.Width - contentPadding.Size.Width, contentSize.Height - contentPadding.Size.Height);
+            form.SetContentSizeAndSelfSize(contentSize);
+            form.Show();
+        }
+        private class FieldsConfiguration: CustomContentPanel {
+            private readonly List<OperationDataField> _fields;
+            private int _toggleButtonHeight;
+            private int _buttonMargin;
+
+            public int ToggleButtonHeight { get => _toggleButtonHeight; set => _toggleButtonHeight = value; }
+            public int ButtonMargin { get => _buttonMargin; set => _buttonMargin = value; }
+
+            public FieldsConfiguration(List<OperationDataField> fields) {
+                _fields = fields;
+                int serial = 1;
+                foreach (OperationDataField field in _fields) {
+                    MovableButton btn = new(serial++, field) {
+                        Parent = this,
+                        Checked = field.Visible,
+                        Ratio = 5,
+                    };
+                    btn.CheckedChanged += (sender, eventArgs) => {
+                        int currentIndex = Controls.IndexOf(btn);
+                        if (!btn.Field.Visible && btn.Checked) {
+                            btn.Field.Visible = true;
+                            int movementCount = VisibleToTrueMovementCount(currentIndex - 1);
+                            btn.SerialNum -= movementCount;
+                            Controls.SetChildIndex(btn, currentIndex - movementCount);
+                        } else if (btn.Field.Visible && !btn.Checked) {
+                            btn.Field.Visible = false;
+                            int movementCount = VisibleToFalseMovementCount(currentIndex + 1);
+                            btn.SerialNum += movementCount;
+                            Controls.SetChildIndex(btn, currentIndex + movementCount);
+                        }
+                    };        
+                    btn.PressUp += () => {
+                        int currentIndex = Controls.IndexOf(btn);
+                        if (!btn.Checked) {
+                            btn.Checked = true;
+                        } else if (currentIndex > 0) {
+                            MovableButton previousBtn = (MovableButton) Controls[currentIndex - 1];
+                            previousBtn.SerialNum += 1;
+                            btn.SerialNum -= 1;
+                            Controls.SetChildIndex(btn, currentIndex - 1);
+                        }
+                    };        
+                    btn.PressDown += () => {
+                        int currentIndex = Controls.IndexOf(btn);
+                        if (btn.Checked && currentIndex < Controls.Count - 1) {
+                            MovableButton nextBtn = (MovableButton) Controls[currentIndex + 1];
+                            if (nextBtn.Checked) {
+                                nextBtn.SerialNum -= 1;
+                                btn.SerialNum += 1;
+                                Controls.SetChildIndex(btn, currentIndex + 1);
+                            }
+                        }
+                    };        
+                }
+                int VisibleToTrueMovementCount(int previousIndex) {
+                    int count = 0;
+                    if (previousIndex >= 0) {
+                        MovableButton previousBtn = (MovableButton) Controls[previousIndex];
+                        if (!previousBtn.Checked) {
+                            count++;
+                            previousBtn.SerialNum += 1;
+                            return count + VisibleToTrueMovementCount(previousIndex - 1);
+                        }
+                    }
+                    return count;
+                }
+                int VisibleToFalseMovementCount(int nextIndex) {
+                    int count = 0;
+                    if (nextIndex < Controls.Count) {
+                        MovableButton nextBtn = (MovableButton) Controls[nextIndex];
+                        if (nextBtn.Checked) {
+                            count++;
+                            nextBtn.SerialNum -= 1;
+                            return count + VisibleToFalseMovementCount(nextIndex + 1);
+                        }
+                    }
+                    return count;
+                }
+            }
+
+            public Tuple<List<int>, List<OperationDataField>> UpdateSortAndFields() {
+                List<int> sortConfig = new();
+                List<OperationDataField> fieldsConfig = new();
+                List<MovableButton> btns = new();
+                foreach (Control ctrl in Controls) {
+                    if (ctrl is MovableButton btn) {
+                        btns.Add(btn);
+                        fieldsConfig.Add(btn.Field);
+                    }
+                }
+                // fieldsConfig = fieldsConfig.OrderBy(f => {
+                //     int indexTemp = f.Id;
+                //     if (indexTemp == -1) {
+                //         indexTemp = _fields.Count;
+                //     }
+                //     return indexTemp;
+                // }).ToList();
+                fieldsConfig.ForEach(f => {
+                    if (f.Visible) {
+                        sortConfig.Add(f.Id);
+                    }
+                });
+                return new(sortConfig, fieldsConfig);
+            }
+
+            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+                base.ResizeChildren(sender, eventArgs);
+                int marginTop = _buttonMargin / 2;
+                int marginBottom = _buttonMargin - marginTop;
+                foreach (Control ctrl in Controls) {
+                    ctrl.Size = new(Width - _buttonMargin * 2, _toggleButtonHeight);
+                    ctrl.Margin = new(_buttonMargin, marginTop, 0, marginBottom);
+                }
+            }
+
+            public override bool CheckNeedsScrollBar(int parentNewHeight) {
+                NewHeight = (_toggleButtonHeight + _buttonMargin) * Controls.Count;
+                return NewHeight > parentNewHeight;
+            }
+
+            private class MovableButton : ToggleButtonGroup {
+                private int _serialNum;
+                private OperationDataField _field;
+                private Image _upImage = Properties.Resources.direction_up;
+                private Image _downImage = Properties.Resources.direction_down;
+                private Rectangle? _upImageRect;
+                private Rectangle? _downImageRect;
+                private Image? _upImageShowing;
+                private Image? _downImageShowing;
+                private bool _upIsDown = false;
+                private bool _downIsDown = false;
+                private bool _focusOnUp = false;
+                private bool _focusOnDown = false;
+                private Action? _onUp;
+                private Action? _onDown;
+                private bool _isPressing = false;
+
+                public new bool Checked {
+                    get => base.Checked;
+                    set {
+                        base.Checked = value;
+                        if (value) {
+                            ForeColor = ColorConfigs.COLOR_FIELD_TOGGLE_FOREGROUND;
+                        } else {
+                            ForeColor = ColorConfigs.COLOR_FIELD_TOGGLE_FOREGROUND_INVISIBLE;
+                        }
+                    }
+                }
+                public int SerialNum { 
+                    get => _serialNum; 
+                    set {
+                        _serialNum = value; 
+                        TextName = $"{_serialNum}. {_field.FieldName}";
+                    }
+                }
+                public OperationDataField Field { get => _field; set => _field = value; }
+
+                public event Action PressUp { add => _onUp += value; remove => _onUp -= value; }
+                public event Action PressDown { add => _onDown += value; remove => _onDown -= value; }
+
+                public MovableButton(int serialNum, OperationDataField field): base($"{serialNum}. {field.FieldName}") {
+                    _serialNum = serialNum;
+                    _field = field;
+                    ToggleButton.CheckedChanged += (sender, eventArgs) => {
+                        if (Checked) {
+                            ForeColor = ColorConfigs.COLOR_FIELD_TOGGLE_FOREGROUND;
+                        } else {
+                            ForeColor = ColorConfigs.COLOR_FIELD_TOGGLE_FOREGROUND_INVISIBLE;
+                        }
+                    };
+                }
+
+                protected override void OnMouseEnter(EventArgs e) {
+                    base.OnMouseEnter(e);
+                    int btnSide = (int) (Height * .75);
+                    int margin = btnSide / 3;
+                    Size imageSize = new(btnSide, btnSide);
+                    Point imageDownLocation = new(Width - btnSide, (Height - btnSide) / 2);
+                    Point imageUpLocation = new(Width - btnSide * 2 - margin, (Height - btnSide) / 2);
+
+                    _upImageRect = new(imageUpLocation, imageSize);
+                    _downImageRect = new(imageDownLocation, imageSize);
+
+                    _upImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_upImage, imageSize);
+                    _downImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_downImage, imageSize);
+                }
+                private void ClickUpAnimation(bool goDown) {
+                    if (_upImageRect != null) {
+                        if (goDown) {
+                            if (!_upIsDown) {
+                                _upImageRect = new(new(_upImageRect.Value.X + 1, _upImageRect.Value.Y + 1), _upImageRect.Value.Size);
+                                _upIsDown = true;
+                            }
+                        } else {
+                            if (_upIsDown && !_isPressing) {
+                                _upImageRect = new(new(_upImageRect.Value.X - 1, _upImageRect.Value.Y - 1), _upImageRect.Value.Size);
+                                _upIsDown = false;
+                            }
+                        }
+                    }
+                }
+                private void ClickDownAnimation(bool goDown) {
+                    if (_downImageRect != null) {
+                        if (goDown) {
+                            if (!_downIsDown) {
+                                _downImageRect = new(new(_downImageRect.Value.X + 1, _downImageRect.Value.Y + 1), _downImageRect.Value.Size);
+                                _downIsDown = true;
+                            }
+                        } else {
+                            if (_downIsDown && !_isPressing) {
+                                _downImageRect = new(new(_downImageRect.Value.X - 1, _downImageRect.Value.Y - 1), _downImageRect.Value.Size);
+                                _downIsDown = false;
+                            }
+                        }
+                    }
+                }
+                protected override void OnMouseLeave(EventArgs e) {
+                    base.OnMouseLeave(e);
+                    _upImageRect = null;
+                    _downImageRect = null;
+                    _upImageShowing = null;
+                    _downImageShowing = null;
+                    Invalidate();
+                }
+                protected override void OnMouseMove(MouseEventArgs mevent) {
+                    base.OnMouseMove(mevent);
+                    if (_upImageRect != null) {
+                        if (EventFuncs.MouseInArea(new(PointToScreen(_upImageRect.Value.Location), _upImageRect.Value.Size))) {
+                            _focusOnUp = true;
+                        } else {
+                            ClickUpAnimation(false);
+                            _focusOnUp = false;
+                        }
+                        Invalidate();
+                    }
+                    if (_downImageRect != null) {
+                        if (EventFuncs.MouseInArea(new(PointToScreen(_downImageRect.Value.Location), _downImageRect.Value.Size))) {
+                            _focusOnDown = true;
+                        } else {
+                            ClickDownAnimation(false);
+                            _focusOnDown = false;
+                        }
+                        Invalidate();
+                    }
+                }
+                protected override void OnMouseDown(MouseEventArgs mevent) {
+                    base.OnMouseDown(mevent);
+                    _isPressing = true;
+                    if (_focusOnUp && _upImageRect != null) {
+                        ClickUpAnimation(true);
+                        Invalidate();
+                    }
+                    if (_focusOnDown && _downImageRect != null) {
+                        ClickDownAnimation(true);
+                        Invalidate();
+                    }
+                }
+                protected override void OnMouseUp(MouseEventArgs mevent) {
+                    base.OnMouseUp(mevent);
+                    _isPressing = false;
+                    if (_focusOnUp && _upImageRect != null) {
+                        ClickUpAnimation(false);
+                        Invalidate();
+                        if (_onUp != null) {
+                            _onUp();
+                        }
+                    }
+                    if (_focusOnDown && _downImageRect != null) {
+                        ClickDownAnimation(false);
+                        Invalidate();
+                        if (_onDown != null) {
+                            _onDown();
+                        }
+                    }
+                }
+                protected override void OnPaint(PaintEventArgs e) {
+                    base.OnPaint(e);
+                    if (_upImageShowing != null && _upImageRect != null) {
+                        e.Graphics.DrawImage(_upImageShowing, _upImageRect.Value.Location);
+                    }
+                    if (_downImageShowing != null && _downImageRect != null) {
+                        e.Graphics.DrawImage(_downImageShowing, _downImageRect.Value.Location);
+                    }
+                }
+            }
+        }
+        private void PopUpFieldsPreviewForm(List<OperationDataField> fields) {
+            CustomPopUpForm form = new() {
+                Title = "数据字段配置预览",
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+            };
+            CommonButton closeButton = form.AddButton("关闭");
+            closeButton.Click += (s, e) => {
+                form.Dispose();
+            };
+            form.PretendToShowToCreateHandlesForChildren();
+            WorkplacePiece outer = new() {
+                Parent = form.ContentPanel,
+                Padding = new(1),
+                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+            };
+            DataGridView gridView = new() {
+                Parent = outer,
                 Margin = new(0),
                 ReadOnly = true,
                 BorderStyle = BorderStyle.None,
@@ -220,52 +568,58 @@ namespace OperationGuidance_new.Views {
                 AutoGenerateColumns = false,
                 RowHeadersVisible = false,
                 EnableHeadersVisualStyles = false,
+                ScrollBars = ScrollBars.None,
             };
-            _fieldsGridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .15);
-            _fieldsGridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
-            _fieldsGridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = _fieldsGridView.ColumnHeadersDefaultCellStyle.BackColor;
+            int newHeaderHeight = WidgetUtils.GridViewHeaderHeight();
+            int padding = newHeaderHeight / 2;
+            if (newHeaderHeight >= 4) {
+                gridView.ColumnHeadersHeight = newHeaderHeight;
+                gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
+            }
+            gridView.ColumnHeadersDefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .15);
+            gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
+            gridView.ColumnHeadersDefaultCellStyle.Padding = new(padding, 0, padding, 0);
+            gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = gridView.ColumnHeadersDefaultCellStyle.BackColor;
             DataGridViewColumn[] columnRange = {};
-            Type type = typeof(OperationDataVO);
-            List<PropertyInfo> props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
-            foreach (PropertyInfo property in props) {
-                IEnumerable<Attribute> enumerable = property.GetCustomAttributes();
-                foreach (Attribute attribute in enumerable) {
-                    if (attribute is GridColumnAttribute gridColumn) {
-                        string columnName;
-                        if (gridColumn.ColumnName != null && gridColumn.ColumnName != string.Empty) {
-                            columnName = gridColumn.ColumnName;
-                        } else {
-                            columnName = property.Name;
-                        }
-                        if (gridColumn.CellType != null && gridColumn.CellType == typeof(ToggleButton)) {
-                            DataGridViewToggleButtonColumn column = new() {
-                                DataPropertyName = property.Name,
-                                HeaderText = columnName,
-                                ReadOnly = true,
-                            };
-                            columnRange = columnRange.Append(column).ToArray();
-                        } else if (gridColumn.CellType != null && gridColumn.CellType == typeof(Image)) {
-                            DataGridViewImageColumn column = new() {
-                                DataPropertyName = property.Name,
-                                HeaderText = columnName,
-                                ReadOnly = true,
-                            };
-                            columnRange = columnRange.Append(column).ToArray();
-                        } else {
-                            DataGridViewTextBoxColumn column = new() {
-                                DataPropertyName = property.Name,
-                                HeaderText = columnName,
-                                ReadOnly = true,
-                            };
-                            columnRange = columnRange.Append(column).ToArray();
-                        }
-                    }
-                }
+            foreach (OperationDataField field in fields) {
+                if (field.Visible) {
+                    DataGridViewTextBoxColumn column = new() {
+                        HeaderText = field.FieldName,
+                        ReadOnly = true,
+                    };
+                    columnRange = columnRange.Append(column).ToArray();
+                } 
             }
-            _fieldsGridView.Columns.AddRange(columnRange);
-            foreach (DataGridViewColumn column in _fieldsGridView.Columns) {
+            gridView.Columns.AddRange(columnRange);
+            // Calculate size
+            int gridHeaderHeight = WidgetUtils.GridViewHeaderHeight();
+            int contentWidth = (int) (WidgetUtils.MainPanel.Width * .85);
+            outer.Size = new(contentWidth - form.ContentPanel.Padding.Size.Width, gridHeaderHeight + 2);
+            outer.Padding = new(1);
+            gridView.Size = new(outer.Width - 2, gridHeaderHeight);
+            gridView.ColumnHeadersHeight = gridHeaderHeight;
+            int columnsWidth = 0;
+            foreach (DataGridViewColumn column in gridView.Columns) {
                 column.SortMode = DataGridViewColumnSortMode.NotSortable;
+                columnsWidth += column.Width;
             }
+            // Check for scroll bar
+            if (columnsWidth > gridView.Width) {
+                HScrollBar hScrollBar = new() {
+                    Parent = gridView,
+                    Margin = new(0),
+                    Size = new(gridView.Width, WidgetUtils.ScrollBarThickness()),
+                    Location = new(0, gridHeaderHeight),
+                };
+                hScrollBar.ValueChanged += (sender, eventArgs) => {
+                    gridView.HorizontalScrollingOffset = hScrollBar.Value;
+                };
+                gridView.Height += hScrollBar.Height;
+                outer.Height += hScrollBar.Height;
+                WidgetUtils.CalculateScrollBar(hScrollBar, gridView.Width, columnsWidth);
+            }
+            form.SetContentSizeAndSelfSize(new(contentWidth, outer.Height + form.ContentPanel.Padding.Size.Height));
+            form.Show();
         }
         #endregion
 
@@ -288,25 +642,10 @@ namespace OperationGuidance_new.Views {
             // Resize title
             _storageTitlePanel.Size = new(Width, _titleHeight);
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-            int boxWidth = (Width - _storageContentPanel.Padding.Size.Width);
+            int boxWidth = (Width - _contentHPadding * 2);
             int buttonHeight = WidgetUtils.CommonButtonHeight();
-            int gridHeaderHeight = WidgetUtils.GridViewHeaderHeight();
             int boxVMargin = boxHeight / 2;
-            int contentHeight = boxHeight * 3 + _contentVPadding * 2 + boxVMargin * 3 + gridHeaderHeight;
-            // Resize grid view
-            _fieldsGridView.Width = boxWidth;
-            HScrollBar hScrollBar = _fieldsGridView.Controls.OfType<HScrollBar>().First();
-            if (hScrollBar.Visible) {
-                gridHeaderHeight += hScrollBar.Height;
-                contentHeight += hScrollBar.Height;
-            }
-            _fieldsGridView.Height = gridHeaderHeight;
-            _fieldsGridView.Margin = new(0, boxVMargin, 0, 0);
-            int newHeaderHeight = WidgetUtils.GridViewHeaderHeight();
-            if (newHeaderHeight >= 4) {
-                _fieldsGridView.ColumnHeadersHeight = newHeaderHeight;
-                _fieldsGridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
-            }
+            int contentHeight = boxHeight * 3 + _contentVPadding * 2 + boxVMargin * 2;
             // Resize Content
             _storageContentPanel.Size = new(Width, contentHeight);
             _storageContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
@@ -317,7 +656,7 @@ namespace OperationGuidance_new.Views {
             _storagePathTextBox.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             _storageFieldsButton.Size = new(boxWidth, buttonHeight);
             _storageFieldsButton.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
-            // Resize outer panel
+            // // Resize outer panel
             _storagePanel.Size = new(Width, _storageTitlePanel.Height + _storageContentPanel.Height);
         }
         #endregion

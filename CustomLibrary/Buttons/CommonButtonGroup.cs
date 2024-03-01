@@ -117,53 +117,14 @@ namespace CustomLibrary.Buttons {
             _buttonsPanel.Size = new(buttonsRange, Height - Padding.Size.Height);
             _buttonBeginLocation = new(Width - Padding.Right - buttonsRange, Padding.Top);
             _buttonsPanel.Location = _buttonBeginLocation;
-            // Find a optimal gap pixels
-            int buttonsCount = _buttons.Count;
-            int pixels = 0;
-            int curr = 0;
-            int hMarginTemp = 0;
-            while (true) {
-                if ((buttonsRange - _gapButtons * _buttons.Count) % buttonsCount == 0) {
-                    int prev = curr;
-                    curr = pixels;
-                    if (curr > _gapNameAndButton / 2) {
-                        if (Math.Abs(curr - _gapNameAndButton / 2) > Math.Abs(prev - _gapNameAndButton / 2)) {
-                            hMarginTemp = prev;
-                        } else {
-                            hMarginTemp = curr;
-                        }
-                        break;
-                    }
-                }
-                pixels++;
-            }
-
-            // Recalculate size and location of buttons
-            int buttonWidth = (buttonsRange - ((_gapButtons + hMarginTemp * 2) * _buttons.Count)) / buttonsCount;
             SetButtonsProperties((button) => {
-                button.Size = new((int) (TextRenderer.MeasureText(button.Label, button.Font).Width + _buttonsPanel.Height * 1.2), _buttonsPanel.Height);
+                // Change height first then Font will change to a new size
+                button.Height = _buttonsPanel.Height;
+                button.Width = (int) (TextRenderer.MeasureText(button.Label, button.Font).Width + button.Height * 1.2);
                 if (_buttons.IndexOf(button) != _buttons.Count - 1) {
                     button.Margin = new(0, 0, _gapButtons, 0);
                 }
             });
-
-            if (_buttons.Count > 1) {
-                // If there are any remaining pixels, split them into margin right
-                int remainingWidth = _buttonsPanel.Width - buttonWidth * buttonsCount - (_gapButtons + hMarginTemp * 2) * _buttons.Count;
-                int indexTemp = 0;
-                while (remainingWidth > 0) {
-                    CommonButton button = _buttons[indexTemp];
-                    if (_buttons.IndexOf(button) == _buttons.Count - 1) {
-                        indexTemp = 0;
-                        continue;
-                    }
-                    Padding margin = button.Margin;
-                    margin.Right += 1;
-                    button.Margin = margin;
-                    indexTemp++;
-                    remainingWidth--;
-                }
-            }
         }
 
         protected override void OnPaint(PaintEventArgs e) {

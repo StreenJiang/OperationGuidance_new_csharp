@@ -3,15 +3,15 @@ using CustomLibrary.Events;
 using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
-    public class ClosableButton: CommonButtonBase {
+    public class DeletableButton: CommonButtonBase {
         private Image _closeImage = Resources.CustomResources.button_close;
         private Rectangle? _imageRect;
         private Image? _imageShowing;
         private bool _down = false;
-        private bool _pressingClose = false;
+        private bool _focusOnImage = false;
         private Action? _onDeleted;
 
-        public bool PressingClose { get => _pressingClose; set => _pressingClose = value; }
+        public bool PressingClose { get => _focusOnImage; set => _focusOnImage = value; }
         public event Action Deleted { add => _onDeleted += value; remove => _onDeleted -= value; }
 
         protected override void OnMouseEnter(EventArgs e) {
@@ -53,29 +53,29 @@ namespace CustomLibrary.Buttons {
             base.OnMouseMove(mevent);
             if (_imageRect != null) {
                 if (EventFuncs.MouseInArea(new(PointToScreen(_imageRect.Value.Location), _imageRect.Value.Size))) {
-                    _pressingClose = true;
+                    _focusOnImage = true;
                 } else {
                     ClickAnimation(false);
-                    _pressingClose = false;
+                    _focusOnImage = false;
                 }
                 Invalidate();
             }
         }
         protected override void OnMouseDown(MouseEventArgs mevent) {
-            if (_pressingClose) {
+            if (_focusOnImage) {
                 BlockHoverDown = true;
             } else {
                 BlockHoverDown = false;
             }
             base.OnMouseDown(mevent);
-            if (_pressingClose && _imageRect != null) {
+            if (_focusOnImage && _imageRect != null) {
                 ClickAnimation(true);
                 Invalidate();
             }
         }
         protected override void OnMouseUp(MouseEventArgs mevent) {
             base.OnMouseUp(mevent);
-            if (_pressingClose && _imageRect != null) {
+            if (_focusOnImage && _imageRect != null) {
                 ClickAnimation(false);
                 Invalidate();
                 Dispose();

@@ -109,14 +109,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             } else {
                 this._contentPanel.Size = new(innerWidth, innerHeight);
             }
-            int heightDiff = this._contentPanel.Height - this._innerPanel.Height;
-            if (heightDiff > 0) {
-                double sliderRatio = this._innerPanel.Height / (double) this._contentPanel.Height;
-                int sliderHeight = WidgetUtils.CalculateScrollBarSlider(heightDiff, sliderRatio);
-                this._vScrollBar.Maximum = heightDiff + sliderHeight;
-                this._vScrollBar.SmallChange = sliderHeight / 15;
-                this._vScrollBar.LargeChange = sliderHeight;
-            }
+            WidgetUtils.CalculateScrollBar(_vScrollBar, _innerPanel.Height, _contentPanel.Height);
         }
 
         public void ShowScrollBarAndResizing(bool flag = true) {
@@ -129,7 +122,7 @@ namespace CustomLibrary.Panels.BaseClasses {
         }
 
         public override void VisibleToTrue() {
-            Size = Parent.Size;
+            Size = new(Parent.Width - Parent.Padding.Size.Width, Parent.Height - Parent.Padding.Size.Height);
         }
     }
 }

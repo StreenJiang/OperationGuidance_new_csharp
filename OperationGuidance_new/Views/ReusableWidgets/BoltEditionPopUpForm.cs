@@ -21,6 +21,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private CommonButton _retrieveCoordinatesBtn;
 
         public bool Modified => _modified;
+        public CustomComboBoxGroup<WorkstationDTO> Workstation { get => _workstation; set => _workstation = value; }
+        public CustomTextBoxGroup Position1 { get => _position; set => _position = value; }
         protected CustomTextBoxGroup Position { get => _position; set => _position = value; }
 
         public BoltEditionPopUpForm(ProductBoltDTO boltDTO) : base(boltDTO) {
@@ -29,7 +31,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             NameBox.Enabled = true;
             SpecificationBox.Enabled = true;
             BitSpecificationBox.Enabled = true;
-            ProcedureSetBox.Enabled = true;
+            ParameterSetBox.Enabled = true;
             TorqueBox.Enabled = true;
             AngleBox.Enabled = true;
             // 站点
@@ -126,7 +128,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 批头规格
             SetValue<float>(BitSpecificationBox, 0, val => ModifiedBoltDTO.bit_specification = val);
             // pset 程序号
-            SetValue<int>(ProcedureSetBox, 0, val => ModifiedBoltDTO.parameters_set = val);
+            SetValue<int>(ParameterSetBox, 0, val => ModifiedBoltDTO.parameters_set = val);
             // 扭矩上下限
             SetValue<float>(TorqueBox, 0, val => ModifiedBoltDTO.torque_min = val);
             SetValue<float>(TorqueBox, 1, val => ModifiedBoltDTO.torque_max = val);
@@ -137,8 +139,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _workstation.ItemSelected += () => {
                 if (!_workstation.IsDefaultValue() && _workstation.Value != null) {
                     ModifiedBoltDTO.workstation_id = _workstation.Value.id;
+                    _workstation.SetError(false);
                 } else {
-                    ModifiedBoltDTO.workstation_id = null;
+                    _workstation.SetError(true);
                 }
             };
             // 螺栓坐标
@@ -159,11 +162,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             });
 
             // 检查是否DTO中已经有值，有的话则回填
-            if (boltDTO.workstation_id != null) {
-                WorkstationDTO? workstationDTO = _workstationsDTOs.SingleOrDefault(dto => dto.id == boltDTO.workstation_id.Value);
-                if (workstationDTO != null) {
-                    _workstation.SetCurrent(_workstation.IndexOf(workstationDTO));
-                }
+            WorkstationDTO? workstationDTO = _workstationsDTOs.SingleOrDefault(dto => dto.id == boltDTO.workstation_id);
+            if (workstationDTO != null) {
+                _workstation.SetCurrent(_workstation.IndexOf(workstationDTO));
             }
             Coordinates3D position = Coordinates3D.FromString(boltDTO.position);
             _position.SetValue(0, position.X + "");
@@ -188,7 +189,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return NameBox.HasError 
                 && SpecificationBox.HasError
                 && BitSpecificationBox.HasError
-                && ProcedureSetBox.HasError
+                && ParameterSetBox.HasError
                 && TorqueBox.HasError
                 && AngleBox.HasError
                 && _position.HasError;

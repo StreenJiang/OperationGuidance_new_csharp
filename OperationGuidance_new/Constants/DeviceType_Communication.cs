@@ -11,29 +11,29 @@
         public static CommunicationOpenProtocol OpenProtocol { get; } = AddNew<CommunicationOpenProtocol>();
         public static CommunicationModBus ModBus { get; } = AddNew<CommunicationModBus>();
 
-        public static DeviceTypeCommunication? GetById(int id) {
+        public static DeviceTypeCommunication GetById(int id) {
             foreach (DeviceTypeCommunication type in Elements) {
                 if (type.Id == id) {
                     return type;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of communication device by type_id = {id}");
         }
-        public static string? GetNameById(int id) {
+        public static string GetNameById(int id) {
             foreach (DeviceTypeCommunication type in Elements) {
                 if (type.Id == id) {
                     return type.Name;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of communication device by type_id = {id}");
         }
-        public static int? GetIdByName(string name) {
+        public static int GetIdByName(string name) {
             foreach (DeviceTypeCommunication type in Elements) {
                 if (type.Name == name) {
                     return type.Id;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of communication device by type_name = {name}");
         }
     }
 

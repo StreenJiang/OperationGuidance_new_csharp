@@ -26,14 +26,13 @@ namespace OperationGuidance_new.Tasks {
                         MainUtils.ToolTasks.Remove(pair.Key);
                     }
                     // Loop to check all tools
+                    List<DeviceToolDTO>.Enumerator toolsEnumerator = toolDTOs.GetEnumerator();
                     toolDTOs.ForEach(dto => {
                         ToolTask? toolTask = MainUtils.TryGetToolTask(dto.id);
                         if (toolTask == null) {
-                            if (dto.ip != null && dto.port != null && dto.type != null) {
-                                DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type.Value);
-                                if (deviceTool != null) {
-                                    MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port.Value, deviceTool);
-                                }
+                            DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
+                            if (deviceTool != null) {
+                                MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
                             }
                         } else {
                             if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
@@ -42,6 +41,11 @@ namespace OperationGuidance_new.Tasks {
                                     await toolTask.Connect();
                                     MainUtils.Log($"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
+                            } else if (toolTask.Ip != dto.ip || toolTask.Port != dto.port) {
+                                toolTask.CloseConnection();
+                                MainUtils.ToolTasks.Remove(dto.id);
+                                DeviceTypeTool deviceTool = DeviceType_Tool.GetById(dto.type);
+                                MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
                             }
                         }
                     });
@@ -57,11 +61,9 @@ namespace OperationGuidance_new.Tasks {
                     armDTOs.ForEach(dto => {
                         ArmTask? armTask = MainUtils.TryGetArmTask(dto.id);
                         if (armTask == null) {
-                            if (dto.ip != null && dto.port != null && dto.type != null) {
-                                DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type.Value);
-                                if (deviceArm != null) {
-                                    MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port.Value, deviceArm);
-                                }
+                            DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
+                            if (deviceArm != null) {
+                                MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
                             }
                         } else {
                             if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
@@ -70,6 +72,11 @@ namespace OperationGuidance_new.Tasks {
                                     await armTask.Connect();
                                     MainUtils.Log($"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
+                            } else if (armTask.Ip != dto.ip || armTask.Port != dto.port) {
+                                armTask.CloseConnection();
+                                MainUtils.ArmTasks.Remove(dto.id);
+                                DeviceTypeArm deviceArm = DeviceType_Arm.GetById(dto.type);
+                                MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
                             }
                         }
                     });
@@ -84,16 +91,13 @@ namespace OperationGuidance_new.Tasks {
                     // Loop to check all serialPorts
                     serialPortDTOs.ForEach(dto => {
                         SerialPortTask? serialPortTask = MainUtils.TryGetSerialPortTask(dto.id);
+                        System.Console.WriteLine($"serialPortTask: {serialPortTask}");
                         if (serialPortTask == null) {
-                            if (dto.type != null && dto.port_name != null && dto.port_full_name != null 
-                                && dto.baud_rate != null && dto.parity != null && dto.data_bit != null 
-                                && dto.stop_bit != null && dto.data_type != null && MainUtils.TryGetSerialPortTask(dto.id) == null) {
-                                DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type.Value);
-                                if (deviceSerialPort != null) {
-                                    MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
-                                        dto.port_name, dto.baud_rate.Value, (Parity) dto.parity, dto.data_bit.Value, 
-                                        (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
-                                }
+                            DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
+                            if (deviceSerialPort != null) {
+                                MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
+                                    dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
+                                    (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
                             }
                         } else {
                             if (!serialPortTask.Connected && serialPortTask.Status != ATaskBase.CONNECTING) {
@@ -102,6 +106,15 @@ namespace OperationGuidance_new.Tasks {
                                     await serialPortTask.Connect();
                                     MainUtils.Log($"Reconnected to SerialPort[{dto.name}]");
                                 });
+                            } else if(serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
+                                        || (int) serialPortTask.Parity != dto.parity || serialPortTask.DataBits != dto.data_bit
+                                        || (int) serialPortTask.StopBits != dto.stop_bit) {
+                                serialPortTask.CloseConnection();
+                                MainUtils.SerialPortTasks.Remove(dto.id);
+                                DeviceTypeSerialPort deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
+                                    MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
+                                        dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
+                                        (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
                             }
                         }
                     });
@@ -117,11 +130,9 @@ namespace OperationGuidance_new.Tasks {
                     communicationDTOs.ForEach(dto => {
                         CommunicationTask? communicationTask = MainUtils.TryGetCommunicationTask(dto.id);
                         if (communicationTask == null) {
-                            if (dto.ip != null && dto.port != null && dto.type != null) {
-                                DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type.Value);
-                                if (deviceCommunication != null) {
-                                    MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port.Value, deviceCommunication);
-                                }
+                            DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
+                            if (deviceCommunication != null) {
+                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
                             }
                         } else {
                             if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
@@ -130,6 +141,11 @@ namespace OperationGuidance_new.Tasks {
                                     await communicationTask.Connect();
                                     MainUtils.Log($"Reconnected to communication[{dto.name} - {dto.ip}: {dto.port}]");
                                 });
+                            } else if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port) {
+                                communicationTask.CloseConnection();
+                                MainUtils.CommunicationTasks.Remove(dto.id);
+                                DeviceTypeCommunication deviceCommunication = DeviceType_Communication.GetById(dto.type);
+                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
                             }
                         }
                     });

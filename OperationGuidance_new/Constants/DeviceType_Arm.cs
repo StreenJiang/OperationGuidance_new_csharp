@@ -9,31 +9,32 @@
 
         public static DeviceCategory DEVICE_TYPE = DeviceCategories.ARM;
         public static ArmCF01 CF01 { get; } = AddNew<ArmCF01>();
+        public static ArmCF02 CF02 { get; } = AddNew<ArmCF02>();
         public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
 
-        public static DeviceTypeArm? GetById(int id) {
+        public static DeviceTypeArm GetById(int id) {
             foreach (DeviceTypeArm type in Elements) {
                 if (type.Id == id) {
                     return type;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of arm by type_id = {id}");
         }
-        public static string? GetNameById(int id) {
+        public static string GetNameById(int id) {
             foreach (DeviceTypeBase type in Elements) {
                 if (type.Id == id) {
                     return type.Name;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of arm by type_id = {id}");
         }
-        public static int? GetIdByName(string name) {
+        public static int GetIdByName(string name) {
             foreach (DeviceTypeBase type in Elements) {
                 if (type.Name == name) {
                     return type.Id;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of arm by type_name = {name}");
         }
     }
 
@@ -57,7 +58,11 @@
         public ArmCF01() : base(1, "CF01", new string[] { "010300030002340B", "0203000300023438" }) { }
     }
 
+    public class ArmCF02: DeviceTypeArm {
+        public ArmCF02() : base(2, "CF02", new string[] { "010300000001840A", "0203000000018439" }) { }
+    }
+
     public class ArmCF03: DeviceTypeArm {
-        public ArmCF03() : base(2, "CF03", new string[] { "010300030002340B", "0203000300023438", "030300000002c5e9" }) { }
+        public ArmCF03() : base(3, "CF03", new string[] { "010300030002340B", "0203000300023438", "030300000002c5e9" }) { }
     }
 }

@@ -19,6 +19,7 @@ using CustomLibrary.Events;
 using CustomLibrary.Configs;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_service.Database;
+using System.Net.NetworkInformation;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -50,6 +51,20 @@ namespace OperationGuidance_new {
         #region Windows Form manually initialization code
 
         private void InitializeComponentManually() {
+            // Get MAC address
+            List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
+            List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
+            if (!(macs.Contains("002B677C56BC") 
+                || macs.Contains("BC542FD57669")
+                || macs.Contains("BE542FD57668")
+                || macs.Contains("BC542FD57668")
+                || macs.Contains("BC542FD5766C")
+                // others
+                || macs.Contains("E43A6E5CBE6A")
+            )) {
+                WidgetUtils.ShowErrorPopUp("当前设备未授权");
+                throw new Exception("当前设备未授权");
+            }
             // Get login user info
             OperationGuidanceApis apis = SystemUtils.GetApis();
             SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
@@ -61,6 +76,7 @@ namespace OperationGuidance_new {
             mainPanel.Margin = new Padding(0);
             mainPanel.Name = "mainPanel";
             // Store this mainPanel incase wherever needs to reach it
+            WidgetUtils.MainForm = this;
             WidgetUtils.MainPanel = mainPanel;
             // mainMenuPanel
             mainMenuPanel = new();
@@ -215,20 +231,24 @@ namespace OperationGuidance_new {
             }
 
             // MainForm
+            MinimumSize = new Size(400, 300);
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             string resolution = MainUtils.Settings.Read(IniFileKeys.Resolution);
+            System.Console.WriteLine($"resolution: {resolution}");
             if (!string.IsNullOrEmpty(resolution)) {
                 string[] strings = resolution.Split(",");
                 int width = int.Parse(strings[0].Trim());
                 int height = int.Parse(strings[1].Trim());
-                Size = new(width, height);
-                ClientSize = new(width, height);
-            } else {
                 Size screenSize = WidgetUtils.GetScreenResolution();
-                Size = screenSize;
-                ClientSize = screenSize;
+                if (width == screenSize.Width && height == screenSize.Height) {
+                    WindowState = FormWindowState.Maximized;
+                } else {
+                    Size = new(width, height);
+                    ClientSize = new(width, height);
+                }
+            } else {
+                WindowState = FormWindowState.Maximized;
             }
-            MinimumSize = new Size(400, 300);
             Name = "MainForm";
             Text = "MainForm";
             CenterToScreen();

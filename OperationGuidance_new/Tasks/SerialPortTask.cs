@@ -25,6 +25,10 @@ namespace OperationGuidance_new.Tasks {
         // Other properties
         public string FullName { get => _device_name ?? ""; set => _device_name = value; }
         public string PortName { get => _portName; set => _portName = value; }
+        public int BaudRate { get => _baudRate; set => _baudRate = value; }
+        public Parity Parity { get => _parity; set => _parity = value; }
+        public int DataBits { get => _dataBits; set => _dataBits = value; }
+        public StopBits StopBits { get => _stopBits; set => _stopBits = value; }
         public string? Result { get; set; }
         public SerialPort? SerialPortClient { get => serialPortClient; }
         public Action<string>? ActionAfterDataReceived { get => _actionAfterDataReceived; set => _actionAfterDataReceived = value; }
@@ -53,7 +57,7 @@ namespace OperationGuidance_new.Tasks {
                         await Task.Delay(LoopingInterval);
                     }
                 } catch (Exception e) {
-                    MainUtils.Log($"Error: {e}");
+                    System.Console.WriteLine($"Error: {e}");
                 } finally {
                     MainUtils.Log($"Disconnected to SerialPort[{_device_name}]");
                     if (serialPortClient != null) {
@@ -61,14 +65,14 @@ namespace OperationGuidance_new.Tasks {
                         serialPortClient = null;
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.Log($"Serial port device connection<SerialPort[{_device_name}]> has been closed manually, won't try to reconnecte anymore.");
+                        MainUtils.Log($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
         }
         public override Task Connect() {
             return Task.Run(async () => {
-                while (!Connected) {
+                while (!Connected && !CloseConnectionManually) {
                     Status = CONNECTING;
                     if (ConnectToSerialPortDevice()) {
                         RunTask();
@@ -80,9 +84,9 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.Log($"Close serial port<SerialPort[{_device_name}]> manually...");
+            MainUtils.Log($"Close SerialPort[{_device_name}] manually...");
+            CloseConnectionManually = true;
             if (Connected) {
-                CloseConnectionManually = true;
                 serialPortClient.Close();
                 Result = null;
             }
@@ -92,6 +96,7 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToSerialPortDevice() {
             try {
+                MainUtils.Log($"Connecting to SerialPort[{_device_name}]");
                 Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
                 if (serialPorts.ContainsKey(_portName)) {
                     serialPortClient = new() {
@@ -107,17 +112,19 @@ namespace OperationGuidance_new.Tasks {
                             byte[] data = new byte[2048];
                             int msgLen = serialPortClient.Read(data, 0, data.Length);
                             string result = Encoding.ASCII.GetString(data, 0, msgLen).Trim();
-                            MainUtils.Log($"Data received from serial port<SerialPort[{_device_name}]>, result: {result}");
+                            MainUtils.Log($"Data received from SerialPort[{_device_name}], result: {result}");
                             if (_actionAfterDataReceived != null) {
                                 _actionAfterDataReceived(result);
                             }
                         } catch (Exception e) {
-                            MainUtils.Log($"Error occurred whlie receiving data from serial port<SerialPort[{_device_name}]>, e: {e}");
+                            MainUtils.Log($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
                         }
                     };
                     serialPortClient.Open();
+                    MainUtils.Log($"Successfully connect to SerialPort[{_device_name}]");
                     return true;
                 } else {
+                    MainUtils.Log($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
                     return false;
                 }
             } catch (Exception e) {

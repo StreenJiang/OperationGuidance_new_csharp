@@ -14,6 +14,7 @@ namespace CustomLibrary.Utils {
         private static Dictionary<int, CustomChildMenuFirstButton> _childMenus = new();
         private static List<CustomContentPanel> _views = new();
 
+        public static Form MainForm { get; set; }
         public static CustomTabPanel MainPanel { get; set; }
         public static CustomMainMenuPanel MainMenuPanel { get; set; }
 
@@ -269,7 +270,7 @@ namespace CustomLibrary.Utils {
 
         // Content configs 
         public static int ScrollBarThickness() {
-            int thickness = WidgetUtils.MainPanel.Height / 43;
+            int thickness = WidgetUtils.MainPanel.Height / 46;
             if (thickness < 12) {
                 thickness = 12;
             }
@@ -341,6 +342,16 @@ namespace CustomLibrary.Utils {
         /// <returns></returns>
         public static int CalculateScrollBarSlider(int realHeight, double sliderRatio) {
             return (int) (realHeight * sliderRatio / (1 - sliderRatio));
+        }
+        public static void CalculateScrollBar(ScrollBar scrollBar, int scrollBarLength, int contentLength) {
+            int heightDiff = contentLength - scrollBarLength;
+            if (heightDiff > 0) {
+                double sliderRatio = scrollBarLength / (double) contentLength;
+                int sliderHeight = CalculateScrollBarSlider(heightDiff, sliderRatio);
+                scrollBar.Maximum = heightDiff + sliderHeight;
+                scrollBar.SmallChange = sliderHeight / 15;
+                scrollBar.LargeChange = sliderHeight;
+            }
         }
 
         public static Color LightColor(Color color, double ratio) {

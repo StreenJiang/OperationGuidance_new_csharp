@@ -1,19 +1,119 @@
 ﻿using System.IO.Ports;
+using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
+using OperationGuidance_new.Attributes;
+using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_new.ViewObjects;
 using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
+
+        public static readonly string DATETIME_FORMAT_YYYY_MM = "yyyy-MM";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_2 = "yyyy/MM";
+
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DDD = "yyyy-MM_ddd";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DDD_2 = "yyyy/MM_ddd";
+
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD = "yyyy-MM-dd";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_2 = "yyyy/MM/dd";
 
-        public static IniFile Settings { get; set; } = new();
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD = "yyyy-MM-dd_ddd";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
+        public static IniFile Settings { get; } = new();
         public static string GetStorageFileName() {
-            return DateTime.Now.ToString(DATETIME_FORMAT_YYYY_MM_DD);
+            string nameFormat = Settings.Read(IniFileKeys.DataStorageNameFormat);
+            if (string.IsNullOrEmpty(nameFormat)) {
+                nameFormat = MainUtils.DATETIME_FORMAT_YYYY_MM_DD;
+                Settings.Write(IniFileKeys.DataStorageNameFormat, nameFormat);
+            }
+            return nameFormat;
+        }
+        public static string GetStorageFormattedName() {
+            DateTime now = DateTime.Now;
+            string nameFormatted = GetStorageFileName();
+            if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD_2)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD_2)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD_2)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM)) {}
+            else if (Replace(DATETIME_FORMAT_YYYY_MM_2)) {}
+            return nameFormatted;
+
+            bool Replace(string formatPattern) {
+                if (nameFormatted.Contains(formatPattern)) {
+                    nameFormatted = nameFormatted.Replace(formatPattern, now.ToString(formatPattern));
+                    return true;
+                }
+                return false;
+            }
+        }
+        public static string GetStoragePath() {
+            string dataStoragePath = Settings.Read(IniFileKeys.DataStoragePath);
+            if (string.IsNullOrEmpty(dataStoragePath)) {
+                dataStoragePath = Directory.GetCurrentDirectory() + "\\OperationDataStorage\\";
+                Settings.Write(IniFileKeys.DataStoragePath, dataStoragePath);
+            }
+            return dataStoragePath;
+        }
+        public static List<int> GetSortConfig() {
+            List<int>? sortConfig = null;
+            string dataStorageFields = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSort);
+            sortConfig = JsonConvert.DeserializeObject<List<int>>(dataStorageFields);
+            if (sortConfig == null) {
+                sortConfig = new() { 1, 2, 14, 33, 34, 35, 36, 37, 40, 43, 44, 17, 15, 21, 16 };
+            }
+            return sortConfig;
+        }
+        public static List<int>? GetSortConfigCurr() {
+            string dataStorageFieldsCurr = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSortCurr);
+            return JsonConvert.DeserializeObject<List<int>>(dataStorageFieldsCurr);
+        }
+        public static List<OperationDataField> GetOperationDataFields(List<int>? sortConfig = null) {
+            List<PropertyInfo> props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
+            List<OperationDataField> fields = new();
+            int index = 1;
+            props.ForEach(p => {
+                IEnumerable<Attribute> enumerable = p.GetCustomAttributes();
+                foreach (Attribute attribute in enumerable) {
+                    if (attribute is GridColumnAttribute gridColumn) {
+                        string fieldName;
+                        if (gridColumn.ColumnName != null && gridColumn.ColumnName != string.Empty) {
+                            fieldName = gridColumn.ColumnName;
+                        } else {
+                            fieldName = p.Name;
+                        }
+                        string propertyName = p.Name;
+                        fields.Add(new(index++, fieldName, propertyName, false));
+                    }
+                }
+            });
+            // Get config
+            string dataStorageFields = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSort);
+            if (sortConfig == null) {
+                sortConfig = GetSortConfig();
+            }
+            fields = fields.OrderBy(f => {
+                int indexTemp = sortConfig.IndexOf(f.Id);
+                if (indexTemp == -1) {
+                    indexTemp = fields.Count;
+                }
+                return indexTemp;
+            }).ToList();
+            fields.ForEach(f => {
+                if (sortConfig.IndexOf(f.Id) != -1) {
+                    f.Visible = true;
+                }
+            });
+            return fields;
         }
 
         private static Dictionary<int, ArmTask> _armTasks = new();

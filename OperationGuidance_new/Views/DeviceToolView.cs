@@ -110,7 +110,7 @@ namespace OperationGuidance_new.Views {
                 ipBox.IsError = !ArgumentValidator.ValidateIPv4(ipBox.Text);
             };
             ip.Ratio = 6;
-            if (dto.description != null) {
+            if (dto.ip != null) {
                 ip.SetValue(0, dto.ip);
             }
             CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false, 
@@ -120,17 +120,12 @@ namespace OperationGuidance_new.Views {
                 portBox.IsError = !ArgumentValidator.ValidatePortInWindows(portBox.Text);
             };
             port.Ratio = 6;
-            if (dto.port != null) {
-                port.SetValue(0, dto.port + "");
-            }
+            port.SetValue(0, dto.port + "");
             Dictionary<string, int> toolTypes = DeviceType_Tool.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("工具类型", 
                 (DeviceToolDTO dto, int value) => dto.type = value, toolTypes);
             type.Ratio = 6;
-            if (dto.type != null) {
-                type.SetCurrent(type.IndexOf(dto.type.Value));
-            }
-
+            type.SetCurrent(type.IndexOf(dto.type));
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");

@@ -180,6 +180,10 @@ namespace CustomLibrary.TextBoxes {
             _textBoxes[index].Text = value != null ? value : "";
         }
 
+        public void CheckError(int index, bool flag) {
+            _textBoxes[index].CheckError(flag);
+        }
+
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;

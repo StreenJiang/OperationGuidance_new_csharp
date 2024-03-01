@@ -28,6 +28,7 @@ namespace CustomLibrary.TextBoxes {
         private Image? _iconShowing;
         private ToolTip _errorTip;
         private Timer _errorBorderTimer;
+        private int _errorBorderTimerInterval = 100;
         private int _timerCount;
         #endregion
 
@@ -132,11 +133,13 @@ namespace CustomLibrary.TextBoxes {
             _box.TextChanged += (sender, eventArgs) => {
                 if (_numberOnly) {
                     int errorCount = 0;
+                    int index = 0;
                     foreach (char c in _box.Text) {
-                        if (!char.IsDigit(c) && c != '.') {
+                        if (!char.IsDigit(c) && c != '.' && !(c == '-' && index == 0)) {
                             _box.Text = _box.Text.Replace(c.ToString(), "");
                             errorCount++;
                         }
+                        index++;
                     }
                     _box.SelectionStart = _box.Text.Length;
                     _box.SelectionLength = 0;
@@ -174,16 +177,18 @@ namespace CustomLibrary.TextBoxes {
             _numberValidate = false;
             _numberOnly = false;
             _errorBorderTimer = new() {
-                Interval = 1000,
+                Interval = _errorBorderTimerInterval,
             };
             _errorBorderTimer.Tick += (sender, eventArgs) => {
-                _timerCount += 1000;
-                if (_timerCount >= 2000) {
-                    _isError = false;
-                    HideErrorToolTip();
-                    Invalidate();
-                    _timerCount = 0;
-                    _errorBorderTimer.Stop();
+                if (!IsDisposed) {
+                    _timerCount += _errorBorderTimerInterval;
+                    if (_timerCount >= 2000) {
+                        _isError = false;
+                        HideErrorToolTip();
+                        Invalidate();
+                        _timerCount = 0;
+                        _errorBorderTimer.Stop();
+                    }
                 }
             };
         }
@@ -203,10 +208,22 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         private void ShowErrorToolTip() {
-            _errorTip.Show("请输入数字", _box);
+            if (!IsDisposed) {
+                _errorTip.Show("请输入数字", _box);
+            }
         }
         private void HideErrorToolTip() {
-            _errorTip.Hide(_box);
+            if (!IsDisposed) {
+                _errorTip.Hide(_box);
+            }
+        }
+        public void CheckError(bool flag) {
+            // Use property to update appearance
+            IsError = flag;
+            if (flag) {
+                _timerCount = 0;
+                _errorBorderTimer.Start();
+            }
         }
         #endregion
 

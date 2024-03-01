@@ -21,6 +21,9 @@ using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Extensions;
 using CustomLibrary.TextBoxes;
+using System.Reflection;
+using OperationGuidance_new.ViewObjects;
+using Newtonsoft.Json;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -289,7 +292,7 @@ namespace OperationGuidance_new.Views {
         private Image _defaultImage;
 
         private List<WorkstationDTO> _workstationsDTOs = new();
-        private readonly int _checkDevicesConnectionDelay = 500;
+        private readonly int _checkDevicesConnectionDelay = 200;
         private List<DeviceArmDTO> _arms;
         private List<DeviceToolDTO> _tools;
         private List<DeviceSerialPortDTO> _serialPorts;
@@ -455,14 +458,14 @@ namespace OperationGuidance_new.Views {
                         Title = "录入条码",
                         BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                     };
+                    _barCodePopUpForm.TextBox.Box.KeyUp += (sender, eventArgs) => {
+                        if (eventArgs.KeyCode == Keys.Enter && !_barCodePopUpForm.TextBox.IsError) {
+                            TriggerActivateMission();
+                        }
+                    };
                     _barCodePopUpForm.AddButton("确定").Click += (sender, eventArgs) => {
                         if (!_barCodePopUpForm.TextBox.IsError) {
-                            if (!_activated || _finished) {
-                                _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
-                                // 激活任务
-                                ActivateMission();
-                            }
-                            _barCodePopUpForm.Dispose();
+                            TriggerActivateMission();
                         }
                     };
                     _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
@@ -473,6 +476,14 @@ namespace OperationGuidance_new.Views {
                     _barCodePopUpForm.TextBox.Text = _barCodeTextBox.Text;
                 }
                 _barCodePopUpForm.Show();
+                void TriggerActivateMission() {
+                    if (!_activated || _finished) {
+                        _barCodeTextBox.Text = _barCodePopUpForm.TextBox.Text;
+                        // 激活任务
+                        ActivateMission();
+                    }
+                    _barCodePopUpForm.Dispose();
+                }
             }
         }
 
@@ -965,32 +976,38 @@ namespace OperationGuidance_new.Views {
         // 激活任务
         private void ActivateMission() {
             if (_sides.Count > 0 && _allBolts.Count > 0) {
-                // 1. 修改任务激活状态
-                _activated = true;
-                _finished = false;
-                // 2. 将当前任务的所有螺栓点位按顺序排好队，并初始化所有螺栓点位的状态
+                // 1. 将当前任务的所有螺栓点位按顺序排好队，并初始化所有螺栓点位的状态
                 _allBolts = _allBolts.OrderBy(btn => btn.BoltDTO.side_id).ThenBy(btn => btn.BoltDTO.serial_num).ToList();
                 _allBolts.ForEach(btn => btn.ResetStatusWithoutChangingVisible());
-                // 3. 设置当前点位为第一个点位
+                // 2. 设置当前点位为第一个点位
                 _currentWorkingBolt = SwitchBolt(0);
-                // 4. 根据当前螺丝点位配置的站点找到对应的力臂并开始读取数据，同时开始监听点位状态
+                // 3. 检查当前站点是否存在工具和力臂，不存在则无法激活任务
                 ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                if (boltDTO.workstation_id != null && boltDTO.parameters_set != null) {
-                    int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id.Value).tool_id;
-                    if (toolId != null) {
-                        ToolTask toolTask = _toolTasks[toolId.Value];
-                        // 5. 先将工具锁住防止误操作
-                        toolTask.SendLock();
-                        // 6. 下发当前螺栓点位的程序号至控制器
-                        toolTask.SendPSet(boltDTO.parameters_set.Value);
-                    }
-                    int? armId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id.Value).arm_id;
-                    // 7. 开始读取力臂数据
-                    if (armId != null) {
-                        ArmTask armTask = _armTasks[armId.Value];
-                        armTask.RetrieveResult = true;
-                        armTask.OnActionAfterReceiving += ActionAfterArmDataReceived;
-                    }
+                int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
+                if (toolId == null) {
+                    WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置工具，无法激活任务");
+                    return;
+                }
+                int? armId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).arm_id;
+                bool locating_enabled = true;
+                if (locating_enabled && armId == null) {
+                    WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置力臂，无法激活任务");
+                    return;
+                }
+                // 4. 修改任务激活状态
+                _activated = true;
+                _finished = false;
+                ToolTask toolTask = _toolTasks[toolId.Value];
+                // 5. 先将工具锁住防止误操作
+                toolTask.SendLock();
+                // 6. 下发当前螺栓点位的程序号至控制器
+                toolTask.SendPSet(boltDTO.parameters_set);
+                // 7. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
+                if (locating_enabled && armId != null) {
+                    ArmTask armTask = _armTasks[armId.Value];
+                    armTask.RetrieveResult = true;
+                    armTask.OnActionAfterReceiving += ActionAfterArmDataReceived;
+                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
                 }
             }
         }
@@ -1012,12 +1029,54 @@ namespace OperationGuidance_new.Views {
 
         private async void StoreTighteningData() {
             await Task.Run(() => {
-                if (_activated && !_finished && _dataNeedToBeStored.Count > 0) {
-                    bool succeed = _dataNeedToBeStored.ExportToExcelFile($"{MainUtils.GetStorageFileName()}.xlsx");
-                    // 由于 excel 文件如果被人为开启会导致数据存储出错，因此先判断是否成功再进行后续操作
+                if (!_activated && _finished && _dataNeedToBeStored.Count > 0) {
+                    List<string>? headers = null;
+                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                    // 检查当前文件是否存在
+                    bool textFileExists = File.Exists(textFilePath);
+                    bool excelFileExists = File.Exists(excelFilePath);
+                    // 从配置文件读取配置
+                    List<int> sortConfig = MainUtils.GetSortConfig();
+                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                    // 检查当前是否存在正在使用的字段配置
+                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                        sortConfigCurr = sortConfig;
+                        MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
+                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
+                    }
+                    // 组装数据
+                    List<Dictionary<int, object?>> dataWithConfigFields = new();
+                    List<OperationDataVO> dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataNeedToBeStored, dataFormatted);
+                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                    dataFormatted.ForEach(dto => {
+                        Dictionary<int, object?> record = new();
+                        for (int i = 0; i < propertyNames.Count; i++) {
+                            string pName = propertyNames[i];
+                            PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
+                            if (propertyInfo != null) {
+                                record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+                            }
+                        }
+                        dataWithConfigFields.Add(record);
+                    });
+                    // 组装最终数据
+                    List<List<object?>> finalData = new();
+                    dataWithConfigFields.ForEach(dict => {
+                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                    });
+                    // 写入数据
+                    bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                    // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
                     if (succeed) {
                         _apis.BatchAddOperationData(new(_dataNeedToBeStored));
-                        _dataNeedToBeStored.ExportToTextFile($"{MainUtils.GetStorageFileName()}.txt");
+                        finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                         _dataNeedToBeStored.Clear();
                     } else {
                         WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
@@ -1041,11 +1100,9 @@ namespace OperationGuidance_new.Views {
             // 切换状态的代码放在这里，以保证即使切换了side，也能正确显示动态效果
             newBolt.BoltStatus = BoltStatus.WORKING;
             // 下发程序号（pset）
-            if (newBoltDTO.parameters_set != null && newBoltDTO.workstation_id != null) {
-                int? toolId = _workstationsDTOs.Single(dto => dto.id == newBoltDTO.workstation_id.Value).tool_id;
-                if (toolId != null) {
-                    _toolTasks[toolId.Value].SendPSet(newBoltDTO.parameters_set.Value);
-                }
+            int? toolId = _workstationsDTOs.Single(dto => dto.id == newBoltDTO.workstation_id).tool_id;
+            if (toolId != null) {
+                _toolTasks[toolId.Value].SendPSet(newBoltDTO.parameters_set);
             }
             // 将当前螺栓点位的serial_num传给process poanel
             _workingProcessPanel.BoltSerialNum = newBoltDTO.serial_num;
@@ -1058,23 +1115,23 @@ namespace OperationGuidance_new.Views {
                 BeginInvoke(() => {
                     if (_currentWorkingBolt != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                        if (boltDTO.workstation_id != null) {
-                            int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id.Value).tool_id;
-                            if (toolId != null) {
-                                ToolTask toolTask = _toolTasks[toolId.Value];
-                                Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
-                                int x = armCoordinates.X;
-                                int y = armCoordinates.Y;
-                                int z = armCoordinates.Z;
-                                int limit = 200;
-                                if (Math.Abs(x - boltCoordinates.X) < limit && Math.Abs(y - boltCoordinates.Y) < limit
-                                        && (boltCoordinates.Z == 0 || Math.Abs(z - boltCoordinates.Z) < limit)) {
-                                    toolTask.SendUnlock();
+                        int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
+                        if (toolId != null) {
+                            ToolTask toolTask = _toolTasks[toolId.Value];
+                            Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
+                            int x = armCoordinates.X;
+                            int y = armCoordinates.Y;
+                            int z = armCoordinates.Z;
+                            int limit = 200;
+                            if (Math.Abs(x - boltCoordinates.X) < limit && Math.Abs(y - boltCoordinates.Y) < limit
+                                    && (boltCoordinates.Z == 0 || Math.Abs(z - boltCoordinates.Z) < limit)) {
+                                toolTask.SendUnlock();
+                                if (_workingProcessPanel.WorkplaceProcessStatus != WorkplaceProcessStatus.OPERATION_ERROR) {
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-                                } else {
-                                    toolTask.SendLock();
-                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
                                 }
+                            } else {
+                                toolTask.SendLock();
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
                             }
                         }
                     }
@@ -1097,11 +1154,11 @@ namespace OperationGuidance_new.Views {
                         WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id);
                         dataDTO.workstation_id = workstationDTO.id;
                         dataDTO.workstation_name = workstationDTO.name;
-                        int? toolId = workstationDTO.tool_id;
+                        int toolId = workstationDTO.tool_id.Value;
                         DeviceToolDTO toolDTO = _tools.Single(t => t.id == toolId);
                         dataDTO.tool_name = toolDTO.name;
-                        dataDTO.tool_ip = toolDTO.ip;
-                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type.Value).Name;
+                        dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
+                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
                         dataDTO.product_sied_id = _sides[_currentSideIndex].id;
                         dataDTO.bolt_serial_num = boltDTO.serial_num;
                         _dataNeedToBeStored.Add(dataDTO);
@@ -1109,7 +1166,7 @@ namespace OperationGuidance_new.Views {
                         bool tighteningCompleted = true;
                         string errorMsg = "";
                         // 检查返回的拧紧状态是否为成功
-                        if (_tighteningData.tightening_status != null && _tighteningData.tightening_status != (int) TighteningStatus.OK) {
+                        if (_tighteningData.tightening_status != (int) TighteningStatus.OK) {
                             tighteningCompleted = false;
                             errorMsg = "NOK";
                         }
@@ -1117,17 +1174,17 @@ namespace OperationGuidance_new.Views {
                         // 程序号（pset）校验
                         if (boltDTO.parameters_set != _tighteningData.parameter_set_number) {
                             tighteningCompleted = false;
-                            errorMsg = "程序要设置出错";
+                            errorMsg = "程序号设置错误";
                         }
                         // 扭矩校验
                         if (boltDTO.torque_max > 0 && (_tighteningData.torque < boltDTO.torque_min || _tighteningData.torque > boltDTO.torque_max)) {
                             tighteningCompleted = false;
-                            errorMsg = "扭矩未达标不通过";
+                            errorMsg = "扭矩未达标";
                         }
                         // 角度校验
                         if (boltDTO.angle_max > 0 && (_tighteningData.angle < boltDTO.angle_min || _tighteningData.angle > boltDTO.angle_max)) {
                             tighteningCompleted = false;
-                            errorMsg = "角度未达标不通过";
+                            errorMsg = "角度未达标";
                         }
                         // 切换下一个点位
                         if (tighteningCompleted) {
@@ -1135,7 +1192,7 @@ namespace OperationGuidance_new.Views {
                             _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                             _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                             // 当前点位完成后先把设备的状态都复原
-                            _toolTasks[toolId.Value].SendLock();
+                            _toolTasks[toolId].SendLock();
                             // 力臂
                             int? armId = workstationDTO.arm_id;
                             if (armId != null) {
@@ -1481,7 +1538,7 @@ namespace OperationGuidance_new.Views {
                         break;
                     case WorkplaceProcessStatus.OPERATION_DISABLE:
                         _statusTxt = "已锁定";
-                        _statusDesc = "未在指定坐标位置";
+                        _statusDesc = "未在指定位置";
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.OPERATION_ERROR:

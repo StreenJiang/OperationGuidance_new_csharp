@@ -2,6 +2,8 @@
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Configs;
+using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
@@ -15,6 +17,7 @@ namespace OperationGuidance_new.Views {
         // Apis
         private OperationGuidanceApis apis;
         private List<OperationDataDTO> _dataDTOList;
+        private List<OperationDataField> _operationDataFields;
         // DataGridView panel
         private DataGridViewGroup<OperationDataVO> _dataGridView;
         // Add new pop up form
@@ -36,7 +39,23 @@ namespace OperationGuidance_new.Views {
 
         #region Initialize methods
         private void InitializeGridView() {
-            _dataGridView = new() {
+            _operationDataFields = MainUtils.GetOperationDataFields();
+            _dataGridView = new(gridView => {
+                DataGridViewColumn[] columnRange = {};
+                foreach (OperationDataField field in _operationDataFields) {
+                    if (field.Visible) {
+                        DataGridViewTextBoxColumn column = new() {
+                            DataPropertyName = field.PropertyName,
+                            HeaderText = field.FieldName,
+                            ReadOnly = true,
+                        };
+                        columnRange = columnRange.Append(column).ToArray();
+                    } 
+                }
+                gridView.Columns.Clear();
+                gridView.Columns.AddRange(columnRange);
+                gridView.Columns[0].Frozen = true;
+            }) {
                 Parent = this,
                 FiltersTableColumnNums = 2,
             };
@@ -105,6 +124,12 @@ namespace OperationGuidance_new.Views {
             _dataGridView.Size = contentSize;
         }
         public override void VisibleToTrue() {
+            System.Console.WriteLine($"========================================== VisibleToTrue");
+            List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
+            if (!_operationDataFields.SequenceEqual(operationDataFields)) {
+                _operationDataFields = operationDataFields;
+                _dataGridView.ResetColumnHeaders();
+            }
             base.VisibleToTrue();
         }
         #endregion

@@ -110,9 +110,7 @@ namespace OperationGuidance_new.Views {
             Dictionary<string, string> portNames = new();
             Dictionary<string, string> portNamesDict = ConnectionUtils.GetSerialPorts();
             foreach (KeyValuePair<string, string> pair in portNamesDict) {
-                if (!_dataDTOList.Select(dto => dto.port_name).Contains(pair.Key)) {
-                    portNames.Add(pair.Value, pair.Key);
-                }
+                portNames.Add(pair.Value, pair.Key);
             }
             CustomComboBoxGroup<string>? portFullName = null;
             portFullName = _editEntityPopUpForm.AddComboBox("串口", SetPortName, portNames);
@@ -134,6 +132,9 @@ namespace OperationGuidance_new.Views {
             portFullName.ItemSelected += () => {
                 if (!portFullName.IsDefaultValue() && portFullName.Value != null) {
                     portName.SetValue(0, portFullName.Value);
+                    if (portFullName.IsError) {
+                        portFullName.SetError(false);
+                    }
                 } else {
                     portName.SetValue(0, "");
                 }
@@ -143,9 +144,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("设备类型", 
                 (DeviceSerialPortDTO dto, int value) => dto.type = value, toolTypes);
             type.Ratio = 6;
-            if (dto.type != null) {
-                type.SetCurrent(type.IndexOf(dto.type.Value));
-            }
+            type.SetCurrent(type.IndexOf(dto.type));
             // 波特率
             Dictionary<string, int> baudRates = new() {
                 { "4800", 4800 },
@@ -159,9 +158,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> baudRate = _editEntityPopUpForm.AddComboBox("波特率", 
                 (DeviceSerialPortDTO dto, int value) => dto.baud_rate = value, baudRates);
             baudRate.Ratio = 6;
-            if (dto.baud_rate != null) {
-                baudRate.SetCurrent(baudRate.IndexOf(dto.baud_rate.Value));
-            }
+            baudRate.SetCurrent(baudRate.IndexOf(dto.baud_rate));
             // 数据位
             Dictionary<string, int> dataBits = new() {
                 // { "5", 5 },
@@ -172,9 +169,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> dataBit = _editEntityPopUpForm.AddComboBox("数据位", 
                 (DeviceSerialPortDTO dto, int value) => dto.data_bit = value, dataBits);
             dataBit.Ratio = 6;
-            if (dto.data_bit != null) {
-                dataBit.SetCurrent(dataBit.IndexOf(dto.data_bit.Value));
-            }
+            dataBit.SetCurrent(dataBit.IndexOf(dto.data_bit));
             // 校验位
             Dictionary<string, int> parities = new();
             Parity[] parityValues = Enum.GetValues<Parity>();
@@ -184,9 +179,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> parity = _editEntityPopUpForm.AddComboBox("校验位", 
                 (DeviceSerialPortDTO dto, int value) => dto.parity = value, parities);
             parity.Ratio = 6;
-            if (dto.parity != null) {
-                parity.SetCurrent(parity.IndexOf(dto.parity.Value));
-            }
+            parity.SetCurrent(parity.IndexOf(dto.parity));
             // 停止位
             Dictionary<string, int> stopBits = new();
             StopBits[] stopBitsValues = Enum.GetValues<StopBits>();
@@ -196,9 +189,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> stopBit = _editEntityPopUpForm.AddComboBox("停止位", 
                 (DeviceSerialPortDTO dto, int value) => dto.stop_bit = value, stopBits);
             stopBit.Ratio = 6;
-            if (dto.stop_bit != null) {
-                stopBit.SetCurrent(stopBit.IndexOf(dto.stop_bit.Value));
-            }
+            stopBit.SetCurrent(stopBit.IndexOf(dto.stop_bit));
             // 数据类型
             Dictionary<string, int> dataTypes = new();
             DataTypes[] dataTypesValues = Enum.GetValues<DataTypes>();
@@ -208,9 +199,7 @@ namespace OperationGuidance_new.Views {
             CustomComboBoxGroup<int> dataType = _editEntityPopUpForm.AddComboBox("数据类型", 
                 (DeviceSerialPortDTO dto, int value) => dto.data_type = value, dataTypes);
             dataType.Ratio = 6;
-            if (dto.data_type != null) {
-                dataType.SetCurrent(dataType.IndexOf(dto.data_type.Value));
-            }
+            dataType.SetCurrent(dataType.IndexOf(dto.data_type));
             // 无效字符
             CustomTextBoxGroup invalidChar = _editEntityPopUpForm.AddTextBox("无效字符", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.invalid_char = value ?? "");
@@ -222,8 +211,19 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                AddOrUpdate(dto, callBackAction);
-                _editEntityPopUpForm.Hide();
+                bool check = true;
+                if (dto.id <= 0) {
+                    if (!string.IsNullOrEmpty(dto.port_name) && _dataDTOList.Where(data => data.port_name == dto.port_name).Count() > 0) {
+                        portFullName.SetError(true);
+                        WidgetUtils.ShowWarningPopUp($"此串口[{dto.port_name}]已存在设备[{dto.port_full_name}]，无法多次配置同一个串口！");
+                        check = false;
+                    }
+                }
+                if (check) {
+                    callBackAction += _editEntityPopUpForm.Dispose;
+                    AddOrUpdate(dto, callBackAction);
+                    _editEntityPopUpForm.Hide();
+                }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

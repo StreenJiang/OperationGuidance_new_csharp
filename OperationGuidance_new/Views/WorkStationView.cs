@@ -197,16 +197,20 @@ namespace OperationGuidance_new.Views {
             };
             void SetToolValues() {
                 DeviceToolDTO deviceToolDTO = _toolDTOs.Single(t => t.id == toolOptions.Value);
-                if (deviceToolDTO.type != null) {
-                    toolTypeTextBox.SetCurrent(toolTypeTextBox.IndexOf(deviceToolDTO.type.Value));
-                }
+                toolTypeTextBox.SetCurrent(toolTypeTextBox.IndexOf(deviceToolDTO.type));
                 toolIPTextBox.SetValue(0, deviceToolDTO.ip);
                 toolPortTextBox.SetValue(0, deviceToolDTO.port + "");
+                // Set for show warning message
+                dto.tool_name = toolOptions.Key;
+                if (toolOptions.IsError) {
+                    toolOptions.SetError(false);
+                }
             }
             void ResetToolValues() {
                 toolTypeTextBox.Reset();
                 toolIPTextBox.SetValue(0, null);
                 toolPortTextBox.SetValue(0, null);
+                dto.tool_name = null;
             }
             // 是否显示工具开关事件
             int toolChosenIndexCache = -1;
@@ -257,16 +261,20 @@ namespace OperationGuidance_new.Views {
             };
             void SetArmValues() {
                 DeviceArmDTO deviceArmDTO = _armDTOs.Single(dto => dto.id == armOptions.Value);
-                if (deviceArmDTO.type != null) {
-                    armTypeTextBox.SetCurrent(armTypeTextBox.IndexOf(deviceArmDTO.type.Value));
-                }
+                armTypeTextBox.SetCurrent(armTypeTextBox.IndexOf(deviceArmDTO.type));
                 armIPTextBox.SetValue(0, deviceArmDTO.ip);
                 armPortTextBox.SetValue(0, deviceArmDTO.port + "");
+                // Set for show warning message
+                dto.arm_name = armOptions.Key;
+                if (armOptions.IsError) {
+                    armOptions.SetError(false);
+                }
             }
             void ResetArmValues() {
                 armTypeTextBox.Reset();
                 armIPTextBox.SetValue(0, null);
                 armPortTextBox.SetValue(0, null);
+                dto.arm_name = null;
             }
             // 是否显示力臂开关事件
             int armChosenIndexCache = -1;
@@ -320,16 +328,20 @@ namespace OperationGuidance_new.Views {
             };
             void SetCommunicationValues() {
                 DeviceCommunicationDTO deviceCommunicationDTO = _communicationDTOs.Single(dto => dto.id == communicationOptions.Value);
-                if (deviceCommunicationDTO.type != null) {
-                    communicationTypeTextBox.SetCurrent(communicationTypeTextBox.IndexOf(deviceCommunicationDTO.type.Value));
-                }
+                communicationTypeTextBox.SetCurrent(communicationTypeTextBox.IndexOf(deviceCommunicationDTO.type));
                 communicationIPTextBox.SetValue(0, deviceCommunicationDTO.ip);
                 communicationPortTextBox.SetValue(0, deviceCommunicationDTO.port + "");
+                // Set for show warning message
+                dto.communication_name = communicationOptions.Key;
+                if (communicationOptions.IsError) {
+                    communicationOptions.SetError(false);
+                }
             }
             void ResetCommunicationValues() {
                 communicationTypeTextBox.Reset();
                 communicationIPTextBox.SetValue(0, null);
                 communicationPortTextBox.SetValue(0, null);
+                dto.communication_name = null;
             }
             // 是否显示通讯设备开关事件
             int communicationChosenIndexCache = -1;
@@ -403,15 +415,18 @@ namespace OperationGuidance_new.Views {
             };
             void SetSerialPortValues() {
                 DeviceSerialPortDTO deviceSerialPortDTO = _serialPortDTOs.Single(dto => dto.id == serialPortOptions.Value);
-                if (deviceSerialPortDTO.type != null) {
-                    serialPortTypeTextBox.SetCurrent(serialPortTypeTextBox.IndexOf(deviceSerialPortDTO.type.Value));
-                }
+                serialPortTypeTextBox.SetCurrent(serialPortTypeTextBox.IndexOf(deviceSerialPortDTO.type));
                 serialPortPortNameTextBox.SetValue(0, deviceSerialPortDTO.port_name);
                 serialPortBaudRateTextBox.SetValue(0, deviceSerialPortDTO.baud_rate + "");
                 serialPortDataBitTextBox.SetValue(0, deviceSerialPortDTO.data_bit + "");
                 serialPortParityTextBox.SetValue(0, deviceSerialPortDTO.parity + "");
                 serialPortStopBitTextBox.SetValue(0, deviceSerialPortDTO.stop_bit + "");
                 serialPortDataTypeTextBox.SetValue(0, deviceSerialPortDTO.data_type + "");
+                // Set for show warning message
+                dto.serial_port_name = serialPortOptions.Key;
+                if (serialPortOptions.IsError) {
+                    serialPortOptions.SetError(false);
+                }
             }
             void ResetSerialPortValues() {
                 serialPortTypeTextBox.Reset();
@@ -421,6 +436,7 @@ namespace OperationGuidance_new.Views {
                 serialPortParityTextBox.SetValue(0, null);
                 serialPortStopBitTextBox.SetValue(0, null);
                 serialPortDataTypeTextBox.SetValue(0, null);
+                dto.serial_port_name = null;
             }
             // 是否显示串口开关事件
             int serialPortChosenIndexCache = -1;
@@ -447,13 +463,67 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                if (dto.tool_id == 0) dto.tool_id = null;
-                if (dto.arm_id == 0) dto.arm_id = null;
-                if (dto.serial_port_id == 0) dto.serial_port_id = null;
-                if (dto.communication_id == 0) dto.communication_id = null;
-                callBackAction += _editEntityPopUpForm.Dispose;
-                AddOrUpdate(dto, callBackAction);
-                _editEntityPopUpForm.Hide();
+                bool check = true;
+                string warningMsg = "";
+                int warningIndex = 1;
+                if (dto.id <= 0) {
+                    if (toolToggle.Checked && dto.tool_id == null || dto.tool_id ==0) {
+                        toolOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 请选择工具！\r\n";
+                        check = false;
+                    }
+                    if (armToggle.Checked && dto.arm_id == null || dto.arm_id ==0) {
+                        armOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 请选择力臂！\r\n";
+                        check = false;
+                    }
+                    if (serialPortToggle.Checked && dto.serial_port_id == null || dto.serial_port_id ==0) {
+                        serialPortOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 请选择串口设备！\r\n";
+                        check = false;
+                    }
+                    if (communicationToggle.Checked && dto.communication_id == null || dto.communication_id ==0) {
+                        communicationOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 请选择通讯设备！\r\n";
+                        check = false;
+                    }
+                    if (dto.tool_id > 0 && _dataDTOList.Where(data => data.tool_id == dto.tool_id).Count() > 0) {
+                        toolOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 已有站点配置了工具[{dto.tool_name}]，无法多次配置同一个工具！\r\n";
+                        check = false;
+                    }
+                    if (dto.arm_id > 0 && _dataDTOList.Where(data => data.arm_id == dto.arm_id).Count() > 0) {
+                        armOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 已有站点配置了力臂[{dto.arm_name}]，无法多次配置同一个力臂！\r\n";
+                        check = false;
+                    }
+                    if (dto.serial_port_id > 0 && _dataDTOList.Where(data => data.serial_port_id == dto.serial_port_id).Count() > 0) {
+                        serialPortOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 已有站点配置了串口设备[{dto.serial_port_name}]，无法多次配置同一个串口设备！\r\n";
+                        check = false;
+                    }
+                    if (dto.communication_id > 0 && _dataDTOList.Where(data => data.communication_id == dto.communication_id).Count() > 0) {
+                        communicationOptions.SetError(true);
+                        warningMsg += $"{warningIndex++}. 已有站点配置了通讯设备[{dto.communication_name}]，无法多次配置同一个通讯设备！\r\n";
+                        check = false;
+                    }
+                }
+                if (!check) {
+                    WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
+                } else {
+                    toolOptions.SetError(false);
+                    armOptions.SetError(false);
+                    serialPortOptions.SetError(false);
+                    communicationOptions.SetError(false);
+                    if (dto.tool_id <= 0) dto.tool_id = null;
+                    if (dto.arm_id <= 0) dto.arm_id = null;
+                    if (dto.serial_port_id <= 0) dto.serial_port_id = null;
+                    if (dto.communication_id <= 0) dto.communication_id = null;
+
+                    callBackAction += _editEntityPopUpForm.Dispose;
+                    AddOrUpdate(dto, callBackAction);
+                    _editEntityPopUpForm.Hide();
+                }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

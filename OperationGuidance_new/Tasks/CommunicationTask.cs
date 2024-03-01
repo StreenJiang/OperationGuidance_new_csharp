@@ -57,7 +57,7 @@ namespace OperationGuidance_new.Tasks {
                                     Result = "";
                                 }
                             } catch (Exception e) {
-                                MainUtils.Log($"No data received...");
+                                System.Console.WriteLine($"No data received...");
                             }
                         }
                     }
@@ -78,7 +78,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public override Task Connect() {
             return Task.Run(async () => {
-                while (!Connected) {
+                while (!Connected && !CloseConnectionManually) {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
                         RunTask();
@@ -91,8 +91,8 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             MainUtils.Log($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
+            CloseConnectionManually = true;
             if (Connected) {
-                CloseConnectionManually = true;
                 socketClient.Close();
                 Result = null;
                 Commands.Clear();

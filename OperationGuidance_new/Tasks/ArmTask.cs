@@ -62,7 +62,7 @@ namespace OperationGuidance_new.Tasks {
                                     Result = "";
                                 }
                             } catch (Exception e) {
-                                MainUtils.Log($"No data received...");
+                                System.Console.WriteLine($"No data received...");
                             }
                         }
                     }
@@ -83,7 +83,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public override Task Connect() {
             return Task.Run(async () => {
-                while (!Connected) {
+                while (!Connected && !CloseConnectionManually) {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
                         RunTask();
@@ -97,8 +97,8 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             MainUtils.Log($"Close connection<ARM[{_device_name} - {_ip}: {_port}]> manually...");
+            CloseConnectionManually = true;
             if (Connected) {
-                CloseConnectionManually = true;
                 socketClient.Close();
                 Result = null;
                 Commands.Clear();
@@ -126,7 +126,7 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    MainUtils.Log($"Connected to ARM[{_device_name} - {_ip}: {_port}] successfully");
+                    MainUtils.Log($"Successfully connect to ARM[{_device_name} - {_ip}: {_port}]");
                 } catch (Exception e) {
                     MainUtils.Log($"Error while connecting to ARM[{_device_name} - {_ip}: {_port}]: {e}");
                 }
@@ -218,7 +218,7 @@ namespace OperationGuidance_new.Tasks {
                     MainUtils.Log($"Error occurred while looping for coordinates, e: {e}");
                     throw e;
                 } finally {
-                    MainUtils.Log("Loop stops...");
+                    System.Console.WriteLine("Loop stops...");
                 }
             });
         }

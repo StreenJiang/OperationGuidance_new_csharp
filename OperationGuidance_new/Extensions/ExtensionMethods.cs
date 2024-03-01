@@ -1,62 +1,52 @@
-using System.Reflection;
 using ClosedXML.Excel;
-using OperationGuidance_new.Configs;
-using OperationGuidance_new.Utils;
-using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Extensions {
     public static class ExtenstionMethods {
-        public static void ExportToTextFile<T>(this IEnumerable<T> data, string filePath, string columnSeperator = "\t") where T: OperationDataDTO {
-            filePath = MainUtils.Settings.Read(IniFileKeys.DataStoragePath) + filePath;
+        public static void ExportToTextFile<T>(this IEnumerable<T> data, List<string>? headers, 
+                string filePath, bool fileExists, string columnSeperator = "\t") where T: List<object?> {
             FileStream fileStream;
-            bool needNewHeader = false;
-            if (File.Exists(filePath)) {
+            if (fileExists) {
                 fileStream = File.Open(filePath, FileMode.Append, FileAccess.Write);
             } else {
                 fileStream = File.Create(filePath);
-                needNewHeader = true;
             }
             using (StreamWriter streamWriter = new(fileStream)) {
-                List<PropertyInfo> properties = typeof(T).GetProperties().Where(p => p.CanRead && (p.PropertyType.IsValueType || p.PropertyType == typeof(string)) && p.GetIndexParameters().Length == 0).ToList();
-                if (properties.Count > 0) {
-                    var seperator = columnSeperator.ToString();
-                    if (needNewHeader) {
-                        streamWriter.WriteLine(string.Join(seperator, properties.Select(p => p.Name)));
+                string seperator = columnSeperator.ToString();
+                if (headers != null) {
+                    if (fileExists) {
+                        streamWriter.WriteLine();
                     }
-                    foreach (T item in data) {
-                        if (item != null) {
-                            List<object> values = new();
-                            foreach (var p in properties) values.Add(p.GetValue(item, null));
-                            streamWriter.WriteLine(string.Join(seperator, values));
-                        }
-                    }
+                    streamWriter.WriteLine(string.Join(seperator, headers));
+                }
+                foreach (T item in data) {
+                    streamWriter.WriteLine(string.Join(seperator, item));
                 }
             }
         }
 
-        public static bool ExportToExcelFile<T>(this IEnumerable<T> data, string filePath) where T: OperationDataDTO { 
+        public static bool ExportToExcelFile<T>(this IEnumerable<T> data, List<string>? headers, string filePath, bool fileExists) { 
             XLWorkbook? xLWorkbook = null;
             try {
-                filePath = MainUtils.Settings.Read(IniFileKeys.DataStoragePath) + filePath;
-                List<string>? names = null;
-                if (File.Exists(filePath)) {
+                string sheetName = "TighteningData";
+                if (fileExists) {
                     xLWorkbook = new XLWorkbook(filePath);
                 } else {
                     xLWorkbook = new();
-                    names = typeof(T).GetProperties().Where(p => p.CanRead && (p.PropertyType.IsValueType || p.PropertyType == typeof(string)) && p.GetIndexParameters().Length == 0).Select(p => p.Name).ToList();
                 }
                 IXLWorksheet sheet1;
-                if (!xLWorkbook.Worksheets.Contains("Sheet1")) {
-                    sheet1 = xLWorkbook.Worksheets.Add("Sheet1");
+                if (!xLWorkbook.Worksheets.Contains(sheetName)) {
+                    sheet1 = xLWorkbook.Worksheets.Add(sheetName);
                 } else {
-                    sheet1 = xLWorkbook.Worksheet("Sheet1");
+                    sheet1 = xLWorkbook.Worksheet(sheetName);
                 }
-                int row = sheet1.Rows().Count();
-                if (names != null) {
-                    row += 1;
-                    sheet1.Cell(1, 1).InsertData(new List<List<string>>() { names });
+                int rowCount = sheet1.Rows().Count();
+                if (headers != null) {
+                    if (rowCount > 0) {
+                        rowCount++;
+                    }
+                    sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
                 }
-                sheet1.Cell(row + 1, 1).InsertData(data);
+                sheet1.Cell(rowCount + 1, 1).InsertData(data);
                 xLWorkbook.SaveAs(filePath);
                 // xLWorkbook.Save(); // this will throw exception
                 xLWorkbook.Dispose();

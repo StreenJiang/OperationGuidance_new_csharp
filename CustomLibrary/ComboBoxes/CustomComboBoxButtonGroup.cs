@@ -53,10 +53,12 @@ namespace CustomLibrary.ComboBoxes {
             using (Graphics g = CreateGraphics()) {
                 // Resize button label
                 foreach (CommonButton button in _buttons) {
-                    int labelWidth = (int) (g.MeasureString(button.Label, button.Font).Width + buttonHeight * 1.2);
-                    button.Size = new(labelWidth, buttonHeight);
+                    // Change height first then Font will change to a new size
+                    button.Height = buttonHeight;
+                    int buttonWidth = (int) (g.MeasureString(button.Label, button.Font).Width + buttonHeight * 1.2);
+                    button.Width = buttonWidth;
                     button.Margin = new(GapNameAndBox, 0, 0, 0);
-                    buttonWidthSum += labelWidth;
+                    buttonWidthSum += buttonWidth;
                 }
             }
             return boxesRangeTemp - buttonWidthSum - GapNameAndBox * _buttons.Count;

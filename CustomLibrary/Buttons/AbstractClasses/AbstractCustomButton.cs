@@ -30,6 +30,8 @@ namespace CustomLibrary.Buttons.AbstractClasses {
         private bool _blockHoverDown;
         private Color? _disableColor;
         private Color? _enabledSaveBackColor;
+        private double _clickDelay = 300;
+        private double _lastClickTimeStamp = 0;
 
         // Label
         private string? _label;
@@ -267,7 +269,8 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             if (_isPressing && !_blockHoverDown) {
                 _extraSize.Width += 1;
                 _extraSize.Height += 1;
-            } else if (_isMouseIn && !_blockHoverUp) {
+            }
+            if (_isMouseIn && !_blockHoverUp) {
                 _extraSize.Width -= 1;
                 _extraSize.Height -= 1;
             }
@@ -293,6 +296,15 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         protected override void OnGotFocus(EventArgs e) {
             base.OnGotFocus(e);
+        }
+
+        protected override void OnClick(EventArgs e) {
+            // Add this to prevent user from multiple click incorrectly
+            double clickTimeStamp = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            if (_lastClickTimeStamp == 0 || clickTimeStamp - _lastClickTimeStamp >= _clickDelay) {
+                _lastClickTimeStamp = clickTimeStamp;
+                base.OnClick(e);
+            }
         }
 
         protected override void OnMouseDown(MouseEventArgs mevent) {
@@ -324,7 +336,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             Refresh();
         }
 
-        // Set 'selectable' to false mess 'SetStyle' up to block base.PerformClick, so NEW a new one
+        // Set 'selectable' to false mess 'SetStyle' up and block base.PerformClick, so NEW a new one
         public new void PerformClick() {
             OnClick(EventArgs.Empty);
         }

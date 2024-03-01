@@ -59,7 +59,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Constructors
-        public DataGridViewGroup() {
+        public DataGridViewGroup(Action<DataGridView>? initializeColumnHeader = null) {
             // Default values
             FlowDirection = FlowDirection.TopDown;
             _filterParametersVO = new();
@@ -72,14 +72,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _deleteClick = new((ids, action) => WidgetUtils.ShowNoticePopUp("Func<DeleteClick> has not been set."));
 
             // Initialization
-            InitializeContents();
+            InitializeContents(initializeColumnHeader);
             InitializeButtonsPanel();
-            InitializeGridView();
         }
         #endregion
 
         #region Initialize methods
-        private void InitializeContents() {
+        private void InitializeContents(Action<DataGridView>? initializeColumnHeader) {
             _filtersTablePanel = new() {
                 Parent = this,
                 Padding = new(0),
@@ -90,7 +89,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Margin = new(0),
                 Padding = new(0),
             };
-            _voGridView = new() {
+            _voGridView = new(initializeColumnHeader) {
                 Parent = this,
             };
         }
@@ -163,11 +162,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _deleteClick(GetSelectedIds(), QueryAndRefresh);
             };
         }
-        private void InitializeGridView() {
-        }
         #endregion
 
         #region Reusable methods
+        public void ResetColumnHeaders() {
+            _voGridView.ResetColumnHeaders();
+        }
         public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
             return WidgetUtils.AddTextBox(_filtersTablePanel, _filterParametersVO, boxName, numberOnly, propertySetter);
         }

@@ -10,29 +10,29 @@
         public static DeviceCategory Category => DeviceCategories.SERIAL_PORT;
         public static SerialPortScanner Scanner { get; } = AddNew<SerialPortScanner>();
 
-        public static DeviceTypeSerialPort? GetById(int id) {
+        public static DeviceTypeSerialPort GetById(int id) {
             foreach (DeviceTypeSerialPort type in Elements) {
                 if (type.Id == id) {
                     return type;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of serial port by type_id = {id}");
         }
-        public static string? GetNameById(int id) {
+        public static string GetNameById(int id) {
             foreach (DeviceTypeSerialPort type in Elements) {
                 if (type.Id == id) {
                     return type.Name;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of serial port by type_id = {id}");
         }
-        public static int? GetIdByName(string name) {
+        public static int GetIdByName(string name) {
             foreach (DeviceTypeSerialPort type in Elements) {
                 if (type.Name == name) {
                     return type.Id;
                 }
             }
-            return null;
+            throw new NullReferenceException($"Can't find type of serial port by type_name = {name}");
         }
     }
 

@@ -31,6 +31,11 @@ namespace CustomLibrary.Events {
             if (GetCursorPos(out POINT point)) {
                 if (MainForm != null && !MainForm.IsDisposed) {
                     Rectangle mainFormRectangleToScreen = new(MainForm.PointToScreen(Point.Empty), MainForm.ClientSize);
+                    // 执行Actions
+                    foreach (Action action in _clickActions) {
+                        action();
+                    }
+
                     if (mainFormRectangleToScreen.Contains(point)) {
                         // 点击在Control范围外时，直接销毁该Control
                         if (AutoCloseControl != null && !AutoCloseControl.IsDisposed && AutoCloseControl.Visible) {
@@ -43,13 +48,8 @@ namespace CustomLibrary.Events {
                             }
                         }
 
-                        // 执行Actions
-                        foreach (Action action in _clickActions) {
-                            action();
-                        }
-
                         // 点击在弹出框范围外时，关闭弹出框
-                        if (CurrentPopUpForm != null && !CurrentPopUpForm.IsDisposed && CurrentPopUpForm.Visible && CurrentPopUpForm.BackForm.Focused) {
+                        if (CurrentPopUpForm != null && !CurrentPopUpForm.IsDisposed && CurrentPopUpForm.Visible) {
                             Rectangle rectangleToScreen = new(CurrentPopUpForm.PointToScreen(Point.Empty), CurrentPopUpForm.Size);
                             // 判断鼠标点击的坐标是否在弹框范围外
                             if (!rectangleToScreen.Contains(point)) {

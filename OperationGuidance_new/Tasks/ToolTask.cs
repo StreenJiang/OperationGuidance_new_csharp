@@ -56,7 +56,7 @@ namespace OperationGuidance_new.Tasks {
                         } else {
                             if (_tool.COMMAND_HEART_ASCII != null &&HeartBeatCounter >= 5000) {
                                 HeartBeatCounter = 0;
-                                MainUtils.Log("Send heart beat command to keep alive...");
+                                System.Console.WriteLine("Send heart beat command to keep alive...");
                                 // Send heart beat command to controller
                                 Commands.Enqueue(_tool.COMMAND_HEART_ASCII.GetMessage());
                             }
@@ -84,7 +84,7 @@ namespace OperationGuidance_new.Tasks {
                         try {
                             Result = await CheckResultAsync();
                         } catch (Exception e) {
-                            MainUtils.Log($"No data received... e: {e}");
+                            System.Console.WriteLine($"No data received... e: {e}");
                         }
                     }
                 } finally {
@@ -98,7 +98,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public override Task Connect() {
             return Task.Run(async () => {
-                while (!Connected) {
+                while (!Connected && !CloseConnectionManually) {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
                         RunTask();
@@ -111,8 +111,8 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             MainUtils.Log($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
+            CloseConnectionManually = true;
             if (Connected) {
-                CloseConnectionManually = true;
                 socketClient.Close();
                 Result = null;
                 Commands.Clear();
@@ -231,7 +231,7 @@ namespace OperationGuidance_new.Tasks {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
             } else if (_tool.COMMAND_PSET_ASCII != null) {
                 string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
-                MainUtils.Log($"Send pset command: {command}");
+                System.Console.WriteLine($"Send pset command: {command}");
                 SendCommand(command);
             }
         }
@@ -240,9 +240,9 @@ namespace OperationGuidance_new.Tasks {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
             } else if (_tool.COMMAND_PSET_ASCII != null) {
                 string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
-                MainUtils.Log($"Send pset command: {command}");
+                System.Console.WriteLine($"Send pset command: {command}");
                 string? result = await SendCommandAsync(command);
-                MainUtils.Log($"Send pset command - result: {result}");
+                System.Console.WriteLine($"Send pset command - result: {result}");
                 return result != null && _tool.GetMidFromResult(result) == "0005";
             }
             return false;
@@ -250,7 +250,7 @@ namespace OperationGuidance_new.Tasks {
         public async void SendLock() {
             if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
                 string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
-                MainUtils.Log($"Send lock command: {command}");
+                System.Console.WriteLine($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = true;
@@ -260,9 +260,9 @@ namespace OperationGuidance_new.Tasks {
         public async Task<bool> SendLockAsync() {
             if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
                 string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
-                MainUtils.Log($"Send lock command: {command}");
+                System.Console.WriteLine($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
-                MainUtils.Log($"Send lock command - result: {result}");
+                System.Console.WriteLine($"Send lock command - result: {result}");
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = true;
                     return true;
@@ -274,7 +274,7 @@ namespace OperationGuidance_new.Tasks {
         public async void SendUnlock() {
             if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
                 string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
-                MainUtils.Log($"Send unlock command: {command}");
+                System.Console.WriteLine($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = false;
@@ -284,9 +284,9 @@ namespace OperationGuidance_new.Tasks {
         public async Task<bool> SendUnlockAsync() {
             if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
                 string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
-                MainUtils.Log($"Send unlock command: {command}");
+                System.Console.WriteLine($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
-                MainUtils.Log($"Send unlock command - result: {result}");
+                System.Console.WriteLine($"Send unlock command - result: {result}");
                 if (result != null && _tool.GetMidFromResult(result) == "0005") {
                     Locked = false;
                     return true;

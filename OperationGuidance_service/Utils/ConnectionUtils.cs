@@ -1,6 +1,6 @@
 ﻿using OperationGuidance_service.Constants;
 using System.IO.Ports;
-using System.Management;
+using WmiLight;
 
 namespace OperationGuidance_service.Utils {
     public class ConnectionUtils {
@@ -9,9 +9,9 @@ namespace OperationGuidance_service.Utils {
         }
 
         public static Dictionary<string, string> GetSerialPorts() {
-            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT Caption FROM Win32_PnPEntity WHERE Caption like '%(COM%'")) {
-                // Console.WriteLine("==================================================");
-                IEnumerable<string?> portFullNames = searcher.Get().Cast<ManagementBaseObject>().ToList().Select(p => p["Caption"].ToString());
+            using (WmiConnection con = new WmiConnection()) {
+                WmiQuery wmiQuery = con.CreateQuery("SELECT Caption FROM Win32_PnPEntity WHERE Caption like '%(COM%'");
+                IEnumerable<string?> portFullNames = wmiQuery.ToList().Select(p => p["Caption"].ToString());
                 Dictionary<string, string> portsDict = new();
                 foreach (string portName in SerialPort.GetPortNames()) {
                     string? portFullName = portFullNames.FirstOrDefault(port => port != null && port.Contains($"({portName})"));
@@ -20,6 +20,7 @@ namespace OperationGuidance_service.Utils {
                     }
                 }
 
+                // Console.WriteLine("==================================================");
                 // Console.WriteLine("ports: ");
                 // int index = 1;
                 // foreach (KeyValuePair<string, string> pair in portsDict) {
