@@ -1168,7 +1168,7 @@ namespace OperationGuidance_new.Views {
                         // 检查返回的拧紧状态是否为成功
                         if (_tighteningData.tightening_status != (int) TighteningStatus.OK) {
                             tighteningCompleted = false;
-                            errorMsg = "NOK";
+                            errorMsg = "NG";
                         }
                         // 检查控制器返回数据与螺栓点位配置的数据是否一致
                         // 程序号（pset）校验
@@ -1542,11 +1542,7 @@ namespace OperationGuidance_new.Views {
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.OPERATION_ERROR:
-                        _statusTxt = "NOK";
-                        _picturePanel.Visible = false;
-                        break;
-                    case WorkplaceProcessStatus.NG:
-                        _statusTxt = "任务中断";
+                        _statusTxt = "NG";
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.FINISHED:
@@ -1618,11 +1614,6 @@ namespace OperationGuidance_new.Views {
                                 }
                                 break;
                             case WorkplaceProcessStatus.OPERATION_ERROR:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                }
-                                break;
-                            case WorkplaceProcessStatus.NG:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                 }

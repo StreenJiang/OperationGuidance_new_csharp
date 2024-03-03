@@ -1,8 +1,11 @@
-﻿using CustomLibrary.Buttons;
+﻿using System.Reflection;
+using CustomLibrary.Buttons;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -80,7 +83,49 @@ namespace OperationGuidance_new.Views {
 
             CommonButton commonButton = _dataGridView.AddExtraButton("导出");
             commonButton.Click += (sender, eventArgs) => {
-                WidgetUtils.ShowNoticePopUp("Export button has not been set.");
+                string filePath = ShowSaveFileDialog();
+                if (!string.IsNullOrEmpty(filePath)) {
+                    List<string>? headers = null;
+                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                    // 检查当前文件是否存在
+                    bool excelFileExists = File.Exists(excelFilePath);
+                    // 从配置文件读取配置
+                    List<int> sortConfig = MainUtils.GetSortConfig();
+                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                    // 检查当前是否存在正在使用的字段配置
+                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
+                        sortConfigCurr = sortConfig;
+                        MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
+                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
+                    }
+                    // 组装数据
+                    List<Dictionary<int, object?>> dataWithConfigFields = new();
+                    List<OperationDataVO> dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
+                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                    dataFormatted.ForEach(dto => {
+                        Dictionary<int, object?> record = new();
+                        for (int i = 0; i < propertyNames.Count; i++) {
+                            string pName = propertyNames[i];
+                            PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
+                            if (propertyInfo != null) {
+                                record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+                            }
+                        }
+                        dataWithConfigFields.Add(record);
+                    });
+                    // 组装最终数据
+                    List<List<object?>> finalData = new();
+                    dataWithConfigFields.ForEach(dict => {
+                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                    });
+                    // 写入数据
+                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                }
             };
 
             // 按钮逻辑
@@ -100,6 +145,39 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Reusable methods
+        // 选择保存路径
+        private string ShowSaveFileDialog() {
+            string localFilePath = "";
+            //string localFilePath, fileNameExt, newFileName, FilePath; 
+            SaveFileDialog sfd = new SaveFileDialog();
+            // 设置默认文件名
+            sfd.FileName = $"OperationData_{DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF)}";
+            // 设置文件类型 
+            sfd.Filter = "Excel File（*.xlsx）|*.xlsx";
+            // 设置默认文件类型显示顺序 
+            sfd.FilterIndex = 1;
+            // 保存对话框是否记忆上次打开的目录 
+            sfd.RestoreDirectory = true;
+            // 点了保存按钮进入 
+            if (sfd.ShowDialog() == DialogResult.OK) {
+                localFilePath = sfd.FileName.ToString(); // 获得文件路径 
+                string fileNameExt = localFilePath.Substring(localFilePath.LastIndexOf("\\") + 1); // 获取文件名，不带路径
+
+                // 获取文件路径，不带文件名 
+                //FilePath = localFilePath.Substring(0, localFilePath.LastIndexOf("\\")); 
+
+                // 给文件名前加上时间 
+                //newFileName = DateTime.Now.ToString("yyyyMMdd") + fileNameExt; 
+
+                // 在文件名里加字符 
+                //saveFileDialog1.FileName.Insert(1,"dameng"); 
+
+                // System.IO.FileStream fs = (System.IO.FileStream)sfd.OpenFile();//输出文件 
+
+                ////fs输出带文字或图片的文件，就看需求了 
+            }
+            return localFilePath;
+        }
         #endregion
 
         #region Override methods
@@ -110,6 +188,7 @@ namespace OperationGuidance_new.Views {
             _dataDTOList = rsp.OperationDataDTOs;
             List<OperationDataVO> vos = new();
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
+            vos.AddRange(vos);
             // TODO: can use BackgroundWorker to do this
             // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
             // for (int i = 0; i < 5000; i++) {

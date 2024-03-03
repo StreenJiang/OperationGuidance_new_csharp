@@ -2,6 +2,6 @@ namespace OperationGuidance_new.Constants {
     public enum TighteningCommonStatus {
         LOW = 0,
         OK = 1,
-        NOK = 2,
+        NG = 2,
     }
 }

@@ -6,6 +6,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? name { get; set; }
         public string? position { get; set; }
         public string? account { get; set; }
-        public string? password { get; set; }
+        public string password { get; set; } = string.Empty;
     }
 }

@@ -13,6 +13,7 @@ using OperationGuidance_service.Constants;
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd hh:mm:ss.fff";
 
         public static readonly string DATETIME_FORMAT_YYYY_MM = "yyyy-MM";
         public static readonly string DATETIME_FORMAT_YYYY_MM_2 = "yyyy/MM";

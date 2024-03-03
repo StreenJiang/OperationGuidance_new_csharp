@@ -5,7 +5,6 @@ namespace OperationGuidance_new.Constants {
         OPERATION_ENABLE,       // 允许操作
         OPERATION_DISABLE,      // 禁止操作
         OPERATION_ERROR,        // 操作错误
-        NG,                     // 任务中断
         FINISHED,               // 完成
     }
 }

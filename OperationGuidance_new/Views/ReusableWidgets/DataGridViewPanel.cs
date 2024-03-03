@@ -121,8 +121,26 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 InitializeColumnHeaders();
             }
+            
+            _gridView.MouseWheel += (sender, e) => {
+                if (_vScrollBar != null && !_vScrollBar.IsDisposed && _vScrollBar.Visible) {
+                    int realMaximum = this._vScrollBar.Maximum - this._vScrollBar.LargeChange + 1;
+                    int currentValue = this._vScrollBar.Value;
+                    if (e.Delta > 0) {
+                        currentValue -= this._vScrollBar.SmallChange;
+                    } else {
+                        currentValue += this._vScrollBar.SmallChange;
+                    }
+                    if (currentValue < 0) {
+                        currentValue = 0;
+                    } else if (currentValue > realMaximum) {
+                        currentValue = realMaximum;
+                    }
+                    this._vScrollBar.Value = currentValue;
+                }
+            };
             InitializeEventBindings();
-            InitializeOthers();
+            InitializeOthers();    
         }
         private void InitializeColumnHeaders() {
             DataGridViewColumn[] columnRange = {};
@@ -671,7 +689,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 //     _gridView.FirstDisplayedScrollingRowIndex = eventArgs.NewValue;
                 // };
                 _vScrollBar.Show();
-                _vScrollBar.Maximum = _gridView.RowCount;
+                _vScrollBar.Maximum = _gridView.RowCount - 1;
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
                 // WidgetUtils.CalculateScrollBar(_vScrollBar, _gridViewPanel.Height, rowsHeight);

@@ -18,8 +18,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        rundown_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        rundown_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -36,8 +36,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -54,8 +54,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -88,8 +88,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningStatus.OK) {
                         tightening_status_str = Enum.GetName(TighteningStatus.OK);
-                    } else if (value == (int) TighteningStatus.NOK) {
-                        tightening_status_str = Enum.GetName(TighteningStatus.NOK);
+                    } else if (value == (int) TighteningStatus.NG) {
+                        tightening_status_str = Enum.GetName(TighteningStatus.NG);
                     }
                 }
             }
@@ -104,8 +104,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         torque_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        torque_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        torque_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         torque_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -122,8 +122,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         angle_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        angle_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        angle_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         angle_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -186,8 +186,8 @@ namespace OperationGuidance_new.ViewObjects {
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         work_group_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NOK) {
-                        work_group_status_str = Enum.GetName(TighteningCommonStatus.NOK);
+                    } else if (value == (int) TighteningCommonStatus.NG) {
+                        work_group_status_str = Enum.GetName(TighteningCommonStatus.NG);
                     }
                 }
             }

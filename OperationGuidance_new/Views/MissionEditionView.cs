@@ -645,14 +645,16 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
+                    // 程序号检查
                     string pset = _boltPopUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
                     _boltPopUpForm.ParameterSetBox.CheckError(0, string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0);
+                    // 站点检查
                     _boltPopUpForm.Workstation.SetError(_boltPopUpForm.Workstation.Value == null); 
+                    // 根据校验结果判断是否可以保存
                     if (!_boltPopUpForm.ConfirmSave()) {
                         WidgetUtils.ShowErrorPopUp("请检查内容是否正确！");
                     } else {
                         _boltPopUpForm.SaveTo(boltDTO);
-                        WidgetUtils.ShowNoticePopUp("已保存！");
                         _boltPopUpForm.Dispose();
                     }
                 };

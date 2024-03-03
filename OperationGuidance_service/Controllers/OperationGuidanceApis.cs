@@ -79,6 +79,19 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
+        public CheckUserAccountExistsRsp CheckUserAccountExists(CheckUserAccountExistsReq req) {
+            bool accountExists = false;
+            string? account = req.Account;
+            if (!string.IsNullOrEmpty(account)) {
+                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlCondition($"account = '{account}'");
+                if (userAccountInfos.Count > 0) {
+                    accountExists = true;
+                }
+            }
+            return new() {
+                Exists = accountExists,
+            };
+        }
         #endregion
 
         #region 产品任务相关

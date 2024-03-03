@@ -110,6 +110,8 @@ namespace OperationGuidance_new.Views {
             }
             CustomTextBoxGroup password = _editEntityPopUpForm.AddTextBox("密码", false, 
                 (UserAccountInfoDTO dto, string? value) => dto.password = value ?? "");
+            // 暂时先用这个代替，后续再做进一步的完善，使CustomTextBox能够支持密码模式并提供按钮可以开关屏蔽功能
+            password.GetTextBox(0).Box.PasswordChar = '*';
             if (dto.password != null) {
                 password.SetValue(0, dto.password);
             }
@@ -117,9 +119,25 @@ namespace OperationGuidance_new.Views {
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                callBackAction += _editEntityPopUpForm.Dispose;
-                AddOrUpdate(dto, callBackAction);
-                _editEntityPopUpForm.Hide();
+                bool check = true;
+                // 检查账号名
+                if (dto.id <= 0) {
+                    string accountText = account.GetTextBox(0).Box.Text;
+                    CheckUserAccountExistsRsp checkUserAccountExistsRsp = apis.CheckUserAccountExists(new() {Account = accountText});
+                    bool checkResult = string.IsNullOrEmpty(accountText) || checkUserAccountExistsRsp.Exists;
+                    account.CheckError(0, checkResult);
+                    check = !checkResult;
+                }
+                // 检查密码
+                string passwordText = password.GetTextBox(0).Box.Text;
+
+                if (!check) {
+                    WidgetUtils.ShowWarningPopUp("账号不能为空！");
+                } else {
+                    callBackAction += _editEntityPopUpForm.Dispose;
+                    AddOrUpdate(dto, callBackAction);
+                    _editEntityPopUpForm.Hide();
+                }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");
             cancelButton.Click += (s, e) => {

@@ -5,20 +5,13 @@ using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using Gma.System.MouseKeyHook;
-using Microsoft.Extensions.DependencyInjection;
 using OperationGuidance_service.Controllers;
-using OperationGuidance_service.Configurations;
-using OperationGuidance_service.Models;
-using OperationGuidance_service.Models.Requests;
-using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
-using CustomLibrary.Forms;
 using CustomLibrary.Events;
 using CustomLibrary.Configs;
 using OperationGuidance_new.Tasks;
-using OperationGuidance_service.Database;
 using System.Net.NetworkInformation;
 
 namespace OperationGuidance_new {
@@ -107,18 +100,19 @@ namespace OperationGuidance_new {
                 EventFuncs.GlobalMouseClick(sender, eventArgs);
             };
 
-            List<Dictionary<string, object>> menuCongfigs = SystemConfigs.MenuCongfigs.Where(e => (bool) e[SystemConfigs.Key_Enabled]).ToList();
+            List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
+            // TODO: 根据许可证权限过滤菜单
             for (int i = 0; i < menuCongfigs.Count; i++) {
-                Dictionary<string, object> mainMenuConfig = menuCongfigs[i];
+                MenuConfig mainMenuConfig = menuCongfigs[i];
                 CustomMainMenuButton mainMenuButton = new(ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_UP, ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_DOWN);
-                mainMenuButton.Name = "mainMenuButton_" + mainMenuConfig[SystemConfigs.Key_ID];
-                mainMenuButton.Icon = mainMenuConfig[SystemConfigs.Key_Icon] as Image;
-                mainMenuButton.Label = mainMenuConfig[SystemConfigs.Key_Name] as string;
-                if (mainMenuConfig[SystemConfigs.Key_Click] != null) {
-                    mainMenuButton.OnMenuButtonClick += (EventHandler) mainMenuConfig[SystemConfigs.Key_Click];
+                mainMenuButton.Name = "mainMenuButton_" + mainMenuConfig.Id;
+                mainMenuButton.Icon = mainMenuConfig.Icon;
+                mainMenuButton.Label = mainMenuConfig.Name;
+                if (mainMenuConfig.Click != null) {
+                    mainMenuButton.OnMenuButtonClick += mainMenuConfig.Click;
                 }
-                if (mainMenuConfig[SystemConfigs.Key_View_Name] != null) {
-                    Type type = mainMenuConfig[SystemConfigs.Key_View_Name] as Type;
+                if (mainMenuConfig.ViewType != null) {
+                    Type type = mainMenuConfig.ViewType;
                     object instance = type.Assembly.CreateInstance(type.FullName);
                     if (instance is CustomContentPanel) {
                         CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
@@ -147,7 +141,7 @@ namespace OperationGuidance_new {
                         childMenuPanel.FoldButton.FoldedIcon = Properties.Resources.navigator_fold;
                         childMenuPanel.FoldButton.UnfoldedIcon = Properties.Resources.navigator_unfold;
                         childMenuPanel.FoldButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
-                        if ((bool) mainMenuConfig[SystemConfigs.Key_Is_User_Info_panel]) {
+                        if (mainMenuConfig.IsUserInfoPanel) {
                             childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName());
                         }
                         //childMenuPanel.OnlyIconMode = true;
@@ -156,18 +150,18 @@ namespace OperationGuidance_new {
                         childContentPanel.Margin = new Padding(0);
                         childContentPanel.Name = "mainContentPanel";
 
-                        List<Dictionary<string, object>> childMenuConfigs = mainMenuConfig[SystemConfigs.Key_Children] as List<Dictionary<string, object>>;
+                        List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
                         for (int j = 0; j < childMenuConfigs.Count; j++) {
-                            Dictionary<string, object> childMenuConfig = childMenuConfigs[j];
+                            MenuConfig childMenuConfig = childMenuConfigs[j];
                             CustomChildMenuFirstButton childMenuFirstButton= new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
-                            childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig[SystemConfigs.Key_ID];
-                            childMenuFirstButton.Icon = childMenuConfig[SystemConfigs.Key_Icon] as Image;
-                            childMenuFirstButton.Label = childMenuConfig[SystemConfigs.Key_Name] as string;
-                            if (childMenuConfig[SystemConfigs.Key_Click] != null) {
-                                childMenuFirstButton.OnMenuButtonClick += (EventHandler) childMenuConfig[SystemConfigs.Key_Click];
+                            childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
+                            childMenuFirstButton.Icon = childMenuConfig.Icon;
+                            childMenuFirstButton.Label = childMenuConfig.Name;
+                            if (childMenuConfig.Click != null) {
+                                childMenuFirstButton.OnMenuButtonClick += childMenuConfig.Click;
                             }
-                            if (childMenuConfig[SystemConfigs.Key_View_Name] != null) {
-                                Type childType = childMenuConfig[SystemConfigs.Key_View_Name] as Type;
+                            if (childMenuConfig.ViewType != null) {
+                                Type childType = childMenuConfig.ViewType;
                                 object childInstance = childType.Assembly.CreateInstance(childType.FullName);
                                 if (childInstance is CustomContentPanel) {
                                     CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
@@ -185,7 +179,7 @@ namespace OperationGuidance_new {
                                     WidgetUtils.AddView(childContentPanelTemp);
                                 }
                             }
-                            childMenuFirstButton.ToggledButton = (bool) childMenuConfig[SystemConfigs.Key_Toggle_Button];
+                            childMenuFirstButton.ToggledButton = childMenuConfig.IsToggleButton;
                             childMenuFirstButton.GroupMode = true;
                             childMenuFirstButton.BackColor = ColorConfigs.COLOR_CHILD_MENU_BACKGROUND;
                             childMenuFirstButton.ConerRadius = 0;
@@ -197,7 +191,7 @@ namespace OperationGuidance_new {
                             childMenuFirstButton.ToggleBarDirection = AbstractCustomButton.ToggleBarDirectionEnum.LEFT;
                             childMenuFirstButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
 
-                            WidgetUtils.AddChildMenu((int) childMenuConfig[SystemConfigs.Key_ID], childMenuFirstButton);
+                            WidgetUtils.AddChildMenu(childMenuConfig.Id, childMenuFirstButton);
                             // Add child menu button an content panel into their parent panels
                             childMenuPanel.Controls.Add(childMenuFirstButton);
                             childContentPanel.Controls.Add(childMenuFirstButton.CorrespondingContentPanel);
@@ -213,7 +207,7 @@ namespace OperationGuidance_new {
                         mainMenuButton.CorrespondingContentPanel = childTapPanel;
                     }
                 }
-                mainMenuButton.ToggledButton = (bool) mainMenuConfig[SystemConfigs.Key_Toggle_Button];
+                mainMenuButton.ToggledButton = mainMenuConfig.IsToggleButton;
                 mainMenuButton.GroupMode = true;
                 mainMenuButton.BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND;
                 mainMenuButton.ConerRadius = 0;
@@ -224,7 +218,7 @@ namespace OperationGuidance_new {
                 mainMenuButton.ToggleBar = false;
                 mainMenuButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
 
-                WidgetUtils.AddMainMenu((int) mainMenuConfig[SystemConfigs.Key_ID], mainMenuButton);
+                WidgetUtils.AddMainMenu(mainMenuConfig.Id, mainMenuButton);
                 // Add main menu button and main content panel into their parent panels
                 mainMenuPanel.Controls.Add(mainMenuButton);
                 mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
@@ -245,23 +239,16 @@ namespace OperationGuidance_new {
                 } else {
                     Size = new(width, height);
                     ClientSize = new(width, height);
+                    CenterToScreen();
                 }
             } else {
                 WindowState = FormWindowState.Maximized;
             }
             Name = "MainForm";
             Text = "MainForm";
-            CenterToScreen();
 
             // Initialize all tasks for devices
             TaskInitializer.Init();
-
-            // Test
-            //ProductMissionListReq req = new();
-            //req.UserId = SystemUtils.UserInfo.Id;
-            //ProductMissionListRsp productMissionListRsp = apis.QueryProductMissionListRsp(req);
-
-            //string b = CommonUtils.ImageToBase64(Properties.Resources.aneng_arm_error);
         }
 
         #endregion
