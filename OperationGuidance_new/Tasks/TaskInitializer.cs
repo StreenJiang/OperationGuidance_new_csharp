@@ -47,6 +47,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.ToolTasks.Remove(dto.id);
                                 DeviceTypeTool deviceTool = DeviceType_Tool.GetById(dto.type);
                                 MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
+                                MainUtils.Log($"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port}]...");
                             }
                         }
                     });
@@ -79,6 +80,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.ArmTasks.Remove(dto.id);
                                 DeviceTypeArm deviceArm = DeviceType_Arm.GetById(dto.type);
                                 MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
+                                MainUtils.Log($"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port}]...");
                             }
                         }
                     });
@@ -111,6 +113,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.CommunicationTasks.Remove(dto.id);
                                 DeviceTypeCommunication deviceCommunication = DeviceType_Communication.GetById(dto.type);
                                 MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
+                                MainUtils.Log($"Connecting to Communication[{dto.name} - {dto.ip}: {dto.port}]...");
                             }
                         }
                     });
@@ -125,7 +128,6 @@ namespace OperationGuidance_new.Tasks {
                     // Loop to check all serialPorts
                     serialPortDTOs.ForEach(dto => {
                         SerialPortTask? serialPortTask = MainUtils.TryGetSerialPortTask(dto.id);
-                        System.Console.WriteLine($"serialPortTask: {serialPortTask}");
                         if (serialPortTask == null) {
                             DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
                             if (deviceSerialPort != null) {
@@ -147,9 +149,10 @@ namespace OperationGuidance_new.Tasks {
                                 serialPortTask.CloseConnection();
                                 MainUtils.SerialPortTasks.Remove(dto.id);
                                 DeviceTypeSerialPort deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
-                                    MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
-                                        dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
-                                        (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
+                                MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
+                                    dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
+                                    (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
+                                MainUtils.Log($"Connecting to SerialPort[{dto.name}]");
                             }
                         }
                     });
