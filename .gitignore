@@ -369,3 +369,6 @@ FodyWeavers.xsd
 
 # Ignore operation data storage
 OperationGuidance_new/OperationDataStorage/
+
+# Ignore *.ini files
+*.ini

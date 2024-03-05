@@ -28,6 +28,16 @@ namespace OperationGuidance_new.Utils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
         public static IniFile Settings { get; } = new();
+
+        public static string GetBaseDirectory() {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath, "");
+            }
+            return baseDirectory;
+        }
+
         public static string GetStorageFileName() {
             string nameFormat = Settings.Read(IniFileKeys.DataStorageNameFormat);
             if (string.IsNullOrEmpty(nameFormat)) {
@@ -60,7 +70,7 @@ namespace OperationGuidance_new.Utils {
         public static string GetStoragePath() {
             string dataStoragePath = Settings.Read(IniFileKeys.DataStoragePath);
             if (string.IsNullOrEmpty(dataStoragePath)) {
-                dataStoragePath = Directory.GetCurrentDirectory() + "\\OperationDataStorage\\";
+                dataStoragePath = GetBaseDirectory() + "OperationDataStorage\\";
                 Settings.Write(IniFileKeys.DataStoragePath, dataStoragePath);
             }
             return dataStoragePath;
@@ -228,7 +238,7 @@ namespace OperationGuidance_new.Utils {
         public static TextBox? EventLogTextArea { get; set; }
         public static void Log(string message, bool printToView = true) {
             System.Console.WriteLine(message);
-            if (EventLogTextArea != null && printToView) {
+            if (EventLogTextArea != null && EventLogTextArea.IsHandleCreated && printToView) {
                 EventLogTextArea.BeginInvoke(() => {
                     EventLogTextArea.AppendText(message + "\r\n");
                 });

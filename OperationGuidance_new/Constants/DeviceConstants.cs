@@ -12,8 +12,8 @@
 
         public static DeviceCategory TOOL = AddNew<TOOL>();
         public static DeviceCategory ARM = AddNew<ARM>();
-        public static DeviceCategory SERIAL_PORT = AddNew<SERIAL_PORT>();
         public static DeviceCategory COMMUNICATION = AddNew<COMMUNICATION>();
+        public static DeviceCategory SERIAL_PORT = AddNew<SERIAL_PORT>();
 
         public static string? GetNameById(int id) {
             foreach (DeviceCategory type in Elements) {

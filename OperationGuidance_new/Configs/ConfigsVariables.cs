@@ -14,7 +14,7 @@
         // 图片旋转的步值（每次旋转10°）
         public static float IMAGE_ROTATE_STEP => 10F;
         // 图片移动的步值（每次移动10%的身位）
-        public static float IMAGE_MOVEMENT_STEP => .1F;
+        public static float IMAGE_MOVEMENT_STEP => .05F;
         #endregion
 
     }

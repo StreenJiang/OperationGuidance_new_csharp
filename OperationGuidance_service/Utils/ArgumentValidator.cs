@@ -13,7 +13,23 @@
             if (splitValues.Length != 4) return false;
 
             byte tempForParsing;
-            return splitValues.All(r => byte.TryParse(r, out tempForParsing));
+            bool result = splitValues.All(r => byte.TryParse(r, out tempForParsing));
+            if (result) {
+                // IP地址第一位不能小于等于0，检查一下
+                for (int i = 0; i < splitValues.Length; i++) {
+                    int value;
+                    bool canParse = int.TryParse(splitValues[i], out value);
+                    if (!canParse) {
+                        return false;
+                    }
+                    if (i == 0 && (value < 1 || value > 255)) {
+                        return false;
+                    } else if (value < 0 || value > 255) {
+                        return false;
+                    }
+                }
+            }
+            return result;
         }
 
         public static bool ValidatePortInWindows(string portString) {

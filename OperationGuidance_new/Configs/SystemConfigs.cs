@@ -41,9 +41,9 @@ namespace OperationGuidance_new.Configs {
             },
             new() {
                 Id = 400, 
-                Name = "工作台", 
-                Icon = Properties.Resources.workplace, 
-                ViewType = typeof(WorkplaceMissionView), 
+                Name = "事件日志", 
+                Icon = Properties.Resources.event_log, 
+                ViewType = typeof(EventLogView), 
             },
             new() {
                 Id = 500, 

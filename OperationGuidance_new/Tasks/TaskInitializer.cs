@@ -33,6 +33,7 @@ namespace OperationGuidance_new.Tasks {
                             DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
                             if (deviceTool != null) {
                                 MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
+                                MainUtils.Log($"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port}]...");
                             }
                         } else {
                             if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
@@ -64,6 +65,7 @@ namespace OperationGuidance_new.Tasks {
                             DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
                             if (deviceArm != null) {
                                 MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
+                                MainUtils.Log($"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port}]...");
                             }
                         } else {
                             if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
@@ -77,6 +79,38 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.ArmTasks.Remove(dto.id);
                                 DeviceTypeArm deviceArm = DeviceType_Arm.GetById(dto.type);
                                 MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
+                            }
+                        }
+                    });
+                    
+                    // Initialize communication tasks
+                    List<DeviceCommunicationDTO> communicationDTOs = apis.QueryDeviceCommunicationList(new()).DeviceCommunicationDTOs;
+                    // Remove communications which had been deleted
+                    foreach (KeyValuePair<int, CommunicationTask> pair in MainUtils.CommunicationTasks.Where(pair => !communicationDTOs.Select(dto => dto.id).Contains(pair.Key)).ToList()) {
+                        pair.Value.CloseConnection();
+                        MainUtils.CommunicationTasks.Remove(pair.Key);
+                    }
+                    // Loop to check all communications
+                    communicationDTOs.ForEach(dto => {
+                        CommunicationTask? communicationTask = MainUtils.TryGetCommunicationTask(dto.id);
+                        if (communicationTask == null) {
+                            DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
+                            if (deviceCommunication != null) {
+                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
+                                MainUtils.Log($"Connecting to Communication[{dto.name} - {dto.ip}: {dto.port}]...");
+                            }
+                        } else {
+                            if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
+                                Task.Run(async () => {
+                                    MainUtils.Log($"Disconnected to Communication[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
+                                    await communicationTask.Connect();
+                                    MainUtils.Log($"Reconnected to Communication[{dto.name} - {dto.ip}: {dto.port}]");
+                                });
+                            } else if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port) {
+                                communicationTask.CloseConnection();
+                                MainUtils.CommunicationTasks.Remove(dto.id);
+                                DeviceTypeCommunication deviceCommunication = DeviceType_Communication.GetById(dto.type);
+                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
                             }
                         }
                     });
@@ -98,6 +132,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
                                     dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
                                     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
+                                MainUtils.Log($"Connecting to SerialPort[{dto.name}]");
                             }
                         } else {
                             if (!serialPortTask.Connected && serialPortTask.Status != ATaskBase.CONNECTING) {
@@ -115,37 +150,6 @@ namespace OperationGuidance_new.Tasks {
                                     MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
                                         dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
                                         (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
-                            }
-                        }
-                    });
-                    
-                    // Initialize communication tasks
-                    List<DeviceCommunicationDTO> communicationDTOs = apis.QueryDeviceCommunicationList(new()).DeviceCommunicationDTOs;
-                    // Remove communications which had been deleted
-                    foreach (KeyValuePair<int, CommunicationTask> pair in MainUtils.CommunicationTasks.Where(pair => !communicationDTOs.Select(dto => dto.id).Contains(pair.Key)).ToList()) {
-                        pair.Value.CloseConnection();
-                        MainUtils.CommunicationTasks.Remove(pair.Key);
-                    }
-                    // Loop to check all communications
-                    communicationDTOs.ForEach(dto => {
-                        CommunicationTask? communicationTask = MainUtils.TryGetCommunicationTask(dto.id);
-                        if (communicationTask == null) {
-                            DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
-                            if (deviceCommunication != null) {
-                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
-                            }
-                        } else {
-                            if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Log($"Disconnected to communication[{dto.name} - {dto.ip}: {dto.port}], trying to reconnect...");
-                                    await communicationTask.Connect();
-                                    MainUtils.Log($"Reconnected to communication[{dto.name} - {dto.ip}: {dto.port}]");
-                                });
-                            } else if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port) {
-                                communicationTask.CloseConnection();
-                                MainUtils.CommunicationTasks.Remove(dto.id);
-                                DeviceTypeCommunication deviceCommunication = DeviceType_Communication.GetById(dto.type);
-                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
                             }
                         }
                     });

@@ -1,7 +1,6 @@
 using System.IO.Ports;
 using System.Text;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 
@@ -59,13 +58,13 @@ namespace OperationGuidance_new.Tasks {
                 } catch (Exception e) {
                     System.Console.WriteLine($"Error: {e}");
                 } finally {
-                    MainUtils.Log($"Disconnected to SerialPort[{_device_name}]");
+                    System.Console.WriteLine($"Disconnected to SerialPort[{_device_name}]");
                     if (serialPortClient != null) {
                         serialPortClient.Close();
                         serialPortClient = null;
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.Log($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
+                        System.Console.WriteLine($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -84,7 +83,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.Log($"Close SerialPort[{_device_name}] manually...");
+            System.Console.WriteLine($"Close SerialPort[{_device_name}] manually...");
             CloseConnectionManually = true;
             if (Connected) {
                 serialPortClient.Close();
@@ -96,7 +95,7 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToSerialPortDevice() {
             try {
-                MainUtils.Log($"Connecting to SerialPort[{_device_name}]");
+                System.Console.WriteLine($"Connecting to SerialPort[{_device_name}]");
                 Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
                 if (serialPorts.ContainsKey(_portName)) {
                     serialPortClient = new() {
@@ -112,23 +111,23 @@ namespace OperationGuidance_new.Tasks {
                             byte[] data = new byte[2048];
                             int msgLen = serialPortClient.Read(data, 0, data.Length);
                             string result = Encoding.ASCII.GetString(data, 0, msgLen).Trim();
-                            MainUtils.Log($"Data received from SerialPort[{_device_name}], result: {result}");
+                            System.Console.WriteLine($"Data received from SerialPort[{_device_name}], result: {result}");
                             if (_actionAfterDataReceived != null) {
                                 _actionAfterDataReceived(result);
                             }
                         } catch (Exception e) {
-                            MainUtils.Log($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
+                            System.Console.WriteLine($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
                         }
                     };
                     serialPortClient.Open();
-                    MainUtils.Log($"Successfully connect to SerialPort[{_device_name}]");
+                    System.Console.WriteLine($"Successfully connect to SerialPort[{_device_name}]");
                     return true;
                 } else {
-                    MainUtils.Log($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
+                    System.Console.WriteLine($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
                     return false;
                 }
             } catch (Exception e) {
-                MainUtils.Log($"Failed to connect to SerialPort[{_device_name}], e: {e}");
+                System.Console.WriteLine($"Failed to connect to SerialPort[{_device_name}], e: {e}");
                 return false;
             }
         }

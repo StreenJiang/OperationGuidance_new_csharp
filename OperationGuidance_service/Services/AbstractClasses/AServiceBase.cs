@@ -3,7 +3,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Wrapper.AbstractClasses;
-using System.Data.SQLite;
+using System.Data.Common;
 
 namespace OperationGuidance_service.Services.AbstractClasses {
     [Service]
@@ -13,7 +13,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             set; get;
         }
 
-        public void UseConnection(SQLiteConnection conn) {
+        public void UseConnection(DbConnection conn) {
             Wrapper.UseConnection(conn);
         }
         public void ReleaseConnection() { 

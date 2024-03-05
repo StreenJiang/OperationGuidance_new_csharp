@@ -24,6 +24,7 @@ using CustomLibrary.TextBoxes;
 using System.Reflection;
 using OperationGuidance_new.ViewObjects;
 using Newtonsoft.Json;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -519,6 +520,7 @@ namespace OperationGuidance_new.Views {
                                 _boltPopUpForm = new(boltDTO) {
                                     Title = boltDTO.serial_num + " - " + boltDTO.name,
                                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                                    ClickOutsideToClose = true,
                                 };
                                 // 添加按钮
                                 CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
@@ -751,6 +753,8 @@ namespace OperationGuidance_new.Views {
         private void InitializeBottom() {
             _deviceBlocks = new();
             List<DeviceCategory> deviceCategories = DeviceCategories.Elements;
+            // Reverse because of RightToLeft flow direction
+            deviceCategories.Reverse();
             foreach (DeviceCategory category in deviceCategories) {
                 DeviceBlock deviceBlock = new(category) {
                     Parent = _bottom,
@@ -872,7 +876,7 @@ namespace OperationGuidance_new.Views {
         private async void LoadDevicesAsync() {
             await Task.Run(async () => {
                 // 查询所有站点信息
-                _workstationsDTOs = _apis.QueryWorkstationList(new()).WorkstationsDTOs;
+                _workstationsDTOs = _apis.QueryWorkstationList(new()).WorkstationsDTOs.Where(dto => dto.enabled == (int) YesOrNo.YES).ToList();
                 // 查询所有设备信息
                 _arms = _apis.QueryDeviceArmList(new()).DeviceArmDTOs;
                 _tools = _apis.QueryDeviceToolList(new()).DeviceToolDTOs;
@@ -981,17 +985,24 @@ namespace OperationGuidance_new.Views {
                 _allBolts.ForEach(btn => btn.ResetStatusWithoutChangingVisible());
                 // 2. 设置当前点位为第一个点位
                 _currentWorkingBolt = SwitchBolt(0);
-                // 3. 检查当前站点是否存在工具和力臂，不存在则无法激活任务
+                // 3. 检查站点是否配置，或当前站点是否存在工具和力臂，不存在则无法激活任务
+                if (_workstationsDTOs.Count == 0) {
+                    WidgetUtils.ShowErrorPopUp($"没有配置站点或站点未启动，无法激活任务");
+                    _currentWorkingBolt = null;
+                    return;
+                }
                 ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                 int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
                 if (toolId == null) {
                     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置工具，无法激活任务");
+                    _currentWorkingBolt = null;
                     return;
                 }
                 int? armId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).arm_id;
                 bool locating_enabled = true;
                 if (locating_enabled && armId == null) {
                     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置力臂，无法激活任务");
+                    _currentWorkingBolt = null;
                     return;
                 }
                 // 4. 修改任务激活状态
@@ -1472,7 +1483,6 @@ namespace OperationGuidance_new.Views {
                 BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                NumberValidate = true,
             };
             _textBox.GotFocus += (s, e) => {
                 EventFuncs.CurrentActiveControl = _textBox;

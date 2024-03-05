@@ -466,27 +466,27 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
+                if (toolToggle.Checked && (dto.tool_id == null || dto.tool_id == 0)) {
+                    toolOptions.SetError(true);
+                    warningMsg += $"{warningIndex++}. 请选择工具！\r\n";
+                    check = false;
+                }
+                if (armToggle.Checked && (dto.arm_id == null || dto.arm_id == 0)) {
+                    armOptions.SetError(true);
+                    warningMsg += $"{warningIndex++}. 请选择力臂！\r\n";
+                    check = false;
+                }
+                if (communicationToggle.Checked && (dto.communication_id == null || dto.communication_id == 0)) {
+                    communicationOptions.SetError(true);
+                    warningMsg += $"{warningIndex++}. 请选择通讯设备！\r\n";
+                    check = false;
+                }
+                if (serialPortToggle.Checked && (dto.serial_port_id == null || dto.serial_port_id == 0)) {
+                    serialPortOptions.SetError(true);
+                    warningMsg += $"{warningIndex++}. 请选择串口设备！\r\n";
+                    check = false;
+                }
                 if (dto.id <= 0) {
-                    if (toolToggle.Checked && dto.tool_id == null || dto.tool_id ==0) {
-                        toolOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 请选择工具！\r\n";
-                        check = false;
-                    }
-                    if (armToggle.Checked && dto.arm_id == null || dto.arm_id ==0) {
-                        armOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 请选择力臂！\r\n";
-                        check = false;
-                    }
-                    if (serialPortToggle.Checked && dto.serial_port_id == null || dto.serial_port_id ==0) {
-                        serialPortOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 请选择串口设备！\r\n";
-                        check = false;
-                    }
-                    if (communicationToggle.Checked && dto.communication_id == null || dto.communication_id ==0) {
-                        communicationOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 请选择通讯设备！\r\n";
-                        check = false;
-                    }
                     if (dto.tool_id > 0 && _dataDTOList.Where(data => data.tool_id == dto.tool_id).Count() > 0) {
                         toolOptions.SetError(true);
                         warningMsg += $"{warningIndex++}. 已有站点配置了工具[{dto.tool_name}]，无法多次配置同一个工具！\r\n";

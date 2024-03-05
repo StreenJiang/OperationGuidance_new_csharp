@@ -8,7 +8,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
-using System.Data.SQLite;
+using System.Data.Common;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -139,9 +139,9 @@ namespace OperationGuidance_service.Controllers {
         public AddOrUpdateProductMissionRsp AddOrUpdateProductMission(AddOrUpdateProductMissionReq req) {
             AddOrUpdateProductMissionRsp rsp = new();
             // 使用同一个connection确保当前所有操作都在同一个事务下
-            using SQLiteConnection conn = DbConnector.GetConnection();
+            using DbConnection conn = DbConnector.GetConnection();
             // 开启事务
-            using (SQLiteTransaction transaction = conn.BeginTransaction()) {
+            using (DbTransaction transaction = conn.BeginTransaction()) {
                 _productMissionService.UseConnection(conn);
                 _productSideService.UseConnection(conn);
                 _productBoltService.UseConnection(conn);

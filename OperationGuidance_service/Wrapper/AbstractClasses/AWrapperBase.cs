@@ -6,14 +6,14 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data.SQLite;
+using System.Data.Common;
 using System.Reflection;
 
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
         private string _tabelName;
-        private SQLiteConnection? _conn;
+        private DbConnection? _conn;
 
         public string TabelName { get => _tabelName; }
 
@@ -21,7 +21,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             _tabelName = GetTableName();
         }
 
-        public void UseConnection(SQLiteConnection conn) {
+        public void UseConnection(DbConnection conn) {
             _conn = conn;
         }
         public void ReleaseConnection() {
@@ -37,7 +37,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             string newEntitySql = GenerateQueryNewestSql(entity);
             System.Console.WriteLine("newEntitySql: " + newEntitySql);
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
                     System.Console.WriteLine($"entity.id: {entity.id}");
                     return conn.QueryFirst<T>(newEntitySql, entity);
@@ -54,7 +54,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             string sql = GenerateInsertSql();
             System.Console.WriteLine("sql: " + sql);
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     return conn.Execute(sql, entities);
                 }
             } else {
@@ -73,7 +73,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             IEnumerable<T> enumerable;
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     enumerable = conn.Query<T>(sql);
                 }
             } else {
@@ -87,7 +87,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             IEnumerable<T> enumerable;
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     enumerable = conn.Query<T>(sql, @params);
                 }
             } else {
@@ -104,7 +104,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             int rows;
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     rows = conn.Execute(sql, entity);
                 }
             } else {
@@ -123,7 +123,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             System.Console.WriteLine("sql: " + sql);
             int rows;
             if (_conn == null) {
-                using (SQLiteConnection conn = DbConnector.GetConnection()) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
                     rows = conn.Execute(sql, entities);
                 }
             } else {

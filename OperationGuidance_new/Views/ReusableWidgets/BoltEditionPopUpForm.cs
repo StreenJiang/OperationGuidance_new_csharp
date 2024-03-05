@@ -11,7 +11,6 @@ using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: BoltPopUpForm {
-        private bool _modified;
 
         private List<WorkstationDTO> _workstationsDTOs;
         private CustomComboBoxGroup<WorkstationDTO> _workstation;
@@ -20,14 +19,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private string _retrievePositionButtonLabelLoading = "正在读取";
         private CommonButton _retrieveCoordinatesBtn;
 
-        public bool Modified => _modified;
         public CustomComboBoxGroup<WorkstationDTO> Workstation { get => _workstation; set => _workstation = value; }
         public CustomTextBoxGroup Position1 { get => _position; set => _position = value; }
         protected CustomTextBoxGroup Position { get => _position; set => _position = value; }
 
         public BoltEditionPopUpForm(ProductBoltDTO boltDTO) : base(boltDTO) {
-            _modified = false;
-            
             NameBox.Enabled = true;
             SpecificationBox.Enabled = true;
             BitSpecificationBox.Enabled = true;

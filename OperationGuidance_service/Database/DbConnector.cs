@@ -4,15 +4,15 @@ namespace OperationGuidance_service.Database {
     public class DbConnector {
         private static readonly string DatabaseName = "database.db";
         private static readonly string _selfFolder = "Database\\";
-        private static string _defaultDatabasePath = "\\OperationGuidance_service\\" + _selfFolder;
+        private static string _defaultDatabasePath = "OperationGuidance_service\\" + _selfFolder;
 
         private static string GetCurrentDataSourcePath() {
-            string currentProjectDirectory = Directory.GetCurrentDirectory();
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
-            if (currentProjectDirectory.Contains(visualStudioDebugPath)) {
-                currentProjectDirectory = currentProjectDirectory.Replace(visualStudioDebugPath, "");
+            if (baseDirectory.Contains(visualStudioDebugPath)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath, "");
             }
-            return currentProjectDirectory + _defaultDatabasePath;
+            return baseDirectory + _defaultDatabasePath;
         }
 
         public static SQLiteConnection GetConnection() {

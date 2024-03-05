@@ -388,9 +388,9 @@ namespace OperationGuidance_new.Views {
                             }
                             sideDTO.Bolts.Add(boltDTO);
 
-                            // Trigger rename logic of bolt
-                            if (boltEditionButton.DoubleClickDelegate != null) {
-                                boltEditionButton.DoubleClickDelegate(eventArgs);
+                            // Trigger open pop up logic of bolt
+                            if (boltEditionButton.SingleClickDelegate != null) {
+                                boltEditionButton.SingleClickDelegate(eventArgs);
                             }
                         }
                     }

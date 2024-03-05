@@ -683,16 +683,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _vScrollBar.Size = new(scrollBarThickness, _gridViewPanel.Height);
                 _vScrollBar.Location = new(_gridViewPanel.Width - scrollBarThickness, 0);
                 _vScrollBar.ValueChanged += (sender, eventArgs) => {
-                    _gridView.FirstDisplayedScrollingRowIndex = _vScrollBar.Value;
+                    if (_vScrollBar.Value >= 0) {
+                        _gridView.FirstDisplayedScrollingRowIndex = _vScrollBar.Value;
+                    }
                 };
-                // _vScrollBar.Scroll += (sender, eventArgs) => {
-                //     _gridView.FirstDisplayedScrollingRowIndex = eventArgs.NewValue;
-                // };
                 _vScrollBar.Show();
                 _vScrollBar.Maximum = _gridView.RowCount - 1;
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
-                // WidgetUtils.CalculateScrollBar(_vScrollBar, _gridViewPanel.Height, rowsHeight);
             } else {
                 _vScrollBar?.Hide();
             }
@@ -701,7 +699,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _hScrollBar.Width -= scrollBarThickness;
                 _vScrollBar.Height -= scrollBarThickness;
                 WidgetUtils.CalculateScrollBar(_hScrollBar, _gridView.Width, columnsWidth);
-                // WidgetUtils.CalculateScrollBar(_vScrollBar, _gridView.Height, rowsHeight);
             }
             System.Console.WriteLine($"========================================== Resize done: Size = {Size}");
         }

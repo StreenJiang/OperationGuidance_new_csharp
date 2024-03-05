@@ -106,7 +106,10 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup ip = _editEntityPopUpForm.AddTextBox("IP地址", false, 
                 (DeviceCommunicationDTO dto, string? value) => dto.ip = value ?? "");
             CustomTextBox ipBox = ip.GetTextBox(0);
-            ipBox.TextChanged += (sender, eventArgs) => {
+            ipBox.TextChanged += async (sender, eventArgs) => {
+                while (ipBox.TimerTicking) {
+                    await Task.Delay(100);
+                }
                 ipBox.IsError = !ArgumentValidator.ValidateIPv4(ipBox.Text);
             };
             ip.Ratio = 6;
@@ -116,11 +119,17 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false, 
                 (DeviceCommunicationDTO dto, int? value) => dto.port = value ?? 0);
             CustomTextBox portBox = port.GetTextBox(0);
-            portBox.TextChanged += (sender, eventArgs) => {
+            portBox.NumberOnly = true;
+            portBox.TextChanged += async (sender, eventArgs) => {
+                while (portBox.TimerTicking) {
+                    await Task.Delay(100);
+                }
                 portBox.IsError = !ArgumentValidator.ValidatePortInWindows(portBox.Text);
             };
             port.Ratio = 6;
-            port.SetValue(0, dto.port + "");
+            if (dto.port > 0) {
+                port.SetValue(0, dto.port + "");
+            }
             Dictionary<string, int> communicationTypes = DeviceType_Communication.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("设备类型", 
                 (DeviceCommunicationDTO dto, int value) => dto.type = value, communicationTypes);

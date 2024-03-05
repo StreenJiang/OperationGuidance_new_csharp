@@ -13,6 +13,8 @@ namespace CustomLibrary.Forms
         private Color? _borderColor;
         private Rectangle? _borderRect;
         private readonly int _borderThickness = 1;
+        private bool _needToAskBeforeClosing = false;
+        private bool _clickOutsideToClose = false;
         // All containers
         private CustomContentPanel _outerPanel;
         private CustomContentPanel _titlePanel;
@@ -44,6 +46,8 @@ namespace CustomLibrary.Forms
                 }
             }
         }
+        public bool NeedToAskBeforeClosing { get => _needToAskBeforeClosing; set => _needToAskBeforeClosing = value; }
+        public bool ClickOutsideToClose { get => _clickOutsideToClose; set => _clickOutsideToClose = value; }
         // Outer panel
         public CustomContentPanel OuterPanel { get => _outerPanel; set => _outerPanel = value; }
         // Title panel
@@ -164,7 +168,14 @@ namespace CustomLibrary.Forms
         }
 
         public new void Dispose() {
-            base.Dispose();
+            if (_needToAskBeforeClosing) {
+                DialogResult result = MessageBox.Show(null, "确定要关闭窗口吗？", "关闭窗口", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes) {
+                    base.Dispose();
+                }
+            } else {
+                base.Dispose();
+            }
         }
 
         public new void Show() {
@@ -172,13 +183,15 @@ namespace CustomLibrary.Forms
             Cursor.Show();
             base.Hide();
             _popUpFormBackboard.Show();
-            EventFuncs.CurrentPopUpForm = this;
+            if (_clickOutsideToClose) {
+                EventFuncs.CurrentPopUpForm = this;
+            }
             Opacity = 1D;
             base.ShowDialog();
         }
 
         public new void Hide() {
-            base.Dispose();
+            Dispose();
         }
 
         public FunctionButton AddButton(string label) {
@@ -264,7 +277,6 @@ namespace CustomLibrary.Forms
             }
             _popUpFormBackboard.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
             int x = _popUpFormBackboard.Location.X;
-                EventFuncs.CurrentPopUpForm = this;
             int y = _popUpFormBackboard.Location.Y;
             int width = _popUpFormBackboard.Width;
             int height = _popUpFormBackboard.Height;

@@ -43,6 +43,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
         "Release"
         {
@@ -59,6 +75,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
     }
     "Deployable"
@@ -95,7 +127,7 @@
             "SourcePath" = "8:..\\OperationGuidance_new\\ico.ico"
             "TargetName" = "8:ico.ico"
             "Tag" = "8:"
-            "Folder" = "8:_571727E21398437EA4F446B4D8FE94D2"
+            "Folder" = "8:_2BD72AA8F43A47BFB35DBF18CB884AF8"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -118,23 +150,34 @@
         {
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_113CA3E2F58342FEBA2BFD50AC91D42E"
             {
-            "DefaultLocation" = "8:[ProgramFiles64Folder][Manufacturer]\\[ProductName]"
+            "DefaultLocation" = "8:[ProgramFiles64Folder]"
             "Name" = "8:#1925"
-            "AlwaysCreate" = "11:FALSE"
+            "AlwaysCreate" = "11:TRUE"
             "Condition" = "8:"
-            "Transitive" = "11:FALSE"
+            "Transitive" = "11:TRUE"
             "Property" = "8:TARGETDIR"
                 "Folders"
                 {
-                    "{9EF0B969-E518-4E46-987F-47570745A589}:_571727E21398437EA4F446B4D8FE94D2"
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_70EA39892B6845EF8862BD6DD4A49942"
                     {
-                    "Name" = "8:icons"
-                    "AlwaysCreate" = "11:FALSE"
+                    "Name" = "8:OperationGuidanceNew"
+                    "AlwaysCreate" = "11:TRUE"
                     "Condition" = "8:"
-                    "Transitive" = "11:FALSE"
-                    "Property" = "8:_5FB5C48EE324465AB814528DFFCBF35A"
+                    "Transitive" = "11:TRUE"
+                    "Property" = "8:_E70EF323A90A41EE82B5DFC220F1C462"
                         "Folders"
                         {
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_2BD72AA8F43A47BFB35DBF18CB884AF8"
+                            {
+                            "Name" = "8:icons"
+                            "AlwaysCreate" = "11:FALSE"
+                            "Condition" = "8:"
+                            "Transitive" = "11:FALSE"
+                            "Property" = "8:_5FB5C48EE324465AB814528DFFCBF35A"
+                                "Folders"
+                                {
+                                }
+                            }
                         }
                     }
                 }
@@ -178,13 +221,13 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OperationGuidanceNew"
         "ProductCode" = "8:{2969192B-56BC-4651-B998-A13CBC46F372}"
-        "PackageCode" = "8:{31679EA4-45AB-4B84-A0EA-1EB4196937BB}"
+        "PackageCode" = "8:{9EF36FB6-525A-4A4F-9D4A-427C37528FAD}"
         "UpgradeCode" = "8:{6775DFE9-DDBA-4867-BA9F-4A884E02C860}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
-        "InstallAllUsers" = "11:FALSE"
+        "InstallAllUsers" = "11:TRUE"
         "ProductVersion" = "8:1.0.0"
         "Manufacturer" = "8:Aneng Automation"
         "ARPHELPTELEPHONE" = "8:"
@@ -716,9 +759,9 @@
             "SourcePath" = "8:..\\OperationGuidance_new\\obj\\Release\\net6.0-windows\\apphost.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
-            "Folder" = "8:_113CA3E2F58342FEBA2BFD50AC91D42E"
+            "Folder" = "8:_70EA39892B6845EF8862BD6DD4A49942"
             "Condition" = "8:"
-            "Transitive" = "11:FALSE"
+            "Transitive" = "11:TRUE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"

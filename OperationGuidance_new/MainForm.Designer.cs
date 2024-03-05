@@ -52,6 +52,12 @@ namespace OperationGuidance_new {
                 || macs.Contains("BE542FD57668")
                 || macs.Contains("BC542FD57668")
                 || macs.Contains("BC542FD5766C")
+                // 客厅电脑
+                || macs.Contains("A4B1C1C841E1")
+                || macs.Contains("A4B1C1C841E5")
+                || macs.Contains("B42E9954DB93")
+                || macs.Contains("A4B1C1C841E2")
+                || macs.Contains("A6B1C1C841E1")
                 // others
                 || macs.Contains("E43A6E5CBE6A")
             )) {
@@ -225,23 +231,28 @@ namespace OperationGuidance_new {
             }
 
             // MainForm
+            Size screenSize = WidgetUtils.GetScreenResolution();
             MinimumSize = new Size(400, 300);
+            MaximumSize = screenSize;
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             string resolution = MainUtils.Settings.Read(IniFileKeys.Resolution);
             System.Console.WriteLine($"resolution: {resolution}");
+            System.Console.WriteLine($"screenSize: {screenSize}");
             if (!string.IsNullOrEmpty(resolution)) {
                 string[] strings = resolution.Split(",");
                 int width = int.Parse(strings[0].Trim());
                 int height = int.Parse(strings[1].Trim());
-                Size screenSize = WidgetUtils.GetScreenResolution();
                 if (width == screenSize.Width && height == screenSize.Height) {
+                    System.Console.WriteLine("111111111111111111111111111111111111111111111");
                     WindowState = FormWindowState.Maximized;
                 } else {
+                    System.Console.WriteLine("222222222222222222222222222222222222222222222");
                     Size = new(width, height);
                     ClientSize = new(width, height);
                     CenterToScreen();
                 }
             } else {
+                System.Console.WriteLine("333333333333333333333333333333333333333333333");
                 WindowState = FormWindowState.Maximized;
             }
             Name = "MainForm";

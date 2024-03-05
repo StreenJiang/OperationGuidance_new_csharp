@@ -30,6 +30,8 @@ namespace CustomLibrary.TextBoxes {
         private Timer _errorBorderTimer;
         private int _errorBorderTimerInterval = 100;
         private int _timerCount;
+        private int _timerCountDelay = 2000;
+        private bool _timerTicking = false;
         #endregion
 
         #region Properties
@@ -99,6 +101,8 @@ namespace CustomLibrary.TextBoxes {
                 Invalidate();
             }
         }
+        public bool TimerTicking { get => _timerTicking; set => _timerTicking = value; }
+
         public new event EventHandler TextChanged {
             add => _box.TextChanged += value;
             remove => _box.TextChanged -= value;
@@ -147,12 +151,15 @@ namespace CustomLibrary.TextBoxes {
                         _isError = false;
                         HideErrorToolTip();
                         Invalidate();
+                        _errorBorderTimer?.Stop();
+                        _timerTicking = false;
                     } else {
                         _isError = true;
                         ShowErrorToolTip();
                         Invalidate();
                         _timerCount = 0;
                         _errorBorderTimer?.Start();
+                        _timerTicking = true;
                     }
                 } else if (_numberValidate) {
                     ResetErrorIcon();
@@ -182,12 +189,12 @@ namespace CustomLibrary.TextBoxes {
             _errorBorderTimer.Tick += (sender, eventArgs) => {
                 if (!IsDisposed) {
                     _timerCount += _errorBorderTimerInterval;
-                    if (_timerCount >= 2000) {
+                    if (_timerCount >= _timerCountDelay) {
                         _isError = false;
                         HideErrorToolTip();
                         Invalidate();
-                        _timerCount = 0;
                         _errorBorderTimer.Stop();
+                        _timerTicking = false;
                     }
                 }
             };
@@ -209,12 +216,12 @@ namespace CustomLibrary.TextBoxes {
         }
         private void ShowErrorToolTip() {
             if (!IsDisposed) {
-                _errorTip.Show("请输入数字", _box);
+                _errorTip.SetToolTip(_box, "请输入数字");
             }
         }
         private void HideErrorToolTip() {
             if (!IsDisposed) {
-                _errorTip.Hide(_box);
+                _errorTip.SetToolTip(_box, "");
             }
         }
         public void CheckError(bool flag) {

@@ -4,7 +4,6 @@ using System.Net.Sockets;
 using System.Text;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
@@ -66,15 +65,15 @@ namespace OperationGuidance_new.Tasks {
                         HeartBeatCounter += LoopingInterval;
                     }
                 } catch (Exception e) {
-                    MainUtils.Log($"Error: {e}");
+                    System.Console.WriteLine($"Error: {e}");
                 } finally {
-                    MainUtils.Log($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
+                    System.Console.WriteLine($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                     }
                     if (CloseConnectionManually) {
-                        MainUtils.Log($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                        System.Console.WriteLine($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -88,7 +87,7 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } finally {
-                    MainUtils.Log($"Disconnected while waiting responses...");
+                    System.Console.WriteLine($"Disconnected while waiting responses...");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
@@ -110,7 +109,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            MainUtils.Log($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
+            System.Console.WriteLine($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
             CloseConnectionManually = true;
             if (Connected) {
                 socketClient.Close();
@@ -134,11 +133,11 @@ namespace OperationGuidance_new.Tasks {
         }
         private bool ConnectToServer() {
             if (Connected) {
-                MainUtils.Log($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                System.Console.WriteLine($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            MainUtils.Log($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
+            System.Console.WriteLine($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
             bool sendConnectMsgSuceess = false;
@@ -174,17 +173,17 @@ namespace OperationGuidance_new.Tasks {
                             string mid2 = response2.Substring(4, 4);
                             enableMsgSuccess = mid2 == "0002" || mid2 == "0005";
                             if (enableMsgSuccess) {
-                                MainUtils.Log($"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                                System.Console.WriteLine($"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
                                 // Lock tool to keep safe
                                 SendLock();
                             }
                         }
                     }
                 } catch (Exception e) {
-                    MainUtils.Log($"Connect error: {e}");
+                    System.Console.WriteLine($"Connect error: {e}");
                 }
             } else {
-                MainUtils.Log($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                System.Console.WriteLine($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess && sendConnectMsgSuceess && enableMsgSuccess;
         }
@@ -195,7 +194,7 @@ namespace OperationGuidance_new.Tasks {
                 PingReply pingReply = pinger.Send(namrOrAddress);
                 return pingReply.Status == IPStatus.Success;
             } catch (PingException pe) {
-                MainUtils.Log($"Ping error: {pe}");
+                System.Console.WriteLine($"Ping error: {pe}");
                 return false;
             } finally {
                 if (pinger != null) {
@@ -214,7 +213,7 @@ namespace OperationGuidance_new.Tasks {
             int trialTime = 0;
             while (Connected && result == null) {
                 if (trialTime > ReceiveTimeout) {
-                    MainUtils.Log("Can't get any response at all, probably some other connection robbed it...");
+                    System.Console.WriteLine("Can't get any response at all, probably some other connection robbed it...");
                     break;
                 }
                 result = Result;
