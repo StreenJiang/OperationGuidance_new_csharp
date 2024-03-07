@@ -9,7 +9,8 @@ namespace CustomLibrary.Events {
         private static extern bool GetCursorPos(out POINT lpPoint);
 
         private static List<Control> _autoActivatingControls = new();
-        public static List<Action> _clickActions = new();
+        public static List<Action> _mouseUpActions = new();
+        public static List<Action> _mouseDownActions = new();
 
         public static POINT RealTimePoint { get; set; }
         public static Form? MainForm { get; set; }
@@ -21,18 +22,21 @@ namespace CustomLibrary.Events {
             _autoActivatingControls.Add(control);
         }
 
-        public static void AddClickAction(Action action) {
-            _clickActions.Add(action);
+        public static void AddMouseUpAction(Action action) {
+            _mouseUpActions.Add(action);
+        }
+        public static void AddMouseDownAction(Action action) {
+            _mouseDownActions.Add(action);
         }
 
         public static bool MouseInArea(Rectangle rectangleToScreen) => rectangleToScreen.Contains(RealTimePoint);
 
-        public static void GlobalMouseClick(object? sender, EventArgs eventArgs) {
+        public static void GlobalMouseUp(object? sender, EventArgs eventArgs) {
             if (GetCursorPos(out POINT point)) {
                 if (MainForm != null && !MainForm.IsDisposed) {
                     Rectangle mainFormRectangleToScreen = new(MainForm.PointToScreen(Point.Empty), MainForm.ClientSize);
                     // 执行Actions
-                    foreach (Action action in _clickActions) {
+                    foreach (Action action in _mouseUpActions) {
                         action();
                     }
 
@@ -69,6 +73,18 @@ namespace CustomLibrary.Events {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        public static void GlobalMouseDown(object? sender, EventArgs eventArgs) {
+            if (GetCursorPos(out POINT point)) {
+                if (MainForm != null && !MainForm.IsDisposed) {
+                    Rectangle mainFormRectangleToScreen = new(MainForm.PointToScreen(Point.Empty), MainForm.ClientSize);
+                    // 执行Actions
+                    foreach (Action action in _mouseDownActions) {
+                        action();
                     }
                 }
             }

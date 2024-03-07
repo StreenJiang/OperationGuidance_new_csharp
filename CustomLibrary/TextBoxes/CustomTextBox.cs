@@ -280,15 +280,15 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         protected override void OnPaint(PaintEventArgs e) {
-            e.Graphics.Clear(this.BackColor);
-            base.OnPaint(e);
-
             // Change back color if disabled
             if (!_enabled) {
                 _box.BackColor = _disabledBackColor;
+                e.Graphics.Clear(_disabledBackColor);
             } else {
                 _box.BackColor = BackColor;
+                e.Graphics.Clear(BackColor);
             }
+            base.OnPaint(e);
 
             // Draw border if border color is not null
             if (_borderColorError != null && _isError) {

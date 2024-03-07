@@ -149,7 +149,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _modifyButton = new() {
                 Parent = _buttonsRightInnerPanel,
-                Label = "修改",
+                Label = "编辑",
             };
             _modifyButton.Click += (sender, eventArgs) => {
                 _modifyClick(GetSelectedIds(), QueryAndRefresh);

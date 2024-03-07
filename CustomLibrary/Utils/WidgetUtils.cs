@@ -514,5 +514,10 @@ namespace CustomLibrary.Utils {
             };
             return pictureBoxGroup;
         }
+
+
+        public static double GetTimeMillisec(DateTime time) {
+            return time.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+        }
     }
 }

@@ -1,7 +1,5 @@
-using CustomLibrary.Buttons;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 using OperationGuidance_new.Attributes;
-using OperationGuidance_service.Constants;
 using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.ViewObjects {
@@ -100,21 +98,5 @@ namespace OperationGuidance_new.ViewObjects {
         public string? communication_ip { get; set; }
         [GridColumn("通讯设备端口")]
         public int? communication_port { get; set; }
-
-        [GridColumn("是否启用", typeof(ToggleButton))]
-        public bool? bool_enabled { get; set; }
-        // This is to get the value from database, will change it to bool above
-        private int? int_enabled;
-        public int? enabled { 
-            get => int_enabled;
-            set {
-                int_enabled = value;
-                if (value != null && value.Value == (int) YesOrNo.YES) {
-                    bool_enabled = true;
-                } else {
-                    bool_enabled = false;
-                }
-            }
-        }
     }
 }

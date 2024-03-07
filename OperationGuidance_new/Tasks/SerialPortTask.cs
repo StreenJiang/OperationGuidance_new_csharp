@@ -104,6 +104,7 @@ namespace OperationGuidance_new.Tasks {
                         Parity = _parity,
                         DataBits = _dataBits,
                         StopBits = _stopBits,
+                        Encoding = Encoding.ASCII,
                     };
                     serialPortClient.DataReceived += (sender, eventArgs) => {
                         Thread.Sleep(500);

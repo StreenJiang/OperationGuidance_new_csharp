@@ -68,7 +68,7 @@ namespace OperationGuidance_new.Views {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
-                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行编辑操作。");
                 } else {
                     if (_dataDTOList.Count > 0) {
                         DeviceSerialPortDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
@@ -93,12 +93,15 @@ namespace OperationGuidance_new.Views {
             };
             // 添加字段
             // 设备名称
-            CustomTextBoxGroup brandName = _editEntityPopUpForm.AddTextBox("设备名称", false, 
+            CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("设备名称", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.name = value ?? "");
-            brandName.Ratio = 6;
+            name.Ratio = 6;
             if (dto.name != null) {
-                brandName.SetValue(0, dto.name);
+                name.SetValue(0, dto.name);
             }
+            name.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                name.GetTextBox(0).IsError = string.IsNullOrEmpty(name.GetTextBox(0).Box.Text);
+            };
             // 设备描述
             CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("设备描述", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.description = value ?? "");
@@ -120,6 +123,9 @@ namespace OperationGuidance_new.Views {
                 }
             }
             portFullName.Ratio = 6;
+            portFullName.ItemSelected += () => {
+                portFullName.SetError(portFullName.IsDefaultValue());
+            };
             // 串口全名
             CustomTextBoxGroup portName = _editEntityPopUpForm.AddTextBox("串口号", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.port_name = value ?? "");
@@ -145,6 +151,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.type = value, toolTypes);
             type.Ratio = 6;
             type.SetCurrent(type.IndexOf(dto.type));
+            type.ItemSelected += () => {
+                type.SetError(type.IsDefaultValue());
+            };
             // 波特率
             Dictionary<string, int> baudRates = new() {
                 { "4800", 4800 },
@@ -159,6 +168,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.baud_rate = value, baudRates);
             baudRate.Ratio = 6;
             baudRate.SetCurrent(baudRate.IndexOf(dto.baud_rate));
+            baudRate.ItemSelected += () => {
+                baudRate.SetError(false);
+            };
             // 数据位
             Dictionary<string, int> dataBits = new() {
                 // { "5", 5 },
@@ -170,6 +182,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.data_bit = value, dataBits);
             dataBit.Ratio = 6;
             dataBit.SetCurrent(dataBit.IndexOf(dto.data_bit));
+            dataBit.ItemSelected += () => {
+                dataBit.SetError(false);
+            };
             // 校验位
             Dictionary<string, int> parities = new();
             Parity[] parityValues = Enum.GetValues<Parity>();
@@ -180,6 +195,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.parity = value, parities);
             parity.Ratio = 6;
             parity.SetCurrent(parity.IndexOf(dto.parity));
+            parity.ItemSelected += () => {
+                parity.SetError(false);
+            };
             // 停止位
             Dictionary<string, int> stopBits = new();
             StopBits[] stopBitsValues = Enum.GetValues<StopBits>();
@@ -190,6 +208,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.stop_bit = value, stopBits);
             stopBit.Ratio = 6;
             stopBit.SetCurrent(stopBit.IndexOf(dto.stop_bit));
+            stopBit.ItemSelected += () => {
+                stopBit.SetError(false);
+            };
             // 数据类型
             Dictionary<string, int> dataTypes = new();
             DataTypes[] dataTypesValues = Enum.GetValues<DataTypes>();
@@ -200,6 +221,9 @@ namespace OperationGuidance_new.Views {
                 (DeviceSerialPortDTO dto, int value) => dto.data_type = value, dataTypes);
             dataType.Ratio = 6;
             dataType.SetCurrent(dataType.IndexOf(dto.data_type));
+            dataType.ItemSelected += () => {
+                dataType.SetError(dataType.IsDefaultValue());
+            };
             // 无效字符
             CustomTextBoxGroup invalidChar = _editEntityPopUpForm.AddTextBox("无效字符", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.invalid_char = value ?? "");
@@ -212,15 +236,59 @@ namespace OperationGuidance_new.Views {
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
                 bool check = true;
+                string warningMsg = "";
+                int warningIndex = 1;
+                if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
+                    check = false;
+                    name.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 设备名称不能为空\r\n";
+                }
+                if (portFullName.IsDefaultValue()) {
+                    portFullName.SetError(true);
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 没有选择串口设备\r\n";
+                } else {
+                    if (type.IsDefaultValue()) {
+                        type.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择设备类型\r\n";
+                    }
+                    if (baudRate.IsDefaultValue()) {
+                        baudRate.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择波特率\r\n";
+                    }
+                    if (dataBit.IsDefaultValue()) {
+                        dataBit.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择数据位\r\n";
+                    }
+                    if (parity.IsDefaultValue()) {
+                        parity.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择校验位\r\n";
+                    }
+                    if (stopBit.IsDefaultValue()) {
+                        stopBit.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择停止位\r\n";
+                    }
+                    if (dataType.IsDefaultValue()) {
+                        dataType.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 没有选择数据类型\r\n";
+                    }
+                }
                 if (dto.id <= 0) {
                     if (!string.IsNullOrEmpty(dto.port_name) && _dataDTOList.Where(data => data.port_name == dto.port_name).Count() > 0) {
                         portFullName.SetError(true);
-                        WidgetUtils.ShowWarningPopUp($"此串口[{dto.port_name}]已存在设备[{dto.port_full_name}]，无法多次配置同一个串口！");
                         check = false;
+                        warningMsg += $"{warningIndex++}. 此串口[{dto.port_name}]已存在设备[{dto.port_full_name}]，无法多次配置同一个串口\r\n";
                     }
                 }
-                if (check) {
-                    callBackAction += _editEntityPopUpForm.Dispose;
+                if (!check) {
+                    WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
+                } else {
                     AddOrUpdate(dto, callBackAction);
                     _editEntityPopUpForm.Hide();
                 }

@@ -28,14 +28,6 @@ using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
-        private readonly int _tableColumns = 4;
-        private readonly float _cellGapRatio = 0.02F;
-        private readonly float _cellHightRatio = 0.24F;
-        private int _titleHeight;
-        private int _cellHorizontalMargin;
-        private int _cellVerticalMargin;
-        private Size _cellSize;
-        private MissionNewButtonPanel _bigButtonPanel;
         private MissionListPanel _missionListPanel;
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;
@@ -48,14 +40,8 @@ namespace OperationGuidance_new.Views {
             // Get apis
             apis = SystemUtils.GetApis();
             // Initialize
-            _bigButtonPanel = new() {
-                Margin = new Padding(0),
-                Parent = this,
-                Visible = false,
-            };
             _missionListPanel = new(
                 "选择任务",
-                _tableColumns,
                 "直接进入工作台",
                 (sender, eventArgs) => {
                     OpenWorkplaceView(new ProductMissionDTO() {
@@ -70,25 +56,14 @@ namespace OperationGuidance_new.Views {
             ) {
                 Margin = new Padding(0),
                 Parent = this,
-                Visible = false,
             };
-
-            // Check and display view
-            CheckAndDisplay();
         }
 
         private void CheckAndDisplay() {
             // Fetch data
             FetchData();
             // If there is no any mission, so show the big button
-            if (_productMissionDTOs.Count == 0) {
-                _missionListPanel.Visible = false;
-                _bigButtonPanel.Visible = true;
-            } else {
-                _bigButtonPanel.Visible = false;
-                _missionListPanel.Visible = true;
-                _missionListPanel.RefreshMissionBlocks(_productMissionDTOs, OpenWorkplaceView);
-            }
+            _missionListPanel.RefreshMissionBlocks(_productMissionDTOs, OpenWorkplaceView);
         }
 
         public override void VisibleToTrue() {
@@ -102,37 +77,7 @@ namespace OperationGuidance_new.Views {
             base.VisibleToTrue();
         }
 
-        public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            _titleHeight = WidgetUtils.ContentTitle();
-            // Calculate height of cells: use height of top level control is because self height will automatically change because of scroll bar
-            _cellSize = new(0, (int) (TopLevelControl.Height * _cellHightRatio));
-            _cellVerticalMargin = _cellSize.Height / 15;
-            // If there is no any mission, then don't need scroll bar
-            if (_productMissionDTOs.Count == 0) {
-                NewHeight = 0;
-                return false;
-            }
-            // Calculate table's size, depends on all cells
-            int rowsCount = (int) Math.Ceiling(_productMissionDTOs.Count / (double) _tableColumns);
-            NewHeight = _titleHeight + (rowsCount + 1) * _cellVerticalMargin + rowsCount * _cellSize.Height;
-            return NewHeight > parentNewHeight;
-        }
-
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            // Resize big button panel
-            _bigButtonPanel.Size = new(Parent.Width, Parent.Height);
-            if (_bigButtonPanel.Visible) {
-                _bigButtonPanel.Invalidate();
-            }
-            // Calculate width of cells
-            _cellHorizontalMargin = (int) (Width * _cellGapRatio);
-            int gapNum = _tableColumns + 1; // Including outer margin
-            _cellSize.Width = (Width - _cellHorizontalMargin * gapNum) / _tableColumns;
-            // Set properties before resize mission list panel
-            _missionListPanel.TitleHeight = _titleHeight;
-            _missionListPanel.CellSize = _cellSize;
-            _missionListPanel.CellHorizontalMargin = _cellHorizontalMargin;
-            _missionListPanel.CellVerticalMargin = _cellVerticalMargin;
             // Resize mission list panel
             _missionListPanel.Size = new(Width, Height);
             _missionListPanel.ResizeChildren(eventArgs);
@@ -523,26 +468,28 @@ namespace OperationGuidance_new.Views {
                                     ClickOutsideToClose = true,
                                 };
                                 // 添加按钮
-                                CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
-                                switchBtn.Click += (s, e) => {
-                                    if (!_activated || _finished) {
-                                        WidgetUtils.ShowErrorPopUp("任务未激活或已完成，无法切换点位！");
-                                    } else {
-                                        // 切换点位时，只能向后选择没有拧的点位，不能选择前面的。即只能跳过某些点，不能重新打某些点
-                                        if (_currentWorkingBolt != null) {
-                                            int newIndex = _allBolts.IndexOf(boltBtn);
-                                            if (_allBolts.IndexOf(_currentWorkingBolt) > newIndex) {
-                                                WidgetUtils.ShowErrorPopUp("无法切换到已完成的螺栓点位！");
-                                            } else {
-                                                _currentWorkingBolt.ResetStatusWithoutChangingVisible();
-                                                _currentWorkingBolt.StopFlickering();
-                                                // _currentWorkingBolt.BoltStatus = BoltStatus.DEFAULT;
-                                                _currentWorkingBolt = SwitchBolt(newIndex);
+                                if (_currentWorkingBolt == null || _currentWorkingBolt.BoltDTO.serial_num != boltDTO.serial_num) {
+                                    CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
+                                    switchBtn.Click += (s, e) => {
+                                        if (!_activated || _finished) {
+                                            WidgetUtils.ShowErrorPopUp("任务未激活或已完成，无法切换点位！");
+                                        } else {
+                                            // 切换点位时，只能向后选择没有拧的点位，不能选择前面的。即只能跳过某些点，不能重新打某些点
+                                            if (_currentWorkingBolt != null) {
+                                                int newIndex = _allBolts.IndexOf(boltBtn);
+                                                if (_allBolts.IndexOf(_currentWorkingBolt) > newIndex) {
+                                                    WidgetUtils.ShowErrorPopUp("无法切换到已完成的螺栓点位！");
+                                                } else {
+                                                    _currentWorkingBolt.ResetStatusWithoutChangingVisible();
+                                                    _currentWorkingBolt.StopFlickering();
+                                                    // _currentWorkingBolt.BoltStatus = BoltStatus.DEFAULT;
+                                                    _currentWorkingBolt = SwitchBoltAndChangeStatus(newIndex);
+                                                }
                                             }
                                         }
-                                    }
-                                    _boltPopUpForm.Dispose();
-                                };
+                                        _boltPopUpForm.Dispose();
+                                    };
+                                }
                                 CommonButton closeBtn = _boltPopUpForm.AddButton("关闭");
                                 closeBtn.Click += (s, e) => {
                                     _boltPopUpForm.Dispose();
@@ -561,30 +508,31 @@ namespace OperationGuidance_new.Views {
             }
 
             // 默认显示第一个产品面和对应的螺栓点位
-            _showingBoltButtons = _allBolts.Where(btn => btn.BoltDTO.side_id != null && btn.BoltDTO.side_id == _sides[_currentSideIndex].id).ToList();
+            _showingBoltButtons = _allBolts.Where(btn => btn.BoltDTO.side_id == _sides[_currentSideIndex].id).ToList();
             _showingBoltButtons.ForEach(btn => btn.Visible = true);
         }
 
         private void ResizePopUpForm() {
             if (_boltPopUpForm != null) {
-                _boltPopUpForm.CalculateDetailProperties();
-
-                Control mainForm = WidgetUtils.MainPanel.Parent;
-                TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
-                Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
-                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxMargin = boxHeight / 5;
-                int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
-                int tableWidth = contentSize.Width - contentPadding.Size.Width;
-                _boltPopUpForm.BoxHeight = boxHeight;
-                _boltPopUpForm.BoxMargin = boxMargin;
-                _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
-
-                _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
-                if (_boltPopUpForm.Visible) {
-                    _boltPopUpForm.Invalidate();
-                }
+                _boltPopUpForm.ResizeSelf();
+                // _boltPopUpForm.CalculateDetailProperties();
+                //
+                // Control mainForm = WidgetUtils.MainPanel.Parent;
+                // TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
+                // Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
+                // int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                // int boxMargin = boxHeight / 5;
+                // int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                // Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
+                // int tableWidth = contentSize.Width - contentPadding.Size.Width;
+                // _boltPopUpForm.BoxHeight = boxHeight;
+                // _boltPopUpForm.BoxMargin = boxMargin;
+                // _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                //
+                // _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
+                // if (_boltPopUpForm.Visible) {
+                //     _boltPopUpForm.Invalidate();
+                // }
             }
         }
 
@@ -738,7 +686,7 @@ namespace OperationGuidance_new.Views {
                 _last.CurrentPage = newCurrentPage;
                 // 切换side后也切换点位
                 _showingBoltButtons.ForEach(btn => btn.Visible = false);
-                _showingBoltButtons = _allBolts.Where(btn => btn.BoltDTO.side_id != null && btn.BoltDTO.side_id == _sides[_currentSideIndex].id).ToList();
+                _showingBoltButtons = _allBolts.Where(btn => btn.BoltDTO.side_id == _sides[_currentSideIndex].id).ToList();
                 _showingBoltButtons.ForEach(btn => btn.Visible = true);
                 // 切换产品图片
                 _productImageDisplayPanel.SetImage(_productImageFiles[_currentSideIndex].Image, _productImageFiles[_currentSideIndex].CenterLocation);
@@ -752,15 +700,16 @@ namespace OperationGuidance_new.Views {
 
         private void InitializeBottom() {
             _deviceBlocks = new();
-            List<DeviceCategory> deviceCategories = DeviceCategories.Elements;
+            List<DeviceCategory> deviceCategories = new();
             // Reverse because of RightToLeft flow direction
-            deviceCategories.Reverse();
+            for (int i = DeviceCategories.Elements.Count - 1; i >= 0; i--) {
+                deviceCategories.Add(DeviceCategories.Elements[i]);
+            }
             foreach (DeviceCategory category in deviceCategories) {
                 DeviceBlock deviceBlock = new(category) {
                     Parent = _bottom,
                     Margin = new(0),
                     Padding = new(0),
-                    ToggledButton = true,
                     BlockHoverUp = true,
                     BlockHoverDown = true,
                     ToggledColor = ColorConfigs.COLOR_DEVICE_BLOCK_TOGGLED,
@@ -910,8 +859,11 @@ namespace OperationGuidance_new.Views {
                                                 if (dto.invalid_char != null) {
                                                     msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
                                                 }
-                                                // 数字校验
-                                                msg = String.Concat(msg.Where(c => char.IsDigit(c)));
+                                                if (dto.data_type == (int) DataTypes.BINARY) { // 二进制
+                                                } else if (dto.data_type == (int) DataTypes.OCTAL) { // 八进制
+                                                } else if (dto.data_type == (int) DataTypes.DECIMAL) { // 十进制
+                                                } else if (dto.data_type == (int) DataTypes.HEX) { // 是二进制
+                                                }
                                                 _barCodeMessage = msg;
                                                 _barCodeTextBox.Text = _barCodeMessage;
                                                 // 如果弹窗已经打开了，则先将条码数据填充至弹窗，然后延时一会再关闭，可以得到比较好看的效果
@@ -1005,21 +957,30 @@ namespace OperationGuidance_new.Views {
                     _currentWorkingBolt = null;
                     return;
                 }
-                // 4. 修改任务激活状态
-                _activated = true;
-                _finished = false;
+                int? pset = boltDTO.parameters_set;
+                if (pset == null) {
+                    WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]没有配置程序号，无法激活任务");
+                    _currentWorkingBolt = null;
+                    return;
+                }
                 ToolTask toolTask = _toolTasks[toolId.Value];
-                // 5. 先将工具锁住防止误操作
+                // 4. 先将工具锁住防止误操作
                 toolTask.SendLock();
-                // 6. 下发当前螺栓点位的程序号至控制器
-                toolTask.SendPSet(boltDTO.parameters_set);
-                // 7. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
+                // 5. 下发当前螺栓点位的程序号至控制器
+                toolTask.SendPSet(pset.Value);
+                // 6. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
                 if (locating_enabled && armId != null) {
                     ArmTask armTask = _armTasks[armId.Value];
                     armTask.RetrieveResult = true;
                     armTask.OnActionAfterReceiving += ActionAfterArmDataReceived;
                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
                 }
+                // 7. 修改任务激活状态
+                _activated = true;
+                _finished = false;
+                _currentWorkingBolt.BoltStatus = BoltStatus.WORKING;
+                // 将当前螺栓点位的serial_num传给process poanel
+                _workingProcessPanel.BoltSerialNum = _currentWorkingBolt.BoltDTO.serial_num;
             }
         }
 
@@ -1108,15 +1069,20 @@ namespace OperationGuidance_new.Views {
             } else if (_sides[_currentSideIndex].id > sideId) {
                 _backward.PerformClick();
             }
-            // 切换状态的代码放在这里，以保证即使切换了side，也能正确显示动态效果
-            newBolt.BoltStatus = BoltStatus.WORKING;
-            // 下发程序号（pset）
-            int? toolId = _workstationsDTOs.Single(dto => dto.id == newBoltDTO.workstation_id).tool_id;
-            if (toolId != null) {
-                _toolTasks[toolId.Value].SendPSet(newBoltDTO.parameters_set);
+            return newBolt;
+        }
+        // 根据index切换点位
+        private BoltButton SwitchBoltAndChangeStatus(int newIndex) {
+            // 通过index切换点位
+            BoltButton newBolt = SwitchBolt(newIndex);
+            ProductBoltDTO newBoltDTO = newBolt.BoltDTO;
+            // 先切换点位，然后检查点位是否还是当前side，不是则跳转
+            int? sideId = newBoltDTO.side_id;
+            if (_sides[_currentSideIndex].id < sideId) {
+                _forward.PerformClick();
+            } else if (_sides[_currentSideIndex].id > sideId) {
+                _backward.PerformClick();
             }
-            // 将当前螺栓点位的serial_num传给process poanel
-            _workingProcessPanel.BoltSerialNum = newBoltDTO.serial_num;
             return newBolt;
         }
 
@@ -1212,7 +1178,7 @@ namespace OperationGuidance_new.Views {
                                 _currentWorkingBolt.BoltStatus = BoltStatus.DONE;
                                 int currentIndex = _allBolts.IndexOf(_currentWorkingBolt);
                                 if (currentIndex != _allBolts.Count - 1) {
-                                    _currentWorkingBolt = SwitchBolt(currentIndex + 1);
+                                    _currentWorkingBolt = SwitchBoltAndChangeStatus(currentIndex + 1);
                                 } else {
                                     // 已经打完最后一个点位，任务完成
                                     _activated = false;

@@ -20,7 +20,7 @@ namespace CustomLibrary.Buttons {
         private Timer _slideTimer;
         private int _slideStep;
         private readonly int _slideSpend = 30;
-        private readonly double _disabledDilutionRatio = .5;
+        private readonly double _disabledDilutionRatio = .2;
         private ToolTip _toolTip;
         private bool _enabled;
         #endregion

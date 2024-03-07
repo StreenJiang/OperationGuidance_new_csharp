@@ -93,7 +93,7 @@ namespace OperationGuidance_new.Views {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
-                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行编辑操作。");
                 } else {
                     if (_dataDTOList.Count > 0) {
                         WorkstationDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
@@ -155,16 +155,13 @@ namespace OperationGuidance_new.Views {
             // 添加字段
             CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
                 (WorkstationDTO dto, string? value) => dto.name = value ?? "");
+            _editEntityPopUpForm.TablePanel.SetColumnSpan(stationName, 2);
             if (dto.name != null) {
                 stationName.SetValue(0, dto.name);
             }
-            ToggleButtonGroup toggleButtonGroup = _editEntityPopUpForm.AddToggleButton("是否启用", 
-                    (WorkstationDTO dto, bool value) => dto.enabled = value ? (int) YesOrNo.YES : (int) YesOrNo.NO);
-            if (dto.enabled != null) {
-                toggleButtonGroup.Checked = dto.enabled == (int) YesOrNo.YES;
-            } else {
-                toggleButtonGroup.Checked = true;
-            }
+            stationName.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                stationName.GetTextBox(0).IsError = string.IsNullOrEmpty(stationName.GetTextBox(0).Box.Text);
+            };
             // 工具部分
             SubPanel<WorkstationDTO> toolSubPanel = _editEntityPopUpForm.AddSubPanel("工具");
             // 工具选择
@@ -466,45 +463,50 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
+                if (string.IsNullOrEmpty(stationName.GetTextBox(0).Box.Text)) {
+                    check = false;
+                    stationName.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 站点名称不能为空\r\n";
+                }
                 if (toolToggle.Checked && (dto.tool_id == null || dto.tool_id == 0)) {
                     toolOptions.SetError(true);
-                    warningMsg += $"{warningIndex++}. 请选择工具！\r\n";
+                    warningMsg += $"{warningIndex++}. 请选择工具\r\n";
                     check = false;
                 }
                 if (armToggle.Checked && (dto.arm_id == null || dto.arm_id == 0)) {
                     armOptions.SetError(true);
-                    warningMsg += $"{warningIndex++}. 请选择力臂！\r\n";
+                    warningMsg += $"{warningIndex++}. 请选择力臂\r\n";
                     check = false;
                 }
                 if (communicationToggle.Checked && (dto.communication_id == null || dto.communication_id == 0)) {
                     communicationOptions.SetError(true);
-                    warningMsg += $"{warningIndex++}. 请选择通讯设备！\r\n";
+                    warningMsg += $"{warningIndex++}. 请选择通讯设备\r\n";
                     check = false;
                 }
                 if (serialPortToggle.Checked && (dto.serial_port_id == null || dto.serial_port_id == 0)) {
                     serialPortOptions.SetError(true);
-                    warningMsg += $"{warningIndex++}. 请选择串口设备！\r\n";
+                    warningMsg += $"{warningIndex++}. 请选择串口设备\r\n";
                     check = false;
                 }
                 if (dto.id <= 0) {
                     if (dto.tool_id > 0 && _dataDTOList.Where(data => data.tool_id == dto.tool_id).Count() > 0) {
                         toolOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 已有站点配置了工具[{dto.tool_name}]，无法多次配置同一个工具！\r\n";
+                        warningMsg += $"{warningIndex++}. 已有站点配置了工具[{dto.tool_name}]，无法多次配置同一个工具\r\n";
                         check = false;
                     }
                     if (dto.arm_id > 0 && _dataDTOList.Where(data => data.arm_id == dto.arm_id).Count() > 0) {
                         armOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 已有站点配置了力臂[{dto.arm_name}]，无法多次配置同一个力臂！\r\n";
+                        warningMsg += $"{warningIndex++}. 已有站点配置了力臂[{dto.arm_name}]，无法多次配置同一个力臂\r\n";
                         check = false;
                     }
                     if (dto.serial_port_id > 0 && _dataDTOList.Where(data => data.serial_port_id == dto.serial_port_id).Count() > 0) {
                         serialPortOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 已有站点配置了串口设备[{dto.serial_port_name}]，无法多次配置同一个串口设备！\r\n";
+                        warningMsg += $"{warningIndex++}. 已有站点配置了串口设备[{dto.serial_port_name}]，无法多次配置同一个串口设备\r\n";
                         check = false;
                     }
                     if (dto.communication_id > 0 && _dataDTOList.Where(data => data.communication_id == dto.communication_id).Count() > 0) {
                         communicationOptions.SetError(true);
-                        warningMsg += $"{warningIndex++}. 已有站点配置了通讯设备[{dto.communication_name}]，无法多次配置同一个通讯设备！\r\n";
+                        warningMsg += $"{warningIndex++}. 已有站点配置了通讯设备[{dto.communication_name}]，无法多次配置同一个通讯设备\r\n";
                         check = false;
                     }
                 }

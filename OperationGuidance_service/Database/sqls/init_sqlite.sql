@@ -283,6 +283,7 @@ CREATE TABLE "user_account_info" (
   "position" text(128),
   "account" text(64) NOT NULL,
   "password" text(64) NOT NULL,
+  "role_type" integer(2) NOT NULL,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,

@@ -67,6 +67,10 @@ namespace CustomLibrary.ComboBoxes {
             // Initialize combo box
             _comboBox = new();
             _comboBox.Parent = _elementsPanel;
+            BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER;
+            BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
+            BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR;
+            ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND;
         }
 
         public int AddItem(string itemName, T? obj) => _comboBox.AddItem(itemName, obj);

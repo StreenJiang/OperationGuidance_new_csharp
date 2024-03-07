@@ -1,23 +1,21 @@
 ﻿using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.Panels.BaseClasses;
+using CustomLibrary.Utils;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
         private TitlePanel _titlePanel;
-        private TableLayoutPanel _missionsTable;
+        private CustomVScrollingContentPanel _contentOuterPanel;
+        private ContentPanel _contentPanel;
+        private List<ProductMissionDTO> _missionDTOs;
         private int _titleHeight;
-        private Size _cellSize;
-        private int _cellHorizontalMargin;
-        private int _cellVerticalMargin;
 
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
-        public Size CellSize { get => _cellSize; set => _cellSize = value; }
-        public int CellHorizontalMargin { get => _cellHorizontalMargin; set => _cellHorizontalMargin = value; }
-        public int CellVerticalMargin { get => _cellVerticalMargin; set => _cellVerticalMargin = value; }
 
-        public MissionListPanel(string title, int tableColumns, string buttonLabel, EventHandler rightButtonClick) {
+        public MissionListPanel(string title, string buttonLabel, EventHandler rightButtonClick) {
             FlowDirection = FlowDirection.TopDown;
             _titlePanel = new(title) {
                 Parent = this,
@@ -26,30 +24,55 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
             rightButton.Click += rightButtonClick;
 
-            _missionsTable = new() {
-                Margin = new(0),
+            _missionDTOs = new();
+            _contentPanel = new(CalculateAndCheckScrollBar);
+            _contentOuterPanel = new(null, _contentPanel) {
                 Parent = this,
-                ColumnCount = tableColumns,
-                Padding = new(0),
+                NeedsPadding = false,
             };
         }
 
+        private bool CalculateAndCheckScrollBar(int parentNewHeight) {
+            _titleHeight = WidgetUtils.ContentTitle();
+            // If there is no any mission, then don't need scroll bar
+            if (_missionDTOs.Count == 0) {
+                NewHeight = 0;
+                return false;
+            }
+            // Calculate height of cells
+            int cellHeight = (int) (_contentOuterPanel.Height * _contentPanel.CellHightRatio);
+            _contentPanel.CellVerticalMargin = cellHeight / 15;
+            _contentPanel.CellSize = new(0, cellHeight);
+            // Calculate table's size, depends on all cells
+            int rowsCount = (int) Math.Ceiling(_missionDTOs.Count / (double) _contentPanel.TableColumns);
+            _contentPanel.NewHeight = (rowsCount + 1) * _contentPanel.CellVerticalMargin + rowsCount * _contentPanel.CellSize.Height;
+            if (_contentPanel.NewHeight > parentNewHeight) {
+                return true;
+            } else {
+                _contentPanel.NewHeight = parentNewHeight;
+                return false;
+            }
+        }
+
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<ProductMissionDTO> blockClickAction) {
-            _missionsTable.Controls.Clear();
-            for (int i = 0; i < missionDTOs.Count; i++) {
-                ProductMissionDTO mission = missionDTOs[i];
-                if (mission.ProductSides != null && mission.ProductSides.Count > 0) {
-                    Image? coverImage = null;
-                    foreach (ProductSideDTO sideDTO in mission.ProductSides) {
-                        if (sideDTO.image != null && sideDTO.image != string.Empty) {
-                            coverImage = CommonUtils.ImageBase64ToImage(sideDTO.image);
-                            if (coverImage != null) {
-                                break;
+            if (missionDTOs.Count > 0) {
+                _contentPanel.BigButtonPanel.Hide();
+                _contentPanel.MissionsTable.Show();
+                _contentPanel.MissionsTable.Controls.Clear();
+                for (int i = 0; i < missionDTOs.Count; i++) {
+                    ProductMissionDTO mission = missionDTOs[i];
+                    if (mission.ProductSides != null && mission.ProductSides.Count > 0) {
+                        Image? coverImage = null;
+                        foreach (ProductSideDTO sideDTO in mission.ProductSides) {
+                            if (sideDTO.image != null && sideDTO.image != string.Empty) {
+                                coverImage = CommonUtils.ImageBase64ToImage(sideDTO.image);
+                                if (coverImage != null) {
+                                    break;
+                                }
                             }
                         }
-                    }
-                    // 创建一个任务展示块
-                    ProductMissionBlock<ProductMissionDTO> block = new(
+                        // 创建一个任务展示块
+                        ProductMissionBlock<ProductMissionDTO> block = new(
                             mission,
                             coverImage,
                             Properties.Resources.image_choose,
@@ -57,26 +80,88 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
                             ColorConfigs.COLOR_MISSION_BLOCK_BACKGROUND,
                             ColorConfigs.COLOR_MISSION_BLOCK_IMAGE_BORDER
-                        )
-                    {
-                        Parent = _missionsTable,
-                    };
-                    block.Click += (sender, eventArgs) => {
-                        blockClickAction(block.Entity);
-                    };
+                        ) {
+                            Parent = _contentPanel.MissionsTable,
+                        };
+                        block.Click += (sender, eventArgs) => {
+                            blockClickAction(block.Entity);
+                        };
+                    }
                 }
+                if (!_missionDTOs.Select(m => m.id).SequenceEqual(missionDTOs.Select(m => m.id))) {
+                    _missionDTOs = missionDTOs;
+                    _contentOuterPanel.ResizeChildren();
+                }
+            } else {
+                _contentPanel.MissionsTable.Hide();
+                _contentPanel.BigButtonPanel.Show();
             }
+            _contentPanel.ResizeCells();
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Resize title panel
             _titlePanel.Size = new(Width, _titleHeight);
-            // Resize table panel
-            _missionsTable.Size = new(Width, Height - _titleHeight);
-            // Rezie blocks
-            foreach (Control control in _missionsTable.Controls) {
-                control.Size = _cellSize;
-                control.Margin = new(_cellHorizontalMargin, _cellVerticalMargin, 0, 0);
+            // Resize content panel
+            _contentOuterPanel.Size = new(Width, Height - _titleHeight);
+        }
+
+        private class ContentPanel: CustomContentPanel {
+            private readonly int _tableColumns = 4;
+            private readonly float _cellGapRatio = 0.02F;
+            private readonly float _cellHightRatio = 0.21F;
+
+            private Func<int, bool> _calculateSizes;
+            private TableLayoutPanel _missionsTable;
+            private MissionNewButtonPanel _bigButtonPanel;
+            private Size _cellSize;
+            private int _cellHorizontalMargin;
+            private int _cellVerticalMargin;
+
+            public int TableColumns => _tableColumns;
+            public float CellHightRatio => _cellHightRatio;
+            public TableLayoutPanel MissionsTable { get => _missionsTable; set => _missionsTable = value; }
+            public MissionNewButtonPanel BigButtonPanel { get => _bigButtonPanel; set => _bigButtonPanel = value; }
+            public Size CellSize { get => _cellSize; set => _cellSize = value; }
+            public int CellHorizontalMargin { get => _cellHorizontalMargin; set => _cellHorizontalMargin = value; }
+            public int CellVerticalMargin { get => _cellVerticalMargin; set => _cellVerticalMargin = value; }
+
+            public ContentPanel(Func<int, bool> calculateSizes) {
+                _calculateSizes = calculateSizes;
+                _missionsTable = new() {
+                    Margin = new(0),
+                    Parent = this,
+                    ColumnCount = _tableColumns,
+                    Padding = new(0),
+                    Visible = false,
+                };
+                _bigButtonPanel = new() {
+                    Margin = new Padding(0),
+                    Parent = this,
+                    Visible = false,
+                };
+            }
+
+            public override bool CheckNeedsScrollBar(int parentNewHeight) {
+                return _calculateSizes(parentNewHeight);
+            }
+
+            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+                _missionsTable.Size = Size;
+                _bigButtonPanel.Size = Size;
+                // Rezie blocks
+                ResizeCells();
+            }
+
+            public void ResizeCells() {
+                // Calculate width of cells
+                _cellHorizontalMargin = (int) (Width * _cellGapRatio);
+                int gapNum = _tableColumns + 1; // Including outer margin
+                _cellSize.Width = (Width - _cellHorizontalMargin * gapNum) / _tableColumns;
+                foreach (Control control in _missionsTable.Controls) {
+                    control.Size = _cellSize;
+                    control.Margin = new(_cellHorizontalMargin, _cellVerticalMargin, 0, 0);
+                }
             }
         }
     }

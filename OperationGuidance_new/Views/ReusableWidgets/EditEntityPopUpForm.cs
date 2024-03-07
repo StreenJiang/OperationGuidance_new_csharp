@@ -1,7 +1,5 @@
 using CustomLibrary.Buttons;
-using CustomLibrary.Configs;
 using CustomLibrary.Forms;
-using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
 using CustomLibrary.TextBoxes;
@@ -117,67 +115,5 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Override methods
         #endregion
-    }
-
-    public class SubPanel<T>: CustomContentPanel {
-        private T _dto;
-        private TitlePanel _titlePanel;
-        private TableLayoutPanel _tablePanel;
-
-        public TitlePanel TitlePanel { get => _titlePanel; set => _titlePanel = value; }
-        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-
-        public SubPanel(T dto, string title, int columnCount) {
-            _dto = dto;
-            _titlePanel = new(title) {
-                Parent = this,
-                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
-            };
-            _tablePanel = new() {
-                Parent = this,
-                Margin = new(0),
-                ColumnCount = columnCount,
-            };
-        }
-
-        public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
-            CustomTextBoxGroup boxGroup = WidgetUtils.AddTextBox(_tablePanel, _dto, boxName, numberOnly, propertySetter);
-            boxGroup.NameAlignment = HorizontalAlignment.Right;
-            boxGroup.Ratio = 7;
-            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => WidgetUtils.HandleTextChanged(_dto, boxGroup, 0, propertySetter);
-            return boxGroup;
-        }
-        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
-            CustomComboBoxGroup<V> boxGroup = WidgetUtils.AddComboBox(_tablePanel, _dto, boxName, propertySetter, items);
-            boxGroup.NameAlignment = HorizontalAlignment.Right;
-            boxGroup.Ratio = 7;
-            return boxGroup;
-        }
-        public void ResizeSelf(int width) {
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-            int boxMargin = boxHeight / 5;
-            int titleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
-            int titleMargin = titleHeight / 5;
-            int tableHeight = 0;
-            int previousRowIndex = -1;
-            foreach (Control control in _tablePanel.Controls) {
-                if (control.Visible) {
-                    int currentRowIndex = _tablePanel.GetPositionFromControl(control).Row;
-                    if (currentRowIndex != previousRowIndex) {
-                        previousRowIndex = currentRowIndex;
-                        tableHeight += boxHeight + boxMargin * 2;
-                    }
-                }
-            }
-            _titlePanel.Margin = new(0, boxMargin, 0, boxMargin);
-            _titlePanel.Size = new(width, titleHeight);
-            _tablePanel.Size = new(width, tableHeight);
-            foreach (Control control in _tablePanel.Controls) {
-                control.Margin = new(boxMargin);
-                control.Size = new(_tablePanel.Width / _tablePanel.ColumnCount - boxMargin * 2, boxHeight);
-            }
-            Size = new(width, tableHeight + titleHeight + titleMargin * 2);
-            Invalidate();
-        }
     }
 }

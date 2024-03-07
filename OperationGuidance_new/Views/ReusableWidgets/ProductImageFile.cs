@@ -91,12 +91,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _rotateAngle = from.RotateAngle;
         }
 
-        public void ImageSelect() {
+        public void ImageSelect(Action? afterSelected = null) {
             OpenFileDialog dialog = new() {
                 Title = "请选择产品图片",
                 Filter = "Picture file|*.jpg;*.jpeg;*.png",
             };
             if (dialog.ShowDialog() == DialogResult.OK) {
+                ClearBuffer();
                 _filePath = dialog.FileName;
                 _image = Image.FromFile(_filePath);
                 _centerLocation = new(0, 0);
@@ -107,6 +108,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _rotateAngle = 0;
                 RecalculateZoomingRatio();
                 RefreshImage();
+                if (afterSelected != null) {
+                    afterSelected();
+                }
             }
         }
 
