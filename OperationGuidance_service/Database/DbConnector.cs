@@ -32,7 +32,7 @@ namespace OperationGuidance_service.Database {
                 Directory.CreateDirectory(dataSourcePath);
             }
             string dataSource = dataSourcePath + DatabaseName;
-            string commandText = Resource.init;
+            string commandText = Resource.init_sqlite;
             using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True;"))
             using (SQLiteCommand command = conn.CreateCommand()) {
                 try {
