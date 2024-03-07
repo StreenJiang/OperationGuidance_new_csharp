@@ -12,6 +12,7 @@ public class TitlePanel: Panel {
     private int _underlineThickness;
 
     public Color? UnderlineColor { get => _underlineColor; set => _underlineColor = value; }
+    public List<Control> RightButtons { get => _rightButtons; set => _rightButtons = value; }
 
     public TitlePanel(string title) {
         Margin = new(0);

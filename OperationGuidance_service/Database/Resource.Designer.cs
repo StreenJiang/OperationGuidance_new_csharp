@@ -85,9 +85,9 @@ namespace OperationGuidance_service.Database {
         ///CREATE TABLE &quot;device_arm&quot; (
         ///  &quot;id&quot; i [rest of string was truncated]&quot;;.
         /// </summary>
-        internal static string init {
+        internal static string init_sqlite {
             get {
-                return ResourceManager.GetString("init", resourceCulture);
+                return ResourceManager.GetString("init_sqlite", resourceCulture);
             }
         }
     }

@@ -61,7 +61,7 @@ namespace OperationGuidance_new.Views {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
-                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行编辑操作。");
                 } else {
                     if (_dataDTOList.Count > 0) {
                         UserAccountInfoDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
@@ -90,9 +90,7 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup staffId = _editEntityPopUpForm.AddTextBox("员工ID", false, 
                 (UserAccountInfoDTO dto, int? value) => dto.staff_id = value ?? 0);
             staffId.NumberOnly = true;
-            if (dto.staff_id != null) {
-                staffId.SetValue(0, dto.staff_id.Value + "");
-            }
+            staffId.SetValue(0, dto.staff_id + "");
             CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("姓名", false, 
                 (UserAccountInfoDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {

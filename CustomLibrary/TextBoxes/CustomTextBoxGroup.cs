@@ -21,7 +21,6 @@ namespace CustomLibrary.TextBoxes {
         private FlowLayoutPanel _textBoxesPanel;
         private List<CustomTextBox> _textBoxes;
         private Color _boxBackColor;
-        private Color? _disabledBackColor;
         private Color? _borderColor;
         private Color? _borderColorError;
 
@@ -146,6 +145,10 @@ namespace CustomLibrary.TextBoxes {
             _separators = new();
             // Add a default box
             AddTextBox();
+            BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER;
+            BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
+            BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR;
+            ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND;
         }
 
         public CustomTextBox AddTextBox() {
@@ -240,11 +243,15 @@ namespace CustomLibrary.TextBoxes {
             if (_separators.Count > 0) {
                 // If there are any remaining pixels, split them into separate separators
                 int remainingWidth = _textBoxesPanel.Width - boxWidth * boxesCount - (_separatorSize.Width + hMarginTemp * 2) * separatorCount;
+                remainingWidth -= GetExtraWidth();
                 int indexTemp = 0;
                 while (remainingWidth > 0) {
                     _separators[indexTemp].Width += 1;
                     indexTemp++;
                     remainingWidth--;
+                    if (indexTemp >= _separators.Count) {
+                        indexTemp = 0;
+                    }
                 }
             }
         }
@@ -260,6 +267,10 @@ namespace CustomLibrary.TextBoxes {
             _boxBeginLocation = new(Width - Padding.Right - boxesRangeTemp, Padding.Top);
             _textBoxesPanel.Location = _boxBeginLocation;
             return boxesRangeTemp;
+        }
+
+        protected virtual int GetExtraWidth() {
+            return 0;
         }
 
         protected override void OnPaint(PaintEventArgs e) {

@@ -2,6 +2,7 @@
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Configurations;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_service.Utils {
     public static class SystemUtils {
@@ -28,6 +29,23 @@ namespace OperationGuidance_service.Utils {
 
         public static string LoggedUserName() {
             return _user != null && _user.name != null ? _user.name : "UnKnownUser";
+        }
+
+        public static Roles? GetRoleNameByUserId(int id) {
+            UserAccountInfoDTO? userAccountInfoDTO = GetApis().FindUserById(new(id)).UserAccountInfoDTO;
+            if (userAccountInfoDTO == null) {
+                System.Console.WriteLine("Account is not exists");
+                return null;
+            }
+            if (userAccountInfoDTO.role_type == (int) Roles.DEVELOPER) {
+                return Roles.DEVELOPER;
+            } else if (userAccountInfoDTO.role_type == (int) Roles.ADMIN) {
+                return Roles.ADMIN;
+            } else if (userAccountInfoDTO.role_type == (int) Roles.OPERATOR) {
+                return Roles.OPERATOR;
+            }
+            System.Console.WriteLine($"Can't find role type: {userAccountInfoDTO.role_type}");
+            return null;
         }
 
         // 获取Apis

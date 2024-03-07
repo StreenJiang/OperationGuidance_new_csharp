@@ -245,7 +245,7 @@ namespace CustomLibrary.ComboBoxes {
                 
                 _collapseTimer.Start();
             };
-            EventFuncs.AddClickAction(ItemsPanelAutoClose);
+            EventFuncs.AddMouseDownAction(ItemsPanelAutoClose);
             _errorBorderTimer = new() {
                 Interval = _errorBorderTimerInterval,
             };
@@ -388,7 +388,9 @@ namespace CustomLibrary.ComboBoxes {
             return t;
         }
         public bool IsDefaultValue() {
-            if (!_noItem && _needDefaultLabel) {
+            if (_noItem) {
+                return true;
+            } else if (!_noItem && _needDefaultLabel) {
                 return _selectButton.SelectedItem == null || _selectButton.Label == _defaultLabel;
             }
             return false;
@@ -541,7 +543,14 @@ namespace CustomLibrary.ComboBoxes {
             private bool _showRealValue;
             private Color? _disabledBackColor;
 
-            public bool IsCollapsed { get => _isCollapsed; set => _isCollapsed = value; }
+            public bool IsCollapsed { 
+                get => _isCollapsed; 
+                set {
+                    _isCollapsed = value; 
+                    SetIcon();
+                    Invalidate();
+                }
+            }
             public ComboBoxItem<I>? SelectedItem { 
                 get => _selectedItem; 
                 set {

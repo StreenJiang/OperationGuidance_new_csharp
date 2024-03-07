@@ -300,7 +300,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         protected override void OnClick(EventArgs e) {
             // Add this to prevent user from multiple click incorrectly
-            double clickTimeStamp = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            double clickTimeStamp = WidgetUtils.GetTimeMillisec(DateTime.Now);
             if (_lastClickTimeStamp == 0 || clickTimeStamp - _lastClickTimeStamp >= _clickDelay) {
                 _lastClickTimeStamp = clickTimeStamp;
                 base.OnClick(e);

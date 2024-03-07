@@ -77,15 +77,15 @@ namespace OperationGuidance_new.Configs {
                     },
                     new() {
                         Id = 505,
-                        Name = "串口设备管理",
-                        Icon = Properties.Resources.device_serial_port,
-                        ViewType = typeof(DeviceSerialPortView),
-                    },
-                    new() {
-                        Id = 506,
                         Name = "通讯设备管理",
                         Icon = Properties.Resources.device_communication,
                         ViewType = typeof(DeviceCommunicationView),
+                    },
+                    new() {
+                        Id = 506,
+                        Name = "串口设备管理",
+                        Icon = Properties.Resources.device_serial_port,
+                        ViewType = typeof(DeviceSerialPortView),
                     },
                     // new() {
                     //     Id = 507,

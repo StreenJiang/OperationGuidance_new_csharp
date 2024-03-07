@@ -98,37 +98,30 @@ namespace OperationGuidance_service.Controllers {
         // 查询所有未被删除的产品任务列表
         public QueryProductMissionListRsp QueryProductMissionListRsp(QueryProductMissionListReq req) {
             // 先查询任务清单
+            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
             List<ProductMission> missions = _productMissionService.QueryList(req.UserId);
             List<ProductMissionDTO> productMissionDTOs = new();
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
             // 根据任务查询关联的其他表
+            List<int> missionIds = missions.Select(m => m.id).ToList();
+            List<ProductSide> sides = _productSideService.FindBySqlCondition($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
+            List<int> boltIds = sides.Select(s => s.id).ToList();
+            List<ProductBolt> bolts = _productBoltService.FindBySqlCondition($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+
+            // 根据任务找到所有的sides及bolts
             for (int i = 0 ; i < missions.Count ; i++) {
-                ProductMission mission = missions[i];
-                ProductMissionDTO productMissionDTO = productMissionDTOs[i];
-
-                // 根据mission_id查询产品面列表
-                List<ProductSide> sides = _productSideService.FindBySqlCondition($"mission_id = {mission.id}");
-                if (sides.Count > 0) {
-                    // 将产品面信息存入任务对象
-                    List<ProductSideDTO> productSideDTOs = new();
-                    CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides, productSideDTOs);
-                    productMissionDTO.ProductSides = productSideDTOs;
-
-                    // 循环产品面查询螺栓点位信息
-                    for (int j = 0 ; j < sides.Count ; j++) {
-                        ProductSide side = sides[j];
-                        ProductSideDTO productSideDTO = productSideDTOs[j];
-
-                        List<ProductBolt> bolts = _productBoltService.FindBySqlCondition($"side_id = {side.id}");
-                        if (bolts.Count > 0) {
-                            // 将螺栓点位信息存入产品面对象
-                            List<ProductBoltDTO> productBoltDTOs = new();
-                            CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts, productBoltDTOs);
-                            productSideDTO.Bolts = productBoltDTOs;
-                        }
-                    }
+                ProductMissionDTO missionDTO = productMissionDTOs[i];
+                List<ProductSideDTO> productSideDTOs = new();
+                CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides.Where(m => m.mission_id == missionDTO.id).ToList(), productSideDTOs);
+                // 根据当前任务的所有side遍历找到对应的所有bolts
+                foreach (ProductSideDTO sideDTO in productSideDTOs) {
+                    List<ProductBoltDTO> productBoltDTOs = new();
+                    CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts.Where(b => b.side_id == sideDTO.id).ToList(), productBoltDTOs);
+                    sideDTO.Bolts = productBoltDTOs;
                 }
+                // 设定当前mission的所有sides
+                productMissionDTOs[i].ProductSides = productSideDTOs;
             }
 
             return new() {

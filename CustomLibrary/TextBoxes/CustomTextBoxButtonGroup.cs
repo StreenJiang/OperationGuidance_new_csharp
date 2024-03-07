@@ -73,5 +73,14 @@ namespace CustomLibrary.TextBoxes {
             }
             return boxesRangeTemp - buttonWidthSum - GapNameAndBox * _buttons.Count;
         }
+
+        protected override int GetExtraWidth() {
+            int extraWidth = 0;
+            foreach (CommonButton button in _buttons) {
+                extraWidth += button.Width;
+            }
+            extraWidth += GapNameAndBox * _buttons.Count;
+            return extraWidth;
+        }
     }
 }

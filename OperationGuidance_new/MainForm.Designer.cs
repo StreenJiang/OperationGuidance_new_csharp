@@ -13,6 +13,7 @@ using CustomLibrary.Events;
 using CustomLibrary.Configs;
 using OperationGuidance_new.Tasks;
 using System.Net.NetworkInformation;
+using System.ComponentModel;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -37,6 +38,7 @@ namespace OperationGuidance_new {
         private CustomMainMenuPanel mainMenuPanel;
         private CustomContentPanelBase mainContentPanel;
         private IKeyboardMouseEvents HookEvents;
+        private BackgroundWorker backgroundWorker;
 
         //[System.Runtime.InteropServices.DllImport("user32")]
         //protected static extern bool AnimateWindow(IntPtr hWnd, int dwTime, int dwFlags);
@@ -94,7 +96,13 @@ namespace OperationGuidance_new {
             mainContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             mainContentPanel.Margin = new Padding(0);
             mainContentPanel.Name = "mainContentPanel";
+            // BackgroundWorker
+            backgroundWorker = new() {
+                WorkerReportsProgress = true,
+            };
+
             HookEvents = Hook.GlobalEvents();
+
 
             // 全局鼠标事件
             EventFuncs.MainForm = this;
@@ -103,7 +111,10 @@ namespace OperationGuidance_new {
             };
             // This event must be under above event, otherwise this will not triggered after view changing, don't knwo why
             HookEvents.MouseUp += (sender, eventArgs) => {
-                EventFuncs.GlobalMouseClick(sender, eventArgs);
+                EventFuncs.GlobalMouseUp(sender, eventArgs);
+            };
+            HookEvents.MouseDown += (sender, eventArgs) => {
+                EventFuncs.GlobalMouseDown(sender, eventArgs);
             };
 
             List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
@@ -260,6 +271,28 @@ namespace OperationGuidance_new {
 
             // Initialize all tasks for devices
             TaskInitializer.Init();
+
+            // BackgroundWorker event
+            backgroundWorker.DoWork += (sender, eventArgs) => {
+                backgroundWorker.ReportProgress(100);
+            };
+            backgroundWorker.ProgressChanged += (sender, eventArgs) => {
+                foreach (Control control in Controls) {
+                    control.Size = this.ClientSize;
+                }
+            };
+            backgroundWorker.RunWorkerCompleted += (sender, eventArgs) => {
+            };
+            // SizeChanged event
+            SizeChanged += async (sender, eventArgs) => {
+                if (this.WindowState == FormWindowState.Minimized) {
+                    return;
+                }
+                while (backgroundWorker.IsBusy) {
+                    await Task.Delay(100);
+                }
+                backgroundWorker.RunWorkerAsync();
+            };
         }
 
         #endregion

@@ -67,7 +67,7 @@ namespace OperationGuidance_new.Views {
                 if (ids.Count <= 0) {
                     WidgetUtils.ShowNoticePopUp("请选择要编辑的数据。");
                 } else if (ids.Count > 1) {
-                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行修改操作。");
+                    WidgetUtils.ShowNoticePopUp("只能选择一条数据进行编辑操作。");
                 } else {
                     if (_dataDTOList.Count > 0) {
                         DeviceArmDTO dto = _dataDTOList.Single(dto => dto.id == ids[0]);
@@ -91,12 +91,15 @@ namespace OperationGuidance_new.Views {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             // 添加字段
-            CustomTextBoxGroup brandName = _editEntityPopUpForm.AddTextBox("力臂名称", false, 
+            CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("力臂名称", false, 
                 (DeviceArmDTO dto, string? value) => dto.name = value ?? "");
-            brandName.Ratio = 6;
+            name.Ratio = 6;
             if (dto.name != null) {
-                brandName.SetValue(0, dto.name);
+                name.SetValue(0, dto.name);
             }
+            name.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                name.GetTextBox(0).IsError = string.IsNullOrEmpty(name.GetTextBox(0).Box.Text);
+            };
             CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("力臂描述", false, 
                 (DeviceArmDTO dto, string? value) => dto.description = value ?? "");
             description.Ratio = 6;
@@ -135,14 +138,44 @@ namespace OperationGuidance_new.Views {
                 (DeviceArmDTO dto, int value) => dto.type = value, armTypes);
             type.Ratio = 6;
             type.SetCurrent(type.IndexOf(dto.type));
+            type.ItemSelected += () => {
+                type.SetError(type.IsDefaultValue());
+            };
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
-                if (ipBox.IsError) {
-                    WidgetUtils.ShowErrorPopUp("IP地址格式错误！");
+                bool check = true;
+                string warningMsg = "";
+                int warningIndex = 1;
+                if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
+                    check = false;
+                    name.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 力臂名称不能为空\r\n";
+                }
+                if (string.IsNullOrEmpty(ipBox.Box.Text)) {
+                    check = false;
+                    ipBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. IP地址不能为空\r\n";
+                } else if (ipBox.IsError) {
+                    check = false;
+                    warningMsg += $"{warningIndex++}. IP地址格式错误\r\n";
+                }
+                if (string.IsNullOrEmpty(portBox.Box.Text)) {
+                    check = false;
+                    portBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. 端口号不能为空\r\n";
                 } else if (portBox.IsError) {
-                    WidgetUtils.ShowErrorPopUp("端口设置出错！");
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 端口设置出错\r\n";
+                }
+                if (type.IsDefaultValue()) {
+                    type.SetError(true);
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 没有选择力臂类型\r\n";
+                }
+                if (!check) {
+                    WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                 } else {
                     AddOrUpdate(dto, callBackAction);
                     _editEntityPopUpForm.Hide();

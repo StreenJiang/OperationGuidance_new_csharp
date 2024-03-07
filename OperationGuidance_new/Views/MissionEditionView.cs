@@ -23,6 +23,9 @@ namespace OperationGuidance_new.Views {
         private ProductMissionDTO _missionDTO;
         private MissionEditionPage? _editionPage;
 
+        public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
+        public MissionEditionPage? EditionPage { get => _editionPage; set => _editionPage = value; }
+
         public MissionEditionView() {
             CreateANewOne();
         }
@@ -42,6 +45,7 @@ namespace OperationGuidance_new.Views {
             if (_editionPage != null) {
                 _editionPage.Dispose();
             }
+            _missionDTO = missionDTO;
             _editionPage = new(this, missionDTO);
             _editionPage.ResizeChildren();
             return _editionPage;
@@ -57,12 +61,17 @@ namespace OperationGuidance_new.Views {
             return false;
         }
 
+        public override void VisibleToTrue() {
+            if (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES) {
+                CreateANewOne();
+            }
+        }
+
         // Class: inner page panel
         public class MissionEditionPage: CustomContentPanel {
             private OperationGuidanceApis _apis;
             private MissionEditionView _parentView;
             private ProductMissionDTO _missionDTO;
-            private bool _saved;
 
             // Contents
             private CustomContentPanel _top;
@@ -114,9 +123,10 @@ namespace OperationGuidance_new.Views {
             private RightContentPanel _rightContentPanel;
             private CustomVScrollingContentPanel _autoScrollContentOuterPanel;
 
+            public bool Modified { get; set; } = false;
+
             public MissionEditionPage(MissionEditionView parent, ProductMissionDTO missionDTO) : base() {
                 _apis = SystemUtils.GetApis();
-                _saved = false;
                 _parentView = parent;
                 Parent = parent;
                 _missionDTO = missionDTO;
@@ -163,13 +173,14 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Left,
                 };
                 CustomTextBox missionNameBox = _missionName.GetTextBox(0);
+                missionNameBox.Text = _missionDTO.name;
                 missionNameBox.SizeChanged += (sender, eventArgs) => missionNameBox.Box.SelectionStart = 0;
                 missionNameBox.TextChanged += (sender, eventArgs) => {
                     if (!_missionName.HasError) {
                         _missionDTO.name = missionNameBox.Text;
+                        Modified = true;
                     }
                 };
-                missionNameBox.Text = _missionDTO.name;
                 // PN码输入框
                 _missionPnCode = new("PN码") {
                     Parent = _top,
@@ -181,13 +192,14 @@ namespace OperationGuidance_new.Views {
                     NumberOnly = true,
                 };
                 CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
+                missionPnCodeBox.Text = _missionDTO.pn_code;
                 missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
                 missionPnCodeBox.TextChanged += (sender, eventArgs) => {
                     if (!_missionPnCode.HasError) {
                         _missionDTO.pn_code = missionPnCodeBox.Text;
+                        Modified = true;
                     }
                 };
-                missionPnCodeBox.Text = _missionDTO.pn_code;
 
                 _buttonSave = new() {
                     Parent = _top,
@@ -200,7 +212,7 @@ namespace OperationGuidance_new.Views {
                     AddOrUpdateProductMissionReq req = new(_missionDTO);
                     AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
                     if (rsp.RsponseCode == HttpResponseCode.OK) {
-                        _saved = true;
+                        Modified = false;
                         _missionDTO = rsp.ProductMissionDTO;
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // 保存后跳转至任务列表界面
@@ -223,7 +235,7 @@ namespace OperationGuidance_new.Views {
                     BlockHoverUp = true,
                 };
                 _buttonNew.Click += (sender, eventArgs) => {
-                    if (!_saved) {
+                    if (Modified) {
                         DialogResult result = MessageBox.Show(null, "当前还有未保存内容，确定新增任务？", "新增任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                         if (result == DialogResult.Yes) {
                             _parentView.CreateANewOne();
@@ -238,25 +250,29 @@ namespace OperationGuidance_new.Views {
                     BlockHoverUp = true,
                 };
                 _buttonDelete.Click += (sender, eventArgs) => {
-                    DialogResult result = MessageBox.Show(null, "确定删除任务？", "删除任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (result == DialogResult.Yes) {
-                        DeleteProductMissionReq req = new(_missionDTO);
-                        DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
-                        if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
-                            MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            // 删除后跳转至任务列表界面
-                            WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
-                        } else {
-                            MessageBox.Show(null, "删除失败！错误信息：" + rsp.RsponseMessage, "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    if (_missionDTO.id > 0) {
+                        DialogResult result = MessageBox.Show(null, "确定删除任务？", "删除任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        if (result == DialogResult.Yes) {
+                            DeleteProductMissionReq req = new(_missionDTO);
+                            DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
+                            if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
+                                MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
+                                // 删除后跳转至任务列表界面
+                                WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                            } else {
+                                MessageBox.Show(null, "删除失败！错误信息：" + rsp.RsponseMessage, "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
                         }
+                    } else {
+                        WidgetUtils.ShowNoticePopUp("此任务没有保存至数据库，无法执行删除操作");
                     }
                 };
 
                 // 设置图片编辑时可撤回的次数（即可以回溯多少次操作）
                 _imageOperationBufferLength = 20;
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
-                    _currentProductImageFile.ClearBuffer();
-                    _currentProductImageFile.ImageSelect();
+                    _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
                 });
                 _imageButtonZoomIn = GenerateImageButton("放大图片", Properties.Resources.image_zoom_in, (sender, eventArgs) => {
@@ -337,8 +353,7 @@ namespace OperationGuidance_new.Views {
                 _mouseLeftDown = false;
                 _leftBottomContentPanel.SingleClickDelegate += (eventArgs) => {
                     if (_leftBottomContentPanel.CanTriggerClick()) {
-                        _currentProductImageFile.ClearBuffer();
-                        _currentProductImageFile.ImageSelect();
+                        _currentProductImageFile.ImageSelect(() => Modified = true);
                         _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
                     }
                 };
@@ -364,20 +379,23 @@ namespace OperationGuidance_new.Views {
                                 }
                             }
                         }
-                        if (boltDTO.serial_num != null) {
-                            _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num.Value);
-                            _currentSideButton.BoltSerialNums.Sort();
+                        
+                        boltDTO.name = $"BOLT" + boltDTO.serial_num;
+                        _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num);
+                        _currentSideButton.BoltSerialNums.Sort();
+                        
+                        OpenNewBoltPopUpForm(boltDTO, () => {
                             // Add new buttons
                             BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO);
                             BoltEditionButton boltEditionButton = AddNewBoltEditionButton(_currentSideButton, boltDTO);
                             boltButton.Visible = true;
                             boltEditionButton.Visible = true;
                             // Add buttons into side button
-                            _currentSideButton.BoltButtons.Add(boltDTO.serial_num.Value, boltButton);
-                            _currentSideButton.BoltEditionButtons.Add(boltDTO.serial_num.Value, boltEditionButton);
+                            _currentSideButton.BoltButtons.Add(boltDTO.serial_num, boltButton);
+                            _currentSideButton.BoltEditionButtons.Add(boltDTO.serial_num, boltEditionButton);
 
                             // Reorder the edition buttons
-                            boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num.Value));
+                            boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num));
                             // Do this to force fire SizeChanged event
                             ResizeBottomLeft();
                             ForceResizeRight();
@@ -387,12 +405,7 @@ namespace OperationGuidance_new.Views {
                                 sideDTO.Bolts = new();
                             }
                             sideDTO.Bolts.Add(boltDTO);
-
-                            // Trigger open pop up logic of bolt
-                            if (boltEditionButton.SingleClickDelegate != null) {
-                                boltEditionButton.SingleClickDelegate(eventArgs);
-                            }
-                        }
+                        });
                     }
                 };
                 _controlDown = false;
@@ -411,6 +424,7 @@ namespace OperationGuidance_new.Views {
                         if (!_needSaveBuffer) {
                             _currentProductImageFile.ImageUndo();
                         }
+                        Modified = _needSaveBuffer;
                         _needSaveBuffer = false;
                         Cursor = Cursors.Arrow;
                     }
@@ -510,6 +524,8 @@ namespace OperationGuidance_new.Views {
                     ResizeSideButtons();
                     // Toggle new button right after creating
                     SideButonClick(sideButton);
+                    // Change state
+                    Modified = true;
                 };
             }
 
@@ -545,6 +561,7 @@ namespace OperationGuidance_new.Views {
                         // click first then close
                         _sideButtons.Remove(sideButton);
                     }
+                    Modified = true;
                 };
                 sideButton.SingleClickDelegate += (eventArgs) => SideButonClick(sideButton);
                 sideButton.DoubleClickDelegate += (eventArgs) => {
@@ -579,16 +596,15 @@ namespace OperationGuidance_new.Views {
                                 sideButton.Width = (int) (btnLabelWidth + sideButton.Height * _sideButtonWidthRatio);
                             }
                         }
+                        Modified = true;
                     }
                 };
 
                 // Initialize bolts buttons
                 if (sideDTO.Bolts != null && sideDTO.Bolts.Count > 0) {
                     foreach (ProductBoltDTO boltDTO in sideDTO.Bolts) {
-                        if (boltDTO.serial_num != null) {
-                            sideButton.BoltButtons.Add(boltDTO.serial_num.Value, AddNewBoltButton(sideButton, boltDTO));
-                            sideButton.BoltSerialNums.Add(boltDTO.serial_num.Value);
-                        }
+                        sideButton.BoltButtons.Add(boltDTO.serial_num, AddNewBoltButton(sideButton, boltDTO));
+                        sideButton.BoltSerialNums.Add(boltDTO.serial_num);
                     }
                 }
                 return sideButton;
@@ -636,6 +652,123 @@ namespace OperationGuidance_new.Views {
                 };
                 return boltButton;
             }
+            
+            private void OpenNewBoltPopUpForm(ProductBoltDTO boltDTO, Action addNewBoltBtns) {
+                _boltPopUpForm = new(boltDTO) {
+                    Title = boltDTO.serial_num + " - " + boltDTO.name,
+                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                };
+                // 添加按钮
+                CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
+                confirmButton.Click += (s, e) => {
+                    if (saveBoltInfo(boltDTO)) {
+                        addNewBoltBtns();
+                    }
+                };
+                CommonButton cancelButton = _boltPopUpForm.AddButton("关闭");
+                cancelButton.Click += (s, e) => {
+                    _boltPopUpForm.Dispose();
+                };
+                // Show form but make it transparent to create handles for its children
+                _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
+                // Resize all widgets
+                ResizePopUpForm();
+                // Real yhow_editionPage
+                _boltPopUpForm.Show();
+            }
+
+            private bool saveBoltInfo(ProductBoltDTO boltDTO) {
+                bool check = true;
+                string warningMsg = "";
+                int warningIndex = 1;
+                if (_boltPopUpForm.Workstation.Value == null) {
+                    check = false;
+                    _boltPopUpForm.Workstation.SetError(true); 
+                    warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
+                }
+                if (_boltPopUpForm.PositionToggle.Checked) {
+                    string x = _boltPopUpForm.PositionBox.GetTextBox(0).Box.Text;
+                    string y = _boltPopUpForm.PositionBox.GetTextBox(1).Box.Text;
+                    string z = _boltPopUpForm.PositionBox.GetTextBox(2).Box.Text;
+                    if (string.IsNullOrEmpty(x) || string.IsNullOrEmpty(y) || string.IsNullOrEmpty(z)) {
+                        check = false;
+                        _boltPopUpForm.PositionBox.GetTextBox(0).IsError = true;
+                        _boltPopUpForm.PositionBox.GetTextBox(1).IsError = true;
+                        _boltPopUpForm.PositionBox.GetTextBox(2).IsError = true;
+                        warningMsg += $"{warningIndex++}. 点位坐标不能为空\r\n";
+                    }
+                } else {
+                    boltDTO.position = null;
+                }
+                if (_boltPopUpForm.ParameterSetToggle.Checked) {
+                    string pset = _boltPopUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0) {
+                        check = false;
+                        _boltPopUpForm.ParameterSetBox.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 程序号不能为空且必须大于0\r\n";
+                    }
+                } else {
+                    boltDTO.parameters_set = null;
+                }
+                if (_boltPopUpForm.SpecificationToggle.Checked) {
+                    string specification = _boltPopUpForm.SpecificationBox.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0) {
+                        check = false;
+                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 螺栓规格不能为空且必须大于0\r\n";
+                    }
+                } else {
+                    boltDTO.specification= null;
+                }
+                if (_boltPopUpForm.BitSpecificationToggle.Checked) {
+                    string bitSpecification = _boltPopUpForm.BitSpecificationBox.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(bitSpecification) || int.Parse(bitSpecification) <= 0) {
+                        check = false;
+                        _boltPopUpForm.BitSpecificationBox.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 批头规格不能为空且必须大于0\r\n";
+                    }
+                } else {
+                    boltDTO.bit_specification = null;
+                }
+                if (_boltPopUpForm.TorqueToggle.Checked) {
+                    string torqueMin = _boltPopUpForm.TorqueBox.GetTextBox(0).Box.Text;
+                    string torqueMax = _boltPopUpForm.TorqueBox.GetTextBox(1).Box.Text;
+                    if (string.IsNullOrEmpty(torqueMin) || string.IsNullOrEmpty(torqueMax)) {
+                        check = false;
+                        _boltPopUpForm.TorqueBox.GetTextBox(0).IsError = true;
+                        _boltPopUpForm.TorqueBox.GetTextBox(1).IsError = true;
+                        warningMsg += $"{warningIndex++}. 扭矩上下限不能为空\r\n";
+                    }
+                } else {
+                    boltDTO.torque_min = null;
+                    boltDTO.torque_max = null;
+                }
+                if (_boltPopUpForm.AngleToggle.Checked) {
+                    string AngleMin = _boltPopUpForm.AngleBox.GetTextBox(0).Box.Text;
+                    string AngleMax = _boltPopUpForm.AngleBox.GetTextBox(1).Box.Text;
+                    if (string.IsNullOrEmpty(AngleMin) || string.IsNullOrEmpty(AngleMax)) {
+                        check = false;
+                        _boltPopUpForm.AngleBox.GetTextBox(0).IsError = true;
+                        _boltPopUpForm.AngleBox.GetTextBox(1).IsError = true;
+                        warningMsg += $"{warningIndex++}. 扭矩上下限不能为空\r\n";
+                    }
+                } else {
+                    boltDTO.angle_min = null;
+                    boltDTO.angle_max = null;
+                }
+
+                if (!check) {
+                    WidgetUtils.ShowWarningPopUp($"信息暂存失败：\r\n{warningMsg}");
+                } else {
+                    // 根据校验结果判断是否可以保存
+                    Modified = true;
+                    _boltPopUpForm.SaveTo(boltDTO);
+                    WidgetUtils.ShowNoticePopUp("信息暂存成功！");
+                    _boltPopUpForm.Dispose();
+                }
+
+                return check;
+            }
 
             private void OpenBoltPopUpForm(ProductBoltDTO boltDTO) {
                 _boltPopUpForm = new(boltDTO) {
@@ -645,24 +778,16 @@ namespace OperationGuidance_new.Views {
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
-                    // 程序号检查
-                    string pset = _boltPopUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
-                    _boltPopUpForm.ParameterSetBox.CheckError(0, string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0);
-                    // 站点检查
-                    _boltPopUpForm.Workstation.SetError(_boltPopUpForm.Workstation.Value == null); 
-                    // 根据校验结果判断是否可以保存
-                    if (!_boltPopUpForm.ConfirmSave()) {
-                        WidgetUtils.ShowErrorPopUp("请检查内容是否正确！");
-                    } else {
-                        _boltPopUpForm.SaveTo(boltDTO);
-                        _boltPopUpForm.Dispose();
-                    }
+                    saveBoltInfo(boltDTO);
                 };
                 CommonButton deleteButton = _boltPopUpForm.AddButton("删除点位");
                 deleteButton.Click += (s, e) => {
-                    _currentSideButton.DeleteBolt();
-                    _boltPopUpForm.Dispose();
-                    ForceResizeRight();
+                    if (WidgetUtils.ShowConfirmPopUp("确定要删除当前点位？")) {
+                        Modified = true;
+                        _currentSideButton.DeleteBolt();
+                        _boltPopUpForm.Dispose();
+                        ForceResizeRight();
+                    }
                 };
                 CommonButton cancelButton = _boltPopUpForm.AddButton("关闭");
                 cancelButton.Click += (s, e) => {
@@ -715,9 +840,7 @@ namespace OperationGuidance_new.Views {
                 // Create all bolt edition buttons and set them invisible
                 foreach (SideButton sideButton in _sideButtons) {
                     foreach (BoltButton button in sideButton.BoltButtons.Values) {
-                        if (button.BoltDTO.serial_num != null) {
-                            sideButton.BoltEditionButtons.Add(button.BoltDTO.serial_num.Value, AddNewBoltEditionButton(sideButton, button.BoltDTO));
-                        }
+                        sideButton.BoltEditionButtons.Add(button.BoltDTO.serial_num, AddNewBoltEditionButton(sideButton, button.BoltDTO));
                     }
                 }
 
@@ -933,25 +1056,26 @@ namespace OperationGuidance_new.Views {
 
             private void ResizePopUpForm() {
                 if (_boltPopUpForm != null && !_boltPopUpForm.IsDisposed) {
-                    _boltPopUpForm.CalculateDetailProperties();
-
-                    Control mainForm = WidgetUtils.MainPanel.Parent;
-                    TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
-                    Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
-                    int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                    int boxMargin = boxHeight / 5;
-                    int tableHeight = (int) Math.Ceiling((decimal) tablePanel.Controls.Count / tablePanel.ColumnCount) * (boxHeight + boxMargin * 2);
-                    Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
-                    int tableWidth = contentSize.Width - contentPadding.Size.Width;
-                    _boltPopUpForm.BoxHeight = boxHeight;
-                    _boltPopUpForm.ButtonHeight = WidgetUtils.CommonButtonHeight();
-                    _boltPopUpForm.BoxMargin = boxMargin;
-                    _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
-
-                    _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
-                    if (_boltPopUpForm.Visible) {
-                        _boltPopUpForm.Invalidate();
-                    }
+                    _boltPopUpForm.ResizeSelf();
+                    // _boltPopUpForm.CalculateDetailProperties();
+                    //
+                    // Control mainForm = WidgetUtils.MainPanel.Parent;
+                    // TableLayoutPanel tablePanel = _boltPopUpForm.TablePanel;
+                    // Padding contentPadding = _boltPopUpForm.ContentPanel.Padding;
+                    // int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                    // int boxMargin = boxHeight / 5;
+                    // int tableHeight = (int) Math.Ceiling((decimal) tablePanel.Controls.Count / tablePanel.ColumnCount) * (boxHeight + boxMargin * 2);
+                    // Size contentSize = new((int) (mainForm.Width * .75), tableHeight + contentPadding.Size.Height);
+                    // int tableWidth = contentSize.Width - contentPadding.Size.Width;
+                    // _boltPopUpForm.BoxHeight = boxHeight;
+                    // _boltPopUpForm.ButtonHeight = WidgetUtils.CommonButtonHeight();
+                    // _boltPopUpForm.BoxMargin = boxMargin;
+                    // _boltPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                    //
+                    // _boltPopUpForm.SetContentSizeAndSelfSize(contentSize);
+                    // if (_boltPopUpForm.Visible) {
+                    //     _boltPopUpForm.Invalidate();
+                    // }
                 }
             }
 
@@ -1101,7 +1225,7 @@ namespace OperationGuidance_new.Views {
                 _toolTip = new() {
                     InitialDelay = 400,
                 };
-                _toolTip.SetToolTip(this, "双击修改产品面名称");
+                _toolTip.SetToolTip(this, "双击编辑产品面名称");
 
                 InitializeTimer();
             }
