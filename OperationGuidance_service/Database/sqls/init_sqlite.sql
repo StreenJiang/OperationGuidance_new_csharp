@@ -295,7 +295,7 @@ CREATE TABLE "user_account_info" (
 -- ----------------------------
 -- Records of user_account_info
 -- ----------------------------
-INSERT INTO "user_account_info" VALUES (1, NULL, 'Admin', NULL, 'root', 'root', -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO "user_account_info" VALUES (1, NULL, 'Admin', NULL, 'root', 'root', 1, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
 
 -- ----------------------------
 -- Auto increment value for user_account_info
