@@ -68,7 +68,7 @@ namespace CustomLibrary.Forms
         }
 
         public CustomPopUpForm() : base() {
-            Control mainParent = WidgetUtils.MainPanel.Parent;
+            Control mainParent = WidgetUtils.MainForm;
             // Initialize backboard
             _popUpFormBackboard = new() {
                 Owner = (Form) mainParent,
@@ -227,7 +227,7 @@ namespace CustomLibrary.Forms
         }
 
         public void CalculateDetailProperties() {
-            _popUpFormBackboard.Size = WidgetUtils.MainPanel.ClientSize;
+            _popUpFormBackboard.Size = WidgetUtils.MainForm.ClientSize;
             _titlePanel.Height = GetTitlePanelHeight();
             _buttonsPanel.Padding = GetButtonsPanelPadding();
             _buttonsPanel.Height = GetButtonsPanelHeight();
@@ -272,10 +272,10 @@ namespace CustomLibrary.Forms
         }
 
         private void AfterSizeChanged(object? sender, EventArgs eventArgs) {
-            if (WidgetUtils.MainPanel == null || WidgetUtils.MainPanel.IsDisposed || _popUpFormBackboard.IsDisposed) {
+            if (WidgetUtils.MainForm == null || WidgetUtils.MainForm.IsDisposed || _popUpFormBackboard.IsDisposed) {
                 return;
             }
-            _popUpFormBackboard.Location = WidgetUtils.MainPanel.PointToScreen(Point.Empty);
+            _popUpFormBackboard.Location = WidgetUtils.MainForm.PointToScreen(Point.Empty);
             int x = _popUpFormBackboard.Location.X;
             int y = _popUpFormBackboard.Location.Y;
             int width = _popUpFormBackboard.Width;

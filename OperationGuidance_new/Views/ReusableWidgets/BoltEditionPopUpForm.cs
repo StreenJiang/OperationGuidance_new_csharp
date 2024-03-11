@@ -192,10 +192,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _parameterSetToggle.Checked = boltDTO.parameters_set != null;
             _parameterSetBox = new("程序号") {
                 Parent = _parameterSetSubPanel.TablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -219,10 +215,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _specificationToggle.Checked = boltDTO.specification != null;
             _specificationBox = new("螺栓规格") {
                 Parent = _specificationSubPanel.TablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -246,10 +238,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _bitSpecificationToggle.Checked = boltDTO.bit_specification != null;
             _bitSpecificationBox = new("套筒位数") {
                 Parent = _bitSpecificationSubPanel.TablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -273,10 +261,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _torqueToggle.Checked = boltDTO.torque_min != null && boltDTO.torque_max != null;
             _torqueBox = new("扭矩范围") {
                 Parent = _torqueSubPanel.TablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -306,10 +290,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _angleToggle.Checked = boltDTO.angle_min != null && boltDTO.angle_max != null;
             _angleBox = new("角度范围") {
                 Parent = _angleSubPanel.TablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,

@@ -1,10 +1,8 @@
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.Requests {
     public class FindUserByIdReq: HttpRequest {
-        public int UserId { get; set; }
-        public FindUserByIdReq(int userId) {
-            UserId = userId;
-        }
+        public int UserId { get; set; } = SystemUtils.LoggedUserId;
     }
 }

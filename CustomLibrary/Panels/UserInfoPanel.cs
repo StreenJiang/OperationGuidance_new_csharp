@@ -8,10 +8,18 @@ namespace CustomLibrary.Panels {
         #region Fields
         private AvatarButton _avatarButton;
         private Label _userName;
+        private int _gapBetweenAvatarAndName;
         #endregion
 
         #region Properties
-        public string UserName { get => _userName.Text; set => _userName.Text = value; }
+        public AvatarButton AvatarButton { get => _avatarButton; set => _avatarButton = value; }
+        public string UserName { 
+            get => _userName.Text; 
+            set {
+                _userName.Text = value;
+                ResetMargin();
+            }
+        }
         #endregion
 
         #region Constructors
@@ -29,20 +37,23 @@ namespace CustomLibrary.Panels {
         }
         #endregion
 
-        #region Override methods
+        #region Methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Font
             int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
             Font = new Font(WidgetsConfigs.SystemFontFamily, textBoxHeight * .55F, FontStyle.Bold, GraphicsUnit.Pixel);
             _userName.Font = Font;
             // Gap
-            int gapBetweenAvatarAndName = textBoxHeight / 8;
+            _gapBetweenAvatarAndName = textBoxHeight / 8;
             // Avatar button
             int avatarSide = (int) (Width * .7);
             _avatarButton.Size = new(avatarSide, avatarSide);
-            _avatarButton.Margin = new((Width - avatarSide) / 2, (Height - avatarSide - gapBetweenAvatarAndName - textBoxHeight) / 2, 0, 0);
+            _avatarButton.Margin = new((Width - avatarSide) / 2, (Height - avatarSide - _gapBetweenAvatarAndName - textBoxHeight) / 2, 0, 0);
             // User name string
-            _userName.Margin = new((Width - _userName.Width) / 2, gapBetweenAvatarAndName, 0, 0);
+            ResetMargin();
+        }
+        private void ResetMargin() {
+            _userName.Margin = new((Width - _userName.Width) / 2, _gapBetweenAvatarAndName, 0, 0);
         }
         #endregion
     }

@@ -14,7 +14,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeIconImage() {
             if (Icon != null) {
-                int newSide = (int)(Height * _closebuttonIconRatio);
+                int newSide = (int) (Height * _closebuttonIconRatio);
                 Size newSize = new(newSide, newSide);
                 ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newSize);
                 // Recalculate image position

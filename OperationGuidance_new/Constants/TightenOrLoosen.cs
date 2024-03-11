@@ -1,6 +1,6 @@
 namespace OperationGuidance_new.Constants {
     public enum TightenOrLoosen {
-        TIGHTEN,    // 拧紧
-        LOOSEN,     // 反松
+        TIGHTENING      = 1, // 拧紧
+        LOOSENING       = 2, // 反松
     }
 }

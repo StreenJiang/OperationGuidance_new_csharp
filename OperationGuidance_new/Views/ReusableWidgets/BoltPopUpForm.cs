@@ -89,10 +89,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 程序号 pset
             _parameterSetBox = new("程序号") {
                 Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -101,10 +97,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 螺栓规格
             _specificationBox = new("螺栓规格") {
                 Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -113,10 +105,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 套筒位数
             _bitSpecificationBox = new("套筒位数") {
                 Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -125,10 +113,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 扭矩范围
             _torqueBox = new("扭矩范围") {
                 Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
@@ -140,10 +124,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 角度范围
             _angleBox = new("角度范围") {
                 Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,

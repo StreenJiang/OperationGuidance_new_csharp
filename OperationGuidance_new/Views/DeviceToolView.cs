@@ -148,10 +148,16 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
+                List<DeviceToolDTO> allData = apis.QueryDeviceToolList(new()).DeviceToolDTOs;
                 if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
                     check = false;
                     name.GetTextBox(0).IsError = true;
                     warningMsg += $"{warningIndex++}. 工具名称不能为空\r\n";
+                }
+                if (allData.Exists(d => d.id != dto.id && d.name == dto.name)) {
+                    check = false;
+                    name.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 工具名称已存在\r\n";
                 }
                 if (string.IsNullOrEmpty(ipBox.Box.Text)) {
                     check = false;
@@ -168,6 +174,12 @@ namespace OperationGuidance_new.Views {
                 } else if (portBox.IsError) {
                     check = false;
                     warningMsg += $"{warningIndex++}. 端口设置出错\r\n";
+                }
+                if (allData.Exists(d => d.id != dto.id && d.ip == dto.ip && d.port == dto.port)) {
+                    check = false;
+                    ipBox.IsError = true;
+                    portBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. 此IP地址及对应端口已存在，不可重复配置\r\n";
                 }
                 if (type.IsDefaultValue()) {
                     type.SetError(true);
@@ -204,7 +216,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override List<DeviceToolVO> QueryList() {
             QueryDeviceToolListRsp rsp = apis.QueryDeviceToolList(new() {
-                UserId = SystemUtils.LoggedUserId(),
+                UserId = SystemUtils.LoggedUserId,
             });
             _dataDTOList = rsp.DeviceToolDTOs;
             List<DeviceToolVO> vos = new();

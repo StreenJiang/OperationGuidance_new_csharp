@@ -238,10 +238,16 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
+                List<DeviceSerialPortDTO> allData = apis.QueryDeviceSerialPortList(new()).DeviceSerialPortDTOs;
                 if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
                     check = false;
                     name.GetTextBox(0).IsError = true;
                     warningMsg += $"{warningIndex++}. 设备名称不能为空\r\n";
+                }
+                if (allData.Exists(d => d.id != dto.id && d.name == dto.name)) {
+                    check = false;
+                    name.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 设备名称已存在\r\n";
                 }
                 if (portFullName.IsDefaultValue()) {
                     portFullName.SetError(true);
@@ -316,7 +322,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override List<DeviceSerialPortVO> QueryList() {
             QueryDeviceSerialPortListRsp rsp = apis.QueryDeviceSerialPortList(new() {
-                UserId = SystemUtils.LoggedUserId(),
+                UserId = SystemUtils.LoggedUserId,
             });
             _dataDTOList = rsp.DeviceSerialPortDTOs;
             List<DeviceSerialPortVO> vos = new();

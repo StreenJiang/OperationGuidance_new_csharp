@@ -126,7 +126,7 @@ namespace OperationGuidance_new.Configs {
                         Icon = Properties.Resources.mission_edition,
                         IsToggleButton = false,
                         Click = new((sender, eventArgs) => {
-                            DialogResult result = MessageBox.Show(null, "确定要退出登录吗？", "退出登录", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                            // DialogResult result = MessageBox.Show(null, "确定要退出登录吗？", "退出登录", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                         }),
                     },
                 },

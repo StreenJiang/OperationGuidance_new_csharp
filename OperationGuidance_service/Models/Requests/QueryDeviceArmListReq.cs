@@ -3,6 +3,6 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.Requests {
     public class QueryDeviceArmListReq: HttpRequest {
-        public int UserId { get; set; } = SystemUtils.LoggedUserId();
+        public int UserId { get; set; } = SystemUtils.LoggedUserId;
     }
 }

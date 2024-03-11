@@ -84,7 +84,6 @@ namespace OperationGuidance_new.Views {
             QueryProductMissionListReq req = new();
             QueryProductMissionListRsp rsp;
 
-            req.UserId = SystemUtils.LoggedUserId();
             rsp = apis.QueryProductMissionListRsp(req);
             _productMissionDTOs = rsp.ProductMissionsDTOs;
         }

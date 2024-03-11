@@ -27,6 +27,10 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             // TODO: use cache to prevent fetching data every time
             return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()}", new { @user_id = userId });
         }
+        public List<T> QueryListWithoutUserId() {
+            // TODO: use cache to prevent fetching data every time
+            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()}");
+        }
 
         public T? AddEntity(T entity) {
             return this.Wrapper.Add(entity);
@@ -65,7 +69,11 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         }
 
         public List<T> FindBySqlCondition(string sqlCondition) {
-            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = SystemUtils.LoggedUserId() });
+            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = SystemUtils.LoggedUserId });
+        }
+
+        public List<T> FindBySqlWithoutUserId(string sqlCondition) {
+            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
         }
     }
 }

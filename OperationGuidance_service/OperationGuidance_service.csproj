@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <Folder Include="Services\Interfaces\" />
-    <Folder Include="Database\sqls\" />
     <Folder Include="Wrapper\Interfaces\" />
   </ItemGroup>
 

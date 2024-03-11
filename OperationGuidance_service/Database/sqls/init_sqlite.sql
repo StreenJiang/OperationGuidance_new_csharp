@@ -10,7 +10,7 @@
  Target Server Version : 3030001
  File Encoding         : 65001
 
- Date: 07/02/2024 03:32:59
+ Date: 09/03/2024 14:52:35
 */
 
 PRAGMA foreign_keys = false;
@@ -34,6 +34,8 @@ CREATE TABLE "device_arm" (
   "modify_time" text(64) NOT NULL
 );
 
+
+
 -- ----------------------------
 -- Table structure for device_communication
 -- ----------------------------
@@ -52,6 +54,10 @@ CREATE TABLE "device_communication" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
+
+-- ----------------------------
+-- Records of device_communication
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for device_serial_port
@@ -78,6 +84,8 @@ CREATE TABLE "device_serial_port" (
   "modify_time" text(64) NOT NULL
 );
 
+
+
 -- ----------------------------
 -- Table structure for device_tool
 -- ----------------------------
@@ -96,6 +104,8 @@ CREATE TABLE "device_tool" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
+
+
 
 -- ----------------------------
 -- Table structure for operation_data
@@ -181,13 +191,17 @@ CREATE TABLE "operation_data" (
 );
 
 -- ----------------------------
+-- Records of operation_data
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for product_bolt
 -- ----------------------------
 DROP TABLE IF EXISTS "product_bolt";
 CREATE TABLE "product_bolt" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "side_id" integer,
-  "serial_num" integer,
+  "side_id" integer NOT NULL,
+  "serial_num" integer NOT NULL,
   "name" text(128),
   "specification" real(16),
   "workstation_id" integer,
@@ -209,6 +223,8 @@ CREATE TABLE "product_bolt" (
   "modify_time" text(64) NOT NULL
 );
 
+
+
 -- ----------------------------
 -- Table structure for product_mission
 -- ----------------------------
@@ -225,6 +241,8 @@ CREATE TABLE "product_mission" (
   "create_time" text(64) NOT NULL,
   "modify_time" text(64) NOT NULL
 );
+
+
 
 -- ----------------------------
 -- Table structure for product_side
@@ -252,6 +270,35 @@ CREATE TABLE "product_side" (
   "modify_time" text(64) NOT NULL
 );
 
+
+
+-- ----------------------------
+-- Table structure for user_account_info
+-- ----------------------------
+DROP TABLE IF EXISTS "user_account_info";
+CREATE TABLE "user_account_info" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "staff_id" integer NOT NULL,
+  "name" text(128) NOT NULL,
+  "position" text(128),
+  "account" text(64) NOT NULL,
+  "password" text(64),
+  "role_type" integer(2) NOT NULL,
+  "operation_password" text(64),
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Records of user_account_info
+-- ----------------------------
+INSERT INTO "user_account_info" VALUES (1, -1, 'Developr', NULL, 'developer', 'aneng135', 1, NULL, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+
+
 -- ----------------------------
 -- Table structure for workstation
 -- ----------------------------
@@ -272,34 +319,46 @@ CREATE TABLE "workstation" (
   "modify_time" text(64) NOT NULL
 );
 
--- ----------------------------
--- Table structure for user_account_info
--- ----------------------------
-DROP TABLE IF EXISTS "user_account_info";
-CREATE TABLE "user_account_info" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "staff_id" integer,
-  "name" text(128),
-  "position" text(128),
-  "account" text(64) NOT NULL,
-  "password" text(64) NOT NULL,
-  "role_type" integer(2) NOT NULL,
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
-);
+
 
 -- ----------------------------
--- Records of user_account_info
+-- Auto increment value for device_arm
 -- ----------------------------
-INSERT INTO "user_account_info" VALUES (1, NULL, 'Admin', NULL, 'root', 'root', 1, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_arm';
+
+-- ----------------------------
+-- Auto increment value for device_serial_port
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_serial_port';
+
+-- ----------------------------
+-- Auto increment value for device_tool
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_tool';
+
+-- ----------------------------
+-- Auto increment value for product_bolt
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_bolt';
+
+-- ----------------------------
+-- Auto increment value for product_mission
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_mission';
+
+-- ----------------------------
+-- Auto increment value for product_side
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_side';
 
 -- ----------------------------
 -- Auto increment value for user_account_info
 -- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'user_account_info';
+UPDATE "sqlite_sequence" SET seq = 2 WHERE name = 'user_account_info';
+
+-- ----------------------------
+-- Auto increment value for workstation
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'workstation';
 
 PRAGMA foreign_keys = true;

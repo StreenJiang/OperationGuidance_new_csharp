@@ -98,7 +98,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public T? Update(T entity) {
-            entity.modifier = SystemUtils.UserInfo.name;
+            entity.modifier = SystemUtils.LoggedUserName;
             entity.modify_time = DateTime.Now;
             string sql = GenerateUpdateSql(entity);
             System.Console.WriteLine("sql: " + sql);
@@ -204,16 +204,22 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                     count++;
                 }
             }
-            updateSql += $" where {CommonCondition(entity)} and {nameof(entity.id)} = @{nameof(entity.id)}";
+            updateSql += $" where {nameof(entity.id)} = @{nameof(entity.id)}";
             return updateSql;
         }
 
         public string CommonCondition() {
             return CommonCondition(new());
         }
-
         public string CommonCondition(T entity) {
             return $"{nameof(entity.deleted)} <> {(int) YesOrNo.YES} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
+        }
+
+        public string ConditionWithoutUserId() {
+            return ConditionWithoutUserId(new());
+        }
+        public string ConditionWithoutUserId(T entity) {
+            return $"{nameof(entity.deleted)} <> {(int) YesOrNo.YES}";
         }
 
         private List<string> GetFiedsList() {

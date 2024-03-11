@@ -31,7 +31,7 @@
         public static Color COLOR_WORKING_PROCESS_RED => COLOR_F01414;
         public static Color COLOR_WORKING_PROCESS_THEME => COLOR_E86C10;
         public static Color COLOR_WORKING_PROCESS_WHITE => COLOR_FEFEFE;
-        public static Color COLOR_WORKPLACE_DATA_TITLE => COLOR_DDDDDD;
+        public static Color COLOR_WORKPLACE_SUB_TITLE => COLOR_DDDDDD;
         public static Color COLOR_WORKPLACE_SIDE_TITLE_TEXT => COLOR_FEFEFE;
         public static Color COLOR_WORKPLACE_SIDE_TITLE_BACK => COLOR_E86C10;
         public static Color COLOR_WORKPLACE_SIDE_PAGE_TEXT => COLOR_E86C10;

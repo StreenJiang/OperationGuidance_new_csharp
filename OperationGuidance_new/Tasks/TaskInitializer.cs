@@ -11,8 +11,13 @@ namespace OperationGuidance_new.Tasks {
         private static readonly int LoopingDelay = 5000;
         private static OperationGuidanceApis apis = SystemUtils.GetApis();
 
+        public static bool Started { get; set; } = false;
+
         public static void Init() {
-            TaskCheckingLoop();
+            if (!Started) {
+                Started = true;
+                TaskCheckingLoop();
+            }
         }
 
         private static void TaskCheckingLoop() {

@@ -8,10 +8,13 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.ViewObjects;
+using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static LoginView LoginView { get; set; }
+
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd hh:mm:ss.fff";
 
@@ -336,7 +339,6 @@ namespace OperationGuidance_new.Utils {
                 }
             }
         }
-
         public static Size GetMaxSizeOfSizeRatioByWidth(int contentWidth) {
             int maxWidthRatio = 0;
             int maxHeightRatio = 0;
@@ -346,7 +348,6 @@ namespace OperationGuidance_new.Utils {
             int maxHeight = (int) (maxWidth / (decimal) maxWidthRatio * maxHeightRatio);
             return new(maxWidth, maxHeight);
         }
-
         public static Size GetMaxSizeOfSizeRatioByHeight(int contentHeight) {
             int maxWidthRatio = 0;
             int maxHeightRatio = 0;
@@ -354,6 +355,17 @@ namespace OperationGuidance_new.Utils {
 
             int maxWidth = (int) (contentHeight / (decimal) maxHeightRatio * maxWidthRatio);
             return new(maxWidth, contentHeight);
+        }
+        public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, Size size) 
+            => GetProperSizeAccordingToSizeRatio(contentSize, size.Width, size.Height);
+        public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, int width, int height) {
+            int newWidth = contentSize.Width;
+            int newHeight = (int) (height / ((decimal) width / newWidth));
+            if (newHeight > contentSize.Height) {
+                newHeight = contentSize.Height;
+                newWidth = (int) (width / ((decimal) height / newHeight));
+            }
+            return new(newWidth, newHeight);
         }
     }
 }

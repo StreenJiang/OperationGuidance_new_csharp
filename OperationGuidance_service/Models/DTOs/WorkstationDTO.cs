@@ -2,7 +2,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class WorkstationDTO: ADTOBase {
-        public string? name { get; set; }
+        public string name { get; set; } = string.Empty;
         public int? tool_id { get; set; }
         public string? tool_name { get; set; }
         public string? tool_description { get; set; }

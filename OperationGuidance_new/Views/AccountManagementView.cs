@@ -1,7 +1,6 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
-using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -11,6 +10,8 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
+using OperationGuidance_service.Models.Requests;
+using CustomLibrary.ComboBoxes;
 
 namespace OperationGuidance_new.Views {
     public class AccountManagementView: CustomDataGridViewOuterPanel<UserAccountInfoDTO, UserAccountInfoVO> {
@@ -88,16 +89,24 @@ namespace OperationGuidance_new.Views {
             };
             // 添加字段
             CustomTextBoxGroup staffId = _editEntityPopUpForm.AddTextBox("员工ID", false, 
-                (UserAccountInfoDTO dto, int? value) => dto.staff_id = value ?? 0);
+                (UserAccountInfoDTO dto, int value) => dto.staff_id = value);
             staffId.NumberOnly = true;
-            staffId.SetValue(0, dto.staff_id + "");
+            if (dto.staff_id > 0) {
+                staffId.SetValue(0, dto.staff_id + "");
+            }
+            staffId.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                staffId.GetTextBox(0).IsError = string.IsNullOrEmpty(staffId.GetTextBox(0).Box.Text);
+            };
             CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("姓名", false, 
                 (UserAccountInfoDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {
                 name.SetValue(0, dto.name);
             }
-            CustomTextBoxGroup position = _editEntityPopUpForm.AddTextBox("角色", false, 
-                (UserAccountInfoDTO dto, string? value) => dto.position = value ?? "");
+            name.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                name.GetTextBox(0).IsError = string.IsNullOrEmpty(name.GetTextBox(0).Box.Text);
+            };
+            CustomTextBoxGroup position = _editEntityPopUpForm.AddTextBox("职位", false, 
+                (UserAccountInfoDTO dto, string? value) => dto.position = value ?? null);
             if (dto.position != null) {
                 position.SetValue(0, dto.position);
             }
@@ -106,32 +115,125 @@ namespace OperationGuidance_new.Views {
             if (dto.account != null) {
                 account.SetValue(0, dto.account);
             }
+            account.GetTextBox(0).Box.ImeMode = ImeMode.Disable;
+            account.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                account.GetTextBox(0).IsError = string.IsNullOrEmpty(account.GetTextBox(0).Box.Text);
+            };
             CustomTextBoxGroup password = _editEntityPopUpForm.AddTextBox("密码", false, 
-                (UserAccountInfoDTO dto, string? value) => dto.password = value ?? "");
+                (UserAccountInfoDTO dto, string? value) => dto.password = value ?? null);
             // 暂时先用这个代替，后续再做进一步的完善，使CustomTextBox能够支持密码模式并提供按钮可以开关屏蔽功能
             password.GetTextBox(0).Box.PasswordChar = '*';
+            string? md5_password = null;
             if (dto.password != null) {
-                password.SetValue(0, dto.password);
+                if (SystemUtils.IsMD5(dto.password)) {
+                    md5_password = dto.password;
+                    password.SetValue(0, "******");
+                } else {
+                    password.SetValue(0, dto.password);
+                }
             }
+            Dictionary<string, int> roleOptions = new();
+            Roles[] roleValues = Enum.GetValues<Roles>();
+            UserAccountInfoDTO userInfo = SystemUtils.UserInfo;
+            foreach (Roles value in roleValues) {
+                if (value == Roles.DEVELOPER) {
+                    continue;
+                } else if (value == Roles.ADMIN) {
+                    if (userInfo.role_type != (int) Roles.DEVELOPER && userInfo.role_type != (int) Roles.ADMIN) {
+                        continue;
+                    }
+                }
+                roleOptions.Add(value.ToString(), (int) value);
+            }
+            CustomComboBoxGroup<int> roleType = _editEntityPopUpForm.AddComboBox("权限角色", 
+                (UserAccountInfoDTO dto, int value) => dto.role_type = value, roleOptions);
+            roleType.SetCurrent(roleType.IndexOf(dto.role_type));
+            roleType.ItemSelected += () => {
+                roleType.SetError(roleType.IsDefaultValue());
+            };
+            CustomTextBoxGroup operation_password = _editEntityPopUpForm.AddTextBox("操作密码", false, 
+                (UserAccountInfoDTO dto, string? value) => dto.operation_password = value ?? null);
+            operation_password.Visible = roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN;
+            operation_password.GetTextBox(0).Box.PasswordChar = '*';
+            string? md5_operation_password = null;
+            if (dto.operation_password != null) {
+                if (SystemUtils.IsMD5(dto.operation_password)) {
+                    md5_operation_password = dto.operation_password;
+                    operation_password.SetValue(0, "******");
+                } else {
+                    operation_password.SetValue(0, dto.operation_password);
+                }
+            }
+            operation_password.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                operation_password.GetTextBox(0).IsError = string.IsNullOrEmpty(operation_password.GetTextBox(0).Box.Text);
+            };
+            roleType.ItemSelected += () => {
+                operation_password.Visible = roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN;
+                _editEntityPopUpForm.ResizeTablePanelAndItsChildren();
+                operation_password.ResizeChildren();
+            };
 
             // 添加按钮
             CommonButton confirmButton = _editEntityPopUpForm.AddButton("保存");
             confirmButton.Click += (s, e) => {
                 bool check = true;
-                // 检查账号名
-                if (dto.id <= 0) {
-                    string accountText = account.GetTextBox(0).Box.Text;
-                    CheckUserAccountExistsRsp checkUserAccountExistsRsp = apis.CheckUserAccountExists(new() {Account = accountText});
-                    bool checkResult = string.IsNullOrEmpty(accountText) || checkUserAccountExistsRsp.Exists;
-                    account.CheckError(0, checkResult);
-                    check = !checkResult;
+                string warningMsg = "";
+                int warningIndex = 1;
+                string accountText = account.GetTextBox(0).Box.Text;
+                string staffIdText = staffId.GetTextBox(0).Box.Text;
+                int? staffIdInt = string.IsNullOrEmpty(staffIdText) ? null : int.Parse(staffIdText);
+                FindUserByConditionForCheckingReq req = new() {
+                    Id = dto.id,
+                    StaffId = staffIdInt,
+                    Account = accountText,
+                };
+                UserAccountInfoDTO? user = apis.FindUserByConditionForChecking(req).UserAccountInfoDTO;
+                if (string.IsNullOrEmpty(staffIdText)) {
+                    check = false;
+                    staffId.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 员工号不能为空\r\n";
+                }
+                if (user?.staff_id == dto.staff_id) {
+                    check = false;
+                    staffId.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 员工号已存在\r\n";
+                }
+                if (string.IsNullOrEmpty(accountText)) {
+                    check = false;
+                    account.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 账户名不能为空\r\n";
+                }
+                if (user?.account == dto.account) {
+                    check = false;
+                    account.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 此账户名已存在\r\n";
+                }
+                if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
+                    check = false;
+                    name.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 姓名不能为空\r\n";
+                }
+                if (roleType.IsDefaultValue()) {
+                    roleType.SetError(true);
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 没有选择权限角色\r\n";
+                } else if (roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.DEVELOPER) {
+                    if (string.IsNullOrEmpty(operation_password.GetTextBox(0).Box.Text)) {
+                        check = false;
+                        operation_password.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 操作密码不能为空\r\n";
+                    }
                 }
                 // 检查密码
                 string passwordText = password.GetTextBox(0).Box.Text;
 
                 if (!check) {
-                    WidgetUtils.ShowWarningPopUp("账号不能为空！");
+                    WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                 } else {
+                    // 在这设置保证保存时不会将不需要的数据保存进去
+                    if (!operation_password.Visible) {
+                        operation_password.SetValue(0, null);
+                    }
                     callBackAction += _editEntityPopUpForm.Dispose;
                     AddOrUpdate(dto, callBackAction);
                     _editEntityPopUpForm.Hide();
@@ -159,7 +261,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override List<UserAccountInfoVO> QueryList() {
             QueryUserAccountInfoListRsp rsp = apis.QueryUserAccountInfoList(new() {
-                UserId = SystemUtils.LoggedUserId(),
+                UserId = SystemUtils.LoggedUserId,
             });
             _dataDTOList = rsp.UserAccountInfoDTOs;
             List<UserAccountInfoVO> userVOs = new();

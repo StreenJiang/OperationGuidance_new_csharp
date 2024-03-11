@@ -183,7 +183,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override List<OperationDataVO> QueryList() {
             QueryOperationDataListRsp rsp = apis.QueryOperationDataList(new() {
-                UserId = SystemUtils.LoggedUserId(),
+                UserId = SystemUtils.LoggedUserId,
             });
             _dataDTOList = rsp.OperationDataDTOs;
             List<OperationDataVO> vos = new();

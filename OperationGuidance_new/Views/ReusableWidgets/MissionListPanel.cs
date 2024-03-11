@@ -33,7 +33,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         private bool CalculateAndCheckScrollBar(int parentNewHeight) {
-            _titleHeight = WidgetUtils.ContentTitle();
+            _titleHeight = WidgetUtils.ContentTitleHeight();
             // If there is no any mission, then don't need scroll bar
             if (_missionDTOs.Count == 0) {
                 NewHeight = 0;
@@ -55,6 +55,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<ProductMissionDTO> blockClickAction) {
+            System.Console.WriteLine($"missionDTOs.Count: {missionDTOs.Count}");
+            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- 111111111111111111111111 start");
             if (missionDTOs.Count > 0) {
                 _contentPanel.BigButtonPanel.Hide();
                 _contentPanel.MissionsTable.Show();
@@ -67,6 +70,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             if (sideDTO.image != null && sideDTO.image != string.Empty) {
                                 coverImage = CommonUtils.ImageBase64ToImage(sideDTO.image);
                                 if (coverImage != null) {
+                                    if (sideDTO.rotate_angle != null) {
+                                        coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value);
+                                    }
                                     break;
                                 }
                             }
@@ -97,6 +103,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _contentPanel.BigButtonPanel.Show();
             }
             _contentPanel.ResizeCells();
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- 1111111111111111111111111 end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
@@ -109,7 +116,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private class ContentPanel: CustomContentPanel {
             private readonly int _tableColumns = 4;
             private readonly float _cellGapRatio = 0.02F;
-            private readonly float _cellHightRatio = 0.21F;
+            private readonly float _cellHightRatio = 0.25F;
 
             private Func<int, bool> _calculateSizes;
             private TableLayoutPanel _missionsTable;

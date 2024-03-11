@@ -61,14 +61,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
         }
 
-        public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
+        public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?>? propertySetter) {
             CustomTextBoxGroup boxGroup = WidgetUtils.AddTextBox(_tablePanel, _dto, boxName, numberOnly, propertySetter);
             boxGroup.NameAlignment = HorizontalAlignment.Right;
             boxGroup.Ratio = 7;
-            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => WidgetUtils.HandleTextChanged(_dto, boxGroup, 0, propertySetter);
             return boxGroup;
         }
-        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
+        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?>? propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> boxGroup = WidgetUtils.AddComboBox(_tablePanel, _dto, boxName, propertySetter, items);
             boxGroup.NameAlignment = HorizontalAlignment.Right;
             boxGroup.Ratio = 7;

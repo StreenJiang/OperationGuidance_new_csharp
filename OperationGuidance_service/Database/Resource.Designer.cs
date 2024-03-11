@@ -73,7 +73,7 @@ namespace OperationGuidance_service.Database {
         /// Target Server Version : 3030001
         /// File Encoding         : 65001
         ///
-        /// Date: 07/02/2024 03:32:59
+        /// Date: 09/03/2024 14:52:35
         ///*/
         ///
         ///PRAGMA foreign_keys = false;

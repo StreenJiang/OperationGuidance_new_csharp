@@ -34,25 +34,25 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _tablePanel.SetColumnSpan(subPanel, 2);
             return subPanel;
         }
-        public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?> propertySetter) {
+        public CustomTextBoxGroup AddTextBox<V>(string boxName, bool numberOnly, Action<T, V?>? propertySetter) {
             CustomTextBoxGroup customTextBoxGroup = WidgetUtils.AddTextBox(_tablePanel, _dto, boxName, numberOnly, propertySetter);
             customTextBoxGroup.NameAlignment = HorizontalAlignment.Right;
             customTextBoxGroup.Ratio = 7;
             return customTextBoxGroup;
         }
-        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
+        public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?>? propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> customComboBoxGroup = WidgetUtils.AddComboBox(_tablePanel, _dto, boxName, propertySetter, items);
             customComboBoxGroup.NameAlignment = HorizontalAlignment.Right;
             customComboBoxGroup.Ratio = 7;
             return customComboBoxGroup;
         }
-        public ToggleButtonGroup AddToggleButton(string toggleButtonName, Action<T, bool> propertySetter) {
+        public ToggleButtonGroup AddToggleButton(string toggleButtonName, Action<T, bool>? propertySetter) {
             ToggleButtonGroup toggleButtonGroup = WidgetUtils.AddToggleButton(_tablePanel, _dto, toggleButtonName, propertySetter);
             toggleButtonGroup.NameAlignment = HorizontalAlignment.Right;
             toggleButtonGroup.Ratio = 7;
             return toggleButtonGroup;
         }
-        public PictureBoxGroup AddPictureBox(string boxName, Action<T, Image> imageSetter, Action<T, string> fileNameSetter) {
+        public PictureBoxGroup AddPictureBox(string boxName, Action<T, Image> imageSetter, Action<T, string>? fileNameSetter) {
             PictureBoxGroup pictureBoxGroup = WidgetUtils.AddPictureBox(_tablePanel, _dto, boxName, imageSetter, fileNameSetter);
             pictureBoxGroup.NameAlignment = HorizontalAlignment.Right;
             pictureBoxGroup.Ratio = 7;

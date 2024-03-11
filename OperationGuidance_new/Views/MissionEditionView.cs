@@ -2,7 +2,6 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
-using CustomLibrary.Constants;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
@@ -32,7 +31,7 @@ namespace OperationGuidance_new.Views {
 
         public MissionEditionPage CreateANewOne() {
             _missionDTO = new() {
-                name = "任务名称",
+                name = "新建任务",
                 ProductSides = new(),
             };
             return OpenEditionPage(_missionDTO);
@@ -57,12 +56,9 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public override bool CheckNeedsScrollBar(int parentNewHeight) {
-            return false;
-        }
-
         public override void VisibleToTrue() {
-            if (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES) {
+            if ((_editionPage != null && _editionPage.IsDisposed) 
+                || (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES)) {
                 CreateANewOne();
             }
         }
@@ -217,18 +213,11 @@ namespace OperationGuidance_new.Views {
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // 保存后跳转至任务列表界面
                         WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                        Dispose();
                     } else {
                         MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 };
-                // _buttonPublish = new() {
-                //     Parent = _top,
-                //     Label = "发布",
-                //     BlockHoverUp = true,
-                // };
-                // _buttonPublish.Click += (sender, eventArgs) => {
-                //     // TODO: publish it (store tatus to database)
-                // };
                 _buttonNew = new() {
                     Parent = _top,
                     Label = "新增",
@@ -260,6 +249,7 @@ namespace OperationGuidance_new.Views {
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
                                 // 删除后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                                Dispose();
                             } else {
                                 MessageBox.Show(null, "删除失败！错误信息：" + rsp.RsponseMessage, "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             }
@@ -336,7 +326,13 @@ namespace OperationGuidance_new.Views {
                     Padding = new(0),
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
-                _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "（请确保所有螺栓点位在最小范围内，以免分辨率很小时显示不全）") {
+                // _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "（请确保所有螺栓点位在最小范围内，以免分辨率很小时显示不全）") {
+                //     Parent = _bottomLeft,
+                //     Margin = new(1, 0, 0, 0),
+                //     Padding = new(0),
+                //     BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
+                // };
+                _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "工作台界面以虚线框内的显示部分为准。可使用裁剪功能裁剪掉虚线外的部分。") {
                     Parent = _bottomLeft,
                     Margin = new(1, 0, 0, 0),
                     Padding = new(0),
@@ -381,9 +377,6 @@ namespace OperationGuidance_new.Views {
                         }
                         
                         boltDTO.name = $"BOLT" + boltDTO.serial_num;
-                        _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num);
-                        _currentSideButton.BoltSerialNums.Sort();
-                        
                         OpenNewBoltPopUpForm(boltDTO, () => {
                             // Add new buttons
                             BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO);
@@ -405,6 +398,9 @@ namespace OperationGuidance_new.Views {
                                 sideDTO.Bolts = new();
                             }
                             sideDTO.Bolts.Add(boltDTO);
+                            // Save serial num
+                            _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num);
+                            _currentSideButton.BoltSerialNums.Sort();
                         });
                     }
                 };
@@ -1408,45 +1404,50 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void InvokeResizing() {
-                // Make maximum width equals to 85% of parent width to ensure all retangles can be seen
-                MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByWidth((int) (Width * .95));
-                if (MaxRectSize.Height > Height * .9) {
-                    MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByHeight((int) (Height * .9));
-                }
+                // Make maximum width equals to 95% of parent width to ensure all retangles can be seen
+
+                int mainFormWidth = WidgetUtils.MainForm.Width;
+                int mainFormHeight = WidgetUtils.MainForm.Height;
+                int workPlacePadding = WidgetUtils.ContentInnerBorderMargin(WidgetUtils.MainForm.Size) * 2 + 1;
+                int workPlaceWidth = mainFormWidth - workPlacePadding * 2;
+                int workPlaceHeight =  mainFormHeight - (int) (mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
+                Size workPlaceImageDisplayPanelSize = new((int) (workPlaceWidth * WidgetUtils.WorkplaceLeftWidthRatio()), (int) (workPlaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio()));
+
+                MaxRectSize = MainUtils.GetProperSizeAccordingToSizeRatio((Size * .95F).ToSize(), workPlaceImageDisplayPanelSize);
                 MaxRectWidth = MaxRectSize.Width;
                 MaxRectHeight = MaxRectSize.Height;
                 // Calculate location of max rectangle depends on size
                 MaxRectLocation = new((Width - MaxRectWidth) / 2, (Height - MaxRectHeight) / 2);
                 MaxRect = new(MaxRectLocation, MaxRectSize);
                 // Get enumerator again and iterate over it to resize all rectangles
-                int index = 0;
-                List<SizeRatioNRectColor>.Enumerator enumerator = WidthHeightRatio.GetEnumerator();
-                while (enumerator.MoveNext()) {
-                    SizeRatioNRectColor current = enumerator.Current;
-                    Rectangle rect = DifferentRects[index];
-
-                    int width = MaxRectWidth;
-                    int height = (int) (width / (decimal) current.WidthRatio * current.HeightRatio);
-                    if (height > MaxRectHeight) {
-                        height = MaxRectHeight;
-                        width = (int) (height / (decimal) current.HeightRatio * current.WidthRatio);
-                    }
-
-                    rect.Size = new(width, height);
-                    rect.Location = new((Width - rect.Width) / 2, (Height - rect.Height) / 2);
-
-                    DifferentRects[index] = rect;
-                    _rectColors[index] = current.RectColor;
-                    _ratioInfos[index] = current.WidthRatio + ":" + current.HeightRatio;
-                    index++;
-                }
+                // int index = 0;
+                // List<SizeRatioNRectColor>.Enumerator enumerator = WidthHeightRatio.GetEnumerator();
+                // while (enumerator.MoveNext()) {
+                //     SizeRatioNRectColor current = enumerator.Current;
+                //     Rectangle rect = DifferentRects[index];
+                //
+                //     int width = MaxRectWidth;
+                //     int height = (int) (width / (decimal) current.WidthRatio * current.HeightRatio);
+                //     if (height > MaxRectHeight) {
+                //         height = MaxRectHeight;
+                //         width = (int) (height / (decimal) current.HeightRatio * current.WidthRatio);
+                //     }
+                //
+                //     rect.Size = new(width, height);
+                //     rect.Location = new((Width - rect.Width) / 2, (Height - rect.Height) / 2);
+                //
+                //     DifferentRects[index] = rect;
+                //     _rectColors[index] = current.RectColor;
+                //     _ratioInfos[index] = current.WidthRatio + ":" + current.HeightRatio;
+                //     index++;
+                // }
             }
 
             protected override void InvokePaint(Graphics g) {
-                if (DifferentRects[0].Width == 0) {
-                    throw new Exception("出现了！是 DifferentRects[0].Width == 0！");
-                    // return;
-                }
+                // if (DifferentRects[0].Width == 0) {
+                //     throw new Exception("出现了！是 DifferentRects[0].Width == 0！");
+                //     // return;
+                // }
                 g.SmoothingMode = SmoothingMode.HighSpeed;
                 if (ProductImage == null || ImageLocation == null) {
                     int newImageSide = Height / 20;
@@ -1462,28 +1463,40 @@ namespace OperationGuidance_new.Views {
                     Point point = new Point(imageX + ProductDefaultImageShowing.Width + gapBetweenImageAndText, (Height - Font.Height) / 2 - Font.Height / 10);
                     g.DrawString(_defaultText, Font, brush, point);
                 } else {
+                    // 画产品图片
                     g.DrawImage(ProductImage, ImageLocation.Value);
-                    for (int i = 0; i < DifferentRects.Count; i++) {
-                        Pen pen = new Pen(_rectColors[i], 1) {
-                            DashPattern = new float[] {9, 6, 9, 6},
-                        };
-                        g.DrawRectangle(pen, DifferentRects[i]);
-                    }
-                    Font ratioTextFont = new(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Bold, GraphicsUnit.Pixel);
-                    int x = 0;
-                    int verticalGap = ratioTextFont.Height / 2;
-                    for (int i = 0; i < _ratioInfos.Count; i++) {
-                        Brush brush = new SolidBrush(_rectColors[i]);
-                        if (i == 0) {
-                            x = verticalGap;
-                        } else {
-                            x += verticalGap + (int) g.MeasureString(_ratioInfos[i - 1], ratioTextFont).Width;
-                        }
-                        Point point = new Point(x, (int) (Height - ratioTextFont.Height * 1.1));
-                        g.DrawString(_ratioInfos[i], ratioTextFont, brush, point);
-                    }
+
+                    // for (int i = 0; i < DifferentRects.Count; i++) {
+                    //     Pen pen = new Pen(_rectColors[i], 1) {
+                    //         DashPattern = new float[] {9, 6, 9, 6},
+                    //     };
+                    //     g.DrawRectangle(pen, DifferentRects[i]);
+                    // }
+                    // Font ratioTextFont = new(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Bold, GraphicsUnit.Pixel);
+                    // int x = 0;
+                    // int verticalGap = ratioTextFont.Height / 2;
+                    // for (int i = 0; i < _ratioInfos.Count; i++) {
+                    //     Brush brush = new SolidBrush(_rectColors[i]);
+                    //     if (i == 0) {
+                    //         x = verticalGap;
+                    //     } else {
+                    //         x += verticalGap + (int) g.MeasureString(_ratioInfos[i - 1], ratioTextFont).Width;
+                    //     }
+                    //     Point point = new Point(x, (int) (Height - ratioTextFont.Height * 1.1));
+                    //     g.DrawString(_ratioInfos[i], ratioTextFont, brush, point);
+                    // }
+                    // Font noticeFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Regular, GraphicsUnit.Pixel);
+                    // x += verticalGap + (int) g.MeasureString(_ratioInfos[_ratioInfos.Count - 1], noticeFont).Width;
+                    // Point p = new Point(x, (int) (Height - noticeFont.Height * 1.1));
+                    // g.DrawString(_notice, noticeFont, new SolidBrush(Color.Red), p);
+
+                    // 只画最大的范围
+                    Pen pen = new Pen(ColorConfigs.COLOR_MISSION_BLOCK_BORDER, 1) {
+                        DashPattern = new float[] {9, 6, 9, 6},
+                    };
+                    g.DrawRectangle(pen, MaxRect);
                     Font noticeFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Regular, GraphicsUnit.Pixel);
-                    x += verticalGap + (int) g.MeasureString(_ratioInfos[_ratioInfos.Count - 1], noticeFont).Width;
+                    int x = noticeFont.Height / 2 + (int) g.MeasureString(_ratioInfos[_ratioInfos.Count - 1], noticeFont).Width;
                     Point p = new Point(x, (int) (Height - noticeFont.Height * 1.1));
                     g.DrawString(_notice, noticeFont, new SolidBrush(Color.Red), p);
                 }

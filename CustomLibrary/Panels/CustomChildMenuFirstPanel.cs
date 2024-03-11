@@ -1,5 +1,6 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Panels.BaseClasses;
+using CustomLibrary.Utils;
 
 namespace CustomLibrary.Panels
 {
@@ -70,6 +71,10 @@ namespace CustomLibrary.Panels
                 };
                 _userInfoPanel.BringToFront();
             }
+            NeedFoldButton = false;
+            WidgetUtils.RefreshLoginUserName = userNewName => {
+                _userInfoPanel.UserName = userNewName;
+            };
         }
         public void HideUserInfoPanel() {
             if (_userInfoPanel != null) {
@@ -127,7 +132,10 @@ namespace CustomLibrary.Panels
             Size newButtonSize = new(this.Width, (int) (this.Height * _childFirstButtonHeightRatio));
             _allMenuButtonHeight = 0;
             foreach (Control button in this.Controls) {
-                if (button is Panel) {
+                if (button is UserInfoPanel panel) {
+                    _allMenuButtonHeight += panel.Height;
+                    continue;
+                } else if (button is Panel) {
                     _foldButton.Folded = this.OnlyIconMode;
                     if (this.OnlyIconMode) {
                         _foldButton.Size = new(this.Width, (int) (this.Height * _foldButtonHeightRatio));

@@ -18,6 +18,23 @@ namespace CustomLibrary.Utils {
         public static CustomTabPanel MainPanel { get; set; }
         public static CustomMainMenuPanel MainMenuPanel { get; set; }
 
+        public static Size GetLoginViewSize(Size mainFormSize) {
+            SizeRatioNRectColor sixteenNine = WidthHeightRatio.SixteenNine;
+            Size loginViewSize;
+            int widthPiece = mainFormSize.Width / sixteenNine.WidthRatio;
+            int heightPiece = mainFormSize.Height / sixteenNine.HeightRatio;
+            if (widthPiece > heightPiece) {
+                loginViewSize = new(heightPiece * sixteenNine.WidthRatio, mainFormSize.Height);
+            } else if (widthPiece < heightPiece) {
+                loginViewSize = new(mainFormSize.Width, widthPiece * sixteenNine.HeightRatio);
+            } else {
+                loginViewSize = mainFormSize;
+            }
+            return loginViewSize;
+        }
+        public static Action<string>? RefreshLoginUserName;
+
+        public static void ClearViews() => _views.Clear();
         public static void AddView(CustomContentPanel view) => _views.Add(view);
         public static V GetView<V>() where V : CustomContentPanel {
             foreach (CustomContentPanel view in _views) {
@@ -28,6 +45,7 @@ namespace CustomLibrary.Utils {
             throw new NullReferenceException("Can not find view type <" + typeof(V) + ">, please check system config.");
         }
 
+        public static void ClearMainMenus() => _mainMenus.Clear();
         public static void AddMainMenu(int menuKey, CustomMainMenuButton mainMenuButton) => _mainMenus.Add(menuKey, mainMenuButton);
         public static CustomMainMenuButton GetMainMenu(int menuKey) {
             if (_mainMenus.ContainsKey(menuKey)) {
@@ -36,6 +54,7 @@ namespace CustomLibrary.Utils {
             throw new NullReferenceException("Can not find main menu by key <" + menuKey + ">, please check system config.");
         }
 
+        public static void ClearChildMenus() => _childMenus.Clear();
         public static void AddChildMenu(int menuKey, CustomChildMenuFirstButton childMenuButton) => _childMenus.Add(menuKey, childMenuButton);
         public static CustomChildMenuFirstButton GetChildMenu(int menuKey) {
             if (_childMenus.ContainsKey(menuKey)) {
@@ -276,7 +295,8 @@ namespace CustomLibrary.Utils {
             }
             return thickness;
         }
-        public static int ContentTitle() => (int) (MainPanel.Height * .052);
+        public static int ContentTitleHeight() => (int) (MainPanel.Height * .052);
+        public static int ContentInnerBorderMargin(Size size) => (size.Width + size.Height) / 350;
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
         public static Padding ContentPadding() {
             int hPadding = (int) (MainPanel.Width * .015);
@@ -309,6 +329,17 @@ namespace CustomLibrary.Utils {
         public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .0375);
         public static int GridViewContentColumnMaxWidth() => (int) (MainPanel.Width * .2);
         public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);
+        public static float GridViewColumnsPaddingRatio() => .5F;
+        // Workplace configs
+        public static float WorkplaceTopBarHeightRatio() => .05F;
+        public static float WorkplaceBarCodeHeightRatio() => .05F;
+        public static float WorkplaceLeftWidthRatio() => .575F;
+        public static float WorkplaceMiddleWidthRatio() => .2F;
+        public static float WorkplaceImagePanelHeightRatio() => .5F;
+        public static int WorkplaceGridViewHeaderHeight() => (int) (MainPanel.Height * .035);
+        public static int WorkplaceGridViewContentRowHeight() => (int) (MainPanel.Height * .0325);
+        public static int WorkplaceGridViewPageInfoHeight() => (int) (MainPanel.Height * .025);
+        public static float WorkplaceGridViewColumnsPaddingRatio() => .25F;
 
         /// <summary>
         /// 得到一个等差数列
@@ -413,7 +444,7 @@ namespace CustomLibrary.Utils {
             };
         }
 
-        public static CustomTextBoxGroup AddTextBox<T, V>(Control parent, T t, string boxName, bool numberOnly, Action<T, V?> propertySetter) {
+        public static CustomTextBoxGroup AddTextBox<T, V>(Control parent, T t, string boxName, bool numberOnly, Action<T, V?>? propertySetter) {
             CustomTextBoxGroup boxGroup = new(boxName) {
                 Parent = parent,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -422,10 +453,12 @@ namespace CustomLibrary.Utils {
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 NumberOnly = numberOnly,
             };
-            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter);
+            if (propertySetter != null) {
+                boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter);
+            }
             return boxGroup;
         }
-        public static CustomTextBoxGroup AddSeparateTextBox<T, V>(Control parent, T t, string boxName, string separator, bool numberOnly, Action<T, V?> propertySetter1, Action<T, V?> propertySetter2) {
+        public static CustomTextBoxGroup AddSeparateTextBox<T, V>(Control parent, T t, string boxName, string separator, bool numberOnly, Action<T, V?>? propertySetter1, Action<T, V?>? propertySetter2) {
             CustomTextBoxGroup boxGroup = new(boxName) {
                 Parent = parent,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -437,8 +470,12 @@ namespace CustomLibrary.Utils {
             };
             // Need two boxes
             boxGroup.AddTextBox();
-            boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter1);
-            boxGroup.GetTextBox(1).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 1, propertySetter2);
+            if (propertySetter1 != null) {
+                boxGroup.GetTextBox(0).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 0, propertySetter1);
+            }
+            if (propertySetter2 != null) {
+                boxGroup.GetTextBox(1).Box.TextChanged += (sender, eventArgs) => HandleTextChanged(t, boxGroup, 1, propertySetter2);
+            }
             return boxGroup;
         }
         public static void HandleTextChanged<T, V>(T t, CustomTextBoxGroup boxGroup, int index, Action<T, V?> propertySetter) {
@@ -460,7 +497,7 @@ namespace CustomLibrary.Utils {
                 System.Console.WriteLine($"{boxGroup.TextName}. Can not convert string[{valueStr}] to type<{typeof(V)}>. Exception: {e}");
             }
         }
-        public static CustomComboBoxGroup<V> AddComboBox<T, V>(Control parent, T t, string boxName, Action<T, V?> propertySetter, Dictionary<string, V> items) {
+        public static CustomComboBoxGroup<V> AddComboBox<T, V>(Control parent, T t, string boxName, Action<T, V?>? propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> boxGroup = new(boxName) {
                 Parent = parent,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
@@ -468,7 +505,9 @@ namespace CustomLibrary.Utils {
                 BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
             };
-            boxGroup.ItemSelected += () => propertySetter(t, boxGroup.Value);
+            if (propertySetter != null) {
+                boxGroup.ItemSelected += () => propertySetter(t, boxGroup.Value);
+            }
             Dictionary<string, V>.Enumerator enumerator = items.GetEnumerator();
             while (enumerator.MoveNext()) {
                 KeyValuePair<string, V> current = enumerator.Current;
@@ -476,41 +515,53 @@ namespace CustomLibrary.Utils {
             }
             return boxGroup;
         }
-        public static CustomDatePickerGroup AddDatePicker<T>(Control parent, T t, string boxName, Action<T, DateTime?> propertySetter) {
+        public static CustomDatePickerGroup AddDatePicker<T>(Control parent, T t, string boxName, Action<T, DateTime?>? propertySetter) {
             CustomDatePickerGroup pickerGroup = new(boxName) {
                 Parent = parent,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
             };
-            pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter(t, pickerGroup.GetPicker(0).Value);
+            if (propertySetter != null) {
+                pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter(t, pickerGroup.GetPicker(0).Value);
+            }
             return pickerGroup;
         }
-        public static CustomDatePickerGroup AddSeparateDatePicker<T>(Control parent, T t, string boxName, string separator, Action<T, DateTime?> propertySetter1, Action<T, DateTime?> propertySetter2) {
+        public static CustomDatePickerGroup AddSeparateDatePicker<T>(Control parent, T t, string boxName, string separator, Action<T, DateTime?>? propertySetter1, Action<T, DateTime?>? propertySetter2) {
             CustomDatePickerGroup pickerGroup = new(boxName) {
                 Parent = parent,
                 BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
                 ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
             };
             pickerGroup.AddPicker();
-            pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter1(t, pickerGroup.GetPicker(0).Value);
-            pickerGroup.GetPicker(1).ValueChanged += (sender, eventArgs) => propertySetter2(t, pickerGroup.GetPicker(1).Value);
+            if (propertySetter1 != null) {
+                pickerGroup.GetPicker(0).ValueChanged += (sender, eventArgs) => propertySetter1(t, pickerGroup.GetPicker(0).Value);
+            }
+            if (propertySetter2 != null) {
+                pickerGroup.GetPicker(1).ValueChanged += (sender, eventArgs) => propertySetter2(t, pickerGroup.GetPicker(1).Value);
+            }
             return pickerGroup;
         }
-        public static ToggleButtonGroup AddToggleButton<T>(Control parent, T t, string toggleButtonName, Action<T, bool> propertySetter) {
+        public static ToggleButtonGroup AddToggleButton<T>(Control parent, T t, string toggleButtonName, Action<T, bool>? propertySetter) {
             ToggleButtonGroup toggleButton = new(toggleButtonName) {
                 Parent = parent,
             };
-            toggleButton.CheckedChanged += (sender, eventArgs) => propertySetter(t, toggleButton.Checked);
+            if (propertySetter != null) {
+                toggleButton.CheckedChanged += (sender, eventArgs) => propertySetter(t, toggleButton.Checked);
+            }
             return toggleButton;
         }
-        public static PictureBoxGroup AddPictureBox<T>(Control parent, T t, string boxName, Action<T, Image> imageSetter, Action<T, string> fileNameSetter) {
+        public static PictureBoxGroup AddPictureBox<T>(Control parent, T t, string boxName, Action<T, Image>? imageSetter, Action<T, string>? fileNameSetter) {
             PictureBoxGroup pictureBoxGroup = new(boxName) {
                 Parent = parent,
                 ForeColorExpectButton = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
             };
             pictureBoxGroup.ImageChanged += () => {
-                imageSetter(t, pictureBoxGroup.Image);
-                fileNameSetter(t, pictureBoxGroup.FileName);
+                if (imageSetter != null) {
+                    imageSetter(t, pictureBoxGroup.Image);
+                }
+                if (fileNameSetter != null) {
+                    fileNameSetter(t, pictureBoxGroup.FileName);
+                }
             };
             return pictureBoxGroup;
         }

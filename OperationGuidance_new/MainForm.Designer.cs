@@ -5,7 +5,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using Gma.System.MouseKeyHook;
-using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
@@ -14,6 +13,7 @@ using CustomLibrary.Configs;
 using OperationGuidance_new.Tasks;
 using System.Net.NetworkInformation;
 using System.ComponentModel;
+using OperationGuidance_new.Views;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -66,9 +66,25 @@ namespace OperationGuidance_new {
                 WidgetUtils.ShowErrorPopUp("当前设备未授权");
                 throw new Exception("当前设备未授权");
             }
-            // Get login user info
-            OperationGuidanceApis apis = SystemUtils.GetApis();
-            SystemUtils.UserInfo = apis.FindUserById(new(1)).UserAccountInfoDTO;
+            // MainForm
+            Name = "MainForm";
+            Text = "MainForm";
+            // Set size
+            Size mainFormSize;
+            Size screenSize = WidgetUtils.GetScreenResolution();
+            string resolution = MainUtils.Settings.Read(IniFileKeys.Resolution);
+            if (!string.IsNullOrEmpty(resolution)) {
+                string[] strings = resolution.Split(",");
+                int width = int.Parse(strings[0].Trim());
+                int height = int.Parse(strings[1].Trim());
+                if (width == screenSize.Width && height == screenSize.Height) {
+                    mainFormSize = screenSize;
+                } else {
+                    mainFormSize = new(width, height);
+                }
+            } else {
+                mainFormSize = screenSize;
+            }
 
             // mainPanel
             mainPanel = new();
@@ -76,9 +92,25 @@ namespace OperationGuidance_new {
             mainPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             mainPanel.Margin = new Padding(0);
             mainPanel.Name = "mainPanel";
+            mainPanel.Size = mainFormSize;
+            mainPanel.Hide();
             // Store this mainPanel incase wherever needs to reach it
             WidgetUtils.MainForm = this;
             WidgetUtils.MainPanel = mainPanel;
+            // Resize for login view
+            Size loginViewSize = WidgetUtils.GetLoginViewSize(mainFormSize);
+            Size = loginViewSize;
+            ClientSize = loginViewSize;
+            CenterToScreen();
+            LoginView loginView = new(loginViewSize, Properties.Resources.login_back, AfterLogin, mainFormSize);
+            loginView.Parent = this;
+            MainUtils.LoginView = loginView;
+        }
+
+        private void AfterLogin(Size mainFormSize) {
+            // Reset back color after login
+            BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
+
             // mainMenuPanel
             mainMenuPanel = new();
             mainMenuPanel.Parent = mainPanel;
@@ -101,22 +133,25 @@ namespace OperationGuidance_new {
                 WorkerReportsProgress = true,
             };
 
-            HookEvents = Hook.GlobalEvents();
+            if (HookEvents == null) {
+                HookEvents = Hook.GlobalEvents();
+                // 全局鼠标事件
+                EventFuncs.MainForm = this;
+                HookEvents.MouseMove += (sender, eventArgs) => {
+                    EventFuncs.GlobalMouseMove(sender, eventArgs);
+                };
+                // This event must be under above event, otherwise this will not triggered after view changing, don't knwo why
+                HookEvents.MouseUp += (sender, eventArgs) => {
+                    EventFuncs.GlobalMouseUp(sender, eventArgs);
+                };
+                HookEvents.MouseDown += (sender, eventArgs) => {
+                    EventFuncs.GlobalMouseDown(sender, eventArgs);
+                };
+            }
 
-
-            // 全局鼠标事件
-            EventFuncs.MainForm = this;
-            HookEvents.MouseMove += (sender, eventArgs) => {
-                EventFuncs.GlobalMouseMove(sender, eventArgs);
-            };
-            // This event must be under above event, otherwise this will not triggered after view changing, don't knwo why
-            HookEvents.MouseUp += (sender, eventArgs) => {
-                EventFuncs.GlobalMouseUp(sender, eventArgs);
-            };
-            HookEvents.MouseDown += (sender, eventArgs) => {
-                EventFuncs.GlobalMouseDown(sender, eventArgs);
-            };
-
+            // WidgetUtils.ClearViews();
+            // WidgetUtils.ClearMainMenus();
+            // WidgetUtils.ClearChildMenus();
             List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
             // TODO: 根据许可证权限过滤菜单
             for (int i = 0; i < menuCongfigs.Count; i++) {
@@ -159,7 +194,7 @@ namespace OperationGuidance_new {
                         childMenuPanel.FoldButton.UnfoldedIcon = Properties.Resources.navigator_unfold;
                         childMenuPanel.FoldButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
                         if (mainMenuConfig.IsUserInfoPanel) {
-                            childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName());
+                            childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName);
                         }
                         //childMenuPanel.OnlyIconMode = true;
                         // childContentPanel
@@ -241,33 +276,18 @@ namespace OperationGuidance_new {
                 mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
             }
 
-            // MainForm
+            // Resize after login in
             Size screenSize = WidgetUtils.GetScreenResolution();
+            if (mainFormSize == screenSize) {
+                WindowState = FormWindowState.Maximized;
+            } else {
+                Size = mainFormSize;
+                ClientSize = mainFormSize;
+                CenterToScreen();
+            }
             MinimumSize = new Size(400, 300);
             MaximumSize = screenSize;
-            BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-            string resolution = MainUtils.Settings.Read(IniFileKeys.Resolution);
-            System.Console.WriteLine($"resolution: {resolution}");
-            System.Console.WriteLine($"screenSize: {screenSize}");
-            if (!string.IsNullOrEmpty(resolution)) {
-                string[] strings = resolution.Split(",");
-                int width = int.Parse(strings[0].Trim());
-                int height = int.Parse(strings[1].Trim());
-                if (width == screenSize.Width && height == screenSize.Height) {
-                    System.Console.WriteLine("111111111111111111111111111111111111111111111");
-                    WindowState = FormWindowState.Maximized;
-                } else {
-                    System.Console.WriteLine("222222222222222222222222222222222222222222222");
-                    Size = new(width, height);
-                    ClientSize = new(width, height);
-                    CenterToScreen();
-                }
-            } else {
-                System.Console.WriteLine("333333333333333333333333333333333333333333333");
-                WindowState = FormWindowState.Maximized;
-            }
-            Name = "MainForm";
-            Text = "MainForm";
+            mainPanel.Show();
 
             // Initialize all tasks for devices
             TaskInitializer.Init();
@@ -278,7 +298,9 @@ namespace OperationGuidance_new {
             };
             backgroundWorker.ProgressChanged += (sender, eventArgs) => {
                 foreach (Control control in Controls) {
-                    control.Size = this.ClientSize;
+                    if (!MainUtils.LoginView.Visible) {
+                        control.Size = this.ClientSize;
+                    }
                 }
             };
             backgroundWorker.RunWorkerCompleted += (sender, eventArgs) => {
@@ -294,7 +316,7 @@ namespace OperationGuidance_new {
                 backgroundWorker.RunWorkerAsync();
             };
         }
-
+        
         #endregion
 
     }

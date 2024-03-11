@@ -46,10 +46,15 @@ namespace OperationGuidance_service.Controllers {
         }
         // 查询用户列表
         public QueryUserAccountInfoListRsp QueryUserAccountInfoList(QueryUserAccountInfoListReq req) {
-            List<UserAccountInfo> userAccountInfos = _userAccountInfoService.QueryList(req.UserId);
+            List<UserAccountInfo> userAccountInfos;
+            if (SystemUtils.IsAdmin) {
+                userAccountInfos = _userAccountInfoService.QueryListWithoutUserId();
+            } else {
+                userAccountInfos = _userAccountInfoService.QueryList(req.UserId);
+            }
+            userAccountInfos = userAccountInfos.Where(u => u.user_id != -1).ToList();
             List<UserAccountInfoDTO> userAccountInfoDTOs = new();
             CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos, userAccountInfoDTOs);
-
             return new() {
                 UserAccountInfoDTOs = userAccountInfoDTOs,
             };
@@ -59,6 +64,16 @@ namespace OperationGuidance_service.Controllers {
             UserAccountInfoDTO userAccountInfoDTO = req.UserAccountInfoDTO;
             UserAccountInfo userAccountInfo = new();
             CommonUtils.ObjectConverter<UserAccountInfoDTO, UserAccountInfo>(userAccountInfoDTO, userAccountInfo);
+
+            string? password = userAccountInfo.password;
+            string? operation_password = userAccountInfo.operation_password;
+            if (password != null) {
+                userAccountInfo.password = SystemUtils.ToMD5String(password);
+            }
+            if (operation_password != null) {
+                userAccountInfo.operation_password = SystemUtils.ToMD5String(operation_password);
+            }
+
             UserAccountInfo? userAccountInfoNew = _userAccountInfoService.InsertOrUpdate(userAccountInfo);
             if (userAccountInfoNew != null) {
                 userAccountInfoDTO.id = userAccountInfoNew.id;
@@ -79,17 +94,67 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
-        public CheckUserAccountExistsRsp CheckUserAccountExists(CheckUserAccountExistsReq req) {
-            bool accountExists = false;
+        // 根据条件查找用户信息，用于新增、编辑的判断
+        public FindUserByConditionForCheckingRsp FindUserByConditionForChecking(FindUserByConditionForCheckingReq req) {
+            UserAccountInfoDTO? userAccountInfoDTO = null;
+            int id = req.Id;
+            int? staff_id = req.StaffId;
             string? account = req.Account;
-            if (!string.IsNullOrEmpty(account)) {
-                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlCondition($"account = '{account}'");
+            if (staff_id != null || !string.IsNullOrEmpty(account)) {
+                string condition = "";
+                if (staff_id != null) {
+                    condition += $"staff_id = {staff_id}";
+                }
+                if (!string.IsNullOrEmpty(account)) {
+                    if (!string.IsNullOrEmpty(condition)) {
+                        condition += " or ";
+                    }
+                    condition += $"account = '{account}'";
+                }
+                if (id > 0) {
+                    condition = $"({condition}) and id <> {id}";
+                }
+                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlCondition(condition);
                 if (userAccountInfos.Count > 0) {
-                    accountExists = true;
+                    userAccountInfoDTO = new();
+                    CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos[0], userAccountInfoDTO);
                 }
             }
             return new() {
-                Exists = accountExists,
+                UserAccountInfoDTO = userAccountInfoDTO,
+            };
+        }
+        // 登录验证
+        public LoginValidateRsp LoginValidate(LoginValidateReq req) {
+            bool succeed = true;
+            string failedReason = string.Empty;
+            UserAccountInfoDTO? userDTO = null;
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"account = '{req.Account}'");
+            if (users.Count <= 0) {
+                succeed = false;
+                failedReason = "账户名不存在";
+            } else {
+                UserAccountInfo user = users.Single(u => u.account == req.Account);
+                userDTO = new();
+                CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(user, userDTO);
+                
+                string? password = req.Password;
+                if (user.password != null && password != null) {
+                    string md5_password = SystemUtils.ToMD5String(password);
+                    if (user.password != md5_password && user.password.ToLower() != md5_password.ToLower() && user.password != password) {
+                        succeed = false;
+                        failedReason = "密码错误";
+                    }
+                } else if (string.IsNullOrEmpty(user.password) && !string.IsNullOrEmpty(password) 
+                    || !string.IsNullOrEmpty(user.password) && string.IsNullOrEmpty(password)) {
+                    succeed = false;
+                    failedReason = "密码错误";
+                }
+            }
+            return new() {
+                Succeed = succeed,
+                FailedReason = failedReason,
+                UserAccountInfoDTO = userDTO,
             };
         }
         #endregion
@@ -99,15 +164,16 @@ namespace OperationGuidance_service.Controllers {
         public QueryProductMissionListRsp QueryProductMissionListRsp(QueryProductMissionListReq req) {
             // 先查询任务清单
             double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            List<ProductMission> missions = _productMissionService.QueryList(req.UserId);
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
+            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
             List<ProductMissionDTO> productMissionDTOs = new();
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
             // 根据任务查询关联的其他表
             List<int> missionIds = missions.Select(m => m.id).ToList();
-            List<ProductSide> sides = _productSideService.FindBySqlCondition($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
+            List<ProductSide> sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
             List<int> boltIds = sides.Select(s => s.id).ToList();
-            List<ProductBolt> bolts = _productBoltService.FindBySqlCondition($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+            List<ProductBolt> bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
 
             // 根据任务找到所有的sides及bolts
             for (int i = 0 ; i < missions.Count ; i++) {
@@ -124,6 +190,7 @@ namespace OperationGuidance_service.Controllers {
                 productMissionDTOs[i].ProductSides = productSideDTOs;
             }
 
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
             return new() {
                 ProductMissionsDTOs = productMissionDTOs
             };
@@ -249,7 +316,7 @@ namespace OperationGuidance_service.Controllers {
         #region 站点（或者叫工作站、工位？）相关
         // 查询站点列表
         public QueryWorkstationListRsp QueryWorkstationList(QueryWorkstationListReq req) {
-            List<Workstation> workstations = _workstationService.QueryList(req.UserId);
+            List<Workstation> workstations = _workstationService.QueryListWithoutUserId();
             List<WorkstationDTO> workstationDTOs = new();
             CommonUtils.ObjectConverter<Workstation, WorkstationDTO>(workstations, workstationDTOs);
 
@@ -333,7 +400,7 @@ namespace OperationGuidance_service.Controllers {
 
         #region 数据查询相关
         public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
-            List<OperationData> operationDatas = _operationDataService.QueryList(req.UserId);
+            List<OperationData> operationDatas = _operationDataService.QueryListWithoutUserId();
             List<OperationDataDTO> operationDataDTOs = new();
             CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
 
@@ -357,7 +424,7 @@ namespace OperationGuidance_service.Controllers {
         #region 力臂相关
         // 查询力臂列表
         public QueryDeviceArmListRsp QueryDeviceArmList(QueryDeviceArmListReq req) {
-            List<DeviceArm> deviceCategories = _deviceArmService.QueryList(req.UserId);
+            List<DeviceArm> deviceCategories = _deviceArmService.QueryListWithoutUserId();
             List<DeviceArmDTO> deviceArmDTOs = new();
             CommonUtils.ObjectConverter<DeviceArm, DeviceArmDTO>(deviceCategories, deviceArmDTOs);
 
@@ -395,7 +462,7 @@ namespace OperationGuidance_service.Controllers {
         #region 工具相关
         // 查询工具列表
         public QueryDeviceToolListRsp QueryDeviceToolList(QueryDeviceToolListReq req) {
-            List<DeviceTool> deviceCategories = _deviceToolService.QueryList(req.UserId);
+            List<DeviceTool> deviceCategories = _deviceToolService.QueryListWithoutUserId();
             List<DeviceToolDTO> deviceToolDTOs = new();
             CommonUtils.ObjectConverter<DeviceTool, DeviceToolDTO>(deviceCategories, deviceToolDTOs);
 
@@ -433,7 +500,7 @@ namespace OperationGuidance_service.Controllers {
         #region 串口设备相关
         // 查询串口设备列表
         public QueryDeviceSerialPortListRsp QueryDeviceSerialPortList(QueryDeviceSerialPortListReq req) {
-            List<DeviceSerialPort> deviceCategories = _deviceSerialPortService.QueryList(req.UserId);
+            List<DeviceSerialPort> deviceCategories = _deviceSerialPortService.QueryListWithoutUserId();
             List<DeviceSerialPortDTO> deviceSerialPortDTOs = new();
             CommonUtils.ObjectConverter<DeviceSerialPort, DeviceSerialPortDTO>(deviceCategories, deviceSerialPortDTOs);
 
@@ -471,7 +538,7 @@ namespace OperationGuidance_service.Controllers {
         #region 通讯设备相关
         // 查询通讯设备列表
         public QueryDeviceCommunicationListRsp QueryDeviceCommunicationList(QueryDeviceCommunicationListReq req) {
-            List<DeviceCommunication> deviceCategories = _deviceCommunicationService.QueryList(req.UserId);
+            List<DeviceCommunication> deviceCategories = _deviceCommunicationService.QueryListWithoutUserId();
             List<DeviceCommunicationDTO> deviceCommunicationDTOs = new();
             CommonUtils.ObjectConverter<DeviceCommunication, DeviceCommunicationDTO>(deviceCategories, deviceCommunicationDTOs);
 

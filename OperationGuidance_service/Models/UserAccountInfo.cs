@@ -10,5 +10,6 @@ namespace OperationGuidance_service.Models {
         public string account { get; set; } = string.Empty;
         public string? password { get; set; }
         public int role_type { get; set; }
+        public string? operation_password { get; set; }
     }
 }

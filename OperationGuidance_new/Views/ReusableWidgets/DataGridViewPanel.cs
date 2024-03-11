@@ -12,6 +12,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
     public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
         #region Feilds 
         private Panel _gridViewPanel;
+        private int _headerHeight = WidgetUtils.GridViewHeaderHeight();
+        private int _rowsHeight = WidgetUtils.GridViewContentRowHeight();
+        private int _pageHeight = WidgetUtils.GridViewPageInfoHeight();
+        private float _columnsPaddingRatio = WidgetUtils.GridViewColumnsPaddingRatio();
         private HScrollBar? _hScrollBar;
         private VScrollBar? _vScrollBar;
         private DataGridView _gridView;
@@ -37,6 +41,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Properties
         public DataGridView GridView { get => _gridView; }
+        public int HeaderHeight { get => _headerHeight; set => _headerHeight = value; }
+        public int RowsHeight { get => _rowsHeight; set => _rowsHeight = value; }
+        public int PageHeight { get => _pageHeight; set => _pageHeight = value; }
+        public float ColumnsPaddingRatio { get => _columnsPaddingRatio; set => _columnsPaddingRatio = value; }
         public int CurrentPage { 
             get => _currentPage; 
             set {
@@ -571,7 +579,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Grid header height
-            int newHeaderHeight = WidgetUtils.GridViewHeaderHeight();
+            int newHeaderHeight = _headerHeight;
             if (newHeaderHeight >= 4) {
                 _gridView.ColumnHeadersHeight = newHeaderHeight;
                 _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
@@ -584,7 +592,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             }
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
-            int padding = newHeaderHeight / 2;
+            int padding = (int) (newHeaderHeight * _columnsPaddingRatio);
             foreach (DataGridViewColumn column in _gridView.Columns) {
                 if (column.Width == columnMaxWidth) {
                     continue;
@@ -600,7 +608,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 column.DefaultCellStyle.Padding = new(padding, 0, padding, 0);
             }
             // Grid content height
-            int newContentHeight = WidgetUtils.GridViewContentRowHeight();
+            int newContentHeight = _rowsHeight;
             if (newContentHeight >= 4) {
                 foreach (DataGridViewRow row in _gridView.Rows) {
                     row.Height = newContentHeight;
@@ -608,7 +616,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
             }
             // Page info panel height
-            int newPageInfoHeight = WidgetUtils.GridViewPageInfoHeight();
+            int newPageInfoHeight = _pageHeight;
             if (newPageInfoHeight > 0) {
                 // Whole page info content panel size
                 _pageInfoPanel.Size = new(Width - Padding.Size.Width, newPageInfoHeight);

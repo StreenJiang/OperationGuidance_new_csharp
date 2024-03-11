@@ -3,6 +3,8 @@ using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
+using OperationGuidance_new.Utils;
+using CustomLibrary.Buttons;
 
 namespace OperationGuidance_new.Views {
     public class UserInfoView: CustomContentPanel {
@@ -36,7 +38,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Control mainParent = WidgetUtils.MainPanel;
-            _titleHeight = WidgetUtils.ContentTitle();
+            _titleHeight = WidgetUtils.ContentTitleHeight();
             _contentHGap = (int) (mainParent.Height * _contentHGapRatio);
             _contentVGap = (int) (mainParent.Height * _contentVGapRatio);
             _contentHPadding = (int) (mainParent.Width * .015);
@@ -44,6 +46,50 @@ namespace OperationGuidance_new.Views {
 
             // Resizes
             ResizeUserNamePanel();
+        }
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            CustomChildMenuFirstButton childButton = WidgetUtils.GetChildMenu(602);
+            // MenuConfig menuConfig = SystemConfigs.MenuCongfigs.Single(c => c.Id == 600).Children.Single(c => c.Id == 602);
+            childButton.Click += (sender, eventArgs) => {
+                DialogResult result = MessageBox.Show(null, "确定要退出登录吗？", "退出登录", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes) {
+                    Form mainForm = WidgetUtils.MainForm;
+                    CustomTabPanel mainPanel = WidgetUtils.MainPanel;
+                    LoginView loginView = MainUtils.LoginView;
+                    // 先清理所有UI组件
+                    mainPanel.Hide();
+                    // mainPanel.Controls.Clear();
+                    // 告诉登录界面现在的主界面尺寸
+                    loginView.MainFormSize = mainForm.Size;
+                    Size screenSize = WidgetUtils.GetScreenResolution();
+                    loginView.AfterLogin = mainFormSize => {
+                        if (mainFormSize == screenSize) {
+                            mainForm.WindowState = FormWindowState.Maximized;
+                        } else {
+                            mainForm.Size = mainFormSize;
+                            mainForm.ClientSize = mainFormSize;
+                            mainForm.Location = new((screenSize.Width - mainFormSize.Width) / 2, (screenSize.Height - mainFormSize.Height) / 2);
+                        }
+                        MinimumSize = new Size(400, 300);
+                        MaximumSize = screenSize;
+                        mainPanel.Size = mainFormSize;
+                        mainPanel.Show();
+                    };
+                    // 重设登录界面尺寸
+                    Size loginViewSize = WidgetUtils.GetLoginViewSize(mainForm.Size);
+                    mainForm.Size = loginViewSize;
+                    mainForm.ClientSize = loginViewSize;
+                    mainForm.Location = new((screenSize.Width - loginViewSize.Width) / 2, (screenSize.Height - loginViewSize.Height) / 2);
+                    // mainPanel.Size = loginView.MainFormSize;
+                    loginView.Size = loginViewSize;
+                    loginView.BackShowing = WidgetUtils.ResizeImageWithoutLosingQuality(loginView.Back, loginViewSize);
+                    // 显示登录界面
+                    loginView.Show();
+                    loginView.ShowLoginForm();
+                }
+            };
+
         }
         #endregion
 
@@ -70,7 +116,7 @@ namespace OperationGuidance_new.Views {
                 ReadOnly = true,
                 Ratio = 7.25,
             };
-            _userNameBox.GetTextBox(0).Box.Text = SystemUtils.LoggedUserName();
+            _userNameBox.GetTextBox(0).Box.Text = SystemUtils.LoggedUserName;
         }
         #endregion
 
@@ -90,5 +136,13 @@ namespace OperationGuidance_new.Views {
             _userNamePanel.Size = new(Width, _userNameTitlePanel.Height + _userNameContentPanel.Height);
         }
         #endregion
+
+        public override void VisibleToTrue() {
+            base.VisibleToTrue();
+            _userNameBox.GetTextBox(0).Box.Text = SystemUtils.LoggedUserName;
+            if (WidgetUtils.RefreshLoginUserName != null) {
+                WidgetUtils.RefreshLoginUserName(SystemUtils.LoggedUserName);
+            }
+        }
     }
 }
