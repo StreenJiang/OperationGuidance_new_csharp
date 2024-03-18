@@ -15,7 +15,7 @@ namespace CustomLibrary.Panels
         }
 
         public CustomMainMenuPanel() {
-            WidgetUtils.MakeControlDraggable(this, WidgetUtils.MainPanel.Parent);
+            WidgetUtils.MakeControlDraggable(this, WidgetUtils.MainForm);
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

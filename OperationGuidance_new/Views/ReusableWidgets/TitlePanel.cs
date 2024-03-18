@@ -16,6 +16,7 @@ public class TitlePanel: Panel {
 
     public TitlePanel(string title) {
         Margin = new(0);
+        _underlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE;
         _title = new() {
             Text = title,
             Parent = this,
@@ -56,7 +57,7 @@ public class TitlePanel: Panel {
 
     public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
     private void ResizeChildren(object? sender, EventArgs eventArgs) {
-        if (Width <= 0 || Height <= 0) {
+        if (Width <= 0 || Height <= 0 || IsDisposed) {
             return;
         }
         // Resize title and right buttons

@@ -72,9 +72,15 @@ namespace CustomLibrary.Panels
                 _userInfoPanel.BringToFront();
             }
             NeedFoldButton = false;
-            WidgetUtils.RefreshLoginUserName = userNewName => {
-                _userInfoPanel.UserName = userNewName;
-            };
+            if (WidgetUtils.RefreshLoginUserName == null) {
+                WidgetUtils.RefreshLoginUserName = userNewName => {
+                    _userInfoPanel.UserName = userNewName;
+                };
+            } else {
+                WidgetUtils.RefreshLoginUserName += userNewName => {
+                    _userInfoPanel.UserName = userNewName;
+                };
+            }
         }
         public void HideUserInfoPanel() {
             if (_userInfoPanel != null) {

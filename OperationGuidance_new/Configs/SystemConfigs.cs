@@ -87,12 +87,12 @@ namespace OperationGuidance_new.Configs {
                         Icon = Properties.Resources.device_serial_port,
                         ViewType = typeof(DeviceSerialPortView),
                     },
-                    // new() {
-                    //     Id = 507,
-                    //     Name = "开发者选项",
-                    //     Icon = Properties.Resources.developer_choices,
-                    //     ViewType = typeof(DeveloperChoicesView),
-                    // },
+                    new() {
+                        Id = 507,
+                        Name = "条码匹配管理",
+                        Icon = Properties.Resources.bar_code,
+                        ViewType = typeof(BarCodeMatchingRuleManagementView),
+                    },
                     new() {
                         Id = 508,
                         Name = "软件许可",
@@ -117,13 +117,13 @@ namespace OperationGuidance_new.Configs {
                     new() {
                         Id = 601,
                         Name = "用户个人信息",
-                        Icon = Properties.Resources.mission_list,
+                        Icon = Properties.Resources.user_info,
                         ViewType = typeof(UserInfoView),
                     },
                     new() {
                         Id = 602,
                         Name = "退出登录",
-                        Icon = Properties.Resources.mission_edition,
+                        Icon = Properties.Resources.user_logout,
                         IsToggleButton = false,
                         Click = new((sender, eventArgs) => {
                             // DialogResult result = MessageBox.Show(null, "确定要退出登录吗？", "退出登录", MessageBoxButtons.YesNo, MessageBoxIcon.Question);

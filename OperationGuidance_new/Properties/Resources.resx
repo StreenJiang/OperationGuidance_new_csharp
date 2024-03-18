@@ -175,6 +175,9 @@
   <data name="aneng_setter_selector_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_setter_selector_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="bar_code" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\bar_code.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="bar_code_icon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\bar_code_icon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -327,6 +330,9 @@
   </data>
   <data name="user_info" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\user_info.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="user_logout" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\user_logout.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="user_operation" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\user_operation.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

@@ -1,6 +1,7 @@
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.ViewObjects {
     public class OperationDataVO: AVOBase {
@@ -201,7 +202,7 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("站点名称")]
         public string? workstation_name { get; set; }                                       // 站点名称
         [GridColumn("站点ID")]
-        public new int? id { get; set; }                                                    // 站点ID
+        public int? workstation_id { get; set; }                                            // 站点ID
         [GridColumn("工具IP")]
         public string? tool_ip { get; set; }                                                // 工具IP
         [GridColumn("工具名称")]
@@ -216,6 +217,21 @@ namespace OperationGuidance_new.ViewObjects {
         public int? product_sied_id { get; set; }                                           // 产品面号
         [GridColumn("点位号")]
         public int? bolt_serial_num { get; set; }                                           // 点位号
+        [GridColumn("力臂架X坐标")]
+        public string? str_arm_position_x { get; set; }
+        [GridColumn("力臂架Y坐标")]
+        public string? str_arm_position_y { get; set; }
+        private string? _arm_position;
+        public string? arm_position {                                                       // 力臂架实时坐标
+            get => _arm_position;
+            set {
+                _arm_position = value;
+                Coordinates3D coordinates = Coordinates3D.FromString(value);
+                str_arm_position_x = coordinates.X + "";
+                str_arm_position_y = coordinates.Y + "";
+            }
+        }
+        public int? mission_record_id { get; set; }                                         // 任务记录ID
 
         public DateTime? filter_create_time_min { get; set; }
         public DateTime? filter_create_time_max { get; set; }

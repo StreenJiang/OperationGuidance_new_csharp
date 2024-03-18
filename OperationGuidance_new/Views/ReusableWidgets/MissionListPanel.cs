@@ -7,22 +7,29 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
-        private TitlePanel _titlePanel;
+        private TitlePanel? _titlePanel;
         private CustomVScrollingContentPanel _contentOuterPanel;
         private ContentPanel _contentPanel;
         private List<ProductMissionDTO> _missionDTOs;
+        private ProductMissionBlock<ProductMissionDTO>? _currentToggledMission = null;
         private int _titleHeight;
 
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
+        public ProductMissionBlock<ProductMissionDTO>? CurrentToggledMission { get => _currentToggledMission; set => _currentToggledMission = value; }
 
-        public MissionListPanel(string title, string buttonLabel, EventHandler rightButtonClick) {
+        public MissionListPanel() : this(null, null, null) {}
+        public MissionListPanel(string title) : this(title, null, null) {}
+        public MissionListPanel(string? title, string? buttonLabel, EventHandler? rightButtonClick) {
             FlowDirection = FlowDirection.TopDown;
-            _titlePanel = new(title) {
-                Parent = this,
-                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
-            };
-            TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
-            rightButton.Click += rightButtonClick;
+            if (title != null) {
+                _titlePanel = new(title) {
+                    Parent = this,
+                };
+                if (buttonLabel != null) {
+                    TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
+                    rightButton.Click += rightButtonClick;
+                }
+            }
 
             _missionDTOs = new();
             _contentPanel = new(CalculateAndCheckScrollBar);
@@ -33,7 +40,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         private bool CalculateAndCheckScrollBar(int parentNewHeight) {
-            _titleHeight = WidgetUtils.ContentTitleHeight();
+            if (_titlePanel != null) {
+                _titleHeight = WidgetUtils.ContentTitleHeight();
+            } else {
+                _titleHeight = 0;
+            }
             // If there is no any mission, then don't need scroll bar
             if (_missionDTOs.Count == 0) {
                 NewHeight = 0;
@@ -54,10 +65,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<ProductMissionDTO> blockClickAction) {
-            System.Console.WriteLine($"missionDTOs.Count: {missionDTOs.Count}");
+        public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<ProductMissionDTO>? blockClickAction, bool toggleBlock = false) {
             double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
             System.Console.WriteLine($"-------------------------------------------------------------------------------- 111111111111111111111111 start");
+            _currentToggledMission = null;
             if (missionDTOs.Count > 0) {
                 _contentPanel.BigButtonPanel.Hide();
                 _contentPanel.MissionsTable.Show();
@@ -89,8 +100,25 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         ) {
                             Parent = _contentPanel.MissionsTable,
                         };
+                        block.InnerButton.ToggledButton = toggleBlock;
+                        block.InnerButton.ToggledColor = WidgetUtils.DarkenColor(block.BackColor, .2);
                         block.Click += (sender, eventArgs) => {
-                            blockClickAction(block.Entity);
+                            if (block.InnerButton.ToggledButton) {
+                                if (_currentToggledMission == null) {
+                                    _currentToggledMission = block;
+                                } else {
+                                    _currentToggledMission.InnerButton.SetToggle(false);
+                                    if (_currentToggledMission == block) {
+                                        _currentToggledMission = null;
+                                    } else {
+                                        _currentToggledMission = block;
+                                        _currentToggledMission.InnerButton.SetToggle(true);
+                                    }
+                                }
+                            }
+                            if (blockClickAction != null) {
+                                blockClickAction(block.Entity);
+                            }
                         };
                     }
                 }
@@ -107,8 +135,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            // Resize title panel
-            _titlePanel.Size = new(Width, _titleHeight);
+            if (_titlePanel != null) {
+                // Resize title panel
+                _titlePanel.Size = new(Width, _titleHeight);
+            }
             // Resize content panel
             _contentOuterPanel.Size = new(Width, Height - _titleHeight);
         }

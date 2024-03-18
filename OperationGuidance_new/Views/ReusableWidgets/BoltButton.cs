@@ -19,6 +19,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private bool _mouseLeftDown;
         private bool _moved;
         private bool _showingWhileWorking;
+        private int _ngTimes;
 
         public ProductBoltDTO BoltDTO {
             get => _boltDTO;
@@ -56,6 +57,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool MouseLeftDown { get => _mouseLeftDown; set => _mouseLeftDown = value; }
         public bool Moved { get => _moved; set => _moved = value; }
         public bool ShowingWhileWorking { get => _showingWhileWorking; set => _showingWhileWorking = value; }
+        public int NgTimes { get => _ngTimes; set => _ngTimes=value; }
 
         public BoltButton(ProductBoltDTO boltDTO) {
             Label = boltDTO.serial_num + "";
@@ -66,6 +68,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _buttonTimer.Tick += TimerTick;
             _moved = false;
             _showingWhileWorking = true;
+            _ngTimes = 0;
 
             BlockHoverUp = true;
             _boltStatus = BoltStatus.DEFAULT;

@@ -86,6 +86,7 @@ namespace CustomLibrary.Forms
             StartPosition = FormStartPosition.Manual;
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
+            _borderColor = ColorConfigs.COLOR_POP_UP_BORDER;
 
             // Title panel
             _titlePanel = new() {
@@ -258,7 +259,6 @@ namespace CustomLibrary.Forms
         public void ResizeChildren() => ResizeChildren(EventArgs.Empty);
         public void ResizeChildren(EventArgs eventArgs) => ResizeChildren(this, eventArgs);
         protected virtual void ResizeChildren(object? sender, EventArgs eventArgs) {
-            // CalculateDetailProperties();
             // Border
             if (_borderColor != null) {
                 _borderRect = new(0, 0, Width - 1, Height - 1);

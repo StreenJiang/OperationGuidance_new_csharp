@@ -3,6 +3,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 namespace OperationGuidance_service.Models.DTOs {
     public class OperationDataDTO: ADTOBase {
         // 其他信息字段, 带“*”号的不确定哪来的
+        public int? mission_record_id { get; set; }                                         // 任务记录ID
         public int? workstation_id { get; set; }                                            // 站点编号
         public string? workstation_name { get; set; }                                       // 站点名称
         public string? tool_name { get; set; }                                              // 工具名称
@@ -11,6 +12,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? gun_num { get; set; }                                                // 枪(轴)号（多把枪的情况）
         public int? product_sied_id { get; set; }                                           // 产品面号
         public int? bolt_serial_num { get; set; }                                           // 点位号
+        public string? arm_position { get; set; }                                           // 力臂架实时坐标
         public int? tightening_count { get; set; }                                          // 拧紧计数（根据需求来）
         public string? work_group_name { get; set; }                                        // * 工作组名
         public int? work_group_count { get; set; }                                          // * 工作组计数

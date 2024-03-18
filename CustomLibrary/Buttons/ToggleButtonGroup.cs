@@ -52,6 +52,7 @@ namespace CustomLibrary.Buttons {
             // Initialize combo box
             _toggleButton = new();
             _toggleButton.Parent = this;
+            ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND;
         }
 
         protected override void OnHandleCreated(EventArgs e) {

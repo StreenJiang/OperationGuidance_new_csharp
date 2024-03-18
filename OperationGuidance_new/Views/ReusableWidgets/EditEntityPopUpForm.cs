@@ -40,6 +40,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             customTextBoxGroup.Ratio = 7;
             return customTextBoxGroup;
         }
+        public CustomTextBoxGroup AddSeparateTextBox<V>(string boxName, string separator, bool numberOnly, Action<T, V?>? propertySetter1, Action<T, V?>? propertySetter2) {
+            CustomTextBoxGroup customTextBoxGroup = WidgetUtils.AddSeparateTextBox(_tablePanel, _dto, boxName, separator, numberOnly, propertySetter1, propertySetter2);
+            customTextBoxGroup.NameAlignment = HorizontalAlignment.Right;
+            customTextBoxGroup.Ratio = 7;
+            return customTextBoxGroup;
+        }
         public CustomComboBoxGroup<V> AddComboBox<V>(string boxName, Action<T, V?>? propertySetter, Dictionary<string, V> items) {
             CustomComboBoxGroup<V> customComboBoxGroup = WidgetUtils.AddComboBox(_tablePanel, _dto, boxName, propertySetter, items);
             customComboBoxGroup.NameAlignment = HorizontalAlignment.Right;
@@ -62,7 +68,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ResizeTablePanelAndItsChildren() {
             CalculateDetailProperties();
 
-            Control mainForm = WidgetUtils.MainPanel.Parent;
+            Control mainForm = WidgetUtils.MainForm;
             Padding contentPadding = ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
@@ -105,7 +111,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     continue;
                 } else {
                     control.Margin = new(boxMargin);
-                    control.Size = new(contentPieceWidth, boxHeight);
+                    if (_tablePanel.GetColumnSpan(control) == _columnCount) {
+                        control.Size = new(_tablePanel.Width - boxMargin * 2, boxHeight);
+                    } else {
+                        control.Size = new(contentPieceWidth, boxHeight);
+                    }
                 }
             }
 

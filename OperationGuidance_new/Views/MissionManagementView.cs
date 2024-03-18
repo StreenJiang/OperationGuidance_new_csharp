@@ -81,10 +81,10 @@ namespace OperationGuidance_new.Views {
         }
 
         private void FetchData() {
-            QueryProductMissionListReq req = new();
-            QueryProductMissionListRsp rsp;
+            QueryProductMissionsWithCoverReq req = new();
+            QueryProductMissionsWithCoverRsp rsp;
 
-            rsp = apis.QueryProductMissionListRsp(req);
+            rsp = apis.QueryProductMissionsWithCover(req);
             _productMissionDTOs = rsp.ProductMissionsDTOs;
         }
     }

@@ -253,6 +253,16 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap bar_code {
+            get {
+                object obj = ResourceManager.GetObject("bar_code", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap bar_code_icon {
             get {
                 object obj = ResourceManager.GetObject("bar_code_icon", resourceCulture);
@@ -756,6 +766,16 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap user_info {
             get {
                 object obj = ResourceManager.GetObject("user_info", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap user_logout {
+            get {
+                object obj = ResourceManager.GetObject("user_logout", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

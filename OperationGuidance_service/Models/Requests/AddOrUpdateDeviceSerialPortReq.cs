@@ -5,8 +5,8 @@ namespace OperationGuidance_service.Models.Requests {
     public class AddOrUpdateDeviceSerialPortReq: HttpRequest {
         public DeviceSerialPortDTO DeviceSerialPortDTO { get; set; }
 
-        public AddOrUpdateDeviceSerialPortReq(DeviceSerialPortDTO deviceSerialPortDTO) {
-            DeviceSerialPortDTO = deviceSerialPortDTO;
+        public AddOrUpdateDeviceSerialPortReq(DeviceSerialPortDTO dto) {
+            DeviceSerialPortDTO = dto;
         }
     }
 }

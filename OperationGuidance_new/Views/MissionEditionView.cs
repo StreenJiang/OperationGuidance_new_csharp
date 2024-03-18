@@ -16,6 +16,8 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using Timer = System.Windows.Forms.Timer;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Forms;
+using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView: CustomContentPanel {
@@ -79,10 +81,12 @@ namespace OperationGuidance_new.Views {
             // top
             private CustomTextBoxGroup _missionName;
             private CustomTextBoxGroup _missionPnCode;
+            private CustomContentPanel _buttonsOuter;
+            private CommonButton _editDetail;
+            private MissionDetailPopUpForm _detialPopUpForm;
             private CommonButton _buttonSave;
             private CommonButton _buttonNew;
             private CommonButton _buttonDelete;
-            private CommonButton _buttonPublish;
             private ImageButton _imageButtonChoose;
             private ImageButton _imageButtonZoomIn;
             private ImageButton _imageButtonZoomOut;
@@ -177,28 +181,75 @@ namespace OperationGuidance_new.Views {
                         Modified = true;
                     }
                 };
-                // PN码输入框
-                _missionPnCode = new("PN码") {
-                    Parent = _top,
-                    BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                    ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                    BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                    BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                    NameAlignment = HorizontalAlignment.Left,
-                    NumberOnly = true,
-                };
-                CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
-                missionPnCodeBox.Text = _missionDTO.pn_code;
-                missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
-                missionPnCodeBox.TextChanged += (sender, eventArgs) => {
-                    if (!_missionPnCode.HasError) {
-                        _missionDTO.pn_code = missionPnCodeBox.Text;
-                        Modified = true;
-                    }
-                };
+                // // PN码输入框
+                // _missionPnCode = new("PN码") {
+                //     Parent = _top,
+                //     BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
+                //     ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                //     BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                //     BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+                //     NameAlignment = HorizontalAlignment.Left,
+                //     NumberOnly = true,
+                //     Visible = false,
+                // };
+                // CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
+                // missionPnCodeBox.Text = _missionDTO.pn_code;
+                // missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
+                // missionPnCodeBox.TextChanged += (sender, eventArgs) => {
+                //     if (!_missionPnCode.HasError) {
+                //         _missionDTO.pn_code = missionPnCodeBox.Text;
+                //         Modified = true;
+                //     }
+                // };
 
-                _buttonSave = new() {
+                _buttonsOuter = new() {
                     Parent = _top,
+                    Padding = new(0),
+                };
+                _editDetail = new() {
+                    Parent = _buttonsOuter,
+                    Label = "编辑详情",
+                    BlockHoverUp = true,
+                };
+                _editDetail.Click += (s, e) => {
+                    List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new() { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
+                    _detialPopUpForm = new(_missionDTO, barCodeMatchingRuleDTOs) {
+                        Title = "编辑任务详情",
+                    };
+                    _detialPopUpForm.AddButton("确定").Click += (s, e) => {
+                        bool check = true;
+                        string warningMsg = "";
+                        int warningIndex = 1;
+                        string missionName = _detialPopUpForm.MissionName.GetTextBox(0).Box.Text;
+                        if (string.IsNullOrEmpty(missionName)) {
+                            check = false;
+                            _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 站点名称不能为空\r\n";
+                        }
+                        string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
+                        if (string.IsNullOrEmpty(maxNGNum)) {
+                            check = false;
+                            _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
+                        }
+
+                        if (!check) {
+                            WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
+                        } else {
+                            _missionDTO.name = missionName;
+                            _missionDTO.max_ng_num = int.Parse(maxNGNum);
+                            _detialPopUpForm.Hide();
+                        }
+                    };
+                    _detialPopUpForm.AddButton("关闭").Click += (s, e) => {
+                        _detialPopUpForm.Hide();
+                    };
+                    _detialPopUpForm.PretendToShowToCreateHandlesForChildren();
+                    _detialPopUpForm.ResizeSelf();
+                    _detialPopUpForm.Show();
+                };
+                _buttonSave = new() {
+                    Parent = _buttonsOuter,
                     Label = "保存",
                     BlockHoverUp = true,
                 };
@@ -219,7 +270,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
                 _buttonNew = new() {
-                    Parent = _top,
+                    Parent = _buttonsOuter,
                     Label = "新增",
                     BlockHoverUp = true,
                 };
@@ -234,7 +285,7 @@ namespace OperationGuidance_new.Views {
                     }
                 };
                 _buttonDelete = new() {
-                    Parent = _top,
+                    Parent = _buttonsOuter,
                     Label = "删除",
                     BlockHoverUp = true,
                 };
@@ -682,6 +733,10 @@ namespace OperationGuidance_new.Views {
                     _boltPopUpForm.Workstation.SetError(true); 
                     warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
                 }
+                if (MainUtils.IsArmLocatingEnabled() && !_boltPopUpForm.PositionToggle.Checked) {
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 已开启【力臂定位】，必须配置点位坐标\r\n";
+                }
                 if (_boltPopUpForm.PositionToggle.Checked) {
                     string x = _boltPopUpForm.PositionBox.GetTextBox(0).Box.Text;
                     string y = _boltPopUpForm.PositionBox.GetTextBox(1).Box.Text;
@@ -978,24 +1033,28 @@ namespace OperationGuidance_new.Views {
 
             private void ResizeTop() {
                 // Recalculate some variables
-                int textBoxWidth = (int) (_top.Width / 3.5);
+                int textBoxWidth = (int) (_top.Width / 2.75);
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
                 int boxGap = (int) (textBoxHeight * .5);
-                int buttonsWidth = _top.Width - textBoxWidth * 2 - boxGap;
                 int buttonsHeight = WidgetUtils.CommonButtonHeight();
                 int buttonGap = (int) (buttonsHeight * .5);
 
                 // Resize mission name box
                 _missionName.Size = new(textBoxWidth, textBoxHeight);
-                _missionPnCode.Size = new(textBoxWidth, textBoxHeight);
-                _missionPnCode.Margin = new(boxGap, 0, 0, 0);
+                // _missionPnCode.Size = new(textBoxWidth, textBoxHeight);
+                // _missionPnCode.Margin = new(boxGap, 0, 0, 0);
 
                 // Resize common buttons
-                Size buttonSize =  new((int) ((buttonsWidth - buttonGap * 3) / 3), buttonsHeight);
-                HandleCommonButton(_buttonSave);
-                // HandleCommonButton(_buttonPublish);
-                HandleCommonButton(_buttonNew);
-                HandleCommonButton(_buttonDelete);
+                _buttonsOuter.Size = new(_top.Width - textBoxWidth - boxGap, buttonsHeight);
+                foreach (Control c in _buttonsOuter.Controls) {
+                    if (c is CommonButton btn) {
+                        btn.Height = buttonsHeight;
+                        // 先设置高度获得自动调整的字体大小
+                        int width = TextRenderer.MeasureText(btn.Label, btn.Font).Width;
+                        btn.Width = (int) (width * 1.8);
+                        btn.Margin = new(buttonGap, 0, 0, 0);
+                    }
+                }
 
                 // Resize image buttons
                 int imageButtonSide = _top.Height - buttonsHeight;
@@ -1014,11 +1073,6 @@ namespace OperationGuidance_new.Views {
                 HandleImageButton(_imageButtonUndo);
                 HandleImageButton(_imageButtonReset);
 
-                // Inner method for reuse
-                void HandleCommonButton(CommonButton button) {
-                    button.Size = buttonSize;
-                    button.Margin = new(buttonGap, 0, 0, 0);
-                }
                 // Inner method for reuse
                 void HandleImageButton(ImageButton button) {
                     button.Size = imageButtonSize;
@@ -1095,6 +1149,128 @@ namespace OperationGuidance_new.Views {
             private void ForceResizeRight() {
                 _autoScrollContentOuterPanel.Width -= 1;
                 ResizeBottomRight();
+            }
+        }
+
+        public class MissionDetailPopUpForm: CustomPopUpForm {
+            private int _tableColumns = 2;
+            private ProductMissionDTO _missionDTO;
+            private TableLayoutPanel _tablePanel;
+            private CustomTextBoxGroup _missionName;
+            private CustomTextBoxGroup _maxNGNum;
+            private CustomTextBoxGroup _productsBarCodeNum;
+            private CustomTextBoxGroup _partsBarCodeNum;
+
+            public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+            public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
+            public CustomTextBoxGroup MissionName { get => _missionName; set => _missionName = value; }
+            public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
+            public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
+            public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
+
+            public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
+                _missionDTO = missionDTO;
+                _tablePanel = new() {
+                    Parent = ContentPanel,
+                    ColumnCount = _tableColumns,
+                };
+
+                _missionName = new("任务名称") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                _maxNGNum = new("最大NG数") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    NumberOnly = true,
+                };
+                _productsBarCodeNum = new("产品条码数") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Enabled = false,
+                };
+                _partsBarCodeNum = new("物料条码数") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Enabled = false,
+                };
+
+                // 数据回填
+                _missionName.SetValue(0, missionDTO.name);
+                _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
+
+                int productsBarCodeNum = 0;
+                int partsBarCodeNum = 0;
+                foreach (BarCodeMatchingRuleDTO rule in barCodeMatchingRuleDTOs) {
+                    if (rule.type == BarCodeTypes.PRODUCT.Id) {
+                        productsBarCodeNum++;
+                    } else {
+                        partsBarCodeNum++;
+                    }
+                }
+                _productsBarCodeNum.SetValue(0, productsBarCodeNum + "");
+                _partsBarCodeNum.SetValue(0, partsBarCodeNum + "");
+            }
+
+            public void ResizeSelf() {
+                ResizeTablePanelAndItsChildren();
+                Invalidate();
+            }
+
+            public void ResizeTablePanelAndItsChildren() {
+                CalculateDetailProperties();
+
+                Padding contentPadding = ContentPanel.Padding;
+                int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxMargin = boxHeight / 5;
+                int subTitleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
+                int subTitleMargin = subTitleHeight / 5;
+                int tableHeight = 0;
+                int previousRowIndex = -1;
+                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .65);
+                int tableWidth = cntentWidth - contentPadding.Size.Width;
+                int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
+                foreach (Control control in _tablePanel.Controls) {
+                    if (control.Visible) {
+                        int currentRowIndex = _tablePanel.GetPositionFromControl(control).Row;
+                        if (currentRowIndex != previousRowIndex) {
+                            previousRowIndex = currentRowIndex;
+                            if (control is TitlePanel titlePanel) {
+                                tableHeight += subTitleHeight + subTitleMargin * 2;
+                            } else if (control is SubPanel<ProductBoltDTO> subPanel) {
+                                subPanel.ResizeSelf(tableWidth);
+                                tableHeight += subPanel.Height;
+                            } else if (control is PictureBoxGroup pictureBox) {
+                                pictureBox.SetSize(contentPieceWidth, boxHeight, WidgetUtils.PictureBoxGroupBaseHeight(), 1, contentPieceWidth + boxMargin * 2);
+                                pictureBox.Margin = new(boxMargin);
+                                tableHeight += pictureBox.Height + subTitleMargin * 2;
+                            } else {
+                                tableHeight += boxHeight + boxMargin * 2;
+                            }
+                        }
+                    }
+                }
+                Size contentSize = new(cntentWidth, tableHeight + contentPadding.Size.Height);
+                _tablePanel.Size = new(tableWidth, tableHeight);
+                foreach (Control control in _tablePanel.Controls) {
+                    if (control is TitlePanel titlePanel) {
+                        titlePanel.Margin = new(0, boxMargin, 0, boxMargin);
+                        titlePanel.Size = new(_tablePanel.Width, subTitleHeight);
+                    } else if (control is SubPanel<ProductBoltDTO> subPanel) {
+                        continue;
+                    } else if (control is PictureBoxGroup pictureBox) {
+                        continue;
+                    } else {
+                        control.Margin = new(boxMargin);
+                        control.Size = new(contentPieceWidth, boxHeight);
+                    }
+                }
+
+                SetContentSizeAndSelfSize(contentSize);
             }
         }
 

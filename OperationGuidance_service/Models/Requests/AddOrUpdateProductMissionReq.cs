@@ -5,8 +5,8 @@ namespace OperationGuidance_service.Models.Requests {
     public class AddOrUpdateProductMissionReq: HttpRequest {
         public ProductMissionDTO ProductMissionDTO { get; set; }
 
-        public AddOrUpdateProductMissionReq(ProductMissionDTO productMissionDTO) {
-            ProductMissionDTO = productMissionDTO;
+        public AddOrUpdateProductMissionReq(ProductMissionDTO dto) {
+            ProductMissionDTO = dto;
         }
     }
 }

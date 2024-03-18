@@ -12,6 +12,7 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using Newtonsoft.Json;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Events;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView: CustomContentPanel {
@@ -22,6 +23,7 @@ namespace OperationGuidance_new.Views {
         private readonly float _contentHPaddingRatio = 0.15F;
         private readonly float _contentVPaddingRatio = 0.03F;
         private int _titleHeight;
+        private int _boxNBtnHeight;
         private int _contentHGap;
         private int _contentVGap;
         private int _contentHPadding;
@@ -38,6 +40,13 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _storageFileNameTextBox;
         private CustomTextBoxButtonGroup _storagePathTextBox;
         private CommonButtonGroup _storageFieldsButton;
+        private ToggleButtonGroup _storeLooseningDataToggle;
+        // 任务配置
+        private CustomContentPanel _missionPanel;
+        private TitlePanel _missionTitlePanel;
+        private CustomContentPanel _missionContentPanel;
+        private ToggleButtonGroup _enableArmLocatingToggle;
+        private CustomTextBoxButtonGroup _armLocatingAccuracyBox;
         #endregion
 
         private List<OperationDataField> Fields { get; set; } = new();
@@ -52,27 +61,30 @@ namespace OperationGuidance_new.Views {
             // Initilizations
             InitializeResolutionPanel();
             InitializeStoragePanel();
+            InitializeMissionSettings();
         }
         #endregion
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            Control mainParent = WidgetUtils.MainPanel;
+            Control mainForm = WidgetUtils.MainForm;
             _titleHeight = WidgetUtils.ContentTitleHeight();
-            _contentHGap = (int) (mainParent.Height * _contentHGapRatio);
-            _contentVGap = (int) (mainParent.Height * _contentVGapRatio);
-            _contentHPadding = (int) (mainParent.Width * .015);
-            _contentVPadding = (int) (mainParent.Height * .03);
+            _boxNBtnHeight = WidgetUtils.TextOrComboBoxHeight();
+            _contentHGap = (int) (mainForm.Height * _contentHGapRatio);
+            _contentVGap = (int) (mainForm.Height * _contentVGapRatio);
+            _contentHPadding = (int) (mainForm.Width * .015);
+            _contentVPadding = (int) (mainForm.Height * .03);
 
             // Resizes
             ResizeResolutionPanel();
             ResizeStoragePanel();
+            ResizeMissionSettings();
        }
         public override void VisibleToTrue() {
             base.VisibleToTrue();
             // Reset current resolution
             List<KeyValuePair<Size, SizeRatioNRectColor>> items = _resolutionOptionsBox.Items;
-            Control mainParent = WidgetUtils.MainPanel.Parent;
+            Control mainParent = WidgetUtils.MainForm;
             for (int i = 0; i < items.Count; i++) {
                 KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
                 if (item.Key == mainParent.Size) {
@@ -97,10 +109,6 @@ namespace OperationGuidance_new.Views {
             };
             _resolutionOptionsBox = new("分辨率") {
                 Parent = _resolutionContentPanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.5,
             };
             Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
@@ -130,7 +138,7 @@ namespace OperationGuidance_new.Views {
                     _resolutionOptionsBox.SetError(true);
                 } else {
                     // Resize main form according to chosen resolution
-                    Form mainParent = (Form) WidgetUtils.MainPanel.Parent;
+                    Form mainParent = (Form) WidgetUtils.MainForm;
                     Size newSize = value.Key;
                     if (_resolutionOptionsBox.IsError) {
                         _resolutionOptionsBox.SetError(false);
@@ -174,6 +182,11 @@ namespace OperationGuidance_new.Views {
                 _settings.Write(IniFileKeys.DataStoragePath, newPath);
                 _settings.Write(IniFileKeys.DataStorageFieldsSort, fieldsSortConfig);
                 _settings.Write(IniFileKeys.DataStorageFieldsSortCurr, null);
+                if (_storeLooseningDataToggle.Checked) {
+                    _settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.YES + "");
+                } else {
+                    _settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.NO + "");
+                }
                 WidgetUtils.ShowNoticePopUp("存储参数配置信息保存成功！");
             };
             _storageContentPanel = new() {
@@ -181,19 +194,11 @@ namespace OperationGuidance_new.Views {
             };
             _storageFileNameTextBox = new("数据文件名称") {
                 Parent = _storageContentPanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.5,
             };
             _storageFileNameTextBox.SetValue(0, MainUtils.GetStorageFileName());
             _storagePathTextBox = new("数据存储路径") {
                 Parent = _storageContentPanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Ratio = 8.5,
             };
             string dataStoragePath = MainUtils.GetStoragePath();
@@ -219,12 +224,16 @@ namespace OperationGuidance_new.Views {
             _storageFieldsButton.AddButton("字段预览").MouseUp += (sender, eventArgs) => {
                 PopUpFieldsPreviewForm(Fields);
             };
+            _storeLooseningDataToggle = new("记录反松数据") {
+                Parent = _storageContentPanel,
+                Ratio = 8.5,
+                Checked = MainUtils.GetStoreLooseningData(),
+            };
         }
         private void PopUpFieldsConfigurationForm(List<int> sortConfig, List<OperationDataField> fields) {
             FieldsConfiguration configPanel = new(fields);
             CustomPopUpForm form = new() {
                 Title = "配置数据字段",
-                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             CommonButton confirmButton = form.AddButton("确定");
             confirmButton.Click += (s, e) => {
@@ -243,7 +252,7 @@ namespace OperationGuidance_new.Views {
             Padding contentPadding = form.ContentPanel.Padding;
             int buttonHeight = WidgetUtils.CommonButtonHeight();
             int buttonMargin = buttonHeight / 5;
-            Size contentSize = new((int) (WidgetUtils.MainPanel.Width * .4), (int) (WidgetUtils.MainPanel.Height * .6));
+            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .4), (int) (WidgetUtils.MainSize.Height * .6));
             configPanel.ToggleButtonHeight = buttonHeight;
             configPanel.ButtonMargin = buttonMargin;
             scrollPanel.Size = new(contentSize.Width - contentPadding.Size.Width, contentSize.Height - contentPadding.Size.Height);
@@ -621,19 +630,54 @@ namespace OperationGuidance_new.Views {
             form.SetContentSizeAndSelfSize(new(contentWidth, outer.Height + form.ContentPanel.Padding.Size.Height));
             form.Show();
         }
+        private void InitializeMissionSettings() {
+            _missionPanel = new() {
+                Parent = this,
+                FlowDirection = FlowDirection.TopDown,
+            };
+            _missionTitlePanel = new("任务配置") {
+                Parent = _missionPanel,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
+            };
+            _missionContentPanel = new() {
+                Parent = _missionPanel,
+            };
+            _enableArmLocatingToggle = new("开启力臂定位") {
+                Parent = _missionContentPanel,
+                Ratio = 6.95,
+                Checked = MainUtils.IsArmLocatingEnabled(),
+            };
+            _enableArmLocatingToggle.CheckedChanged += (s, e) => {
+                string v;
+                if (_enableArmLocatingToggle.Checked) {
+                    v = (int) YesOrNo.YES + "";
+                } else {
+                    v = (int) YesOrNo.NO + "";
+                }
+                _settings.Write(IniFileKeys.MissionArmLocatingEnabled, v);
+            };
+            _armLocatingAccuracyBox = new("力臂定位精度") {
+                Parent = _missionContentPanel,
+                Ratio = 6.95,
+                NumberOnly = true,
+            };
+            _armLocatingAccuracyBox.SetValue(0, MainUtils.GetArmLocatingAccuracy() + "");
+            _armLocatingAccuracyBox.GetTextBox(0).Box.LostFocus += (s, e) => {
+                _settings.Write(IniFileKeys.MissionArmLocatingAccuracy, _armLocatingAccuracyBox.GetTextBox(0).Box.Text);
+            };
+        }
         #endregion
 
         #region Resize methods
         private void ResizeResolutionPanel() {
             // Resize title
             _resolutionTitlePanel.Size = new(Width, _titleHeight);
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-            int contentHeight = boxHeight + _contentVPadding * 2;
+            int contentHeight = _boxNBtnHeight + _contentVPadding * 2;
             // Resize Content
             _resolutionContentPanel.Size = new(Width, contentHeight);
             _resolutionContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
             // Resize box and button
-            _resolutionOptionsBox.Size = new(Width - _resolutionContentPanel.Padding.Size.Width, boxHeight);
+            _resolutionOptionsBox.Size = new(Width - _resolutionContentPanel.Padding.Size.Width, _boxNBtnHeight);
             _resolutionOptionsBox.Margin = new(0, 0, _contentHGap / 2, 0);
             // Resize outer panel
             _resolutionPanel.Size = new(Width, _resolutionTitlePanel.Height + _resolutionContentPanel.Height);
@@ -641,23 +685,40 @@ namespace OperationGuidance_new.Views {
         private void ResizeStoragePanel() {
             // Resize title
             _storageTitlePanel.Size = new(Width, _titleHeight);
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxWidth = (Width - _contentHPadding * 2);
-            int buttonHeight = WidgetUtils.CommonButtonHeight();
-            int boxVMargin = boxHeight / 2;
-            int contentHeight = boxHeight * 3 + _contentVPadding * 2 + boxVMargin * 2;
+            int boxVMargin = this._boxNBtnHeight / 2;
+            int contentHeight = this._boxNBtnHeight * 4 + _contentVPadding * 2 + boxVMargin * 3;
             // Resize Content
             _storageContentPanel.Size = new(Width, contentHeight);
             _storageContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
             // Resize box
-            _storageFileNameTextBox.Size = new(boxWidth, boxHeight);
+            _storageFileNameTextBox.Size = new(boxWidth, this._boxNBtnHeight);
             _storageFileNameTextBox.Margin = new(0, 0, _contentHGap / 2, 0);
-            _storagePathTextBox.Size = new(boxWidth, boxHeight);
+            _storagePathTextBox.Size = new(boxWidth, this._boxNBtnHeight);
             _storagePathTextBox.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
-            _storageFieldsButton.Size = new(boxWidth, buttonHeight);
+            _storageFieldsButton.Size = new(boxWidth, _boxNBtnHeight);
             _storageFieldsButton.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _storeLooseningDataToggle.Size = new(boxWidth, _boxNBtnHeight);
+            _storeLooseningDataToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             // // Resize outer panel
             _storagePanel.Size = new(Width, _storageTitlePanel.Height + _storageContentPanel.Height);
+        }
+        private void ResizeMissionSettings() {
+            // Resize title
+            _missionTitlePanel.Size = new(Width, _titleHeight);
+            int boxWidth = (Width - _contentHPadding * 3) / 2;
+            int boxVMargin = this._boxNBtnHeight / 2;
+            int contentHeight = this._boxNBtnHeight * 1 + _contentVPadding * 2 + boxVMargin * 0;
+            // Resize Content
+            _missionContentPanel.Size = new(Width, contentHeight);
+            _missionContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
+            // Resize box
+            _enableArmLocatingToggle.Size = new(boxWidth, this._boxNBtnHeight);
+            _enableArmLocatingToggle.Margin = new(0, 0, _contentHGap / 2, 0);
+            _armLocatingAccuracyBox.Size = new(boxWidth, _boxNBtnHeight);
+            _armLocatingAccuracyBox.Margin = new(0, 0, 0, 0);
+            // // Resize outer panel
+            _missionPanel.Size = new(Width, _storageTitlePanel.Height + _storageContentPanel.Height);
         }
         #endregion
     }

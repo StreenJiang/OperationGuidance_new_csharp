@@ -10,13 +10,31 @@ using CustomLibrary.TextBoxes;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
+        private static readonly Object _imageLocker = new();
         private static Dictionary<int, CustomMainMenuButton> _mainMenus = new();
         private static Dictionary<int, CustomChildMenuFirstButton> _childMenus = new();
         private static List<CustomContentPanel> _views = new();
 
         public static Form MainForm { get; set; }
-        public static CustomTabPanel MainPanel { get; set; }
+        public static CustomTabPanel? MainPanel { get; set; }
         public static CustomMainMenuPanel MainMenuPanel { get; set; }
+        public static Size MainSize { get; private set;}
+        public static void RefreshMainSize(string resolution) {
+            Size screenSize = WidgetUtils.GetScreenResolution();
+            if (!string.IsNullOrEmpty(resolution)) {
+                string[] strings = resolution.Split(",");
+                int width = int.Parse(strings[0].Trim());
+                int height = int.Parse(strings[1].Trim());
+                if (width == screenSize.Width && height == screenSize.Height) {
+                    MainSize = screenSize;
+                } else {
+                    MainSize = new(width, height);
+                }
+            } else {
+                MainSize = screenSize;
+            }
+        }
+        public static void RefreshMainSize(Size size) => MainSize = size;
 
         public static Size GetLoginViewSize(Size mainFormSize) {
             SizeRatioNRectColor sixteenNine = WidthHeightRatio.SixteenNine;
@@ -33,6 +51,7 @@ namespace CustomLibrary.Utils {
             return loginViewSize;
         }
         public static Action<string>? RefreshLoginUserName;
+        public static Action<bool>? BackToLoginView;
 
         public static void ClearViews() => _views.Clear();
         public static void AddView(CustomContentPanel view) => _views.Add(view);
@@ -75,19 +94,21 @@ namespace CustomLibrary.Utils {
         /// <param name="newHeight">New height of new Image.</param>
         /// <returns>New image witdh new size.</returns>        
         public static Image ResizeImageWithoutLosingQuality(Image image, int newWidth, int newHeight) {
-            if (newWidth <= 0 || newHeight <= 0) {
-                return image;
+            lock(_imageLocker) {
+                if (newWidth <= 0 || newHeight <= 0) {
+                    return image;
+                }
+                Bitmap resultImage = new Bitmap(newWidth, newHeight);
+                using (Graphics g = Graphics.FromImage(resultImage)) {
+                    g.CompositingMode = CompositingMode.SourceCopy;
+                    g.CompositingQuality = CompositingQuality.HighQuality;
+                    g.SmoothingMode = SmoothingMode.HighQuality;
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
+                }
+                return resultImage;
             }
-            Bitmap resultImage = new Bitmap(newWidth, newHeight);
-            using (Graphics g = Graphics.FromImage(resultImage)) {
-                g.CompositingMode = CompositingMode.SourceCopy;
-                g.CompositingQuality = CompositingQuality.HighQuality;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
-            }
-            return resultImage;
         }
         public static Image ResizeImageWithoutLosingQuality(Image image, Size newSize) {
             return ResizeImageWithoutLosingQuality(image, newSize.Width, newSize.Height);
@@ -289,46 +310,45 @@ namespace CustomLibrary.Utils {
 
         // Content configs 
         public static int ScrollBarThickness() {
-            int thickness = WidgetUtils.MainPanel.Height / 46;
+            int thickness = MainSize.Height / 46;
             if (thickness < 12) {
                 thickness = 12;
             }
             return thickness;
         }
-        public static int ContentTitleHeight() => (int) (MainPanel.Height * .052);
+        public static int ContentTitleHeight() => (int) (MainSize.Height * .052);
         public static int ContentInnerBorderMargin(Size size) => (size.Width + size.Height) / 350;
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
         public static Padding ContentPadding() {
-            int hPadding = (int) (MainPanel.Width * .015);
-            int vPadding = (int) (MainPanel.Height * .03);
+            int hPadding = (int) (MainSize.Width * .015);
+            int vPadding = (int) (MainSize.Height * .03);
             return new(hPadding, vPadding, hPadding, vPadding);
         }
-        public static int TextOrComboBoxHeight() => (int) (MainPanel.Height * .036);
-        public static int CommonButtonHeight() => (int) (MainPanel.Height * .036);
-        public static int PictureBoxGroupBaseHeight() => (int) (MainPanel.Height * .125);
+        public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .036);
+        public static int CommonButtonHeight() => (int) (MainSize.Height * .036);
+        public static int PictureBoxGroupBaseHeight() => (int) (MainSize.Height * .125);
         public static int BorderThickness() {
-            Control mainControl = MainPanel.Parent;
-            int thickness = (mainControl.Width + mainControl.Height) / 1200;
+            int thickness = (MainSize.Width + MainSize.Height) / 1200;
             return thickness > 0 ? thickness : 1;
         }
         // Pop up / floating form configs 
-        public static int PopUpOrFloatingFormTitle() => (int) (MainPanel.Height * .04);
-        public static int PopUpOrFloatingFormSubTitle() => (int) (MainPanel.Height * .0475);
+        public static int PopUpOrFloatingFormTitle() => (int) (MainSize.Height * .04);
+        public static int PopUpOrFloatingFormSubTitle() => (int) (MainSize.Height * .0475);
         public static Padding PopUpOrFloatingFormContentPadding() {
-            int hPadding = (int) (MainPanel.Width * .015);
-            int vPadding = (int) (MainPanel.Height * .03);
+            int hPadding = (int) (MainSize.Width * .015);
+            int vPadding = (int) (MainSize.Height * .03);
             return new(hPadding, vPadding, hPadding, vPadding);
         }
         public static Padding PopUpOrFloatingFormButtonsPadding() {
-            int hPadding = (int) (MainPanel.Width * .008);
-            int vPadding = (int) (MainPanel.Height * .008);
+            int hPadding = (int) (MainSize.Width * .008);
+            int vPadding = (int) (MainSize.Height * .008);
             return new(hPadding, 0, hPadding, vPadding);
         }
         // Grid view configs
-        public static int GridViewHeaderHeight() => (int) (MainPanel.Height * .04);
-        public static int GridViewContentRowHeight() => (int) (MainPanel.Height * .0375);
-        public static int GridViewContentColumnMaxWidth() => (int) (MainPanel.Width * .2);
-        public static int GridViewPageInfoHeight() => (int) (MainPanel.Height * .03);
+        public static int GridViewHeaderHeight() => (int) (MainSize.Height * .04);
+        public static int GridViewContentRowHeight() => (int) (MainSize.Height * .0375);
+        public static int GridViewContentColumnMaxWidth() => (int) (MainSize.Width * .2);
+        public static int GridViewPageInfoHeight() => (int) (MainSize.Height * .03);
         public static float GridViewColumnsPaddingRatio() => .5F;
         // Workplace configs
         public static float WorkplaceTopBarHeightRatio() => .05F;
@@ -336,10 +356,11 @@ namespace CustomLibrary.Utils {
         public static float WorkplaceLeftWidthRatio() => .575F;
         public static float WorkplaceMiddleWidthRatio() => .2F;
         public static float WorkplaceImagePanelHeightRatio() => .5F;
-        public static int WorkplaceGridViewHeaderHeight() => (int) (MainPanel.Height * .035);
-        public static int WorkplaceGridViewContentRowHeight() => (int) (MainPanel.Height * .0325);
-        public static int WorkplaceGridViewPageInfoHeight() => (int) (MainPanel.Height * .025);
-        public static float WorkplaceGridViewColumnsPaddingRatio() => .25F;
+        public static int WorkplaceBoxOrButtonHeightRatio() => (int) (MainSize.Height * .034);
+        public static int WorkplaceGridViewHeaderHeight() => (int) (MainSize.Height * .035);
+        public static int WorkplaceGridViewContentRowHeight() => (int) (MainSize.Height * .0325);
+        public static int WorkplaceGridViewPageInfoHeight() => (int) (MainSize.Height * .025);
+        public static float WorkplaceGridViewColumnsPaddingRatio() => .2F;
 
         /// <summary>
         /// 得到一个等差数列
@@ -368,11 +389,11 @@ namespace CustomLibrary.Utils {
         /// <summary>
         /// 根据给定的滚动条实际需要的值及滚动条的滚动块占滚动条的比率，求出滚动块的值
         /// </summary>
-        /// <param name="realHeight">需要用到滚动条的content的高度差（像素值）</param>
+        /// <param name="heightDiff">需要用到滚动条的content的高度差（像素值）</param>
         /// <param name="sliderRatio">滚动块占整个滚动条的比例</param>
         /// <returns></returns>
-        public static int CalculateScrollBarSlider(int realHeight, double sliderRatio) {
-            return (int) (realHeight * sliderRatio / (1 - sliderRatio));
+        public static int CalculateScrollBarSlider(int heightDiff, double sliderRatio) {
+            return (int) (heightDiff * sliderRatio / (1 - sliderRatio));
         }
         public static void CalculateScrollBar(ScrollBar scrollBar, int scrollBarLength, int contentLength) {
             int heightDiff = contentLength - scrollBarLength;
@@ -424,6 +445,9 @@ namespace CustomLibrary.Utils {
         private static bool mouseLeftDown = false;
         public static void MakeControlDraggable(Control dragControl, Control moveControl) {
             dragControl.MouseDown += (sender, eventArgs) => {
+                if (dragControl.IsDisposed || moveControl.IsDisposed) {
+                    return;
+                }
                 if (!mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
                     mouseDownLocation = eventArgs.Location;
                     controlOriginalLocation = moveControl.Location;
@@ -431,6 +455,9 @@ namespace CustomLibrary.Utils {
                 }
             };
             dragControl.MouseMove += (sender, eventArgs) => {
+                if (dragControl.IsDisposed || moveControl.IsDisposed) {
+                    return;
+                }
                 if (mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
                     Point locationOffsetExtra = new(eventArgs.Location.X - mouseDownLocation.X, eventArgs.Location.Y - mouseDownLocation.Y);
                     controlOriginalLocation.Offset(locationOffsetExtra);
@@ -438,6 +465,9 @@ namespace CustomLibrary.Utils {
                 }
             };
             dragControl.MouseUp += (sender, eventArgs) => {
+                if (dragControl.IsDisposed || moveControl.IsDisposed) {
+                    return;
+                }
                 if (mouseLeftDown && eventArgs.Button == MouseButtons.Left) {
                     mouseLeftDown = false;
                 }

@@ -15,8 +15,10 @@ namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static LoginView LoginView { get; set; }
 
-        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd hh:mm:ss";
-        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd hh:mm:ss.fff";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
+
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd HH:mm:ss";
+        public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd HH:mm:ss.fff";
 
         public static readonly string DATETIME_FORMAT_YYYY_MM = "yyyy-MM";
         public static readonly string DATETIME_FORMAT_YYYY_MM_2 = "yyyy/MM";
@@ -31,6 +33,12 @@ namespace OperationGuidance_new.Utils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
         public static IniFile Settings { get; } = new();
+        public static List<string> InvalidCharacters { get; } = new() {
+            "\u0000","\u0001","\u0002","\u0003","\u0004","\u0005","\u0006","\u0007","\u0008",
+            "\u000B","\u000C",
+            "\u000E","\u000F","\u0010","\u0011","\u0012","\u0013","\u0014","\u0015","\u0016",
+            "\u0017","\u0018","\u0019","\u001A","\u001B","\u001C","\u001D","\u001E","\u001F"
+        };
 
         public static string GetBaseDirectory() {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -128,6 +136,30 @@ namespace OperationGuidance_new.Utils {
                 }
             });
             return fields;
+        }
+        public static bool GetStoreLooseningData() {
+            string storeLooseningData = MainUtils.Settings.Read(IniFileKeys.DataStorageStoreLooseningData);
+            if (string.IsNullOrEmpty(storeLooseningData)) {
+                MainUtils.Settings.Write(IniFileKeys.DataStorageStoreLooseningData, "1");
+                return true;
+            }
+            return int.Parse(storeLooseningData) == (int) YesOrNo.YES;
+        }
+        public static bool IsArmLocatingEnabled() {
+            string armLocatingEnabled = MainUtils.Settings.Read(IniFileKeys.MissionArmLocatingEnabled);
+            if (string.IsNullOrEmpty(armLocatingEnabled)) {
+                MainUtils.Settings.Write(IniFileKeys.MissionArmLocatingEnabled, "1");
+                return true;
+            }
+            return int.Parse(armLocatingEnabled) == (int) YesOrNo.YES;
+        }
+        public static int GetArmLocatingAccuracy() {
+            string armLocatingAccuracy = MainUtils.Settings.Read(IniFileKeys.MissionArmLocatingAccuracy);
+            if (string.IsNullOrEmpty(armLocatingAccuracy)) {
+                MainUtils.Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, "20");
+                return 20;
+            }
+            return int.Parse(armLocatingAccuracy);
         }
 
         private static Dictionary<int, ArmTask> _armTasks = new();
@@ -366,6 +398,144 @@ namespace OperationGuidance_new.Utils {
                 newWidth = (int) (width / ((decimal) height / newHeight));
             }
             return new(newWidth, newHeight);
+        }
+
+        public static string CheckKeyPosition(string keyPosition) {
+            string errorMsg = "";
+            for (int i = 0; i < keyPosition.Length; i++) {
+                char c = keyPosition[i];
+                if (!char.IsDigit(c) && c != ',' && c != '-' && c != ' ') {
+                    errorMsg += "条码关键位匹配格式错误。请使用','或'-'隔开";
+                    break;
+                }
+                if (c == '-') {
+                    if (i == 0 || i == keyPosition.Length - 1) {
+                        errorMsg += "符号'-'不能在开头或结尾";
+                        break;
+                    } else if (!char.IsDigit(keyPosition[i - 1]) || !char.IsDigit(keyPosition[i + 1])) {
+                        errorMsg += "符号'-'前后必须是数字";
+                        break;
+                    } else {
+                        int prevIndex = i - 1;
+                        string prev = keyPosition[prevIndex].ToString();
+                        while (prevIndex != 0) {
+                            prevIndex--;
+                            if (!char.IsDigit(keyPosition[prevIndex])) {
+                                break;
+                            }
+                            prev += keyPosition[prevIndex].ToString();
+                        }
+                        int prevNum = int.Parse(prev);
+
+                        int nextIndex = i + 1;
+                        string follow = keyPosition[nextIndex].ToString();
+                        while (nextIndex != keyPosition.Length - 1) {
+                            nextIndex++;
+                            if (!char.IsDigit(keyPosition[nextIndex])) {
+                                break;
+                            }
+                            follow += keyPosition[nextIndex].ToString();
+                        }
+                        int followNum = int.Parse(follow);
+
+                        if (prevNum >= followNum) {
+                            errorMsg += "符号'-'前面的数字必须小于后面的数字";
+                            break;
+                        }
+                    }
+                }
+            }
+            return errorMsg;
+        }
+        public static List<int> GetKeyPositionList(string keyPosition) {
+            keyPosition = keyPosition.Replace(" ", "");
+            if (keyPosition.Contains('-')) {
+                Dictionary<string, string> temp = new();
+                for (int i = 0; i < keyPosition.Length; i++) {
+                    if (keyPosition[i] == '-') {
+                        int prevIndex = i - 1;
+                        string prev = keyPosition[prevIndex].ToString();
+                        while (prevIndex != 0) {
+                            prevIndex--;
+                            if (!char.IsDigit(keyPosition[prevIndex])) {
+                                break;
+                            }
+                            prev += keyPosition[prevIndex].ToString();
+                        }
+                        int prevNum = int.Parse(prev);
+
+                        int nextIndex = i + 1;
+                        string follow = keyPosition[nextIndex].ToString();
+                        while (nextIndex != keyPosition.Length - 1) {
+                            nextIndex++;
+                            if (!char.IsDigit(keyPosition[nextIndex])) {
+                                break;
+                            }
+                            follow += keyPosition[nextIndex].ToString();
+                        }
+                        int followNum = int.Parse(follow);
+
+                        string newString = "";
+                        for (int j = prevNum; j <= followNum; j++) {
+                            if (j != prevNum) {
+                                newString += ",";
+                            }
+                            newString += $"{j}";
+                        }
+                        temp.Add(prev + "-" + follow, newString);
+                    }
+                }
+                foreach (KeyValuePair<string, string> pair in temp) {
+                    keyPosition = keyPosition.Replace(pair.Key, pair.Value);
+                }
+            }
+            return keyPosition.Split(',').Select(int.Parse).ToList();
+        }
+        public static List<char> GetKeyCharList(string keyChar) {
+            List<char> listTemp = new();
+            string[] strings = keyChar.Replace(" ", "").Split(',');
+            foreach (string s in strings) {
+                if (s.Length == 1) {
+                    listTemp.Add(char.Parse(s));
+                } else {
+                    listTemp.AddRange(s.ToList());
+                }
+            }
+            return listTemp;
+        }
+        public static Dictionary<int, char>? GetKeyMatchingRule(string? keyPosition, string? keyChar) {
+            if (keyPosition == null || keyChar == null) {
+                return null;
+            }
+            List<int> keyPositionList = GetKeyPositionList(keyPosition);
+            List<char> keyCharList = GetKeyCharList(keyChar);
+            if (keyPositionList.Count != keyCharList.Count) {
+                return null;
+            }
+            Dictionary<int, char> matchingRule = new();
+            for (int i = 0; i < keyPositionList.Count; i++) {
+                matchingRule.Add(keyPositionList[i], keyCharList[i]);
+            }
+            return matchingRule;
+        }
+        public static bool CheckBarCodeIsMatched(string barCode, string? endChar, int? length, Dictionary<int, char>? matchingRules) {
+            if (string.IsNullOrEmpty(barCode)) {
+                return false;
+            }
+            if (!string.IsNullOrEmpty(endChar)) {
+                barCode = barCode.Substring(0, barCode.IndexOf(endChar) + 1);
+            }
+            if (length != null && barCode.Length != length) {
+                return false;
+            }
+            if (matchingRules != null) {
+                foreach (KeyValuePair<int, char> pair in matchingRules) {
+                    if (barCode.Length < pair.Key || barCode[pair.Key - 1] != pair.Value) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }

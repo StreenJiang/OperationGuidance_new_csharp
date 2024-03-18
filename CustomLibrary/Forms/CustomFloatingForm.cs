@@ -43,7 +43,7 @@ namespace CustomLibrary.Forms {
         public CustomContentPanel ContentPanel { get => _contentPanel; set => _contentPanel = value; }
 
         public CustomFloatingForm() : base() {
-            Control mainParent = WidgetUtils.MainPanel.Parent;
+            Control mainParent = WidgetUtils.MainForm;
              // Initialize self
             Owner = (Form) mainParent;
             StartPosition = FormStartPosition.Manual;

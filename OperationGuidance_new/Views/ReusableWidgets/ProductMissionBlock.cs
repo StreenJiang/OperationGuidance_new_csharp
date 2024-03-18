@@ -12,7 +12,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Rectangle _innerBorderRect;
         private int _borderSize;
         private Color _borderColor;
-        private InnerButton _innerButton;
+        private InnerButton<T> _innerButton;
         private Color _buttonColor;
         private Color _imageBorderColor;
 
@@ -52,9 +52,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _innerButton.ImageBorderColor = value;
             }
         }
+        public InnerButton<T> InnerButton { get => _innerButton; set => _innerButton = value; }
 
         public ProductMissionBlock(T t, Image? coverImage, Image defaultImage, string missionName, Color borderColor, Color buttonColor, Color imageBorderColor) {
-            _innerButton = new InnerButton(this, defaultImage) {
+            _innerButton = new InnerButton<T>(this, defaultImage) {
                 Icon = coverImage,
                 Label = missionName,
                 BackColor = buttonColor,
@@ -91,90 +92,98 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        private class InnerButton: CustomImageTextButtonBase {
-            private readonly ProductMissionBlock<T> _missionBlock;
-            private Image _defaultImage;
-            private readonly float ImageRatio = 0.6F;
-            private int _imageBorderSize;
-            private Color _imageBorderColor;
-            private Rectangle _imageBorderRect;
+        protected override void OnClick(EventArgs e) {
+            base.OnClick(e);
+        }
 
-            public int ImageBorderSize {
-                get => _imageBorderSize;
-                set => _imageBorderSize = value;
-            }
-            public Color ImageBorderColor {
-                get => _imageBorderColor;
-                set => _imageBorderColor = value;
-            }
+        public void PerformClick(EventArgs e) {
+            OnClick(e);
+        }
+    }
 
-            public InnerButton(ProductMissionBlock<T> missionBlock, Image defaultImage) : base() {
-                _missionBlock = missionBlock;
-                _defaultImage = defaultImage;
-            }
+    public class InnerButton<T>: CustomImageTextButtonBase {
+        private readonly ProductMissionBlock<T> _missionBlock;
+        private Image _defaultImage;
+        private readonly float ImageRatio = 0.6F;
+        private int _imageBorderSize;
+        private Color _imageBorderColor;
+        private Rectangle _imageBorderRect;
 
-            protected override void PaintAfter(PaintEventArgs e) {
-                base.PaintAfter(e);
-                e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-                e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                if (this.Icon != null) {
-                    e.Graphics.DrawRectangle(new Pen(_imageBorderColor, _imageBorderSize), _imageBorderRect);
+        public int ImageBorderSize {
+            get => _imageBorderSize;
+            set => _imageBorderSize = value;
+        }
+        public Color ImageBorderColor {
+            get => _imageBorderColor;
+            set => _imageBorderColor = value;
+        }
+
+        public InnerButton(ProductMissionBlock<T> missionBlock, Image defaultImage) : base() {
+            _missionBlock = missionBlock;
+            _defaultImage = defaultImage;
+        }
+
+        protected override void PaintAfter(PaintEventArgs e) {
+            base.PaintAfter(e);
+            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+            e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            if (this.Icon != null) {
+                e.Graphics.DrawRectangle(new Pen(_imageBorderColor, _imageBorderSize), _imageBorderRect);
+            }
+        }
+
+        protected override void OnSizeChanged(EventArgs e) {
+            base.OnSizeChanged(e);
+
+            // Recalcuate rectangle
+            if (ImageShowing != null) {
+                _imageBorderRect = new(ImageX, ImageY, ImageShowing.Width, ImageShowing.Height);
+                if (Visible) {
+                    Invalidate();
                 }
             }
+        }
 
-            protected override void OnSizeChanged(EventArgs e) {
-                base.OnSizeChanged(e);
-
-                // Recalcuate rectangle
-                if (ImageShowing != null) {
-                    _imageBorderRect = new(ImageX, ImageY, ImageShowing.Width, ImageShowing.Height);
-                    if (Visible) {
-                        Invalidate();
-                    }
-                }
+        protected override void ResizeIconImage() {
+            Size imageNewSize = CalcImageSize();
+            if (Icon != null) {
+                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, imageNewSize);
+            } else if (_defaultImage != null) {
+                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_defaultImage, imageNewSize);
             }
+            // Recalculate image position
+            ImageX = (Width - imageNewSize.Width) / 2;
+            ImageY = (int) ((Height * 0.85 - imageNewSize.Height) / 2);
+        }
 
-            protected override void ResizeIconImage() {
+        protected override void ResizeTextLabel() {
+            if (Label != null) {
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 15 + 1.25F, FontStyle.Bold);
                 Size imageNewSize = CalcImageSize();
-                if (Icon != null) {
-                    ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, imageNewSize);
-                } else if (_defaultImage != null) {
-                    ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_defaultImage, imageNewSize);
+                using (Graphics g = CreateGraphics()) {
+                    LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                 }
-                // Recalculate image position
-                ImageX = (Width - imageNewSize.Width) / 2;
-                ImageY = (int) ((Height * 0.85 - imageNewSize.Height) / 2);
+                LabelY = (int) ((Height * 0.85 - Font.Height - imageNewSize.Height) / 2 + imageNewSize.Height * 1.25);
             }
+        }
 
-            protected override void ResizeTextLabel() {
-                if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 15 + 1.25F, FontStyle.Bold);
-                    Size imageNewSize = CalcImageSize();
-                    using (Graphics g = CreateGraphics()) {
-                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                    }
-                    LabelY = (int) ((Height * 0.85 - Font.Height - imageNewSize.Height) / 2 + imageNewSize.Height * 1.25);
-                }
+        private Size CalcImageSize() {
+            int newHeight = (int) (Height * ImageRatio);
+            int newWidth;
+            if (this.Icon != null) {
+                newWidth = (int) (newHeight / (decimal) this.Icon.Height * this.Icon.Width);
+            } else if (_defaultImage != null) {
+                newWidth = (int) (newHeight / (decimal) _defaultImage.Height * _defaultImage.Width);
+            } else {
+                newWidth = (int) (Height * .8);
             }
+            return new(newWidth, newHeight);
+        }
 
-            private Size CalcImageSize() {
-                int newHeight = (int) (Height * ImageRatio);
-                int newWidth;
-                if (this.Icon != null) {
-                    newWidth = (int) (newHeight / (decimal) this.Icon.Height * this.Icon.Width);
-                } else if (_defaultImage != null) {
-                    newWidth = (int) (newHeight / (decimal) _defaultImage.Height * _defaultImage.Width);
-                } else {
-                    newWidth = (int) (Height * .8);
-                }
-                return new(newWidth, newHeight);
-            }
-
-            protected override void OnClick(EventArgs e) {
-                base.OnClick(e);
-                _missionBlock.OnClick(e);
-            }
+        protected override void OnClick(EventArgs e) {
+            base.OnClick(e);
+            _missionBlock.PerformClick(e);
         }
     }
 }

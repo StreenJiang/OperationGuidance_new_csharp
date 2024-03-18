@@ -1,4 +1,6 @@
-﻿namespace OperationGuidance_new.Constants {
+﻿using OperationGuidance_service.Utils;
+
+namespace OperationGuidance_new.Constants {
     public class DeviceConstants {
     }
 
@@ -36,15 +38,15 @@
     public class DeviceCategory {
         public int Id;
         public string Name;
-        public Image Icon;
-        public Image IconError;
-        public Image IconEmpty;
+        public string IconStr;
+        public string IconErrorStr;
+        public string IconEmptyStr;
         public DeviceCategory(int id, string name, Image icon, Image iconError, Image iconEmpty) {
             Id = id;
             Name = name;
-            Icon = icon;
-            IconError = iconError;
-            IconEmpty = iconEmpty;
+            IconStr = CommonUtils.ImageToBase64(icon);
+            IconErrorStr = CommonUtils.ImageToBase64(iconError);
+            IconEmptyStr = CommonUtils.ImageToBase64(iconEmpty);
         }
     }
 

@@ -71,7 +71,7 @@ namespace CustomLibrary.ComboBoxes {
                     itemButton.BackColor = value;
                 }
                 _backColorSaved = value;
-                _disabledBackColor = WidgetUtils.DarkenColor(value, .1);
+                _disabledBackColor = WidgetUtils.DarkenColor(value, .05);
                 _selectButton.DisabledBackColor = _disabledBackColor;
                 }
         }
@@ -286,6 +286,7 @@ namespace CustomLibrary.ComboBoxes {
                 ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
             });
             // Reset timer interval
+            ReSizeItemsPanelHeight();
             ResetCollapseStep();
             // Return item index (from 0 to end, ignore first default button)
             return _itemButtons.Count - (_needDefaultLabel ? 2 : 1);
@@ -490,12 +491,7 @@ namespace CustomLibrary.ComboBoxes {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         public void ResizeChildren(object? sender, EventArgs eventArgs) {
             _itemHeight = (int) (Height * .95);
-            if (_itemButtons.Count >= _maxItemsShown) {
-                _itemsPanelHeight = _itemHeight * _maxItemsShown;
-            } else {
-                _itemsPanelHeight = _itemHeight * _itemButtons.Count;
-            }
-            _itemsScrollPanelHeight = _itemsPanelHeight + Padding.Size.Height;
+            ReSizeItemsPanelHeight();
             ResetCollapseStep();
 
             _selectButton.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
@@ -505,6 +501,14 @@ namespace CustomLibrary.ComboBoxes {
             if (_borderColor != null) {
                 _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
             }
+        }
+        private void ReSizeItemsPanelHeight() {
+            if (_itemButtons.Count >= _maxItemsShown) {
+                _itemsPanelHeight = _itemHeight * _maxItemsShown;
+            } else {
+                _itemsPanelHeight = _itemHeight * _itemButtons.Count;
+            }
+            _itemsScrollPanelHeight = _itemsPanelHeight + Padding.Size.Height;
         }
 
         protected override void OnPaint(PaintEventArgs e) {

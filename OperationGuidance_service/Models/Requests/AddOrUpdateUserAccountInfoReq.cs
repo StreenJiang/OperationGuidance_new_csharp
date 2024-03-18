@@ -5,8 +5,8 @@ namespace OperationGuidance_service.Models.Requests {
     public class AddOrUpdateUserAccountInfoReq: HttpRequest {
         public UserAccountInfoDTO UserAccountInfoDTO { get; set; }
 
-        public AddOrUpdateUserAccountInfoReq(UserAccountInfoDTO brandDTO) {
-            UserAccountInfoDTO = brandDTO;
+        public AddOrUpdateUserAccountInfoReq(UserAccountInfoDTO dto) {
+            UserAccountInfoDTO = dto;
         }
     }
 }

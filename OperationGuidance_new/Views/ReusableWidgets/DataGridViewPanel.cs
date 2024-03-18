@@ -41,6 +41,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Properties
         public DataGridView GridView { get => _gridView; }
+        public bool AutoDown { get; set; } = false;
         public int HeaderHeight { get => _headerHeight; set => _headerHeight = value; }
         public int RowsHeight { get => _rowsHeight; set => _rowsHeight = value; }
         public int PageHeight { get => _pageHeight; set => _pageHeight = value; }
@@ -570,14 +571,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             System.Console.WriteLine($"========================================== LoadDataAsync");
             if (IsHandleCreated) {
                 _gridView.DataSource = bindingSource;
-                BeginInvoke(new Action(ResetPageInfo));
-                BeginInvoke(new Action(ResizeChildren));
+                BeginInvoke(new Action(() => {
+                    ResetPageInfo();
+                    ResizeChildren();
+                }));
             }
         }
         #endregion
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            _headerHeight = WidgetUtils.GridViewHeaderHeight();
+            _rowsHeight = WidgetUtils.GridViewContentRowHeight();
+            _pageHeight = WidgetUtils.GridViewPageInfoHeight();
+
             // Grid header height
             int newHeaderHeight = _headerHeight;
             if (newHeaderHeight >= 4) {
@@ -696,9 +703,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 };
                 _vScrollBar.Show();
-                _vScrollBar.Maximum = _gridView.RowCount - 1;
+                _vScrollBar.Maximum = _gridView.RowCount;
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
+                if (AutoDown) {
+                    _gridView.FirstDisplayedScrollingRowIndex = _gridView.RowCount - _gridView.DisplayedRowCount(true) + 1;
+                }
             } else {
                 _vScrollBar?.Hide();
             }

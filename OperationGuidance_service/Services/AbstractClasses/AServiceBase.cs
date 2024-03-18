@@ -68,12 +68,18 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.DeleteByIds(ids);
         }
 
-        public List<T> FindBySqlCondition(string sqlCondition) {
-            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = SystemUtils.LoggedUserId });
+        public List<T> FindBySqlCondition(string? sqlCondition, int userId) {
+            if (!string.IsNullOrEmpty(sqlCondition)) {
+                return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = userId });
+            }
+            return QueryList(SystemUtils.LoggedUserId);
         }
 
-        public List<T> FindBySqlWithoutUserId(string sqlCondition) {
-            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
+        public List<T> FindBySqlWithoutUserId(string? sqlCondition) {
+            if (!string.IsNullOrEmpty(sqlCondition)) {
+                return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
+            }
+            return QueryListWithoutUserId();
         }
     }
 }

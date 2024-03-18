@@ -3,7 +3,6 @@ using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
 using OperationGuidance_service.Controllers;
 using CustomLibrary.ComboBoxes;
-using CustomLibrary.Configs;
 using OperationGuidance_service.Models.Responses;
 using CustomLibrary.Buttons;
 using CustomLibrary.Utils;
@@ -436,7 +435,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ResizeTablePanelAndItsChildren() {
             CalculateDetailProperties();
 
-            Control mainForm = WidgetUtils.MainPanel.Parent;
             Padding contentPadding = ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
@@ -444,7 +442,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int subTitleMargin = subTitleHeight / 5;
             int tableHeight = 0;
             int previousRowIndex = -1;
-            int cntentWidth = (int) (mainForm.Width * .55);
+            int cntentWidth = (int) (WidgetUtils.MainSize.Width * .55);
             int tableWidth = cntentWidth - contentPadding.Size.Width;
             int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
             foreach (Control control in _tablePanel.Controls) {

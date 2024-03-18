@@ -5,8 +5,8 @@ namespace OperationGuidance_service.Models.Requests {
     public class AddOrUpdateDeviceCommunicationReq: HttpRequest {
         public DeviceCommunicationDTO DeviceCommunicationDTO { get; set; }
 
-        public AddOrUpdateDeviceCommunicationReq(DeviceCommunicationDTO deviceCommunicationDTO) {
-            DeviceCommunicationDTO = deviceCommunicationDTO;
+        public AddOrUpdateDeviceCommunicationReq(DeviceCommunicationDTO ato) {
+            DeviceCommunicationDTO = ato;
         }
     }
 }

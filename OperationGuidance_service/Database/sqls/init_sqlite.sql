@@ -106,14 +106,14 @@ CREATE TABLE "device_tool" (
 );
 
 
-
 -- ----------------------------
 -- Table structure for operation_data
 -- ----------------------------
 DROP TABLE IF EXISTS "operation_data";
 CREATE TABLE "operation_data" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "workstation_id" integer(16),
+  "mission_record_id" integer NOT NULL,
+  "workstation_id" integer,
   "workstation_name" text(64),
   "tool_name" text(64),
   "tool_ip" text(64),
@@ -121,6 +121,7 @@ CREATE TABLE "operation_data" (
   "gun_num" text(64),
   "product_sied_id" integer(16),
   "bolt_serial_num" integer(16),
+  "arm_position" text(32),
   "tightening_count" integer(16),
   "work_group_name" text(64),
   "work_group_count" integer(16),
@@ -233,6 +234,7 @@ CREATE TABLE "product_mission" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "pn_code" text(64),
+  "max_ng_num" integer(4),
   "enabled" integer(1),
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
@@ -296,7 +298,7 @@ CREATE TABLE "user_account_info" (
 -- ----------------------------
 -- Records of user_account_info
 -- ----------------------------
-INSERT INTO "user_account_info" VALUES (1, -1, 'Developr', NULL, 'developer', 'aneng135', 1, NULL, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO "user_account_info" VALUES (1, -1, 'Developr', NULL, 'sys', 'aneng135', 1, NULL, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
 
 
 -- ----------------------------
@@ -320,6 +322,54 @@ CREATE TABLE "workstation" (
 );
 
 
+-- ----------------------------
+-- Table structure for bar_code_matching_rule
+-- ----------------------------
+DROP TABLE IF EXISTS "bar_code_matching_rule";
+CREATE TABLE "bar_code_matching_rule" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "length" integer(8),
+  "end_char" text(8),
+  "key_position" text(64),
+  "key_char" text(64),
+  "type" integer(2) NOT NULL,
+  "mission_id" integer,
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+
+-- ----------------------------
+-- Table structure for mission_record
+-- ----------------------------
+DROP TABLE IF EXISTS "mission_record";
+CREATE TABLE "mission_record" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "mission_id" integer NOT NULL,
+  "product_batch" text(64) NOT NULL,
+  "product_bar_code" text(512),
+  "parts_bar_code" text(2048),
+  "mission_result" integer(2) NOT NULL,
+  "is_redo" integer(2) NOT NULL,
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Indexes structure for table mission_record
+-- ----------------------------
+CREATE INDEX "index_product_bar_code"
+ON "mission_record" (
+  "product_bar_code" ASC
+);
 
 -- ----------------------------
 -- Auto increment value for device_arm
@@ -360,5 +410,15 @@ UPDATE "sqlite_sequence" SET seq = 2 WHERE name = 'user_account_info';
 -- Auto increment value for workstation
 -- ----------------------------
 UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'workstation';
+
+-- ----------------------------
+-- Auto increment value for bar_code_matching_rule
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'bar_code_matching_rule';
+
+-- ----------------------------
+-- Auto increment value for mission_record
+-- ----------------------------
+UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'mission_record';
 
 PRAGMA foreign_keys = true;

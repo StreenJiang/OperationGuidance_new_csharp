@@ -5,6 +5,8 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.Forms;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Models.Responses;
+using OperationGuidance_new.Utils;
+using OperationGuidance_new.Configs;
 
 namespace OperationGuidance_new.Views {
     public class LoginView: CustomContentPanel {
@@ -42,6 +44,7 @@ namespace OperationGuidance_new.Views {
 
         #region Initialization methods
         public async void ShowLoginForm() {
+            WidgetUtils.RefreshMainSize(MainUtils.Settings.Read(IniFileKeys.Resolution));
             _isLoggedIn = false;
             await Task.Delay(300);
             _loginForm = new(ClickLogin);
@@ -139,7 +142,8 @@ namespace OperationGuidance_new.Views {
             }
 
             public void ResizeSelf() {
-                Control mainForm = WidgetUtils.MainPanel;
+                Size mainSize = WidgetUtils.MainSize;
+
                 Padding contentPadding = ContentPanel.Padding;
                 int boxHeight = WidgetUtils.TextOrComboBoxHeight();
                 int boxVMargin = boxHeight / 5;
@@ -147,7 +151,7 @@ namespace OperationGuidance_new.Views {
                 int bigTitleHeight = (int) (boxHeight * 1.5);
                 int bigTitleVPadding = bigTitleHeight / 10;
 
-                int contentWidth = (int) (mainForm.Width * .4);
+                int contentWidth = (int) (mainSize.Width * .4);
                 int boxWidth = contentWidth - contentPadding.Size.Width;
 
                 _bigTitlePanel.Size = new(boxWidth, bigTitleHeight + bigTitleVPadding * 2);

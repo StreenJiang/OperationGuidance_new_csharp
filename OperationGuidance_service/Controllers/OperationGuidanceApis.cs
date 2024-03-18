@@ -33,6 +33,10 @@ namespace OperationGuidance_service.Controllers {
         private WorkstationService _workstationService;
         [Autowired]
         private OperationDataService _operationDataService;
+        [Autowired]
+        private BarCodeMatchingRuleService _barCodeMatchingRuleService;
+        [Autowired]
+        private MissionRecordService _missionRecordService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -114,7 +118,7 @@ namespace OperationGuidance_service.Controllers {
                 if (id > 0) {
                     condition = $"({condition}) and id <> {id}";
                 }
-                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlCondition(condition);
+                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlWithoutUserId(condition + " limit 1");
                 if (userAccountInfos.Count > 0) {
                     userAccountInfoDTO = new();
                     CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos[0], userAccountInfoDTO);
@@ -129,7 +133,7 @@ namespace OperationGuidance_service.Controllers {
             bool succeed = true;
             string failedReason = string.Empty;
             UserAccountInfoDTO? userDTO = null;
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"account = '{req.Account}'");
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"account = '{req.Account}' limit 1");
             if (users.Count <= 0) {
                 succeed = false;
                 failedReason = "账户名不存在";
@@ -157,11 +161,72 @@ namespace OperationGuidance_service.Controllers {
                 UserAccountInfoDTO = userDTO,
             };
         }
+        // 管理员密码验证
+        public AdminPasswordValidateRsp AdminPasswordValidate(AdminPasswordValidateReq req) {
+            bool succeed = true;
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"operation_password = '{SystemUtils.ToMD5String(req.AdminPassword)}' limit 1");
+            if (users.Count <= 0) {
+                succeed = false;
+            }
+            return new() {
+                Succeed = succeed,
+            };
+        }
         #endregion
 
         #region 产品任务相关
         // 查询所有未被删除的产品任务列表
-        public QueryProductMissionListRsp QueryProductMissionListRsp(QueryProductMissionListReq req) {
+        public QueryProductMissionsRsp QueryProductMissions(QueryProductMissionsReq req) {
+            // 先查询任务清单
+            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
+            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
+            List<ProductMissionDTO> productMissionDTOs = new();
+            CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
+
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+            return new() {
+                ProductMissionsDTOs = productMissionDTOs
+            };
+        }
+        public QueryProductMissionsWithCoverRsp QueryProductMissionsWithCover(QueryProductMissionsWithCoverReq req) {
+            // 先查询任务清单
+            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
+            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productMissionService.QueryListWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+            List<ProductMissionDTO> productMissionDTOs = new();
+            CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
+
+            // 根据任务查询关联的其他表
+            List<int> missionIds = missions.Select(m => m.id).ToList();
+            List<ProductSide> sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+            List<int> boltIds = sides.Select(s => s.id).ToList();
+            List<ProductBolt> bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+
+            // 根据任务找到第一个side，用该side的图片做封面
+            // TODO: 后面再优化这个
+            for (int i = 0 ; i < missions.Count ; i++) {
+                ProductMissionDTO missionDTO = productMissionDTOs[i];
+                List<ProductSideDTO> productSideDTOs = new();
+                CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides.Where(m => m.mission_id == missionDTO.id).ToList(), productSideDTOs);
+                // 根据当前任务的所有side遍历找到对应的所有bolts
+                foreach (ProductSideDTO sideDTO in productSideDTOs) {
+                    List<ProductBoltDTO> productBoltDTOs = new();
+                    CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts.Where(b => b.side_id == sideDTO.id).ToList(), productBoltDTOs);
+                    sideDTO.Bolts = productBoltDTOs;
+                }
+                // 设定当前mission的所有sides
+                productMissionDTOs[i].ProductSides = productSideDTOs;
+            }
+            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+            return new() {
+                ProductMissionsDTOs = productMissionDTOs
+            };
+        }
+        public QueryProductMissionsAndDetailsRsp QueryProductMissionsAndDetails(QueryProductMissionsAndDetailsReq req) {
             // 先查询任务清单
             double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
             System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
@@ -398,7 +463,65 @@ namespace OperationGuidance_service.Controllers {
         }
         #endregion
 
-        #region 数据查询相关
+        #region 任务记录相关
+        // 查询任务记录列表
+        public QueryMissionRecordListRsp QueryMissionRecordList(QueryMissionRecordListReq req) {
+            string? condition = null;
+            if (req.Ids != null && req.Ids.Count > 0) {
+                condition = "id in (";
+                for (int i = 0 ; i<req.Ids.Count ; i++) {
+                    if (i != 0) {
+                        condition += ", ";
+                    }
+                    condition += $"{req.Ids[i]}";
+                }
+                condition += ")";
+            }
+            if (req.Date != null) {
+                if (!string.IsNullOrEmpty(condition)) {
+                    condition += " and ";
+                }
+                string date1 = req.Date.Value.Date.ToString("yyyy-MM-dd hh:mm:ss");
+                string date2 = req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd hh:mm:ss");
+                condition += $"create_time between '{date1}' and '{date2}'";
+            }
+            List<MissionRecord> deviceCategories;
+            if (req.UserId != null) {
+                deviceCategories = _missionRecordService.FindBySqlCondition(condition, req.UserId.Value);
+            } else {
+                deviceCategories = _missionRecordService.FindBySqlWithoutUserId(condition);
+            }
+            List<MissionRecordDTO> missionRecordDTOs = new();
+            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(deviceCategories, missionRecordDTOs);
+
+            return new() {
+                MissionRecordDTOs = missionRecordDTOs,
+            };
+        }
+        public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
+            List<MissionRecord> deviceCategories = _missionRecordService.FindBySqlWithoutUserId($"product_bar_code = '{req.ProductBarCode}'");
+
+            return new() {
+                Yes = deviceCategories.Count > 0,
+            };
+        }
+        // 新增或修改任务记录
+        public AddOrUpdateMissionRecordRsp AddOrUpdateMissionRecord(AddOrUpdateMissionRecordReq req) {
+            MissionRecordDTO missionRecordDTO = req.MissionRecordDTO;
+            MissionRecord missionRecord = new();
+            CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecord>(missionRecordDTO, missionRecord);
+            MissionRecord? missionRecordNew = _missionRecordService.InsertOrUpdate(missionRecord);
+            if (missionRecordNew != null) {
+                missionRecordDTO.id = missionRecordNew.id;
+            }
+
+            return new() {
+                MissionRecordDTO = missionRecordDTO,
+            };
+        }
+        #endregion
+
+        #region 拧紧数据相关
         public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
             List<OperationData> operationDatas = _operationDataService.QueryListWithoutUserId();
             List<OperationDataDTO> operationDataDTOs = new();
@@ -573,5 +696,56 @@ namespace OperationGuidance_service.Controllers {
         }
         #endregion
 
+        #region 条码匹配规则相关
+        // 查询条码匹配规则列表
+        public QueryBarCodeMatchingRuleListRsp QueryBarCodeMatchingRuleList(QueryBarCodeMatchingRuleListReq req) {
+            string? condition = "";
+            if (req.MissionId != null) {
+                condition = $"mission_id = {req.MissionId}";
+            }
+            List<BarCodeMatchingRule> deviceCategories = _barCodeMatchingRuleService.FindBySqlWithoutUserId(condition);
+            List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = new();
+            CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(deviceCategories, barCodeMatchingRuleDTOs);
+
+            return new() {
+                BarCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs,
+            };
+        }
+        // 新增或修改条码匹配规则
+        public AddOrUpdateBarCodeMatchingRuleRsp AddOrUpdateBarCodeMatchingRule(AddOrUpdateBarCodeMatchingRuleReq req) {
+            BarCodeMatchingRuleDTO barCodeMatchingRuleDTO = req.BarCodeMatchingRuleDTO;
+            BarCodeMatchingRule barCodeMatchingRule = new();
+            CommonUtils.ObjectConverter<BarCodeMatchingRuleDTO, BarCodeMatchingRule>(barCodeMatchingRuleDTO, barCodeMatchingRule);
+            BarCodeMatchingRule? barCodeMatchingRuleNew = _barCodeMatchingRuleService.InsertOrUpdate(barCodeMatchingRule);
+            if (barCodeMatchingRuleNew != null) {
+                barCodeMatchingRuleDTO.id = barCodeMatchingRuleNew.id;
+            }
+
+            return new() {
+                BarCodeMatchingRuleDTO = barCodeMatchingRuleDTO,
+            };
+        }
+        // 删除条码匹配规则
+        public DeleteBarCodeMatchingRuleByIdsRsp DeleteBarCodeMatchingRule(DeleteBarCodeMatchingRuleByIdsReq req) {
+            int deletedRows = _barCodeMatchingRuleService.DeleteByIds(req.Ids);
+
+            DeleteBarCodeMatchingRuleByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        // 根据任务ID查找对应的条码匹配规则
+        public FindBarCodeMatchingRulesByMissionIdRsp FindBarCodeMatchingRulesByMissionId(FindBarCodeMatchingRulesByMissionIdReq req) {
+            List<BarCodeMatchingRule> barCodeMatchingRules = _barCodeMatchingRuleService.FindBySqlWithoutUserId($"mission_id = {req.MissionId}");
+            List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = new();
+            CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(barCodeMatchingRules, barCodeMatchingRuleDTOs);
+
+            return new() {
+                BarCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs,
+            };
+        }
+        #endregion
     }
 }

@@ -56,7 +56,7 @@ namespace CustomLibrary.TextBoxes {
         public override Color BackColor {
             get => base.BackColor;
             set {
-                _disabledBackColor = WidgetUtils.DarkenColor(value, .1);
+                _disabledBackColor = WidgetUtils.DarkenColor(value, .05);
                 if (!_enabled) {
                     base.BackColor = _disabledBackColor;
                     _box.BackColor = _disabledBackColor;

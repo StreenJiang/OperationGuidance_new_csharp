@@ -5,8 +5,8 @@ namespace OperationGuidance_service.Models.Requests {
     public class AddOrUpdateWorkstationReq: HttpRequest {
         public WorkstationDTO WorkstationDTO { get; set; }
 
-        public AddOrUpdateWorkstationReq(WorkstationDTO workstationDTO) {
-            WorkstationDTO = workstationDTO;
+        public AddOrUpdateWorkstationReq(WorkstationDTO dto) {
+            WorkstationDTO = dto;
         }
     }
 }
