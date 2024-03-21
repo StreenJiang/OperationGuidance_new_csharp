@@ -93,7 +93,6 @@ namespace OperationGuidance_new.Views {
             // 添加字段
             CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("工具名称", false, 
                 (DeviceToolDTO dto, string? value) => dto.name = value ?? "");
-            name.Ratio = 6;
             if (dto.name != null) {
                 name.SetValue(0, dto.name);
             }
@@ -102,7 +101,6 @@ namespace OperationGuidance_new.Views {
             };
             CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("工具描述", false, 
                 (DeviceToolDTO dto, string? value) => dto.description = value ?? "");
-            description.Ratio = 6;
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
@@ -115,7 +113,6 @@ namespace OperationGuidance_new.Views {
                 }
                 ipBox.IsError = !ArgumentValidator.ValidateIPv4(ipBox.Text);
             };
-            ip.Ratio = 6;
             if (dto.ip != null) {
                 ip.SetValue(0, dto.ip);
             }
@@ -129,14 +126,12 @@ namespace OperationGuidance_new.Views {
                 }
                 portBox.IsError = !ArgumentValidator.ValidatePortInWindows(portBox.Text);
             };
-            port.Ratio = 6;
             if (dto.port > 0) {
                 port.SetValue(0, dto.port + "");
             }
             Dictionary<string, int> toolTypes = DeviceType_Tool.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("工具类型", 
                 (DeviceToolDTO dto, int value) => dto.type = value, toolTypes);
-            type.Ratio = 6;
             type.SetCurrent(type.IndexOf(dto.type));
             type.ItemSelected += () => {
                 type.SetError(type.IsDefaultValue());

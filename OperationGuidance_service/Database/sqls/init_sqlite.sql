@@ -254,7 +254,7 @@ CREATE TABLE "product_side" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "mission_id" integer,
-  "image" text(2048),
+  "image" text(256),
   "max_rectangle_width" integer(16),
   "max_rectangle_height" integer(16),
   "max_rectangle_location" text(32),

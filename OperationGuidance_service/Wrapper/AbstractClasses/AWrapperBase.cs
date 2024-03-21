@@ -15,7 +15,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private string _tabelName;
         private DbConnection? _conn;
 
-        public string TabelName { get => _tabelName; }
+        public string TableName { get => _tabelName; }
 
         public AWrapperBase() {
             _tabelName = GetTableName();

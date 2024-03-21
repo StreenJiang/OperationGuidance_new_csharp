@@ -1,4 +1,3 @@
-using System.IO.Ports;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
@@ -13,6 +12,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
+using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Views {
     public class DeviceSerialPortView: CustomDataGridViewOuterPanel<DeviceSerialPortDTO, ViewObjects.DeviceSerialPortVO> {
@@ -95,7 +95,6 @@ namespace OperationGuidance_new.Views {
             // 设备名称
             CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("设备名称", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.name = value ?? "");
-            name.Ratio = 6;
             if (dto.name != null) {
                 name.SetValue(0, dto.name);
             }
@@ -105,7 +104,6 @@ namespace OperationGuidance_new.Views {
             // 设备描述
             CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("设备描述", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.description = value ?? "");
-            description.Ratio = 6;
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
@@ -122,14 +120,12 @@ namespace OperationGuidance_new.Views {
                     dto.port_full_name = value == null ? "" : portFullName.Key;
                 }
             }
-            portFullName.Ratio = 6;
             portFullName.ItemSelected += () => {
                 portFullName.SetError(portFullName.IsDefaultValue());
             };
             // 串口全名
             CustomTextBoxGroup portName = _editEntityPopUpForm.AddTextBox("串口号", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.port_name = value ?? "");
-            portName.Ratio = 6;
             portName.Enabled = false;
             if (dto.port_name != null) {
                 portFullName.SetCurrent(portFullName.IndexOf(dto.port_name));
@@ -149,7 +145,6 @@ namespace OperationGuidance_new.Views {
             Dictionary<string, int> toolTypes = DeviceType_SerialPort.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("设备类型", 
                 (DeviceSerialPortDTO dto, int value) => dto.type = value, toolTypes);
-            type.Ratio = 6;
             type.SetCurrent(type.IndexOf(dto.type));
             type.ItemSelected += () => {
                 type.SetError(type.IsDefaultValue());
@@ -166,7 +161,6 @@ namespace OperationGuidance_new.Views {
             };
             CustomComboBoxGroup<int> baudRate = _editEntityPopUpForm.AddComboBox("波特率", 
                 (DeviceSerialPortDTO dto, int value) => dto.baud_rate = value, baudRates);
-            baudRate.Ratio = 6;
             baudRate.SetCurrent(baudRate.IndexOf(dto.baud_rate));
             baudRate.ItemSelected += () => {
                 baudRate.SetError(false);
@@ -180,7 +174,6 @@ namespace OperationGuidance_new.Views {
             };
             CustomComboBoxGroup<int> dataBit = _editEntityPopUpForm.AddComboBox("数据位", 
                 (DeviceSerialPortDTO dto, int value) => dto.data_bit = value, dataBits);
-            dataBit.Ratio = 6;
             dataBit.SetCurrent(dataBit.IndexOf(dto.data_bit));
             dataBit.ItemSelected += () => {
                 dataBit.SetError(false);
@@ -193,7 +186,6 @@ namespace OperationGuidance_new.Views {
             }
             CustomComboBoxGroup<int> parity = _editEntityPopUpForm.AddComboBox("校验位", 
                 (DeviceSerialPortDTO dto, int value) => dto.parity = value, parities);
-            parity.Ratio = 6;
             parity.SetCurrent(parity.IndexOf(dto.parity));
             parity.ItemSelected += () => {
                 parity.SetError(false);
@@ -206,7 +198,6 @@ namespace OperationGuidance_new.Views {
             }
             CustomComboBoxGroup<int> stopBit = _editEntityPopUpForm.AddComboBox("停止位", 
                 (DeviceSerialPortDTO dto, int value) => dto.stop_bit = value, stopBits);
-            stopBit.Ratio = 6;
             stopBit.SetCurrent(stopBit.IndexOf(dto.stop_bit));
             stopBit.ItemSelected += () => {
                 stopBit.SetError(false);
@@ -219,7 +210,6 @@ namespace OperationGuidance_new.Views {
             }
             CustomComboBoxGroup<int> dataType = _editEntityPopUpForm.AddComboBox("数据类型", 
                 (DeviceSerialPortDTO dto, int value) => dto.data_type = value, dataTypes);
-            dataType.Ratio = 6;
             dataType.SetCurrent(dataType.IndexOf(dto.data_type));
             dataType.ItemSelected += () => {
                 dataType.SetError(dataType.IsDefaultValue());
@@ -227,7 +217,6 @@ namespace OperationGuidance_new.Views {
             // 无效字符
             CustomTextBoxGroup invalidChar = _editEntityPopUpForm.AddTextBox("无效字符", false, 
                 (DeviceSerialPortDTO dto, string? value) => dto.invalid_char = value ?? "");
-            invalidChar.Ratio = 6;
             if (dto.invalid_char != null) {
                 invalidChar.SetValue(0, dto.invalid_char);
             }

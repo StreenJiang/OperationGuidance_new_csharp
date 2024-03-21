@@ -236,6 +236,7 @@ namespace OperationGuidance_new.Views {
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                         } else {
+                            _missionName.SetValue(0, missionName);
                             _missionDTO.name = missionName;
                             _missionDTO.max_ng_num = int.Parse(maxNGNum);
                             _detialPopUpForm.Hide();
@@ -261,6 +262,10 @@ namespace OperationGuidance_new.Views {
                     if (rsp.RsponseCode == HttpResponseCode.OK) {
                         Modified = false;
                         _missionDTO = rsp.ProductMissionDTO;
+                        // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
+                        foreach (SideButton sideBtn in _sideButtons) {
+                            MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                        }
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // 保存后跳转至任务列表界面
                         WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
@@ -1186,13 +1191,13 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                     NumberOnly = true,
                 };
-                _productsBarCodeNum = new("产品条码数") {
+                _productsBarCodeNum = new("产品条码") {
                     Parent = _tablePanel,
                     Ratio = 6.75,
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
-                _partsBarCodeNum = new("物料条码数") {
+                _partsBarCodeNum = new("物料条码") {
                     Parent = _tablePanel,
                     Ratio = 6.75,
                     NameAlignment = HorizontalAlignment.Right,
@@ -1212,8 +1217,8 @@ namespace OperationGuidance_new.Views {
                         partsBarCodeNum++;
                     }
                 }
-                _productsBarCodeNum.SetValue(0, productsBarCodeNum + "");
-                _partsBarCodeNum.SetValue(0, partsBarCodeNum + "");
+                _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
+                _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
             }
 
             public void ResizeSelf() {

@@ -84,48 +84,44 @@ namespace OperationGuidance_new.Views {
             CommonButton commonButton = _dataGridView.AddExtraButton("导出");
             commonButton.Click += (sender, eventArgs) => {
                 string filePath = ShowSaveFileDialog();
-                if (!string.IsNullOrEmpty(filePath)) {
-                    List<string>? headers = null;
-                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                    // 检查当前文件是否存在
-                    bool excelFileExists = File.Exists(excelFilePath);
-                    // 从配置文件读取配置
-                    List<int> sortConfig = MainUtils.GetSortConfig();
-                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                    // 检查当前是否存在正在使用的字段配置
-                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
-                        sortConfigCurr = sortConfig;
-                        MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
-                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                    }
-                    // 组装数据
-                    List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    List<OperationDataVO> dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
-                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                    dataFormatted.ForEach(dto => {
-                        Dictionary<int, object?> record = new();
-                        for (int i = 0; i < propertyNames.Count; i++) {
-                            string pName = propertyNames[i];
-                            PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
-                            if (propertyInfo != null) {
-                                record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
-                            }
-                        }
-                        dataWithConfigFields.Add(record);
-                    });
-                    // 组装最终数据
-                    List<List<object?>> finalData = new();
-                    dataWithConfigFields.ForEach(dict => {
-                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                    });
-                    // 写入数据
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                List<string>? headers = null;
+                // 检查当前文件是否存在
+                bool excelFileExists = File.Exists(filePath);
+                // 从配置文件读取配置
+                List<int> sortConfig = MainUtils.GetSortConfig();
+                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                // 检查当前是否存在正在使用的字段配置
+                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
+                    sortConfigCurr = sortConfig;
+                    MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
+                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                 }
+                // 组装数据
+                List<Dictionary<int, object?>> dataWithConfigFields = new();
+                List<OperationDataVO> dataFormatted = new();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
+                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                dataFormatted.ForEach(dto => {
+                    Dictionary<int, object?> record = new();
+                    for (int i = 0; i < propertyNames.Count; i++) {
+                        string pName = propertyNames[i];
+                        PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
+                        if (propertyInfo != null) {
+                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+                        }
+                    }
+                    dataWithConfigFields.Add(record);
+                });
+                // 组装最终数据
+                List<List<object?>> finalData = new();
+                dataWithConfigFields.ForEach(dict => {
+                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                });
+                // 写入数据
+                finalData.ExportToExcelFile(headers, filePath, excelFileExists);
             };
 
             // 按钮逻辑
@@ -151,7 +147,7 @@ namespace OperationGuidance_new.Views {
             //string localFilePath, fileNameExt, newFileName, FilePath; 
             SaveFileDialog sfd = new SaveFileDialog();
             // 设置默认文件名
-            sfd.FileName = $"OperationData_{DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF)}";
+            sfd.FileName = $"OperationData_{DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_FULL_NO_PUNCTUATION)}";
             // 设置文件类型 
             sfd.Filter = "Excel File（*.xlsx）|*.xlsx";
             // 设置默认文件类型显示顺序 

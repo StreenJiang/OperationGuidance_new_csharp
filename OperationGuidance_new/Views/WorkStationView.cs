@@ -157,6 +157,7 @@ namespace OperationGuidance_new.Views {
             // 添加字段
             CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
                 (WorkstationDTO dto, string? value) => dto.name = value ?? "");
+            stationName.Ratio = null;
             _editEntityPopUpForm.TablePanel.SetColumnSpan(stationName, 2);
             if (dto.name != null) {
                 stationName.SetValue(0, dto.name);

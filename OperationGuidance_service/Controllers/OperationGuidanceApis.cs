@@ -71,10 +71,10 @@ namespace OperationGuidance_service.Controllers {
 
             string? password = userAccountInfo.password;
             string? operation_password = userAccountInfo.operation_password;
-            if (password != null) {
+            if (password != null && !SystemUtils.IsMD5(password)) {
                 userAccountInfo.password = SystemUtils.ToMD5String(password);
             }
-            if (operation_password != null) {
+            if (operation_password != null && !SystemUtils.IsMD5(operation_password)) {
                 userAccountInfo.operation_password = SystemUtils.ToMD5String(operation_password);
             }
 
@@ -101,24 +101,33 @@ namespace OperationGuidance_service.Controllers {
         // 根据条件查找用户信息，用于新增、编辑的判断
         public FindUserByConditionForCheckingRsp FindUserByConditionForChecking(FindUserByConditionForCheckingReq req) {
             UserAccountInfoDTO? userAccountInfoDTO = null;
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
+            Dictionary<string, object> parameters = new();
+
             int id = req.Id;
             int? staff_id = req.StaffId;
             string? account = req.Account;
             if (staff_id != null || !string.IsNullOrEmpty(account)) {
                 string condition = "";
                 if (staff_id != null) {
-                    condition += $"staff_id = {staff_id}";
+                    condition += "staff_id = @staff_id";
+                    parameters.Add("staff_id", staff_id);
                 }
                 if (!string.IsNullOrEmpty(account)) {
                     if (!string.IsNullOrEmpty(condition)) {
                         condition += " or ";
                     }
-                    condition += $"account = '{account}'";
+                    condition += "account = @account";
+                    parameters.Add("account", account);
+                }
+                if (!string.IsNullOrEmpty(condition)) {
+                    sql += $" and ({condition})";
                 }
                 if (id > 0) {
-                    condition = $"({condition}) and id <> {id}";
+                    sql += " and id <> @id";
+                    parameters.Add("id", id);
                 }
-                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySqlWithoutUserId(condition + " limit 1");
+                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySql(sql + " limit 1", parameters);
                 if (userAccountInfos.Count > 0) {
                     userAccountInfoDTO = new();
                     CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos[0], userAccountInfoDTO);
@@ -133,7 +142,8 @@ namespace OperationGuidance_service.Controllers {
             bool succeed = true;
             string failedReason = string.Empty;
             UserAccountInfoDTO? userDTO = null;
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"account = '{req.Account}' limit 1");
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and account = @account limit 1", new { @account = req.Account });
             if (users.Count <= 0) {
                 succeed = false;
                 failedReason = "账户名不存在";
@@ -164,7 +174,9 @@ namespace OperationGuidance_service.Controllers {
         // 管理员密码验证
         public AdminPasswordValidateRsp AdminPasswordValidate(AdminPasswordValidateReq req) {
             bool succeed = true;
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySqlWithoutUserId($"operation_password = '{SystemUtils.ToMD5String(req.AdminPassword)}' limit 1");
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password limit 1", 
+                    new { @operation_password = SystemUtils.ToMD5String(req.AdminPassword) });
             if (users.Count <= 0) {
                 succeed = false;
             }
@@ -198,13 +210,19 @@ namespace OperationGuidance_service.Controllers {
             List<ProductMissionDTO> productMissionDTOs = new();
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
+            List<ProductSide> sides = new();
+            List<ProductBolt> bolts = new();
             // 根据任务查询关联的其他表
             List<int> missionIds = missions.Select(m => m.id).ToList();
-            List<ProductSide> sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-            List<int> boltIds = sides.Select(s => s.id).ToList();
-            List<ProductBolt> bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+            if (missionIds.Count > 0) {
+                sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
+                System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+                List<int> boltIds = sides.Select(s => s.id).ToList();
+                if (boltIds.Count > 0) {
+                    bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+                    System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+                }
+            }
 
             // 根据任务找到第一个side，用该side的图片做封面
             // TODO: 后面再优化这个
@@ -234,13 +252,22 @@ namespace OperationGuidance_service.Controllers {
             List<ProductMissionDTO> productMissionDTOs = new();
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
+            List<ProductSide> sides = new();
+            List<ProductBolt> bolts = new();
             // 根据任务查询关联的其他表
             List<int> missionIds = missions.Select(m => m.id).ToList();
-            List<ProductSide> sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
-            List<int> boltIds = sides.Select(s => s.id).ToList();
-            List<ProductBolt> bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+            if (missionIds.Count > 0) {
+                sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
+                System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+                List<int> boltIds = sides.Select(s => s.id).ToList();
+                if (boltIds.Count > 0) {
+                    bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
+                    System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+                }
+            }
 
-            // 根据任务找到所有的sides及bolts
+            // 根据任务找到第一个side，用该side的图片做封面
+            // TODO: 后面再优化这个
             for (int i = 0 ; i < missions.Count ; i++) {
                 ProductMissionDTO missionDTO = productMissionDTOs[i];
                 List<ProductSideDTO> productSideDTOs = new();
@@ -466,31 +493,27 @@ namespace OperationGuidance_service.Controllers {
         #region 任务记录相关
         // 查询任务记录列表
         public QueryMissionRecordListRsp QueryMissionRecordList(QueryMissionRecordListReq req) {
-            string? condition = null;
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
+            Dictionary<string, object> parameters = new();
+
+            string condition = "";
             if (req.Ids != null && req.Ids.Count > 0) {
-                condition = "id in (";
-                for (int i = 0 ; i<req.Ids.Count ; i++) {
-                    if (i != 0) {
-                        condition += ", ";
-                    }
-                    condition += $"{req.Ids[i]}";
-                }
-                condition += ")";
+                condition += " and id in @ids";
+                parameters.Add("ids", req.Ids);
             }
             if (req.Date != null) {
-                if (!string.IsNullOrEmpty(condition)) {
-                    condition += " and ";
-                }
-                string date1 = req.Date.Value.Date.ToString("yyyy-MM-dd hh:mm:ss");
-                string date2 = req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd hh:mm:ss");
-                condition += $"create_time between '{date1}' and '{date2}'";
+                condition += " and create_time between @date1 and @date2";
+                string date1 = req.Date.Value.Date.ToString("yyyy-MM-dd HH:mm:ss");
+                string date2 = req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss");
+                parameters.Add("date1", date1);
+                parameters.Add("date2", date2);
             }
-            List<MissionRecord> deviceCategories;
             if (req.UserId != null) {
-                deviceCategories = _missionRecordService.FindBySqlCondition(condition, req.UserId.Value);
-            } else {
-                deviceCategories = _missionRecordService.FindBySqlWithoutUserId(condition);
+                condition += " and user_id = @userId";
+                parameters.Add("userId", req.UserId.Value);
             }
+            
+            List<MissionRecord> deviceCategories = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();
             CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(deviceCategories, missionRecordDTOs);
 
@@ -499,10 +522,9 @@ namespace OperationGuidance_service.Controllers {
             };
         }
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            List<MissionRecord> deviceCategories = _missionRecordService.FindBySqlWithoutUserId($"product_bar_code = '{req.ProductBarCode}'");
-
+            string sql = $"select 1 from {_missionRecordService.TableName} where product_bar_code = @product_bar_code";
             return new() {
-                Yes = deviceCategories.Count > 0,
+                Yes = _missionRecordService.FindBySql(sql, new { @product_bar_code = req.ProductBarCode }).Count > 0,
             };
         }
         // 新增或修改任务记录
@@ -738,7 +760,8 @@ namespace OperationGuidance_service.Controllers {
         }
         // 根据任务ID查找对应的条码匹配规则
         public FindBarCodeMatchingRulesByMissionIdRsp FindBarCodeMatchingRulesByMissionId(FindBarCodeMatchingRulesByMissionIdReq req) {
-            List<BarCodeMatchingRule> barCodeMatchingRules = _barCodeMatchingRuleService.FindBySqlWithoutUserId($"mission_id = {req.MissionId}");
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId} and mission_id = @mission_id";
+            List<BarCodeMatchingRule> barCodeMatchingRules = _barCodeMatchingRuleService.FindBySql(sql, new { @mission_id = req.MissionId });
             List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = new();
             CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(barCodeMatchingRules, barCodeMatchingRuleDTOs);
 

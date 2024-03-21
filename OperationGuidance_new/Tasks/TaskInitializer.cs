@@ -1,10 +1,10 @@
-using System.IO.Ports;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Tasks {
     public static class TaskInitializer {

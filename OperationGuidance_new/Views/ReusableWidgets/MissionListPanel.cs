@@ -2,6 +2,7 @@
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
@@ -79,7 +80,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         Image? coverImage = null;
                         foreach (ProductSideDTO sideDTO in mission.ProductSides) {
                             if (sideDTO.image != null && sideDTO.image != string.Empty) {
-                                coverImage = CommonUtils.ImageBase64ToImage(sideDTO.image);
+                                coverImage = MainUtils.GetProductImage(sideDTO.image);
                                 if (coverImage != null) {
                                     if (sideDTO.rotate_angle != null) {
                                         coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value);

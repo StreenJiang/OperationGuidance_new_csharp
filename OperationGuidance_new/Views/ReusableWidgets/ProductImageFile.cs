@@ -10,6 +10,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private ProductSideDTO _sideDTO;
         private string? _filePath;
         private Image? _image;
+        private string? _imageFileName;
         private Rectangle _containerMaxRect;
         private Point _centerLocation;
         private Point _locationOffset;
@@ -33,6 +34,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             }
         }
+        public string? ImageFileName { get => _imageFileName; set => _imageFileName = value; }
         public Rectangle ContainerMaxRect { get => _containerMaxRect; set => _containerMaxRect = value; }
         public Point CenterLocation { get => _centerLocation; set => _centerLocation = value; }
         public Point LocationOffset { get => _locationOffset; set => _locationOffset = value; }
@@ -48,8 +50,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _undoBuffer = new();
             _undoBufferLength = undoBufferLength;
 
-            Image? image = CommonUtils.ImageBase64ToImage(sideDTO.image);
+            Image? image = MainUtils.GetProductImage(sideDTO.image);
             if (image != null) {
+                _imageFileName = sideDTO.image;
                 _image = image;
                 if (sideDTO.max_rectangle_width != null && sideDTO.max_rectangle_height != null) {
                     _containerMaxRect = new(CommonUtils.PointStringToPoint(sideDTO.max_rectangle_location), new(sideDTO.max_rectangle_width.Value, sideDTO.max_rectangle_height.Value));
@@ -66,6 +69,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public ProductImageFile Copy() {
             return new(_container, _sideDTO, _undoBufferLength) {
                 FilePath = _filePath,
+                ImageFileName = _imageFileName,
                 Image = _image != null ? new Bitmap(_image) : null,
                 CenterLocation = _centerLocation,
                 LocationOffset = _locationOffset,
@@ -78,11 +82,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public void CopyFrom(ProductImageFile from) {
             _filePath = from.FilePath;
-            if (from.Image != null) {
-                _image = new Bitmap(from.Image);
-            } else {
-                _image = null;
-            }
+            _imageFileName = from.ImageFileName;
+            _image = from.Image != null ? new Bitmap(from.Image) : null;
             _centerLocation = from.CenterLocation;
             _locationOffset = from.LocationOffset;
             _locationOffsetMoving = from.LocationOffsetMoving;
@@ -234,9 +235,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void SaveSideInfo() {
-            if (_image != null) {
-                _sideDTO.image = CommonUtils.ImageToBase64(_image);
+            if (_imageFileName == null) {
+                _imageFileName = MainUtils.GenerateProductImageName();
             }
+            _sideDTO.image = _imageFileName;
             _sideDTO.zooming_ratio = _zoomingRatio;
             _sideDTO.zooming_ratio_extra = _zoomingRatioExtra;
             _sideDTO.center_location = _centerLocation.ToString();

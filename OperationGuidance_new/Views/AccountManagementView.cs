@@ -23,6 +23,7 @@ namespace OperationGuidance_new.Views {
         private DataGridViewGroup<UserAccountInfoVO> _dataGridView;
         // Add new pop up form
         private EditEntityPopUpForm<UserAccountInfoDTO> _editEntityPopUpForm;
+        private string _blockingPassword = "******";
         #endregion
 
         #region Constructors
@@ -123,14 +124,9 @@ namespace OperationGuidance_new.Views {
                 (UserAccountInfoDTO dto, string? value) => dto.password = value ?? null);
             // 暂时先用这个代替，后续再做进一步的完善，使CustomTextBox能够支持密码模式并提供按钮可以开关屏蔽功能
             password.GetTextBox(0).Box.PasswordChar = '*';
-            string? md5_password = null;
+            string? passwordCache = dto.password;
             if (dto.password != null) {
-                if (SystemUtils.IsMD5(dto.password)) {
-                    md5_password = dto.password;
-                    password.SetValue(0, "******");
-                } else {
-                    password.SetValue(0, dto.password);
-                }
+                password.SetValue(0, _blockingPassword);
             }
             Dictionary<string, int> roleOptions = new();
             Roles[] roleValues = Enum.GetValues<Roles>();
@@ -160,14 +156,9 @@ namespace OperationGuidance_new.Views {
                 }
             };
             operation_password.GetTextBox(0).Box.PasswordChar = '*';
-            string? md5_operation_password = null;
+            string? operationPasswordCache = dto.operation_password;
             if (dto.operation_password != null) {
-                if (SystemUtils.IsMD5(dto.operation_password)) {
-                    md5_operation_password = dto.operation_password;
-                    operation_password.SetValue(0, "******");
-                } else {
-                    operation_password.SetValue(0, dto.operation_password);
-                }
+                operation_password.SetValue(0, _blockingPassword);
             }
             operation_password.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 operation_password.GetTextBox(0).IsError = string.IsNullOrEmpty(operation_password.GetTextBox(0).Box.Text);
@@ -239,9 +230,17 @@ namespace OperationGuidance_new.Views {
                     if (!operation_password.Visible) {
                         operation_password.SetValue(0, null);
                     }
+                    if (password.GetTextBox(0).Box.Text == _blockingPassword) {
+                        password.SetValue(0, passwordCache);
+                    }
+                    if (operation_password.GetTextBox(0).Box.Text == _blockingPassword) {
+                        operation_password.SetValue(0, operationPasswordCache);
+                    }
                     callBackAction += _editEntityPopUpForm.Dispose;
                     AddOrUpdate(dto, callBackAction);
                     _editEntityPopUpForm.Hide();
+                    // 如果修改的是当前用户，则更新
+                    SystemUtils.UserInfo = dto;
                 }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");

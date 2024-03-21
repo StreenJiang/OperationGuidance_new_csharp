@@ -12,6 +12,8 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         protected E Wrapper {
             set; get;
         }
+        public string TableName => Wrapper.TableName;
+        public string ConditionWithoutUserId => Wrapper.ConditionWithoutUserId();
 
         public void UseConnection(DbConnection conn) {
             Wrapper.UseConnection(conn);
@@ -25,11 +27,11 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             ArgumentValidator.ValidateInt(userId, "UserId should greater than 0. Passing 'userId = " + userId + "' incorrectly.");
 
             // TODO: use cache to prevent fetching data every time
-            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()}", new { @user_id = userId });
+            return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.CommonCondition()}", new { @user_id = userId });
         }
         public List<T> QueryListWithoutUserId() {
             // TODO: use cache to prevent fetching data every time
-            return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()}");
+            return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.ConditionWithoutUserId()}");
         }
 
         public T? AddEntity(T entity) {
@@ -70,16 +72,20 @@ namespace OperationGuidance_service.Services.AbstractClasses {
 
         public List<T> FindBySqlCondition(string? sqlCondition, int userId) {
             if (!string.IsNullOrEmpty(sqlCondition)) {
-                return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = userId });
+                return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = userId });
             }
             return QueryList(SystemUtils.LoggedUserId);
         }
 
         public List<T> FindBySqlWithoutUserId(string? sqlCondition) {
             if (!string.IsNullOrEmpty(sqlCondition)) {
-                return Wrapper.FindBySql($"select * from {Wrapper.TabelName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
+                return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
             }
             return QueryListWithoutUserId();
+        }
+
+        public List<T> FindBySql(string sql, object parameterObj) {
+            return Wrapper.FindBySql(sql, parameterObj);
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System.IO.Ports;
-using System.Reflection;
+﻿using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
 using Newtonsoft.Json;
@@ -10,12 +9,16 @@ using OperationGuidance_new.Tasks;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Utils;
+using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static LoginView LoginView { get; set; }
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
+        public static readonly string DATETIME_FORMAT_FULL_NO_PUNCTUATION = "yyyyMMddHHmmss";
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd HH:mm:ss";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd HH:mm:ss.fff";
@@ -49,6 +52,49 @@ namespace OperationGuidance_new.Utils {
             return baseDirectory;
         }
 
+        private static string GetProductImagesPath() {
+            string productImagesPath = GetBaseDirectory() + "\\ProductImages";
+            if (!Directory.Exists(productImagesPath)) {
+                DirectoryInfo directoryInfo = Directory.CreateDirectory(productImagesPath);
+                directoryInfo.Attributes = FileAttributes.Directory | FileAttributes.Hidden;
+            }
+            return productImagesPath;
+        }
+        public static string GenerateProductImageName() {
+            return $"ProductSideImage_{DateTime.Now.ToString(DATETIME_FORMAT_FULL_NO_PUNCTUATION)}.png";
+        }
+        public static Image? GetProductImage(string? fileName) {
+            if (string.IsNullOrEmpty(fileName)) {
+                return null;
+            }
+            string imageFilePath = GetProductImagesPath() + "\\" + fileName;
+            if (!File.Exists(imageFilePath)) {
+                return null;
+            }
+            // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
+            using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
+            using (Bitmap bitmap = new Bitmap(ms)) {
+                Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
+                using (Graphics g = Graphics.FromImage(newBitmap)) {
+                    g.DrawImage(bitmap, Point.Empty);
+                    g.Flush();
+                }
+                return newBitmap;
+            }
+        }
+        public static void SaveProductImage(Image? image, string? fileName) {
+            if (image == null || string.IsNullOrEmpty(fileName)) {
+                return;
+            }
+            string imageFilePath = GetProductImagesPath() + "\\" + fileName;
+
+            // 如果图片已存在则替换旧图片
+            if (File.Exists(imageFilePath)) {
+                File.Delete(imageFilePath);
+            }
+            image.Save(imageFilePath);
+        }
+
         public static string GetStorageFileName() {
             string nameFormat = Settings.Read(IniFileKeys.DataStorageNameFormat);
             if (string.IsNullOrEmpty(nameFormat)) {
@@ -72,7 +118,7 @@ namespace OperationGuidance_new.Utils {
 
             bool Replace(string formatPattern) {
                 if (nameFormatted.Contains(formatPattern)) {
-                    nameFormatted = nameFormatted.Replace(formatPattern, now.ToString(formatPattern));
+                    nameFormatted = nameFormatted.Replace(formatPattern, now.ToString(formatPattern)).Replace(" ", "");
                     return true;
                 }
                 return false;
@@ -517,6 +563,12 @@ namespace OperationGuidance_new.Utils {
                 matchingRule.Add(keyPositionList[i], keyCharList[i]);
             }
             return matchingRule;
+        }
+        public static bool CheckBarCodeIsMatched(string barCode, BarCodeMatchingRuleDTO dto) {
+            return CheckBarCodeIsMatched(barCode, dto.end_char, dto.length, dto.key_position, dto.key_char);
+        }
+        public static bool CheckBarCodeIsMatched(string barCode, string? endChar, int? length, string? keyPosition, string? keyChar) {
+            return CheckBarCodeIsMatched(barCode, endChar, length, GetKeyMatchingRule(keyPosition, keyChar));
         }
         public static bool CheckBarCodeIsMatched(string barCode, string? endChar, int? length, Dictionary<int, char>? matchingRules) {
             if (string.IsNullOrEmpty(barCode)) {
