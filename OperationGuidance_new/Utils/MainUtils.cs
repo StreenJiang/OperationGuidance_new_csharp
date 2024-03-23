@@ -316,13 +316,32 @@ namespace OperationGuidance_new.Utils {
             return null;
         }
 
-        public static TextBox? EventLogTextArea { get; set; }
+        public static List<string> LogCache { get; } = new();
+        private static TextBox? _textArea = null;
+        public static TextBox? EventLogTextArea { 
+            get => _textArea;
+            set {
+                _textArea = value;
+                if (_textArea != null && LogCache.Count > 0) {
+                    WidgetUtils.MainForm.BeginInvoke(() => {
+                        LogCache.ForEach(message => {
+                            _textArea.AppendText(message + "\r\n");
+                        });
+                        LogCache.Clear();
+                    });
+                }
+            } 
+        }
         public static void Log(string message, bool printToView = true) {
             System.Console.WriteLine(message);
-            if (EventLogTextArea != null && printToView) {
-                EventLogTextArea.BeginInvoke(() => {
-                    EventLogTextArea.AppendText(message + "\r\n");
-                });
+            if (printToView) {
+                if (_textArea != null) {
+                    _textArea.BeginInvoke(() => {
+                        _textArea.AppendText(message + "\r\n");
+                    });
+                } else {
+                    LogCache.Add(message);
+                }
             }
         }
 
@@ -495,45 +514,26 @@ namespace OperationGuidance_new.Utils {
         }
         public static List<int> GetKeyPositionList(string keyPosition) {
             keyPosition = keyPosition.Replace(" ", "");
-            if (keyPosition.Contains('-')) {
-                Dictionary<string, string> temp = new();
-                for (int i = 0; i < keyPosition.Length; i++) {
-                    if (keyPosition[i] == '-') {
-                        int prevIndex = i - 1;
-                        string prev = keyPosition[prevIndex].ToString();
-                        while (prevIndex != 0) {
-                            prevIndex--;
-                            if (!char.IsDigit(keyPosition[prevIndex])) {
-                                break;
-                            }
-                            prev += keyPosition[prevIndex].ToString();
-                        }
-                        int prevNum = int.Parse(prev);
+            Dictionary<string, string> temp = new();
+            string[] parts = keyPosition.Split(',');
+            foreach (string part in parts) {
+                if (part.Contains('-')) {
+                    string[] partTemp = part.Split('-');
+                    int prev = int.Parse(partTemp[0]);
+                    int follow = int.Parse(partTemp[1]);
 
-                        int nextIndex = i + 1;
-                        string follow = keyPosition[nextIndex].ToString();
-                        while (nextIndex != keyPosition.Length - 1) {
-                            nextIndex++;
-                            if (!char.IsDigit(keyPosition[nextIndex])) {
-                                break;
-                            }
-                            follow += keyPosition[nextIndex].ToString();
+                    string newString = "";
+                    for (int j = prev; j <= follow; j++) {
+                        if (j != prev) {
+                            newString += ",";
                         }
-                        int followNum = int.Parse(follow);
-
-                        string newString = "";
-                        for (int j = prevNum; j <= followNum; j++) {
-                            if (j != prevNum) {
-                                newString += ",";
-                            }
-                            newString += $"{j}";
-                        }
-                        temp.Add(prev + "-" + follow, newString);
+                        newString += $"{j}";
                     }
+                    temp.Add(prev + "-" + follow, newString);
                 }
-                foreach (KeyValuePair<string, string> pair in temp) {
-                    keyPosition = keyPosition.Replace(pair.Key, pair.Value);
-                }
+            }
+            foreach (KeyValuePair<string, string> pair in temp) {
+                keyPosition = keyPosition.Replace(pair.Key, pair.Value);
             }
             return keyPosition.Split(',').Select(int.Parse).ToList();
         }
@@ -577,7 +577,7 @@ namespace OperationGuidance_new.Utils {
             if (!string.IsNullOrEmpty(endChar)) {
                 barCode = barCode.Substring(0, barCode.IndexOf(endChar) + 1);
             }
-            if (length != null && barCode.Length != length) {
+            if (length != null && length > 0 && barCode.Length != length) {
                 return false;
             }
             if (matchingRules != null) {

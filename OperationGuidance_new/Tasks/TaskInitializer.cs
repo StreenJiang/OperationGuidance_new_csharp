@@ -49,10 +49,10 @@ namespace OperationGuidance_new.Tasks {
                                 });
                             } else if (toolTask.Ip != dto.ip || toolTask.Port != dto.port) {
                                 toolTask.CloseConnection();
-                                MainUtils.ToolTasks.Remove(dto.id);
-                                DeviceTypeTool deviceTool = DeviceType_Tool.GetById(dto.type);
-                                MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
-                                MainUtils.Log($"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port}]...");
+                                toolTask.Ip = dto.ip;
+                                toolTask.Port = dto.port;
+                                toolTask.CloseConnectionManually = false;
+                                toolTask.Connect();
                             }
                         }
                     });
@@ -82,10 +82,10 @@ namespace OperationGuidance_new.Tasks {
                                 });
                             } else if (armTask.Ip != dto.ip || armTask.Port != dto.port) {
                                 armTask.CloseConnection();
-                                MainUtils.ArmTasks.Remove(dto.id);
-                                DeviceTypeArm deviceArm = DeviceType_Arm.GetById(dto.type);
-                                MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
-                                MainUtils.Log($"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port}]...");
+                                armTask.Ip = dto.ip;
+                                armTask.Port = dto.port;
+                                armTask.CloseConnectionManually = false;
+                                armTask.Connect();
                             }
                         }
                     });
@@ -115,10 +115,10 @@ namespace OperationGuidance_new.Tasks {
                                 });
                             } else if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port) {
                                 communicationTask.CloseConnection();
-                                MainUtils.CommunicationTasks.Remove(dto.id);
-                                DeviceTypeCommunication deviceCommunication = DeviceType_Communication.GetById(dto.type);
-                                MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
-                                MainUtils.Log($"Connecting to Communication[{dto.name} - {dto.ip}: {dto.port}]...");
+                                communicationTask.Ip = dto.ip;
+                                communicationTask.Port = dto.port;
+                                communicationTask.CloseConnectionManually = false;
+                                communicationTask.Connect();
                             }
                         }
                     });
@@ -150,14 +150,25 @@ namespace OperationGuidance_new.Tasks {
                                 });
                             } else if(serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
                                         || (int) serialPortTask.Parity != dto.parity || serialPortTask.DataBits != dto.data_bit
-                                        || (int) serialPortTask.StopBits != dto.stop_bit) {
+                                        || (int) serialPortTask.StopBits != dto.stop_bit || (int) serialPortTask.DataType != dto.data_type) {
                                 serialPortTask.CloseConnection();
-                                MainUtils.SerialPortTasks.Remove(dto.id);
-                                DeviceTypeSerialPort deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
-                                MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
-                                    dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
-                                    (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
-                                MainUtils.Log($"Connecting to SerialPort[{dto.name}]");
+                                serialPortTask.PortName = dto.port_name;
+                                serialPortTask.FullName = dto.port_full_name;
+                                serialPortTask.BaudRate = dto.baud_rate;
+                                serialPortTask.Parity = (Parity) dto.parity;
+                                serialPortTask.DataBits = dto.data_bit;
+                                serialPortTask.StopBits = (StopBits) dto.stop_bit;
+                                serialPortTask.DataType = (DataTypes) dto.data_type;
+                                serialPortTask.CloseConnectionManually = false;
+                                serialPortTask.Connect();
+                                //
+                                // serialPortTask.CloseConnection();
+                                // MainUtils.SerialPortTasks.Remove(dto.id);
+                                // DeviceTypeSerialPort deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
+                                // MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
+                                //     dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
+                                //     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
+                                // MainUtils.Log($"Connecting to SerialPort[{dto.name}]");
                             }
                         }
                     });

@@ -3,6 +3,6 @@ using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Responses {
     public class FindBarCodeMatchingRulesByMissionIdRsp: HttpResponse {
-        public List<BarCodeMatchingRuleDTO>? BarCodeMatchingRuleDTOs { get; set; }
+        public List<BarCodeMatchingRuleDTO> BarCodeMatchingRuleDTOs { get; set; } = new();
     }
 }

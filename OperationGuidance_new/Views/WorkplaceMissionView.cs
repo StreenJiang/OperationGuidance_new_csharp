@@ -451,6 +451,22 @@ namespace OperationGuidance_new.Views {
                         }
                     }
                 }
+                // 检查匹配规则中所对应的任务是否还存在
+                List<int> missionIds = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Select(m => m.id).ToList();
+                Dictionary<int, List<BarCodeMatchingRuleDTO>>.Enumerator productCodes = _productBarCodeMatchingRules.GetEnumerator();
+                while (productCodes.MoveNext()) {
+                    int currId = productCodes.Current.Key;
+                    if (!missionIds.Contains(currId)) {
+                        _productBarCodeMatchingRules.Remove(currId);
+                    }
+                }
+                Dictionary<int, List<BarCodeMatchingRuleDTO>>.Enumerator partsCodes = _partsBarCodeMatchingRules.GetEnumerator();
+                while (partsCodes.MoveNext()) {
+                    int currId = partsCodes.Current.Key;
+                    if (!missionIds.Contains(currId)) {
+                        _partsBarCodeMatchingRules.Remove(currId);
+                    }
+                }
             });
         }
 
@@ -844,6 +860,10 @@ namespace OperationGuidance_new.Views {
             SetMissionDetails();
         }
         private void SetMissionDetails() {
+            MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
+            if (missionRecordDTO != null) {
+                _productBatch.SetValue(0, missionRecordDTO.product_batch);
+            }
             _missionSelectedName.SetValue(0, _mission.name);
             ResetMissionDetails();
         }
@@ -852,7 +872,7 @@ namespace OperationGuidance_new.Views {
             SetPset();
         }
         private void SetTodayData() {
-            List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() { Date = DateTime.Now }).MissionRecordDTOs;
+            List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() { UserId = SystemUtils.LoggedUserId, Date = DateTime.Now }).MissionRecordDTOs;
             int sum = missionRecordDTOs.Count;
             int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
             double ngRate;
@@ -867,10 +887,17 @@ namespace OperationGuidance_new.Views {
             _ngRatePerDay.SetValue(0, ngRate + "%");
         }
         private void SetPset() {
-            if (_currentWorkingBolt != null && _currentWorkingBolt.BoltDTO.parameters_set != null) {
-                _pset.SetValue(0, _currentWorkingBolt.BoltDTO.parameters_set.Value + "");
+            if (_currentWorkingBolt != null) {
+                SetPset(_currentWorkingBolt.BoltDTO.parameters_set);
             } else {
                 _pset.SetValue(0, null);
+            }
+        }
+        private void SetPset(int? pset) {
+            if (pset != null) {
+                _pset.SetValue(0, pset.Value + "");
+            } else {
+                _pset.SetValue(0, "未配置程序号");
             }
         }
         private void PopUpMissionListForm(List<ProductMissionDTO> missions) {
@@ -923,8 +950,9 @@ namespace OperationGuidance_new.Views {
                 DataGridViewColumn[] columnRange = {};
                 Type type = typeof(OperationDataVO);
                 columnRange = columnRange.Append(GetColumn(type, "bolt_serial_num")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "torque_min")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "torque_max")).ToArray();
+                columnRange = columnRange.Append(GetColumn(type, "tightening_status_str")).ToArray();
+                columnRange = columnRange.Append(GetColumn(type, "torque_min_limit")).ToArray();
+                columnRange = columnRange.Append(GetColumn(type, "torque_max_limit")).ToArray();
                 columnRange = columnRange.Append(GetColumn(type, "torque_final_target")).ToArray();
                 columnRange = columnRange.Append(GetColumn(type, "angle_min")).ToArray();
                 columnRange = columnRange.Append(GetColumn(type, "angle_max")).ToArray();
@@ -1047,13 +1075,21 @@ namespace OperationGuidance_new.Views {
                             contentSize.Width = (int) (WidgetUtils.MainSize.Width * .65);
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
+                                    _adminConfirmed = false;
+                                    OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码");
+                                    if (!_adminConfirmed.Value) {
+                                        _adminConfirmed = null;
+                                        return;
+                                    }
+                                    _adminConfirmed = null;
                                     int? currentWorkstationId = null;
                                     int? currentPset = null;
                                     if (_currentWorkingBolt != null) {
                                         currentWorkstationId = _currentWorkingBolt.BoltDTO.workstation_id;
                                         currentPset = _currentWorkingBolt.BoltDTO.parameters_set;
                                     }
-                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(deviceBlock.CategoryName, _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
+                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, SetPset, deviceBlock.CategoryName, 
+                                            _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
                                     ToolOperationPopUpForm popUpForm = (ToolOperationPopUpForm) deviceBlock.PopUpForm;
@@ -1603,9 +1639,9 @@ namespace OperationGuidance_new.Views {
 
         // 激活任务
         public void ActivateMission() {
-            // 再次确认力臂定位是否开启
-            _locating_enabled = MainUtils.IsArmLocatingEnabled();
             if (_sides.Count > 0 && _allBolts.Count > 0) {
+                // 再次确认力臂定位是否开启
+                _locating_enabled = MainUtils.IsArmLocatingEnabled();
                 // 1. 将当前任务的所有螺栓点位按顺序排好队，并初始化所有螺栓点位的状态
                 _allBolts = _allBolts.OrderBy(btn => btn.BoltDTO.side_id).ThenBy(btn => btn.BoltDTO.serial_num).ToList();
                 _allBolts.ForEach(btn => btn.ResetStatusWithoutChangingVisible());
@@ -1613,7 +1649,7 @@ namespace OperationGuidance_new.Views {
                 _currentWorkingBolt = SwitchBolt(0);
                 // 3. 检查站点是否配置，或当前站点是否存在工具和力臂，不存在则无法激活任务
                 if (_workstationsDTOs.Count == 0) {
-                    WidgetUtils.ShowErrorPopUp($"没有配置站点或站点未启动，无法激活任务");
+                    WidgetUtils.ShowErrorPopUp($"没有配置站点，无法激活任务");
                     _currentWorkingBolt = null;
                     return;
                 }
@@ -1631,24 +1667,26 @@ namespace OperationGuidance_new.Views {
                     return;
                 }
                 int? pset = boltDTO.parameters_set;
-                if (pset == null) {
-                    WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]没有配置程序号，无法激活任务");
-                    _currentWorkingBolt = null;
-                    return;
+                if (pset != null) {
+                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                 }
+                _currentWorkingBolt.CurrentParameterSet = pset;
+                // if (pset == null) {
+                //     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]没有配置程序号，无法激活任务");
+                //     _currentWorkingBolt = null;
+                //     return;
+                // }
                 // 4. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
                 if (_locating_enabled) {
                     if (armId != null) {
                         ArmTask armTask = _armTasks[armId.Value];
                         armTask.RetrieveResult = true;
                         armTask.OnActionAfterReceiving += ActionAfterArmDataReceived;
-                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
                     }
-                } else {
-                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                 }
                 // 5. 切换点位状态（包括一些操作）
-                ChangeBoltStatusToWorking(_currentWorkingBolt);
+                ChangeBoltStatusToWorking(_currentWorkingBolt, _locating_enabled);
                 // 6. 初始化工具拧紧而非反松
                 _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                 // 7. 清空数据展示列表
@@ -1735,15 +1773,19 @@ namespace OperationGuidance_new.Views {
                         finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
                     });
                     // 写入数据
-                    bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
-                    if (succeed) {
-                        _apis.BatchAddOperationData(new(_dataNeedToBeStored));
-                        finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                        _dataNeedToBeStored.Clear();
-                    } else {
-                        WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
-                    }
+                    // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                    // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
+                    // if (succeed) {
+                    //     _apis.BatchAddOperationData(new(_dataNeedToBeStored));
+                    //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    //     _dataNeedToBeStored.Clear();
+                    // } else {
+                    //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
+                    // }
+                    _apis.BatchAddOperationData(new(_dataNeedToBeStored));
+                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    _dataNeedToBeStored.Clear();
                 }
             });
         }
@@ -1768,15 +1810,18 @@ namespace OperationGuidance_new.Views {
             int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
             int? pset = boltDTO.parameters_set;
             ToolTask toolTask = _toolTasks[toolId.Value];
-            // 将工具锁住防止误操作
-            if (lockTool) {
+            // 将工具锁住防止误操作（如果没有配置程序号，则默认锁枪）
+            if (lockTool || pset == null) {
                 toolTask.SendLock();
+            } else {
+                toolTask.SendUnlock();
             }
             // 下发当前螺栓点位的程序号至控制器
             if (pset != null) {
                 toolTask.SendPSet(pset.Value);
-                SetPset();
             }
+            // 实时显示pset到任务信息框
+            SetPset(pset);
             boltButton.BoltStatus = BoltStatus.WORKING;
             // 将当前螺栓点位的serial_num传给process poanel
             _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
@@ -1804,23 +1849,29 @@ namespace OperationGuidance_new.Views {
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                         _adminConfirmed = null;
                                     } else {
-                                        toolTask.SendLock();
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ERROR;
-                                        _workingProcessPanel.StatusDesc = "需要反松，请联系管理员输入密码";
+                                        if (_locating_enabled) {
+                                            toolTask.SendLock();
+                                        }
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_NG;
                                         if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                             _adminConfirmed = false;
                                             NGConfirmPopUp();
                                         }
                                     }
+                                } else if (_currentWorkingBolt.CurrentParameterSet == null) {
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
+                                    _workingProcessPanel.StatusDesc = "未配置程序号，工具锁定";
                                 } else {
                                     toolTask.SendUnlock();
-                                    if (_workingProcessPanel.WorkplaceProcessStatus != WorkplaceProcessStatus.OPERATION_ERROR) {
+                                    if (_workingProcessPanel.WorkplaceProcessStatus != WorkplaceProcessStatus.OPERATION_DISABLE_NG) {
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                     }
                                 }
                             } else {
-                                toolTask.SendLock();
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                if (_locating_enabled) {
+                                    toolTask.SendLock();
+                                }
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
                             }
                         }
                     }
@@ -1909,7 +1960,9 @@ namespace OperationGuidance_new.Views {
                                 _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                                 _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                                 // 当前点位完成后先把设备的状态都复原
-                                _toolTasks[toolId].SendLock();
+                                if (_locating_enabled) {
+                                    _toolTasks[toolId].SendLock();
+                                }
                                 // 修改点位状态并切换点位
                                 _currentWorkingBolt.BoltStatus = BoltStatus.DONE;
                                 int nextIndex = _allBolts.IndexOf(_currentWorkingBolt) + 1;
@@ -1919,7 +1972,10 @@ namespace OperationGuidance_new.Views {
                                 }
                                 if (nextIndex < _allBolts.Count) {
                                     _currentWorkingBolt = SwitchBoltAndChangeStatus(nextIndex, _locating_enabled);
+                                    _currentWorkingBolt.CurrentParameterSet = _currentWorkingBolt.BoltDTO.parameters_set;
                                 } else {
+                                    // 打完了直接锁枪
+                                    _toolTasks[toolId].SendLock();
                                     // 已经打完最后一个点位，任务完成
                                     _activated = false;
                                     _finished = true;
@@ -1949,11 +2005,14 @@ namespace OperationGuidance_new.Views {
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
                             } else {
                                 // 先锁枪
-                                _toolTasks[toolId].SendLock();
+                                if (_locating_enabled) {
+                                    _toolTasks[toolId].SendLock();
+                                }
                                 _currentWorkingBolt.BoltStatus = BoltStatus.ERROR;
                                 _currentWorkingBolt.NgTimes++;
                                 if (_currentWorkingBolt.NgTimes >= _mission.max_ng_num) {
-                                    WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                    // 打完了直接锁枪
+                                    _toolTasks[toolId].SendLock();
                                     // 任务失败
                                     _activated = false;
                                     _finished = true;
@@ -1978,11 +2037,12 @@ namespace OperationGuidance_new.Views {
                                     _barCodeObj.Reset();
                                     // 重置任务信息
                                     ResetMissionDetails();
+                                    WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                 } else { 
                                     // 扭矩角度数据颜色改成红色
                                     _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                     _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ERROR;
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_NG;
                                     _workingProcessPanel.StatusDesc = errorMsg;
                                     _needLoosening = true;
                                     _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
@@ -2037,7 +2097,7 @@ namespace OperationGuidance_new.Views {
             };
             _adminPasswordPopUpForm.PretendToShowToCreateHandlesForChildren();
 
-            int contentWidth = (int) (WidgetUtils.MainSize.Width * .6);
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .5);
             Padding contentPadding = _adminPasswordPopUpForm.ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
@@ -2428,7 +2488,7 @@ namespace OperationGuidance_new.Views {
                 if (CheckCanActivateMission()) {
                     // 激活任务
                     _workplace.ActivateMission();
-                    await Task.Delay(1000);
+                    await Task.Delay(200);
                     Hide();
                 }
             } else {
@@ -2667,12 +2727,15 @@ namespace OperationGuidance_new.Views {
                         }
                         _picturePanel.Visible = true;
                         break;
-                    case WorkplaceProcessStatus.OPERATION_DISABLE:
+                    case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
                         _statusTxt = "已锁定";
                         _statusDesc = "力臂未在指定位置";
                         _picturePanel.Visible = false;
                         break;
-                    case WorkplaceProcessStatus.OPERATION_ERROR:
+                    case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
+                        _statusTxt = "NG";
+                        _picturePanel.Visible = false;
+                        break;
                     case WorkplaceProcessStatus.FINISHED_NG:
                         _statusTxt = "NG";
                         _statusDesc = "任务失败";
@@ -2742,12 +2805,12 @@ namespace OperationGuidance_new.Views {
                                 _pictureBox.Image = image;
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
-                            case WorkplaceProcessStatus.OPERATION_DISABLE:
+                            case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                 }
                                 break;
-                            case WorkplaceProcessStatus.OPERATION_ERROR:
+                            case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
                             case WorkplaceProcessStatus.FINISHED_NG:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
@@ -2835,8 +2898,8 @@ namespace OperationGuidance_new.Views {
                     statusDescPoint = new Point((Width - statusDescWidth) / 2, otherHeihgt + (Height - otherHeihgt - _statusDescFont.Height * lines) / 2);
                     graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint);
                     break;
-                case WorkplaceProcessStatus.OPERATION_DISABLE:
-                case WorkplaceProcessStatus.OPERATION_ERROR:
+                case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
+                case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
                 case WorkplaceProcessStatus.FINISHED_NG:
                 case WorkplaceProcessStatus.FINISHED_OK:
                     statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 3);
@@ -3102,6 +3165,8 @@ namespace OperationGuidance_new.Views {
     public class ToolOperationPopUpForm: CustomPopUpForm {
         private List<WorkstationDTO> _workstationDTOs;
         private Dictionary<int, ToolTask> _toolTasks;
+        private BoltButton? _currentWorkingBolt;
+        private Action _setPset;
 
         private TableLayoutPanel _tablePanel;
         private int _boxHeight;
@@ -3113,10 +3178,13 @@ namespace OperationGuidance_new.Views {
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
-        public ToolOperationPopUpForm(string categoryName, List<WorkstationDTO> workstationDTOs
+        public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Action setPset, string categoryName, List<WorkstationDTO> workstationDTOs
                 , Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId = null, int? currentPset = null) {
             _workstationDTOs = workstationDTOs;
             _toolTasks = toolTasks;
+            _currentWorkingBolt = currentWorkingBolt;
+            _setPset = setPset;
+
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "手动操作 - " + categoryName + "";
 
@@ -3161,7 +3229,7 @@ namespace OperationGuidance_new.Views {
                     if (await toolTask.SendLockAsync()) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 工具已经是锁止状态\r\n2. 未给当前工具型号配置命令");
                     }
                 });
             };
@@ -3173,7 +3241,7 @@ namespace OperationGuidance_new.Views {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
                         string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令\r\n2. 控制器未配置[程序{parameterSet}], 螺丝枪锁定");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 工具已经是解锁状态\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定");
                     }
                 });
             };
@@ -3181,11 +3249,23 @@ namespace OperationGuidance_new.Views {
             btnPSet.Click += (s, e) => {
                 SendCommand(async toolTask => {
                     string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
-                    if (await toolTask.SendPSetAsync(int.Parse(parameterSet))) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
-                        canUnlock = true;
-                    } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令\r\n2. 控制器未配置[程序{parameterSet}], 螺丝枪锁定");
+                    int pset;
+                    try {
+                        pset = int.Parse(parameterSet);
+                        if (await toolTask.SendPSetAsync(pset)) {
+                            WidgetUtils.ShowNoticePopUp("操作成功！");
+                            if (_currentWorkingBolt != null) {
+                                _currentWorkingBolt.CurrentParameterSet = pset;
+                            }
+                            _setPset();
+                            canUnlock = true;
+                        } else {
+                            WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令\r\n2. 控制器未配置【程序{parameterSet}】, 工具锁定");
+                            canUnlock = false;
+                        }
+                    } catch (TargetInvocationException tie) {
+                        System.Console.WriteLine($"程序号输入错误。error:{tie}");
+                        WidgetUtils.ShowErrorPopUp($"程序号只能是正整数");
                         canUnlock = false;
                     }
                 });

@@ -169,7 +169,7 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> toolSubPanel = _editEntityPopUpForm.AddSubPanel("工具");
             // 工具选择
             ToggleButton toolToggle = toolSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox("请选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, _toolIdOptions);
+            CustomComboBoxGroup<int> toolOptions = toolSubPanel.AddComboBox("选择工具", (WorkstationDTO dto, int value) => dto.tool_id = value, _toolIdOptions);
             // 工具类型
             CustomComboBoxGroup<int?> toolTypeTextBox = toolSubPanel.AddComboBox("工具类型", (WorkstationDTO dto, int? value) => dto.tool_type = value, _toolTypeOptions);
             toolTypeTextBox.Enabled = false;
@@ -233,7 +233,7 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> armSubPanel = _editEntityPopUpForm.AddSubPanel("力臂");
             // 力臂选择
             ToggleButton armToggle = armSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox("请选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, _armIdOptions);
+            CustomComboBoxGroup<int> armOptions = armSubPanel.AddComboBox("选择力臂", (WorkstationDTO dto, int value) => dto.arm_id = value, _armIdOptions);
             // 力臂类型
             CustomComboBoxGroup<int?> armTypeTextBox = armSubPanel.AddComboBox("力臂类型", (WorkstationDTO dto, int? value) => dto.arm_type = value, _armTypeOptions);
             armTypeTextBox.Enabled = false;
@@ -297,17 +297,17 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> communicationSubPanel = _editEntityPopUpForm.AddSubPanel("通讯设备");
             // 通讯设备选择
             ToggleButton communicationToggle = communicationSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox("请选择通讯设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
+            CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox("选择设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
             // 通讯设备类型
-            CustomComboBoxGroup<int?> communicationTypeTextBox = communicationSubPanel.AddComboBox("通讯设备类型", 
+            CustomComboBoxGroup<int?> communicationTypeTextBox = communicationSubPanel.AddComboBox("设备类型", 
                 (WorkstationDTO dto, int? value) => dto.communication_id = value, _communicationTypeOptions);
             communicationTypeTextBox.Enabled = false;
             // 通讯设备IP
-            CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("通讯设备IP", false, 
+            CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("设备IP", false, 
                 (WorkstationDTO dto, string? value) => dto.communication_ip = value ??"");
             communicationIPTextBox.Enabled = false;
             // 通讯设备端口
-            CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("通讯设备端口", false, 
+            CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("设备端口", false, 
                 (WorkstationDTO dto, int? value) => dto.communication_port = value == null ? 0 : value);
             communicationPortTextBox.Enabled = false;
             if (dto.communication_id != null) {
@@ -364,7 +364,7 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> serialPortSubPanel = _editEntityPopUpForm.AddSubPanel("串口设备");
             // 串口选择
             ToggleButton serialPortToggle = serialPortSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox("请选择串口设备", 
+            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox("选择设备", 
                 (WorkstationDTO dto, int value) => dto.serial_port_id = value, _serialPortIdOptions);
             // 串口类型
             CustomComboBoxGroup<int?> serialPortTypeTextBox = serialPortSubPanel.AddComboBox("串口类型", 

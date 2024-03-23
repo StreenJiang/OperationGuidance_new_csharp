@@ -24,39 +24,44 @@ namespace OperationGuidance_new.Extensions {
             }
         }
 
-        public static bool ExportToExcelFile<T>(this IEnumerable<T> data, List<string>? headers, string filePath, bool fileExists) { 
-            XLWorkbook? xLWorkbook = null;
-            try {
-                string sheetName = "TighteningData";
-                if (fileExists) {
-                    xLWorkbook = new XLWorkbook(filePath);
-                } else {
-                    xLWorkbook = new();
+        public static async void ExportToExcelFile<T>(this IEnumerable<T> data, List<string>? headers, string filePath, bool fileExists) { 
+            XLWorkbook xLWorkbook;
+            string sheetName = "TighteningData";
+            if (fileExists) {
+                xLWorkbook = new XLWorkbook(filePath);
+            } else {
+                xLWorkbook = new();
+            }
+            IXLWorksheet sheet1;
+            if (!xLWorkbook.Worksheets.Contains(sheetName)) {
+                sheet1 = xLWorkbook.Worksheets.Add(sheetName);
+            } else {
+                sheet1 = xLWorkbook.Worksheet(sheetName);
+            }
+            int rowCount = sheet1.Rows().Count();
+            if (headers != null) {
+                if (rowCount > 0) {
+                    rowCount++;
                 }
-                IXLWorksheet sheet1;
-                if (!xLWorkbook.Worksheets.Contains(sheetName)) {
-                    sheet1 = xLWorkbook.Worksheets.Add(sheetName);
-                } else {
-                    sheet1 = xLWorkbook.Worksheet(sheetName);
+                sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
+            }
+            sheet1.Cell(rowCount + 1, 1).InsertData(data);
+
+            while (true) {
+                if (Write(xLWorkbook, filePath)) {
+                    break;
                 }
-                int rowCount = sheet1.Rows().Count();
-                if (headers != null) {
-                    if (rowCount > 0) {
-                        rowCount++;
-                    }
-                    sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
-                }
-                sheet1.Cell(rowCount + 1, 1).InsertData(data);
-                xLWorkbook.SaveAs(filePath);
-                // xLWorkbook.Save(); // this will throw exception
-                xLWorkbook.Dispose();
-                return true;
-            } catch (Exception e) {
-                System.Console.WriteLine($"Store data failed, e: {e}");
-                return false;
-            } finally {
-                if (xLWorkbook != null) {
-                    xLWorkbook.Dispose();
+                await Task.Delay(200);
+            }
+            xLWorkbook.Dispose();
+
+            bool Write(XLWorkbook book, string path) {
+                try {
+                    book.SaveAs(path);
+                    return true;
+                } catch (Exception e) {
+                    System.Console.WriteLine($"Store data failed, e: {e}");
+                    return false;
                 }
             }
         }

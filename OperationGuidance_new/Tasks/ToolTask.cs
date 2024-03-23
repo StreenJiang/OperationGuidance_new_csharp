@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
@@ -110,12 +111,12 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             System.Console.WriteLine($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
-            CloseConnectionManually = true;
             if (Connected) {
                 socketClient.Close();
-                Result = null;
-                Commands.Clear();
             }
+            CloseConnectionManually = true;
+            Result = null;
+            Commands.Clear();
         }
         #endregion
 
@@ -173,7 +174,7 @@ namespace OperationGuidance_new.Tasks {
                             string mid2 = response2.Substring(4, 4);
                             enableMsgSuccess = mid2 == "0002" || mid2 == "0005";
                             if (enableMsgSuccess) {
-                                System.Console.WriteLine($"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                                MainUtils.Log($"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
                                 // Lock tool to keep safe
                                 SendLock();
                             }

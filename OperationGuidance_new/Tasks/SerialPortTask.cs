@@ -1,5 +1,6 @@
 using System.Text;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
@@ -29,6 +30,7 @@ namespace OperationGuidance_new.Tasks {
         public Parity Parity { get => _parity; set => _parity = value; }
         public int DataBits { get => _dataBits; set => _dataBits = value; }
         public StopBits StopBits { get => _stopBits; set => _stopBits = value; }
+        public DataTypes DataType { get => _dataType; set => _dataType = value; }
         public string? Result { get; set; }
         public SerialPortStream? SerialPortStreamClient { get => serialPortStreamClient; }
         public Action<string>? ActionAfterDataReceived { get => _actionAfterDataReceived; set => _actionAfterDataReceived = value; }
@@ -86,11 +88,11 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             System.Console.WriteLine($"Close SerialPort[{_device_name}] manually...");
-            CloseConnectionManually = true;
             if (Connected) {
                 serialPortStreamClient.Close();
-                Result = null;
             }
+            CloseConnectionManually = true;
+            Result = null;
         }
         #endregion
 
@@ -137,17 +139,16 @@ namespace OperationGuidance_new.Tasks {
 
                             if (_actionAfterDataReceived != null) {
                                 if (foundInvalidChar) {
-                                    System.Console.WriteLine($"Data received from SerialPort[{_device_name}] found invalid character(s), skip this result");
-                                } else {
-                                    _actionAfterDataReceived(result);
+                                    System.Console.WriteLine($"Data received from SerialPort[{_device_name}] found invalid character(s), data: {result}");
                                 }
+                                _actionAfterDataReceived(result);
                             }
                         } catch (Exception e) {
                             System.Console.WriteLine($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
                         }
                     };
                     serialPortStreamClient.Open();
-                    System.Console.WriteLine($"Successfully connect to SerialPort[{_device_name}]");
+                    MainUtils.Log($"Successfully connect to SerialPort[{_device_name}]");
                     return true;
                 } else {
                     System.Console.WriteLine($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");

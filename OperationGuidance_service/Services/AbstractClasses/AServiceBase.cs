@@ -70,13 +70,6 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.DeleteByIds(ids);
         }
 
-        public List<T> FindBySqlCondition(string? sqlCondition, int userId) {
-            if (!string.IsNullOrEmpty(sqlCondition)) {
-                return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.CommonCondition()} and " + sqlCondition, new { @user_id = userId });
-            }
-            return QueryList(SystemUtils.LoggedUserId);
-        }
-
         public List<T> FindBySqlWithoutUserId(string? sqlCondition) {
             if (!string.IsNullOrEmpty(sqlCondition)) {
                 return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.ConditionWithoutUserId()} and " + sqlCondition);
@@ -84,7 +77,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return QueryListWithoutUserId();
         }
 
-        public List<T> FindBySql(string sql, object parameterObj) {
+        public List<T> FindBySql(string sql, object? parameterObj) {
             return Wrapper.FindBySql(sql, parameterObj);
         }
     }

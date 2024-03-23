@@ -540,7 +540,7 @@ namespace OperationGuidance_new.Views {
                 if (_missionDTO.ProductSides != null) {
                     if (_missionDTO.ProductSides.Count == 0) {
                         ProductSideDTO sideDTO = new() {
-                            name = "产品面1",
+                            name = "产品图片1",
                             Bolts = new(),
                         };
                         _missionDTO.ProductSides.Add(sideDTO);
@@ -560,7 +560,7 @@ namespace OperationGuidance_new.Views {
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
                     BlockHoverUp = true,
                 };
-                _addNewSideButton.MouseUp += (sender, eventArgs) => {
+                _addNewSideButton.Click += (sender, eventArgs) => {
                     ProductSideDTO sideDTO = new() {
                         name = "产品图片" + (_sideButtons.Count + 1),
                         Bolts = new(),
@@ -751,7 +751,7 @@ namespace OperationGuidance_new.Views {
                         _boltPopUpForm.PositionBox.GetTextBox(0).IsError = true;
                         _boltPopUpForm.PositionBox.GetTextBox(1).IsError = true;
                         _boltPopUpForm.PositionBox.GetTextBox(2).IsError = true;
-                        warningMsg += $"{warningIndex++}. 点位坐标不能为空\r\n";
+                        warningMsg += $"{warningIndex++}. 点位坐标字段开启后，不能为空\r\n";
                     }
                 } else {
                     boltDTO.position = null;
@@ -761,7 +761,7 @@ namespace OperationGuidance_new.Views {
                     if (string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0) {
                         check = false;
                         _boltPopUpForm.ParameterSetBox.GetTextBox(0).IsError = true;
-                        warningMsg += $"{warningIndex++}. 程序号不能为空且必须大于0\r\n";
+                        warningMsg += $"{warningIndex++}. 程序号字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.parameters_set = null;
@@ -771,7 +771,7 @@ namespace OperationGuidance_new.Views {
                     if (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0) {
                         check = false;
                         _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
-                        warningMsg += $"{warningIndex++}. 螺栓规格不能为空且必须大于0\r\n";
+                        warningMsg += $"{warningIndex++}. 螺栓规格字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.specification= null;
@@ -781,7 +781,7 @@ namespace OperationGuidance_new.Views {
                     if (string.IsNullOrEmpty(bitSpecification) || int.Parse(bitSpecification) <= 0) {
                         check = false;
                         _boltPopUpForm.BitSpecificationBox.GetTextBox(0).IsError = true;
-                        warningMsg += $"{warningIndex++}. 批头规格不能为空且必须大于0\r\n";
+                        warningMsg += $"{warningIndex++}. 套筒位数字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.bit_specification = null;
@@ -793,7 +793,7 @@ namespace OperationGuidance_new.Views {
                         check = false;
                         _boltPopUpForm.TorqueBox.GetTextBox(0).IsError = true;
                         _boltPopUpForm.TorqueBox.GetTextBox(1).IsError = true;
-                        warningMsg += $"{warningIndex++}. 扭矩上下限不能为空\r\n";
+                        warningMsg += $"{warningIndex++}. 扭矩上下限字段开启后，不能为空\r\n";
                     }
                 } else {
                     boltDTO.torque_min = null;
@@ -1548,10 +1548,10 @@ namespace OperationGuidance_new.Views {
                 _notice = notice;
                 _rectColors = new();
                 _ratioInfos = new();
-                for (int i = 0; i < DifferentRects.Count; i++) {
-                    _rectColors.Add(new());
-                    _ratioInfos.Add("");
-                }
+                // for (int i = 0; i < DifferentRects.Count; i++) {
+                //     _rectColors.Add(new());
+                //     _ratioInfos.Add("");
+                // }
 
                 ClickTimes = 0;
                 Milliseconds = 0;
@@ -1677,8 +1677,7 @@ namespace OperationGuidance_new.Views {
                     };
                     g.DrawRectangle(pen, MaxRect);
                     Font noticeFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Regular, GraphicsUnit.Pixel);
-                    int x = noticeFont.Height / 2 + (int) g.MeasureString(_ratioInfos[_ratioInfos.Count - 1], noticeFont).Width;
-                    Point p = new Point(x, (int) (Height - noticeFont.Height * 1.1));
+                    Point p = new Point(noticeFont.Height / 3, (int) (Height - noticeFont.Height * 1.1));
                     g.DrawString(_notice, noticeFont, new SolidBrush(Color.Red), p);
                 }
             }

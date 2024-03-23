@@ -240,7 +240,9 @@ namespace OperationGuidance_new.Views {
                     AddOrUpdate(dto, callBackAction);
                     _editEntityPopUpForm.Hide();
                     // 如果修改的是当前用户，则更新
-                    SystemUtils.UserInfo = dto;
+                    if (dto.id == SystemUtils.LoggedUserId) {
+                        SystemUtils.UserInfo = dto;
+                    }
                 }
             };
             CommonButton cancelButton = _editEntityPopUpForm.AddButton("取消");

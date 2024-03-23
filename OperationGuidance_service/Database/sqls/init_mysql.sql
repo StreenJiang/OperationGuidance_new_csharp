@@ -325,7 +325,7 @@ CREATE TABLE `product_side`  (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `mission_id` int(11) NULL DEFAULT NULL,
-  `image` varchar(2048) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `image` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `max_rectangle_width` int(16) NULL DEFAULT NULL,
   `max_rectangle_height` int(16) NULL DEFAULT NULL,
   `max_rectangle_location` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,

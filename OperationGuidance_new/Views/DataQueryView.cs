@@ -129,8 +129,8 @@ namespace OperationGuidance_new.Views {
                 List<OperationDataVO> vos = QueryList();
                 return vos
                     .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
-                            || (DateTime.Compare(o.create_time.Value, vo.filter_create_time_min.Value) >= 0 
-                                && DateTime.Compare(o.create_time.Value, vo.filter_create_time_max.Value) <= 0))
+                            || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0 
+                                && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
                     .ToList();
             };
             // 隐藏不需要的按钮 

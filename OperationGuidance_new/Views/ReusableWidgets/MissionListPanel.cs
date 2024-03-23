@@ -4,7 +4,6 @@ using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
@@ -103,7 +102,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         };
                         block.InnerButton.ToggledButton = toggleBlock;
                         block.InnerButton.ToggledColor = WidgetUtils.DarkenColor(block.BackColor, .2);
-                        block.Click += (sender, eventArgs) => {
+                        block.InnerButton.MouseUp += (sender, eventArgs) => {
                             if (block.InnerButton.ToggledButton) {
                                 if (_currentToggledMission == null) {
                                     _currentToggledMission = block;

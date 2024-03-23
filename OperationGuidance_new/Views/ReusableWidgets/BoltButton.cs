@@ -20,6 +20,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private bool _moved;
         private bool _showingWhileWorking;
         private int _ngTimes;
+        private int? _currentParameterSet;
 
         public ProductBoltDTO BoltDTO {
             get => _boltDTO;
@@ -58,6 +59,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool Moved { get => _moved; set => _moved = value; }
         public bool ShowingWhileWorking { get => _showingWhileWorking; set => _showingWhileWorking = value; }
         public int NgTimes { get => _ngTimes; set => _ngTimes=value; }
+        public int? CurrentParameterSet { get => _currentParameterSet; set => _currentParameterSet = value; }
 
         public BoltButton(ProductBoltDTO boltDTO) {
             Label = boltDTO.serial_num + "";

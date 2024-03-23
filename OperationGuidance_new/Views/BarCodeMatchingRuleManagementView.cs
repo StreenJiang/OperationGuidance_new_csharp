@@ -101,16 +101,16 @@ namespace OperationGuidance_new.Views {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             // 添加字段
-            CustomTextBoxGroup staffId = _editEntityPopUpForm.AddTextBox("长度", false, 
+            CustomTextBoxGroup length = _editEntityPopUpForm.AddTextBox("长度", false, 
                 (BarCodeMatchingRuleDTO dto, int value) => dto.length = value);
-            staffId.NumberOnly = true;
-            if (dto.length > 0) {
-                staffId.SetValue(0, dto.length + "");
+            length.NumberOnly = true;
+            if (dto.length != null) {
+                length.SetValue(0, dto.length + "");
             }
-            CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("结束符", false, 
+            CustomTextBoxGroup endChar = _editEntityPopUpForm.AddTextBox("结束符", false, 
                 (BarCodeMatchingRuleDTO dto, string? value) => dto.end_char = value ?? "");
             if (dto.end_char != null) {
-                name.SetValue(0, dto.end_char);
+                endChar.SetValue(0, dto.end_char);
             }
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("条码类型", 
                 (BarCodeMatchingRuleDTO dto, int value) => dto.type = value, new());
@@ -126,7 +126,15 @@ namespace OperationGuidance_new.Views {
             foreach (ProductMissionDTO mission in _missions) {
                 missionName.AddItem(mission.name, mission.id);
             }
-            missionName.SetCurrent(missionName.IndexOf(dto.mission_id));
+            if (missionName.IndexOf(dto.mission_id) > 0) {
+                missionName.SetCurrent(missionName.IndexOf(dto.mission_id));
+            } else if (dto.id > 0) {
+                missionName.SetError(true);
+                Task.Run(async () => {
+                    await Task.Delay(500);
+                    WidgetUtils.ShowWarningPopUp("所配置任务不存在或已被删除");
+                });
+            }
             missionName.ItemSelected += () => {
                 missionName.SetError(missionName.IsDefaultValue());
             };
@@ -164,6 +172,14 @@ namespace OperationGuidance_new.Views {
                     check = false;
                     warningMsg += $"{warningIndex++}. 没有选择要配置此规则的任务\r\n";
                 }
+                if (type.Value == BarCodeTypes.PRODUCT.Id) {
+                    List<BarCodeMatchingRuleDTO> dtos = apis.FindBarCodeMatchingRulesByMissionId(new(missionName.Value) { Type = BarCodeTypes.PRODUCT.Id }).BarCodeMatchingRuleDTOs;
+                    if (dtos.Count > 0 && dtos[0].id != dto.id) {
+                        missionName.SetError(true);
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 此任务已经配置过【{BarCodeTypes.PRODUCT.Name}】，每个任务仅能配置一个\r\n";
+                    }
+                }
                 CustomTextBox keyPositionBox = keyMatchingBox.GetTextBox(0);
                 CustomTextBox keyCharBox = keyMatchingBox.GetTextBox(1);
                 string keyPosition = keyPositionBox.Box.Text;
@@ -188,12 +204,18 @@ namespace OperationGuidance_new.Views {
                         if (keyChar.StartsWith(',')) keyChar = keyChar.Remove(0);
                         if (keyChar.EndsWith(',')) keyChar = keyChar.Remove(keyPosition.Length - 1);
                         List<int> keyPositionList = MainUtils.GetKeyPositionList(keyPosition);
-                        List<char> keyCharList = MainUtils.GetKeyCharList(keyChar);
-                        if (keyPositionList.Count != keyCharList.Count || keyPosition.Count(c => c == ',') != keyChar.Count(c => c == ',')) {
+                        if (dto.length != null && dto.length > 0 && keyPositionList.Where(p => p > dto.length).Count() > 0) {
                             keyPositionBox.IsError = true;
-                            keyCharBox.IsError = true;
                             check = false;
-                            warningMsg += $"{warningIndex++}. 关键位及关键字符数量不匹配\r\n";
+                            warningMsg += $"{warningIndex++}. 关键位超出条码长度\r\n";
+                        } else {
+                            List<char> keyCharList = MainUtils.GetKeyCharList(keyChar);
+                            if (keyPositionList.Count != keyCharList.Count || keyPosition.Count(c => c == ',') != keyChar.Count(c => c == ',')) {
+                                keyPositionBox.IsError = true;
+                                keyCharBox.IsError = true;
+                                check = false;
+                                warningMsg += $"{warningIndex++}. 关键位及关键字符数量不匹配\r\n";
+                            }
                         }
                     }
                 }

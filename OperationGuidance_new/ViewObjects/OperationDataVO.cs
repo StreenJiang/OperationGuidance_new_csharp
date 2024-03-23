@@ -134,11 +134,11 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("最终扭力")]
         public float? torque { get; set; }                                                  // 最终扭力
         [GridColumn("最终扭力上限")]
-        public float? torque_max { get; set; }                                              // 最终扭力上限
+        public float? torque_max_limit { get; set; }                                        // 最终扭力上限
         [GridColumn("最终扭力目标值")]
         public float? torque_final_target { get; set; }                                     // 最终扭力目标值
         [GridColumn("最终扭力下限")]
-        public float? torque_min { get; set; }                                              // 最终扭力下限
+        public float? torque_min_limit { get; set; }                                        // 最终扭力下限
         [GridColumn("最终角度")]
         public int? angle { get; set; }                                                     // 最终角度
         [GridColumn("最终角度上限")]

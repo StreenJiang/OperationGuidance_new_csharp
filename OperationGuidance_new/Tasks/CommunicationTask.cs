@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class CommunicationTask: ATaskBase {
@@ -90,12 +91,12 @@ namespace OperationGuidance_new.Tasks {
         }
         public override void CloseConnection() {
             System.Console.WriteLine($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
-            CloseConnectionManually = true;
             if (Connected) {
                 socketClient.Close();
-                Result = null;
-                Commands.Clear();
             }
+            CloseConnectionManually = true;
+            Result = null;
+            Commands.Clear();
         }
         #endregion
 
@@ -119,7 +120,7 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    System.Console.WriteLine($"Connected to COMMUNICATION[{_device_name} - {_ip}: {_port}] successfully");
+                    MainUtils.Log($"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                 } catch (Exception e) {
                     System.Console.WriteLine($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }

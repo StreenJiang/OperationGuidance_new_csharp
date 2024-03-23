@@ -493,7 +493,7 @@ namespace OperationGuidance_service.Controllers {
         #region 任务记录相关
         // 查询任务记录列表
         public QueryMissionRecordListRsp QueryMissionRecordList(QueryMissionRecordListReq req) {
-            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
+            string sql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId}";
             Dictionary<string, object> parameters = new();
 
             string condition = "";
@@ -513,18 +513,12 @@ namespace OperationGuidance_service.Controllers {
                 parameters.Add("userId", req.UserId.Value);
             }
             
-            List<MissionRecord> deviceCategories = _missionRecordService.FindBySql(sql + condition, parameters);
+            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();
-            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(deviceCategories, missionRecordDTOs);
+            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
 
             return new() {
                 MissionRecordDTOs = missionRecordDTOs,
-            };
-        }
-        public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            string sql = $"select 1 from {_missionRecordService.TableName} where product_bar_code = @product_bar_code";
-            return new() {
-                Yes = _missionRecordService.FindBySql(sql, new { @product_bar_code = req.ProductBarCode }).Count > 0,
             };
         }
         // 新增或修改任务记录
@@ -540,6 +534,25 @@ namespace OperationGuidance_service.Controllers {
             return new() {
                 MissionRecordDTO = missionRecordDTO,
             };
+        }
+        // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
+        public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
+            string sql = $"select 1 from {_missionRecordService.TableName} where product_bar_code = @product_bar_code";
+            return new() {
+                Yes = _missionRecordService.FindBySql(sql, new { @product_bar_code = req.ProductBarCode }).Count > 0,
+            };
+        }
+        // 查询最新一条任务记录，用于获取其产品批次，作回填使用
+        public QueryLatestMissionRecordRsp QueryLatestMissionRecord(QueryLatestMissionRecordReq req) {
+            string sql = $"select * from {_missionRecordService.TableName} order by id desc limit 1";
+            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, null);
+            QueryLatestMissionRecordRsp rsp = new();
+            if (missionRecords.Count > 0) {
+                List<MissionRecordDTO>?  missionRecordDTOs = new();
+                CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
+                rsp.MissionRecordDTO = missionRecordDTOs[0];
+            }
+            return rsp;
         }
         #endregion
 
@@ -760,8 +773,15 @@ namespace OperationGuidance_service.Controllers {
         }
         // 根据任务ID查找对应的条码匹配规则
         public FindBarCodeMatchingRulesByMissionIdRsp FindBarCodeMatchingRulesByMissionId(FindBarCodeMatchingRulesByMissionIdReq req) {
-            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId} and mission_id = @mission_id";
-            List<BarCodeMatchingRule> barCodeMatchingRules = _barCodeMatchingRuleService.FindBySql(sql, new { @mission_id = req.MissionId });
+            string sql = $"select * from {_barCodeMatchingRuleService.TableName} where {_barCodeMatchingRuleService.ConditionWithoutUserId} and mission_id = @mission_id";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("mission_id", req.MissionId);
+            if (req.Type != null) {
+                sql += " and type = @type";
+                parameters.Add("type", req.Type);
+            }
+
+            List<BarCodeMatchingRule> barCodeMatchingRules = _barCodeMatchingRuleService.FindBySql(sql, parameters);
             List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = new();
             CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(barCodeMatchingRules, barCodeMatchingRuleDTOs);
 

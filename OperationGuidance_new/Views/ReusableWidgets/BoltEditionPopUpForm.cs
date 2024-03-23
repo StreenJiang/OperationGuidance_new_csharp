@@ -166,8 +166,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 retrieveCoordinatesBtn.Invalidate();
             };
             _positionToggle.CheckedChanged += (sender, eventArgs) => {
-                System.Console.WriteLine($"_positionToggle.Checked: {_positionToggle.Checked}");
-                System.Console.WriteLine($"_positionBox.GetTextBox(0).Box.Text: {_positionBox.GetTextBox(0).Box.Text}");
                 if (_positionToggle.Checked) {
                     _positionSubPanel.TablePanel.Show();
                     if (string.IsNullOrEmpty(_positionBox.GetTextBox(0).Box.Text)) {
@@ -181,6 +179,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _positionSubPanel.TablePanel.Hide();
+                    _positionBox.SetValue(0, "0");
+                    _positionBox.SetValue(1, "0");
+                    _positionBox.SetValue(2, "0");
                 }
                 ResizeSelf();
                 _positionBox.ResizeChildren();
@@ -204,6 +205,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _parameterSetSubPanel.TablePanel.Hide();
+                    _parameterSetBox.SetValue(0, null);
                 }
                 ResizeSelf();
                 _parameterSetBox.ResizeChildren();
@@ -227,6 +229,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _specificationSubPanel.TablePanel.Hide();
+                    _specificationBox.SetValue(0, null);
                 }
                 ResizeSelf();
                 _specificationBox.ResizeChildren();
@@ -250,6 +253,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _bitSpecificationSubPanel.TablePanel.Hide();
+                    _bitSpecificationBox.SetValue(0, null);
                 }
                 ResizeSelf();
                 _bitSpecificationBox.ResizeChildren();
@@ -279,6 +283,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _torqueSubPanel.TablePanel.Hide();
+                    _torqueBox.SetValue(0, null);
+                    _torqueBox.SetValue(1, null);
                 }
                 ResizeSelf();
                 _torqueBox.ResizeChildren();
@@ -308,6 +314,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } else {
                     _angleSubPanel.TablePanel.Hide();
+                    _angleBox.SetValue(0, null);
+                    _angleBox.SetValue(1, null);
                 }
                 ResizeSelf();
                 _angleBox.ResizeChildren();
@@ -362,7 +370,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
 
             // 点位名称
-            SetValue<string?>(NameBox, 0, val => ModifiedBoltDTO.name = val);
+            TextBox nameBox = NameBox.GetTextBox(0).Box;
+            NameBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!NameBox.HasError) 
+                    if (!string.IsNullOrEmpty(nameBox.Text)) ModifiedBoltDTO.name = nameBox.Text;
+                    else ModifiedBoltDTO.name = null;
+            };
             // 站点选择
             Workstation.ItemSelected += () => {
                 if (!Workstation.IsDefaultValue() && Workstation.Value != null) {
@@ -373,33 +386,77 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             };
             // 螺栓点位
-            SetValue<int>(PositionBox, 0, val => {
-                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
-                position.X = val;
-                ModifiedBoltDTO.position = position.ToString();
-            });
-            SetValue<int>(PositionBox, 1, val => {
-                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
-                position.Y = val;
-                ModifiedBoltDTO.position = position.ToString();
-            });
-            SetValue<int>(PositionBox, 2, val => {
-                Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
-                position.Z = val;
-                ModifiedBoltDTO.position = position.ToString();
-            });
+            TextBox positionXBox = PositionBox.GetTextBox(0).Box;
+            PositionBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!PositionBox.HasError) {
+                    Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                    position.X = string.IsNullOrEmpty(positionXBox.Text) ? 0 : int.Parse(positionXBox.Text);
+                    ModifiedBoltDTO.position = position.ToString();
+                }
+            };
+            TextBox positionYBox = PositionBox.GetTextBox(1).Box;
+            PositionBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
+                if (!PositionBox.HasError) {
+                    Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                    position.Y = string.IsNullOrEmpty(positionYBox.Text) ? 0 : int.Parse(positionYBox.Text);
+                    ModifiedBoltDTO.position = position.ToString();
+                }
+            };
+            TextBox positionZBox = PositionBox.GetTextBox(2).Box;
+            PositionBox.GetTextBox(2).TextChanged += (sender, eventArgs) => {
+                if (!PositionBox.HasError) {
+                    Coordinates3D position = Coordinates3D.FromString(ModifiedBoltDTO.position);
+                    position.Z = string.IsNullOrEmpty(positionZBox.Text) ? 0 : int.Parse(positionZBox.Text);
+                    ModifiedBoltDTO.position = position.ToString();
+                }
+            };
             // pset 程序号
-            SetValue<int>(ParameterSetBox, 0, val => ModifiedBoltDTO.parameters_set = val);
+            TextBox parametersBox = ParameterSetBox.GetTextBox(0).Box;
+            ParameterSetBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!ParameterSetBox.HasError) 
+                    if (!string.IsNullOrEmpty(parametersBox.Text)) ModifiedBoltDTO.parameters_set = int.Parse(parametersBox.Text);
+                    else ModifiedBoltDTO.parameters_set = null;
+            };
             // 螺栓规格
-            SetValue<float>(SpecificationBox, 0, val => ModifiedBoltDTO.specification = val);
+            TextBox specificationBox = SpecificationBox.GetTextBox(0).Box;
+            SpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!SpecificationBox.HasError) 
+                    if (!string.IsNullOrEmpty(specificationBox.Text)) ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
+                    else ModifiedBoltDTO.specification = null;
+            };
             // 批头规格
-            SetValue<float>(BitSpecificationBox, 0, val => ModifiedBoltDTO.bit_specification = val);
+            TextBox bitSpecificationBox = BitSpecificationBox.GetTextBox(0).Box;
+            BitSpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!BitSpecificationBox.HasError) 
+                    if (!string.IsNullOrEmpty(bitSpecificationBox.Text)) ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
+                    else ModifiedBoltDTO.bit_specification = null;
+            };
             // 扭矩上下限
-            SetValue<float>(TorqueBox, 0, val => ModifiedBoltDTO.torque_min = val);
-            SetValue<float>(TorqueBox, 1, val => ModifiedBoltDTO.torque_max = val);
+            TextBox torqueMinBox = TorqueBox.GetTextBox(0).Box;
+            TorqueBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!TorqueBox.HasError) 
+                    if (!string.IsNullOrEmpty(torqueMinBox.Text)) ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
+                    else ModifiedBoltDTO.torque_min = null;
+            };
+            TextBox torqueMaxBox = TorqueBox.GetTextBox(1).Box;
+            TorqueBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
+                if (!TorqueBox.HasError) 
+                    if (!string.IsNullOrEmpty(torqueMaxBox.Text)) ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
+                    else ModifiedBoltDTO.torque_max = null;
+            };
             // 角度上下限
-            SetValue<float>(AngleBox, 0, val => ModifiedBoltDTO.angle_min = val);
-            SetValue<float>(AngleBox, 1, val => ModifiedBoltDTO.angle_max = val);
+            TextBox angleMinBox = AngleBox.GetTextBox(0).Box;
+            AngleBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!AngleBox.HasError) 
+                    if (!string.IsNullOrEmpty(angleMinBox.Text)) ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
+                    else ModifiedBoltDTO.angle_min = null;
+            };
+            TextBox angleMaxBox = AngleBox.GetTextBox(1).Box;
+            AngleBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
+                if (!AngleBox.HasError) 
+                    if (!string.IsNullOrEmpty(angleMaxBox.Text)) ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
+                    else ModifiedBoltDTO.angle_max = null;
+            };
         }
 
         public SubPanel<ProductBoltDTO> AddSubPanel(string title) {
@@ -407,19 +464,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _tablePanel.Controls.Add(subPanel);
             _tablePanel.SetColumnSpan(subPanel, _columnCount);
             return subPanel;
-        }
-
-        private void SetValue<V>(CustomTextBoxGroup boxGroup, int index, Action<V?> action) {
-            CustomTextBox box = boxGroup.GetTextBox(index);
-            box.Box.TextChanged += (sender, eventArgs) => {
-                if (!boxGroup.HasError) {
-                    if (box.Text != "" && box.Text != string.Empty) {
-                        action((V) Convert.ChangeType(box.Text, typeof(V)));
-                    } else {
-                        action(default(V));
-                    }
-                }
-            };
         }
 
         public void SaveTo(ProductBoltDTO dto) {

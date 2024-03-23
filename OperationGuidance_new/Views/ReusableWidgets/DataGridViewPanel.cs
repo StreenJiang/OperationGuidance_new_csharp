@@ -67,6 +67,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             set {
                 _dataSource = value;
                 _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
+                if (_totalPages == 0) {
+                    _totalPages = 1;
+                }
                 Paging(_currentPage, _pageSize);
             }
         }
@@ -600,26 +603,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
             int padding = (int) (newHeaderHeight * _columnsPaddingRatio);
-            foreach (DataGridViewColumn column in _gridView.Columns) {
-                if (column.Width == columnMaxWidth) {
-                    continue;
-                } else if (column.Width > columnMaxWidth) {
-                    if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None) {
-                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                    }
-                    column.Width = columnMaxWidth;
-                } else if (column.AutoSizeMode == DataGridViewAutoSizeColumnMode.None) {
-                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-                }
-                column.HeaderCell.Style.Padding = new(padding, 0, padding, 0);
-                column.DefaultCellStyle.Padding = new(padding, 0, padding, 0);
-            }
+            _gridView.ColumnHeadersDefaultCellStyle.Padding = new(padding, 0, padding, 0);
+            _gridView.DefaultCellStyle.Padding = new(padding, 0, padding, 0);
             // Grid content height
             int newContentHeight = _rowsHeight;
             if (newContentHeight >= 4) {
-                foreach (DataGridViewRow row in _gridView.Rows) {
-                    row.Height = newContentHeight;
-                }
+                _gridView.RowTemplate.Height = newContentHeight;
                 _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
             }
             // Page info panel height
@@ -712,7 +701,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 _vScrollBar?.Hide();
             }
-            _gridView.Size = new(_gridViewPanel.Width - (_vScrollBar?.Width ?? 0), _gridViewPanel.Height - (_hScrollBar?.Height ?? 0));
+            Size gridSize = _gridViewPanel.Size;
+            if (_vScrollBar != null && _vScrollBar.Visible && _vScrollBar.Width > 0) {
+                gridSize.Width -= _vScrollBar.Width;
+            }
+            if (_hScrollBar != null && _hScrollBar.Visible && _hScrollBar.Height > 0) {
+                gridSize.Height -= _hScrollBar.Height;
+            }
+            _gridView.Size = gridSize;
             if (_vScrollBar != null && _vScrollBar.Visible && _hScrollBar != null && _hScrollBar.Visible){
                 _hScrollBar.Width -= scrollBarThickness;
                 _vScrollBar.Height -= scrollBarThickness;
