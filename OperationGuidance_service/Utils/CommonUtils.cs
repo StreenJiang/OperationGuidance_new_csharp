@@ -16,10 +16,12 @@ namespace OperationGuidance_service.Utils {
             if (image == null) {
                 return string.Empty;
             }
-            using (MemoryStream meoryStream = new()) {
-                image.Save(meoryStream, ImageFormat.Png);
-                return Convert.ToBase64String(meoryStream.ToArray());
-            }
+            using MemoryStream meoryStream = new();
+            image.Save(meoryStream, ImageFormat.Png);
+            string iamgeBase64 = Convert.ToBase64String(meoryStream.ToArray());
+            // Must dispose to release image object
+            meoryStream.Dispose();
+            return iamgeBase64;
         }
 
         public static Image? ImageBase64ToImage(string? imageBase64) {

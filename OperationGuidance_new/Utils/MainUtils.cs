@@ -71,16 +71,22 @@ namespace OperationGuidance_new.Utils {
             if (!File.Exists(imageFilePath)) {
                 return null;
             }
+            // 这个很奇怪，只会画出图片的一部分，真奇葩
             // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
-            using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
-            using (Bitmap bitmap = new Bitmap(ms)) {
-                Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
-                using (Graphics g = Graphics.FromImage(newBitmap)) {
-                    g.DrawImage(bitmap, Point.Empty);
-                    g.Flush();
-                }
-                return newBitmap;
-            }
+            // using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
+            // using (Bitmap bitmap = new Bitmap(ms)) {
+            //     Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
+            //     using (Graphics g = Graphics.FromImage(newBitmap)) {
+            //         g.DrawImage(bitmap, Point.Empty);
+            //         g.Flush();
+            //     }
+            //     return newBitmap;
+            // }
+
+            Bitmap bitmap = new Bitmap(imageFilePath);
+            Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
+            bitmap.Dispose();
+            return image;
         }
         public static void SaveProductImage(Image? image, string? fileName) {
             if (image == null || string.IsNullOrEmpty(fileName)) {
