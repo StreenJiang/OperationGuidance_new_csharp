@@ -164,7 +164,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 using (Graphics g = CreateGraphics()) {
                     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                 }
-                LabelY = (int) ((Height * 0.85 - Font.Height - imageNewSize.Height) / 2 + imageNewSize.Height * 1.25);
+                int newHeight = (int) (Height * ImageRatio);
+                LabelY = (int) ((Height * 0.85 - Font.Height - newHeight) / 2 + newHeight * 1.25);
             }
         }
 
@@ -173,10 +174,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int newWidth;
             if (this.Icon != null) {
                 newWidth = (int) (newHeight / (decimal) this.Icon.Height * this.Icon.Width);
+                if (newWidth > (Width * .9)) {
+                    newWidth = (int) (Width * .9);
+                    newHeight = (int) (newWidth / (decimal) this.Icon.Width * this.Icon.Height);
+                }
             } else if (_defaultImage != null) {
                 newWidth = (int) (newHeight / (decimal) _defaultImage.Height * _defaultImage.Width);
             } else {
-                newWidth = (int) (Height * .8);
+                newWidth = (int) (Width * .8);
             }
             return new(newWidth, newHeight);
         }
