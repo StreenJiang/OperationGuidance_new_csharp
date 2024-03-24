@@ -126,7 +126,7 @@ namespace OperationGuidance_new.Views {
             foreach (ProductMissionDTO mission in _missions) {
                 missionName.AddItem(mission.name, mission.id);
             }
-            if (missionName.IndexOf(dto.mission_id) > 0) {
+            if (missionName.IndexOf(dto.mission_id) >= 0) {
                 missionName.SetCurrent(missionName.IndexOf(dto.mission_id));
             } else if (dto.id > 0) {
                 missionName.SetError(true);
