@@ -119,7 +119,7 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false, 
                 (DeviceArmDTO dto, int? value) => dto.port = value ?? 0);
             CustomTextBox portBox = port.GetTextBox(0);
-            portBox.NumberOnly = true;
+            portBox.PositiveIntOnly = true;
             portBox.TextChanged += async (sender, eventArgs) => {
                 while (portBox.TimerTicking) {
                     await Task.Delay(100);

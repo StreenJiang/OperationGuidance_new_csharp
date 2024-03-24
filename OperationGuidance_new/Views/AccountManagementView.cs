@@ -91,13 +91,10 @@ namespace OperationGuidance_new.Views {
             // 添加字段
             CustomTextBoxGroup staffId = _editEntityPopUpForm.AddTextBox("员工ID", false, 
                 (UserAccountInfoDTO dto, int value) => dto.staff_id = value);
-            staffId.NumberOnly = true;
+            staffId.PositiveIntOnly = true;
             if (dto.staff_id > 0) {
                 staffId.SetValue(0, dto.staff_id + "");
             }
-            staffId.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                staffId.GetTextBox(0).IsError = string.IsNullOrEmpty(staffId.GetTextBox(0).Box.Text);
-            };
             CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("姓名", false, 
                 (UserAccountInfoDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {

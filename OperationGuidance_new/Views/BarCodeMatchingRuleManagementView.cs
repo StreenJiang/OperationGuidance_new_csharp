@@ -103,7 +103,7 @@ namespace OperationGuidance_new.Views {
             // 添加字段
             CustomTextBoxGroup length = _editEntityPopUpForm.AddTextBox("长度", false, 
                 (BarCodeMatchingRuleDTO dto, int value) => dto.length = value);
-            length.NumberOnly = true;
+            length.PositiveIntOnly = true;
             if (dto.length != null) {
                 length.SetValue(0, dto.length + "");
             }
@@ -180,10 +180,27 @@ namespace OperationGuidance_new.Views {
                         warningMsg += $"{warningIndex++}. 此任务已经配置过【{BarCodeTypes.PRODUCT.Name}】，每个任务仅能配置一个\r\n";
                     }
                 }
+                CustomTextBox lengthBox = length.GetTextBox(0);
+                CustomTextBox endCharBox = endChar.GetTextBox(0);
                 CustomTextBox keyPositionBox = keyMatchingBox.GetTextBox(0);
                 CustomTextBox keyCharBox = keyMatchingBox.GetTextBox(1);
+                string len = lengthBox.Box.Text;
+                string enChar = endCharBox.Box.Text;
                 string keyPosition = keyPositionBox.Box.Text;
                 string keyChar = keyCharBox.Box.Text;
+                if (string.IsNullOrEmpty(len) && string.IsNullOrEmpty(enChar) && string.IsNullOrEmpty(keyPosition) && string.IsNullOrEmpty(keyChar)) {
+                    lengthBox.IsError = true;
+                    endCharBox.IsError = true;
+                    keyPositionBox.IsError = true;
+                    keyCharBox.IsError = true;
+                    check = false;
+                    warningMsg += $"{warningIndex++}. 至少需要填写一种匹配规则\r\n";
+                } else {
+                    lengthBox.IsError = false;
+                    endCharBox.IsError = false;
+                    keyPositionBox.IsError = false;
+                    keyCharBox.IsError = false;
+                }
                 if (!string.IsNullOrEmpty(keyPosition) && string.IsNullOrEmpty(keyChar)) {
                     keyCharBox.IsError = true;
                     check = false;

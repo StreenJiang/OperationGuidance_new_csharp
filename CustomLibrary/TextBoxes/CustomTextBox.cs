@@ -21,6 +21,8 @@ namespace CustomLibrary.TextBoxes {
 
         private bool _numberValidate;
         private bool _numberOnly;
+        private bool _intOnly;
+        private bool _positiveIntOnly;
         private bool _isError;
         private int _boxOriginalWidth;
         private int _boxErrorWidth;
@@ -93,6 +95,8 @@ namespace CustomLibrary.TextBoxes {
         public Color DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
         public bool NumberValidate { get => _numberValidate; set => _numberValidate = value; }
         public bool NumberOnly { get => _numberOnly; set => _numberOnly = value; }
+        public bool IntOnly { get => _intOnly; set => _intOnly = value; }
+        public bool PositiveIntOnly { get => _positiveIntOnly; set => _positiveIntOnly = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
         public bool IsError { 
             get => _isError; 
@@ -135,11 +139,13 @@ namespace CustomLibrary.TextBoxes {
             };
             _errorTip = new();
             _box.TextChanged += (sender, eventArgs) => {
-                if (_numberOnly) {
+                if (_numberOnly || _intOnly || _positiveIntOnly) {
                     int errorCount = 0;
                     int index = 0;
                     foreach (char c in _box.Text) {
-                        if (!char.IsDigit(c) && c != '.' && !(c == '-' && index == 0)) {
+                        if ((_positiveIntOnly && !char.IsDigit(c)) ||
+                            (_intOnly && !char.IsDigit(c) && !(c == '-' && index == 0)) ||
+                            (_numberOnly && !char.IsDigit(c) && c != '.' && !(c == '-' && index == 0))) {
                             _box.Text = _box.Text.Replace(c.ToString(), "");
                             errorCount++;
                         }

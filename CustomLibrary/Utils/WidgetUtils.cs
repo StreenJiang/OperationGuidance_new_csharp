@@ -523,7 +523,7 @@ namespace CustomLibrary.Utils {
                     value = default(V?);
                 }
                 propertySetter(t, value);
-            } catch (InvalidCastException e) {
+            } catch (Exception e) {
                 System.Console.WriteLine($"{boxGroup.TextName}. Can not convert string[{valueStr}] to type<{typeof(V)}>. Exception: {e}");
             }
         }

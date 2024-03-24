@@ -111,7 +111,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 8.25,
                 Separator = ",",
                 NameAlignment = HorizontalAlignment.Right,
-                NumberOnly = true,
+                IntOnly = true,
             };
             _positionSubPanel.TablePanel.SetColumnSpan(_positionBox, _columnCount);
             _positionBox.GetTextBox(0);
@@ -194,7 +194,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _parameterSetSubPanel.TablePanel,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
-                NumberOnly = true,
+                PositiveIntOnly = true,
             };
             _parameterSetSubPanel.TablePanel.SetColumnSpan(_parameterSetBox, _columnCount);
             _parameterSetToggle.CheckedChanged += (sender, eventArgs) => {
@@ -218,7 +218,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _specificationSubPanel.TablePanel,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
-                NumberOnly = true,
+                PositiveIntOnly = true,
             };
             _specificationSubPanel.TablePanel.SetColumnSpan(_specificationBox, _columnCount);
             _specificationToggle.CheckedChanged += (sender, eventArgs) => {
@@ -242,7 +242,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = _bitSpecificationSubPanel.TablePanel,
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
-                NumberOnly = true,
+                PositiveIntOnly = true,
             };
             _bitSpecificationSubPanel.TablePanel.SetColumnSpan(_bitSpecificationBox, _columnCount);
             _bitSpecificationToggle.CheckedChanged += (sender, eventArgs) => {

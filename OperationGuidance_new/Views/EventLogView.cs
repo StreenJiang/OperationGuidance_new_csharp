@@ -16,10 +16,10 @@ namespace OperationGuidance_new.Views {
                 ReadOnly = true,
             };
             MainUtils.EventLogTextArea = _multiLineGroup.TextBox.Box;
-            CommonButton netButton = _multiLineGroup.AddButton("网络");
-            netButton.Click += (sender, eventArgs) => {
-                _multiLineGroup.Text += "<网络>按钮点击...\r\n";
-            };
+            // CommonButton netButton = _multiLineGroup.AddButton("网络");
+            // netButton.Click += (sender, eventArgs) => {
+            //     _multiLineGroup.Text += "<网络>按钮点击...\r\n";
+            // };
             CommonButton clearButton = _multiLineGroup.AddButton("清除");
             clearButton.Click += (sender, eventArgs) => {
                 _multiLineGroup.Text = string.Empty;

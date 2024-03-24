@@ -17,6 +17,8 @@ namespace CustomLibrary.TextBoxes {
 
         private bool _numberValidate;
         private bool _numberOnly;
+        private bool _intOnly;
+        private bool _positiveIntOnly;
         private double? _ratio;
         private FlowLayoutPanel _textBoxesPanel;
         private List<CustomTextBox> _textBoxes;
@@ -114,6 +116,20 @@ namespace CustomLibrary.TextBoxes {
             set {
                 _numberOnly = value;
                 SetTextBoxesProperties((textBox) => textBox.NumberOnly = value);
+            }
+        }
+        public bool IntOnly { 
+            get => _intOnly; 
+            set {
+                _intOnly = value;
+                SetTextBoxesProperties((textBox) => textBox.IntOnly = value);
+            }
+        }
+        public bool PositiveIntOnly { 
+            get => _positiveIntOnly; 
+            set {
+                _positiveIntOnly = value;
+                SetTextBoxesProperties((textBox) => textBox.PositiveIntOnly = value);
             }
         }
 

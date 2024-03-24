@@ -659,7 +659,7 @@ namespace OperationGuidance_new.Views {
             _armLocatingAccuracyBox = new("力臂定位精度") {
                 Parent = _missionContentPanel,
                 Ratio = 6.95,
-                NumberOnly = true,
+                PositiveIntOnly = true,
             };
             _armLocatingAccuracyBox.SetValue(0, MainUtils.GetArmLocatingAccuracy() + "");
             _armLocatingAccuracyBox.GetTextBox(0).Box.LostFocus += (s, e) => {
