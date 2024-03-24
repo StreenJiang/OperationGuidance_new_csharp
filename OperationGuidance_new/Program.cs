@@ -1,3 +1,4 @@
+using CustomLibrary.Utils;
 using OperationGuidance_service.Configurations;
 
 namespace OperationGuidance_new {
@@ -18,7 +19,7 @@ namespace OperationGuidance_new {
                 Application.Run(new MainForm());
             } catch (Exception e) {
                 Console.WriteLine(e); 
-                // WidgetUtils.ShowNoticePopUp($"出错啦！e: {e}");
+                WidgetUtils.ShowNoticePopUp($"程序运行错误，错误信息e: {e}");
                 throw e;
             }
         }

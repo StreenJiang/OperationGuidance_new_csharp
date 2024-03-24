@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using log4net;
 
 namespace OperationGuidance_new {
@@ -9,12 +10,15 @@ namespace OperationGuidance_new {
             InitializeComponentManually();
             log.Info("测试一下日志");
             this.FormBorderStyle = FormBorderStyle.None; // 这一句注释掉之后就不会触发下面的 InvokeResizing了，好奇怪
+            
         }
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             // SizeChanged += ResizeChildren;
             // ResizeChildren(this, EventArgs.Empty); // 上面那句注释掉后暂时用这个触发一下
+
+            // AllocConsole();
         }
 
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
@@ -27,5 +31,13 @@ namespace OperationGuidance_new {
                 }
             }
         }
+
+        private void Form_Load(object sender, EventArgs e) {
+            AllocConsole();
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AllocConsole();
     }
 }

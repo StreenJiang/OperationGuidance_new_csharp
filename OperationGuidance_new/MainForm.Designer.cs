@@ -65,6 +65,7 @@ namespace OperationGuidance_new {
                 || macs.Contains("A6B1C1C841E1")
                 // others
                 || macs.Contains("E43A6E5CBE6A")
+                || macs.Contains("E43A6E4B2F12")
             )) {
                 WidgetUtils.ShowErrorPopUp("当前设备未授权");
                 throw new Exception("当前设备未授权");
