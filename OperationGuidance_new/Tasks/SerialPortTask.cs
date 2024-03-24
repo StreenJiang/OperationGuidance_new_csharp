@@ -103,8 +103,9 @@ namespace OperationGuidance_new.Tasks {
                 Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
                 if (serialPorts.ContainsKey(_portName)) {
                     serialPortStreamClient = new(_portName, _baudRate, _dataBits, _parity, _stopBits);
-                    serialPortStreamClient.DataReceived += (sender, eventArgs) => {
+                    serialPortStreamClient.DataReceived += async (sender, eventArgs) => {
                         try {
+                            await Task.Delay(200);
                             byte[] data = new byte[serialPortStreamClient.BytesToRead];
                             int msgLen = serialPortStreamClient.Read(data, 0, data.Length);
                             bool foundInvalidChar = false;

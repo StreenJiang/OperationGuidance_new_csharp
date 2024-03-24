@@ -143,6 +143,11 @@ namespace OperationGuidance_new {
                     // 重设登录界面尺寸
                     Size loginViewSize = WidgetUtils.GetLoginViewSize(mainForm.Size);
                     mainForm.Size = loginViewSize;
+                    if (loginViewSize == screenSize) {
+                        mainForm.WindowState = FormWindowState.Maximized;
+                    } else {
+                        mainForm.WindowState = FormWindowState.Normal;
+                    }
                     mainForm.ClientSize = loginViewSize;
                     mainForm.Location = new((screenSize.Width - loginViewSize.Width) / 2, (screenSize.Height - loginViewSize.Height) / 2);
                     // mainPanel.Size = loginView.MainFormSize;

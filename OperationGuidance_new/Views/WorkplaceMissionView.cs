@@ -1956,6 +1956,9 @@ namespace OperationGuidance_new.Views {
                             }
                             // 切换下一个点位
                             if (tighteningOK) {
+                                // 如果点位NG但并不需要反松，则无法通过反松改回这两个设置，因此每次都改一下
+                                _needLoosening = false;
+                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                                 // 扭矩角度数据颜色改成绿色
                                 _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
                                 _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
@@ -2057,10 +2060,8 @@ namespace OperationGuidance_new.Views {
                             // 反松时把扭矩角度改回黑色
                             _torque.ForeColor = Color.Black;
                             _angle.ForeColor = Color.Black;
-                            if (_needLoosening) {
-                                _needLoosening = false;
-                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
-                            }
+                            _needLoosening = false;
+                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                             if (MainUtils.GetStoreLooseningData()) {
                                 _dataNeedToBeStored.Add(dataDTO);
                             }
@@ -2707,7 +2708,13 @@ namespace OperationGuidance_new.Views {
         private int? _boltSerialNum;
         private TightenOrLoosen _tightenOrLoosen;
 
-        public TightenOrLoosen TightenOrLoosen { get => _tightenOrLoosen; set => _tightenOrLoosen = value; }
+        public TightenOrLoosen TightenOrLoosen { 
+            get => _tightenOrLoosen; 
+            set {
+                _tightenOrLoosen = value; 
+                InvokeResizing();
+            }
+        }
         public int? BoltSerialNum { get => _boltSerialNum; set => _boltSerialNum = value; }
         public string StatusDesc { get => _statusDesc; set => _statusDesc = value; }
         public WorkplaceProcessStatus WorkplaceProcessStatus {
