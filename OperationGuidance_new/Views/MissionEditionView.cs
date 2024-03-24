@@ -1646,6 +1646,7 @@ namespace OperationGuidance_new.Views {
                 } else {
                     // 画产品图片
                     g.DrawImage(ProductImage, ImageLocation.Value);
+                    // g.DrawRectangle(new Pen(Color.Black), new Rectangle(ImageLocation.Value, ProductImage.Size));
 
                     // for (int i = 0; i < DifferentRects.Count; i++) {
                     //     Pen pen = new Pen(_rectColors[i], 1) {

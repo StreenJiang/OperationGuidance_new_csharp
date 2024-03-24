@@ -1,7 +1,12 @@
 ﻿// using CustomLibrary.Constants;
 
+using OperationGuidance_service.Models.DTOs;
+
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public abstract class AProductImageDisplayPanel: Panel {
+        private ProductSideDTO? _originalSideDTO;
+        private ProductSideDTO? _newSideDTO;
+
         private Image _productDefaultImage;
         private Image? _productDefaultImageShowing;
         private Image? _productImage;
