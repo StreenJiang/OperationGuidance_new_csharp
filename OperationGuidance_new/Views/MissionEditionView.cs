@@ -1295,7 +1295,7 @@ namespace OperationGuidance_new.Views {
             protected override void ResizeIconImage() {
                 if (this.Icon != null) {
                     int newImageSide = (int) (Height * _imageSideRatio);
-                    this.ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(this.Icon, newImageSide, newImageSide);
+                    this.ImageShowing = WidgetUtils.ResizeImage(this.Icon, newImageSide, newImageSide);
                     // Recalculate image location
                     this.ImageX = (this.Width - newImageSide) / 2;
                     this.ImageY = (this.Height - newImageSide - this.Font.Height - _gapBetweenImageAndText) / 2;
@@ -1632,7 +1632,7 @@ namespace OperationGuidance_new.Views {
                 g.SmoothingMode = SmoothingMode.HighSpeed;
                 if (ProductImage == null || ImageLocation == null) {
                     int newImageSide = Height / 20;
-                    ProductDefaultImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(ProductDefaultImage, newImageSide, newImageSide);
+                    ProductDefaultImageShowing = WidgetUtils.ResizeImage(ProductDefaultImage, newImageSide, newImageSide);
                     int gapBetweenImageAndText = newImageSide / 4;
 
                     Font = new(WidgetsConfigs.SystemFontFamily, newImageSide * .6F, FontStyle.Regular, GraphicsUnit.Pixel);

@@ -180,7 +180,15 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup toolPortTextBox = toolSubPanel.AddTextBox("工具端口", false, (WorkstationDTO dto, int? value) => dto.tool_port = value ?? 0);
             toolPortTextBox.Enabled = false;
             if (dto.tool_id != null) {
-                toolOptions.SetCurrent(toolOptions.IndexOf(dto.tool_id.Value));
+                if (toolOptions.IndexOf(dto.tool_id.Value) >= 0) {
+                    toolOptions.SetCurrent(toolOptions.IndexOf(dto.tool_id.Value));
+                } else if (dto.id > 0) {
+                    toolOptions.SetError(true);
+                    Task.Run(async () => {
+                        await Task.Delay(500);
+                        WidgetUtils.ShowWarningPopUp("所配置工具不存在或已被删除");
+                    });
+                }
                 SetToolValues();
                 toolToggle.Checked = true;
             } else {
@@ -196,14 +204,19 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetToolValues() {
-                DeviceToolDTO deviceToolDTO = _toolDTOs.Single(t => t.id == toolOptions.Value);
-                toolTypeTextBox.SetCurrent(toolTypeTextBox.IndexOf(deviceToolDTO.type));
-                toolIPTextBox.SetValue(0, deviceToolDTO.ip);
-                toolPortTextBox.SetValue(0, deviceToolDTO.port + "");
-                // Set for show warning message
-                dto.tool_name = toolOptions.Key;
-                if (toolOptions.IsError) {
-                    toolOptions.SetError(false);
+                DeviceToolDTO? deviceToolDTO = _toolDTOs.SingleOrDefault(t => t.id == toolOptions.Value);
+                if (deviceToolDTO != null) {
+                    toolTypeTextBox.SetCurrent(toolTypeTextBox.IndexOf(deviceToolDTO.type));
+                    toolIPTextBox.SetValue(0, deviceToolDTO.ip);
+                    toolPortTextBox.SetValue(0, deviceToolDTO.port + "");
+                    // Set for show warning message
+                    dto.tool_name = toolOptions.Key;
+                    if (toolOptions.IsError) {
+                        toolOptions.SetError(false);
+                    }
+                } else {
+                    dto.tool_id = null;
+                    dto.tool_name = null;
                 }
             }
             void ResetToolValues() {
@@ -244,7 +257,15 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup armPortTextBox = armSubPanel.AddTextBox("力臂端口", false, (WorkstationDTO dto, int? value) => dto.arm_port = value == null ? 0 : value);
             armPortTextBox.Enabled = false;
             if (dto.arm_id != null) {
-                armOptions.SetCurrent(armOptions.IndexOf(dto.arm_id.Value));
+                if (armOptions.IndexOf(dto.arm_id.Value) >= 0) {
+                    armOptions.SetCurrent(armOptions.IndexOf(dto.arm_id.Value));
+                } else if (dto.id > 0) {
+                    armOptions.SetError(true);
+                    Task.Run(async () => {
+                        await Task.Delay(500);
+                        WidgetUtils.ShowWarningPopUp("所配置力臂不存在或已被删除");
+                    });
+                }
                 SetArmValues();
                 armToggle.Checked = true;
             } else {
@@ -260,14 +281,19 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetArmValues() {
-                DeviceArmDTO deviceArmDTO = _armDTOs.Single(dto => dto.id == armOptions.Value);
-                armTypeTextBox.SetCurrent(armTypeTextBox.IndexOf(deviceArmDTO.type));
-                armIPTextBox.SetValue(0, deviceArmDTO.ip);
-                armPortTextBox.SetValue(0, deviceArmDTO.port + "");
-                // Set for show warning message
-                dto.arm_name = armOptions.Key;
-                if (armOptions.IsError) {
-                    armOptions.SetError(false);
+                DeviceArmDTO? deviceArmDTO = _armDTOs.SingleOrDefault(dto => dto.id == armOptions.Value);
+                if (deviceArmDTO != null) {
+                    armTypeTextBox.SetCurrent(armTypeTextBox.IndexOf(deviceArmDTO.type));
+                    armIPTextBox.SetValue(0, deviceArmDTO.ip);
+                    armPortTextBox.SetValue(0, deviceArmDTO.port + "");
+                    // Set for show warning message
+                    dto.arm_name = armOptions.Key;
+                    if (armOptions.IsError) {
+                        armOptions.SetError(false);
+                    }
+                } else {
+                    dto.arm_id = null;
+                    dto.arm_name = null;
                 }
             }
             void ResetArmValues() {
@@ -311,7 +337,15 @@ namespace OperationGuidance_new.Views {
                 (WorkstationDTO dto, int? value) => dto.communication_port = value == null ? 0 : value);
             communicationPortTextBox.Enabled = false;
             if (dto.communication_id != null) {
-                communicationOptions.SetCurrent(communicationOptions.IndexOf(dto.communication_id.Value));
+                if (communicationOptions.IndexOf(dto.communication_id.Value) >= 0) {
+                    communicationOptions.SetCurrent(communicationOptions.IndexOf(dto.communication_id.Value));
+                } else if (dto.id > 0) {
+                    communicationOptions.SetError(true);
+                    Task.Run(async () => {
+                        await Task.Delay(500);
+                        WidgetUtils.ShowWarningPopUp("所配置通讯设备不存在或已被删除");
+                    });
+                }
                 SetCommunicationValues();
                 communicationToggle.Checked = true;
             } else {
@@ -327,14 +361,19 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetCommunicationValues() {
-                DeviceCommunicationDTO deviceCommunicationDTO = _communicationDTOs.Single(dto => dto.id == communicationOptions.Value);
-                communicationTypeTextBox.SetCurrent(communicationTypeTextBox.IndexOf(deviceCommunicationDTO.type));
-                communicationIPTextBox.SetValue(0, deviceCommunicationDTO.ip);
-                communicationPortTextBox.SetValue(0, deviceCommunicationDTO.port + "");
-                // Set for show warning message
-                dto.communication_name = communicationOptions.Key;
-                if (communicationOptions.IsError) {
-                    communicationOptions.SetError(false);
+                DeviceCommunicationDTO? deviceCommunicationDTO = _communicationDTOs.SingleOrDefault(dto => dto.id == communicationOptions.Value);
+                if (deviceCommunicationDTO != null) {
+                    communicationTypeTextBox.SetCurrent(communicationTypeTextBox.IndexOf(deviceCommunicationDTO.type));
+                    communicationIPTextBox.SetValue(0, deviceCommunicationDTO.ip);
+                    communicationPortTextBox.SetValue(0, deviceCommunicationDTO.port + "");
+                    // Set for show warning message
+                    dto.communication_name = communicationOptions.Key;
+                    if (communicationOptions.IsError) {
+                        communicationOptions.SetError(false);
+                    }
+                } else {
+                    dto.communication_id = null;
+                    dto.communication_name = null;
                 }
             }
             void ResetCommunicationValues() {
@@ -392,10 +431,15 @@ namespace OperationGuidance_new.Views {
             CustomTextBoxGroup serialPortDataTypeTextBox = serialPortSubPanel.AddTextBox<int>("数据类型", false, null);
             serialPortDataTypeTextBox.Enabled = false;
             if (dto.serial_port_id != null) {
-                foreach (KeyValuePair<string, int> pair in serialPortOptions.NamesAndItems) {
-                    System.Console.WriteLine($"{pair.Key}: {pair.Value}");
+                if (serialPortOptions.IndexOf(dto.serial_port_id.Value) >= 0) {
+                    serialPortOptions.SetCurrent(serialPortOptions.IndexOf(dto.serial_port_id.Value));
+                } else if (dto.id > 0) {
+                    serialPortOptions.SetError(true);
+                    Task.Run(async () => {
+                        await Task.Delay(500);
+                        WidgetUtils.ShowWarningPopUp("所配置串口设备不存在或已被删除");
+                    });
                 }
-                serialPortOptions.SetCurrent(serialPortOptions.IndexOf(dto.serial_port_id.Value));
                 SetSerialPortValues();
                 serialPortToggle.Checked = true;
             } else {
@@ -411,18 +455,23 @@ namespace OperationGuidance_new.Views {
                 }
             };
             void SetSerialPortValues() {
-                DeviceSerialPortDTO deviceSerialPortDTO = _serialPortDTOs.Single(dto => dto.id == serialPortOptions.Value);
-                serialPortTypeTextBox.SetCurrent(serialPortTypeTextBox.IndexOf(deviceSerialPortDTO.type));
-                serialPortPortNameTextBox.SetValue(0, deviceSerialPortDTO.port_name);
-                serialPortBaudRateTextBox.SetValue(0, deviceSerialPortDTO.baud_rate + "");
-                serialPortDataBitTextBox.SetValue(0, deviceSerialPortDTO.data_bit + "");
-                serialPortParityTextBox.SetValue(0, Enum.GetName(typeof(Parity), deviceSerialPortDTO.parity) + "");
-                serialPortStopBitTextBox.SetValue(0, Enum.GetName(typeof(StopBits), deviceSerialPortDTO.stop_bit) + "");
-                serialPortDataTypeTextBox.SetValue(0, Enum.GetName(typeof(DataTypes), deviceSerialPortDTO.data_type) + "");
-                // Set for show warning message
-                dto.serial_port_name = serialPortOptions.Key;
-                if (serialPortOptions.IsError) {
-                    serialPortOptions.SetError(false);
+                DeviceSerialPortDTO? deviceSerialPortDTO = _serialPortDTOs.SingleOrDefault(dto => dto.id == serialPortOptions.Value);
+                if (deviceSerialPortDTO != null) {
+                    serialPortTypeTextBox.SetCurrent(serialPortTypeTextBox.IndexOf(deviceSerialPortDTO.type));
+                    serialPortPortNameTextBox.SetValue(0, deviceSerialPortDTO.port_name);
+                    serialPortBaudRateTextBox.SetValue(0, deviceSerialPortDTO.baud_rate + "");
+                    serialPortDataBitTextBox.SetValue(0, deviceSerialPortDTO.data_bit + "");
+                    serialPortParityTextBox.SetValue(0, Enum.GetName(typeof(Parity), deviceSerialPortDTO.parity) + "");
+                    serialPortStopBitTextBox.SetValue(0, Enum.GetName(typeof(StopBits), deviceSerialPortDTO.stop_bit) + "");
+                    serialPortDataTypeTextBox.SetValue(0, Enum.GetName(typeof(DataTypes), deviceSerialPortDTO.data_type) + "");
+                    // Set for show warning message
+                    dto.serial_port_name = serialPortOptions.Key;
+                    if (serialPortOptions.IsError) {
+                        serialPortOptions.SetError(false);
+                    }
+                } else {
+                    dto.serial_port_id = null;
+                    dto.serial_port_name = null;
                 }
             }
             void ResetSerialPortValues() {

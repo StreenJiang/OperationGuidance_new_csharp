@@ -211,7 +211,7 @@ namespace CustomLibrary.TextBoxes {
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
-                _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(CustomResources.input_error, newIconSize);
+                _iconShowing = WidgetUtils.ResizeImage(CustomResources.input_error, newIconSize);
                 _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
                 _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
             }

@@ -298,7 +298,7 @@ namespace OperationGuidance_new.Views {
         private Image _defaultImage;
 
         private List<WorkstationDTO> _workstationsDTOs = new();
-        private readonly int _checkDevicesConnectionDelay = 200;
+        private readonly int _checkDevicesConnectionDelay = 2500;
         private List<DeviceArmDTO> _arms;
         private List<DeviceToolDTO> _tools;
         private List<DeviceSerialPortDTO> _serialPorts;
@@ -1089,7 +1089,7 @@ namespace OperationGuidance_new.Views {
                                         currentPset = _currentWorkingBolt.BoltDTO.parameters_set;
                                     }
                                     deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, SetPset, deviceBlock.CategoryName, 
-                                            _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
+                                            _workingProcessPanel, _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
                                     ToolOperationPopUpForm popUpForm = (ToolOperationPopUpForm) deviceBlock.PopUpForm;
@@ -1242,7 +1242,7 @@ namespace OperationGuidance_new.Views {
             // icon的边长
             int side = (int) (_barCodePictureBox.Parent.Height * .675);
             // 重设icon
-            _barCodePictureBox.Image = WidgetUtils.ResizeImageWithoutLosingQuality(_barCodeImage, side, side);
+            _barCodePictureBox.Image = WidgetUtils.ResizeImage(_barCodeImage, side, side);
             _barCodePictureBox.Margin = new((_barCodePictureBox.Parent.Height - side) / 2);
             _barCodePictureBox.Size = new(side, side);
 
@@ -1507,9 +1507,9 @@ namespace OperationGuidance_new.Views {
                 // 查询所有站点信息
                 _workstationsDTOs = _apis.QueryWorkstationList(new()).WorkstationsDTOs.ToList();
                 // 查询所有设备信息
-                _arms = _apis.QueryDeviceArmList(new()).DeviceArmDTOs;
-                _tools = _apis.QueryDeviceToolList(new()).DeviceToolDTOs;
-                _serialPorts = _apis.QueryDeviceSerialPortList(new()).DeviceSerialPortDTOs;
+                _arms = _apis.QueryDeviceArmList(new()).DeviceArmDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                _tools = _apis.QueryDeviceToolList(new()).DeviceToolDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                _serialPorts = _apis.QueryDeviceSerialPortList(new()).DeviceSerialPortDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                 // 根据不同的设备类型针对性进行配置
                 foreach (DeviceBlock block in _deviceBlocks) {
                     DeviceCategory category = block.Category;
@@ -1655,13 +1655,13 @@ namespace OperationGuidance_new.Views {
                 }
                 ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                 int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
-                if (toolId == null) {
+                if (toolId == null || _tools.SingleOrDefault(tool => tool.id == toolId.Value) == null) {
                     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置工具，无法激活任务");
                     _currentWorkingBolt = null;
                     return;
                 }
                 int? armId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).arm_id;
-                if (_locating_enabled && armId == null) {
+                if (_locating_enabled && (armId == null || _arms.SingleOrDefault(arm => arm.id == armId.Value) == null)) {
                     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]所选择的站点没有配置力臂，无法激活任务");
                     _currentWorkingBolt = null;
                     return;
@@ -1763,9 +1763,6 @@ namespace OperationGuidance_new.Views {
                         }
                         dataWithConfigFields.Add(record);
                     });
-                    // 先将组装好的VOs加入到实时显示数据列表中
-                    _tighteningDataVOs.AddRange(dataFormatted);
-                    RefreshTighteningDataPanel();
                     // 组装最终数据
                     List<List<object?>> finalData = new();
                     dataWithConfigFields.ForEach(dict => {
@@ -1782,10 +1779,16 @@ namespace OperationGuidance_new.Views {
                     // } else {
                     //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
                     // }
+
+                    // 先将组装好的VOs加入到实时显示数据列表中
+                    _tighteningDataVOs.AddRange(dataFormatted);
+                    RefreshTighteningDataPanel();
+                    // 显示完后立马存好，存好后立马清除
                     _apis.BatchAddOperationData(new(_dataNeedToBeStored));
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                     _dataNeedToBeStored.Clear();
+                    // 最后再存进本地文件
+                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
                 }
             });
         }
@@ -1849,9 +1852,7 @@ namespace OperationGuidance_new.Views {
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                         _adminConfirmed = null;
                                     } else {
-                                        if (_locating_enabled) {
-                                            toolTask.SendLock();
-                                        }
+                                        toolTask.SendLock();
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_NG;
                                         if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                             _adminConfirmed = false;
@@ -1859,18 +1860,14 @@ namespace OperationGuidance_new.Views {
                                         }
                                     }
                                 } else if (_currentWorkingBolt.CurrentParameterSet == null) {
-                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
-                                    _workingProcessPanel.StatusDesc = "未配置程序号，工具锁定";
+                                    toolTask.SendLock();
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_PSET;
                                 } else {
                                     toolTask.SendUnlock();
-                                    if (_workingProcessPanel.WorkplaceProcessStatus != WorkplaceProcessStatus.OPERATION_DISABLE_NG) {
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-                                    }
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                 }
                             } else {
-                                if (_locating_enabled) {
-                                    toolTask.SendLock();
-                                }
+                                toolTask.SendLock();
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
                             }
                         }
@@ -1976,6 +1973,9 @@ namespace OperationGuidance_new.Views {
                                 if (nextIndex < _allBolts.Count) {
                                     _currentWorkingBolt = SwitchBoltAndChangeStatus(nextIndex, _locating_enabled);
                                     _currentWorkingBolt.CurrentParameterSet = _currentWorkingBolt.BoltDTO.parameters_set;
+                                    if (_currentWorkingBolt.CurrentParameterSet == null) {
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_PSET;
+                                    }
                                 } else {
                                     // 打完了直接锁枪
                                     _toolTasks[toolId].SendLock();
@@ -2006,6 +2006,9 @@ namespace OperationGuidance_new.Views {
                                     ResetMissionDetails();
                                 }
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                // 记录数据
+                                _dataNeedToBeStored.Add(dataDTO);
+                                StoreTighteningData();
                             } else {
                                 // 先锁枪
                                 if (_locating_enabled) {
@@ -2022,7 +2025,7 @@ namespace OperationGuidance_new.Views {
                                     _currentWorkingBolt.StopFlickering();
                                     _currentWorkingBolt = null;
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_NG;
-                                    _workingProcessPanel.StatusDesc += "\r\n" + errorMsg;
+                                    _workingProcessPanel.StatusDesc += "，" + errorMsg;
                                     _workingProcessPanel.BoltSerialNum = null;
                                     // 扭矩角度数据颜色改回黑色
                                     _torque.ForeColor = Color.Black;
@@ -2040,6 +2043,10 @@ namespace OperationGuidance_new.Views {
                                     _barCodeObj.Reset();
                                     // 重置任务信息
                                     ResetMissionDetails();
+                                    // 记录数据
+                                    _dataNeedToBeStored.Add(dataDTO);
+                                    StoreTighteningData();
+                                    // 先记录数据再弹出提示
                                     WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                 } else { 
                                     // 扭矩角度数据颜色改成红色
@@ -2051,11 +2058,14 @@ namespace OperationGuidance_new.Views {
                                     _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
                                     // 需要管理员密码弹窗
                                     _adminConfirmed = false;
+                                    // 记录数据
+                                    _dataNeedToBeStored.Add(dataDTO);
+                                    StoreTighteningData();
+                                    // 先记录数据再打开弹窗
                                     NGConfirmPopUp();
                                 }
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
                             }
-                            _dataNeedToBeStored.Add(dataDTO);
                         } else {
                             // 反松时把扭矩角度改回黑色
                             _torque.ForeColor = Color.Black;
@@ -2063,10 +2073,11 @@ namespace OperationGuidance_new.Views {
                             _needLoosening = false;
                             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                             if (MainUtils.GetStoreLooseningData()) {
+                                // 记录数据
                                 _dataNeedToBeStored.Add(dataDTO);
+                                StoreTighteningData();
                             }
                         }
-                        StoreTighteningData();
                     }
                 });
             });
@@ -2224,7 +2235,7 @@ namespace OperationGuidance_new.Views {
             g.SmoothingMode = SmoothingMode.HighSpeed;
             if (ProductImage == null || ImageLocation == null) {
                 int newImageSide = Height / 2;
-                ProductDefaultImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(ProductDefaultImage, newImageSide, newImageSide);
+                ProductDefaultImageShowing = WidgetUtils.ResizeImage(ProductDefaultImage, newImageSide, newImageSide);
                 g.DrawImage(ProductDefaultImageShowing, new Point((Width - ProductDefaultImageShowing.Width) / 2, (Height - newImageSide) / 2));
             } else {
                 g.DrawImage(ProductImage, ImageLocation.Value);
@@ -2739,6 +2750,11 @@ namespace OperationGuidance_new.Views {
                         _statusDesc = "力臂未在指定位置";
                         _picturePanel.Visible = false;
                         break;
+                    case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
+                        _statusTxt = "已锁定";
+                        _statusDesc = "未配置程序号，工具锁定";
+                        _picturePanel.Visible = false;
+                        break;
                     case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
                         _statusTxt = "NG";
                         _picturePanel.Visible = false;
@@ -2813,10 +2829,7 @@ namespace OperationGuidance_new.Views {
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
                             case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                }
-                                break;
+                            case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
                             case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
                             case WorkplaceProcessStatus.FINISHED_NG:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
@@ -2831,6 +2844,8 @@ namespace OperationGuidance_new.Views {
                             default:
                                 break;
                         }
+                        Invalidate();
+                        Update();
                         await Task.Delay(_loopingInterval);
                     }
                 });
@@ -2856,9 +2871,9 @@ namespace OperationGuidance_new.Views {
                 imageSide = (int) (_picturePanel.Width * .85);
             }
             if (_tightenOrLoosen == TightenOrLoosen.TIGHTENING) {
-                _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_clockwiseIcon, new Size(imageSide, imageSide));
+                _iconShowing = WidgetUtils.ResizeImage(_clockwiseIcon, new Size(imageSide, imageSide));
             } else {
-                _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_anticlockwiseIcon, new Size(imageSide, imageSide));
+                _iconShowing = WidgetUtils.ResizeImage(_anticlockwiseIcon, new Size(imageSide, imageSide));
             }
         }
 
@@ -2906,6 +2921,7 @@ namespace OperationGuidance_new.Views {
                     graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint);
                     break;
                 case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
+                case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
                 case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
                 case WorkplaceProcessStatus.FINISHED_NG:
                 case WorkplaceProcessStatus.FINISHED_OK:
@@ -2973,7 +2989,7 @@ namespace OperationGuidance_new.Views {
         protected override void ResizeIconImage() {
             if (Icon != null) {
                 Size newSize = (Size * _imageRatio).ToSize();
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, newSize);
+                ImageShowing = WidgetUtils.ResizeImage(Icon, newSize);
                 // Recalculate image position
                 ImageX = (Width - newSize.Width) / 2;
                 ImageY = (Height - newSize.Height) / 2;
@@ -3015,9 +3031,9 @@ namespace OperationGuidance_new.Views {
                     ArmTask task = armTask.Value;
                     int imageSide = (int) (_panelHeight * .8);
                     if (task.Connected) {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
                     } else {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
                     }
                     int imageY = (_panelHeight - imageSide) / 2;
                     g.DrawImage(icon, new Point(0, imageY));
@@ -3157,9 +3173,9 @@ namespace OperationGuidance_new.Views {
                     ToolTask task = toolTask.Value;
                     int imageSide = (int) (_panelHeight * .8);
                     if (task.Connected) {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
                     } else {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
                     }
                     int imageY = (_panelHeight - imageSide) / 2;
                     g.DrawImage(icon, new Point(0, imageY));
@@ -3173,6 +3189,7 @@ namespace OperationGuidance_new.Views {
         private List<WorkstationDTO> _workstationDTOs;
         private Dictionary<int, ToolTask> _toolTasks;
         private BoltButton? _currentWorkingBolt;
+        private WorkingProcessPanel _workingProcessPanel;
         private Action _setPset;
 
         private TableLayoutPanel _tablePanel;
@@ -3185,11 +3202,12 @@ namespace OperationGuidance_new.Views {
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
 
-        public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Action setPset, string categoryName, List<WorkstationDTO> workstationDTOs
-                , Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId = null, int? currentPset = null) {
+        public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Action setPset, string categoryName, WorkingProcessPanel workingProcessPanel,
+                List<WorkstationDTO> workstationDTOs, Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId = null, int? currentPset = null) {
             _workstationDTOs = workstationDTOs;
             _toolTasks = toolTasks;
             _currentWorkingBolt = currentWorkingBolt;
+            _workingProcessPanel = workingProcessPanel;
             _setPset = setPset;
 
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
@@ -3263,6 +3281,8 @@ namespace OperationGuidance_new.Views {
                             WidgetUtils.ShowNoticePopUp("操作成功！");
                             if (_currentWorkingBolt != null) {
                                 _currentWorkingBolt.CurrentParameterSet = pset;
+                                toolTask.SendUnlock();
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                             }
                             _setPset();
                             canUnlock = true;
@@ -3293,7 +3313,7 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowErrorPopUp("操作失败！当前选择的站点没有配置工具，请检查配置。");
                 } else {
                     if (!_toolTasks.ContainsKey(workstationDTO.tool_id.Value)) {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！未找到[{workstationDTO.tool_name} - {workstationDTO.tool_ip} : {workstationDTO.tool_port}]对应的工具，请检查配置。");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！未找到当前站点配置的工具。");
                     } else {
                         ToolTask toolTask = _toolTasks[workstationDTO.tool_id.Value];
                         aciont(toolTask);
@@ -3349,9 +3369,9 @@ namespace OperationGuidance_new.Views {
                     SerialPortTask task = serialPortTask.Value;
                     int imageSide = (int) (_panelHeight * .8);
                     if (task.Connected) {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
                     } else {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
                     }
                     int imageY = (_panelHeight - imageSide) / 2;
                     g.DrawImage(icon, new Point(0, imageY));
@@ -3392,9 +3412,9 @@ namespace OperationGuidance_new.Views {
                     CommunicationTask task = armTask.Value;
                     int imageSide = (int) (_panelHeight * .8);
                     if (task.Connected) {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconConnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
                     } else {
-                        icon = WidgetUtils.ResizeImageWithoutLosingQuality(_statusIconDisconnected, imageSide, imageSide);
+                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
                     }
                     int imageY = (_panelHeight - imageSide) / 2;
                     g.DrawImage(icon, new Point(0, imageY));

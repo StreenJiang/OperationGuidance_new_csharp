@@ -148,9 +148,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void ResizeIconImage() {
             Size imageNewSize = CalcImageSize();
             if (Icon != null) {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, imageNewSize);
+                ImageShowing = WidgetUtils.ResizeImage(Icon, imageNewSize);
             } else if (_defaultImage != null) {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_defaultImage, imageNewSize);
+                ImageShowing = WidgetUtils.ResizeImage(_defaultImage, imageNewSize);
             }
             // Recalculate image position
             ImageX = (Width - imageNewSize.Width) / 2;

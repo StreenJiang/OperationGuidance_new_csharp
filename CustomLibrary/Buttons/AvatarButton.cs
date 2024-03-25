@@ -25,9 +25,9 @@ namespace CustomLibrary.Buttons.BaseClasses {
         }
         protected override void ResizeIconImage() {
             if (Icon != null) {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, new(Width, Height));
+                ImageShowing = WidgetUtils.ResizeImage(Icon, new(Width, Height));
             } else {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_defaultAvatar, new(Width, Height));
+                ImageShowing = WidgetUtils.ResizeImage(_defaultAvatar, new(Width, Height));
             }
             ImageX = 0;
             ImageY = 0;

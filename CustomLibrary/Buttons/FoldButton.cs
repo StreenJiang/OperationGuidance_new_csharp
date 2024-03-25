@@ -64,7 +64,7 @@ namespace CustomLibrary.Buttons {
         protected override void ResizeIconImage() {
             if (this.Icon != null) {
                 int newImageSide = (int) (this.Height * _imageSideRatio);
-                this.ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(this.Icon, newImageSide, newImageSide);
+                this.ImageShowing = WidgetUtils.ResizeImage(this.Icon, newImageSide, newImageSide);
             }
         }
 

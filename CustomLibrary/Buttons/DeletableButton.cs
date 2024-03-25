@@ -26,7 +26,7 @@ namespace CustomLibrary.Buttons {
                 imageLocation = new(Width - closeBtnSide, (Height - ToggleBarRect.Value.Height - closeBtnSide) / 2);
             }
             _imageRect = new(imageLocation, imageSize);
-            _imageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_closeImage, imageSize);
+            _imageShowing = WidgetUtils.ResizeImage(_closeImage, imageSize);
         }
 
         private void ClickAnimation(bool goDown) {

@@ -442,8 +442,8 @@ namespace OperationGuidance_new.Views {
                     _upImageRect = new(imageUpLocation, imageSize);
                     _downImageRect = new(imageDownLocation, imageSize);
 
-                    _upImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_upImage, imageSize);
-                    _downImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_downImage, imageSize);
+                    _upImageShowing = WidgetUtils.ResizeImage(_upImage, imageSize);
+                    _downImageShowing = WidgetUtils.ResizeImage(_downImage, imageSize);
                 }
                 private void ClickUpAnimation(bool goDown) {
                     if (_upImageRect != null) {

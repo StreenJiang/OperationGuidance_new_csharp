@@ -170,7 +170,7 @@ namespace CustomLibrary.Buttons {
             Image imageShowing;
             if (_showingDefault) {
                 int side = _picturePanelHeight / 3;
-                imageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_image, side, side);
+                imageShowing = WidgetUtils.ResizeImage(_image, side, side);
             } else {
                 float widthRatio = _picturePanel.Width / (float) _image.Width;
                 float heightRatio = _picturePanelHeight / (float) _image.Height;

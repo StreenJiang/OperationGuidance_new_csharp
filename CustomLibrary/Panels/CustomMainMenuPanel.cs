@@ -24,7 +24,7 @@ namespace CustomLibrary.Panels
             if (_mainMenuLogo != null) {
                 Size _mainMenuLogoSize = (_mainMenuLogo.Size * this.Height * this.GetLogoZoomingRatio() / _mainMenuLogo.Height).ToSize();
                 _mainMenuLogoLocation = this.GetLogoLocation(_mainMenuLogoSize);
-                _mainMenuLogoShowing = WidgetUtils.ResizeImageWithoutLosingQuality(
+                _mainMenuLogoShowing = WidgetUtils.ResizeImage(
                     _mainMenuLogo, _mainMenuLogoSize.Width, _mainMenuLogoSize.Height
                 );
             }

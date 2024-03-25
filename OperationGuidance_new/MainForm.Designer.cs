@@ -49,6 +49,8 @@ namespace OperationGuidance_new {
         #region Windows Form manually initialization code
 
         private void InitializeComponentManually() {
+            // AllocConsole();
+
             // Get MAC address
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
@@ -152,7 +154,7 @@ namespace OperationGuidance_new {
                     mainForm.Location = new((screenSize.Width - loginViewSize.Width) / 2, (screenSize.Height - loginViewSize.Height) / 2);
                     // mainPanel.Size = loginView.MainFormSize;
                     loginView.Size = loginViewSize;
-                    loginView.BackShowing = WidgetUtils.ResizeImageWithoutLosingQuality(loginView.Back, loginViewSize);
+                    loginView.BackShowing = WidgetUtils.ResizeImage(loginView.Back, loginViewSize);
                     // 显示登录界面
                     loginView.Show();
                     loginView.ShowLoginForm();
@@ -343,6 +345,12 @@ namespace OperationGuidance_new {
                     // Add main menu button and main content panel into their parent panels
                     mainMenuPanel.Controls.Add(mainMenuButton);
                     mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
+                    if (mainMenuButton.CorrespondingContentPanel != null) {
+                        mainMenuButton.CorrespondingContentPanel.Visible = false;
+                    }
+                    if (mainMenuConfig.OpenFirst) {
+                        mainMenuButton.PerformClick();
+                    }
                 }
 
                 AllCreated = true;

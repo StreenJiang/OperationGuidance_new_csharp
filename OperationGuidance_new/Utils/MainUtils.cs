@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Net.NetworkInformation;
+using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
 using Newtonsoft.Json;
@@ -214,6 +216,22 @@ namespace OperationGuidance_new.Utils {
             return int.Parse(armLocatingAccuracy);
         }
 
+        public static bool PingHost(string nameOrAddress) {
+            Ping? pinger = null;
+            try {
+                pinger = new();
+                PingReply pingReply = pinger.Send(IPAddress.Parse(nameOrAddress), 2500);
+                return pingReply.Status == IPStatus.Success;
+            } catch (PingException pe) {
+                System.Console.WriteLine($"Ping error while pinging to [{nameOrAddress}]: {pe}");
+            } finally {
+                if (pinger != null) {
+                    pinger.Dispose();
+                }
+            }
+            return false;
+        }
+        
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
         public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
@@ -383,7 +401,7 @@ namespace OperationGuidance_new.Utils {
             if (newSize.Height <= 0) {
                 newSize.Height = 1;
             }
-            return WidgetUtils.ResizeImageWithoutLosingQuality(image, newSize);
+            return WidgetUtils.ResizeImage(image, newSize);
         }
 
         /// <summary>
@@ -515,6 +533,11 @@ namespace OperationGuidance_new.Utils {
                         }
                     }
                 }
+            }
+            List<int> keyPositionList = GetKeyPositionList(keyPosition);
+            var enumerable = keyPositionList.GroupBy(i => i).Where(g => g.Count() > 1).Select(g => g.Key);
+            if (enumerable.Count() > 0) {
+                errorMsg += $"存在重复关键位：{string.Join(", ", enumerable)}";
             }
             return errorMsg;
         }

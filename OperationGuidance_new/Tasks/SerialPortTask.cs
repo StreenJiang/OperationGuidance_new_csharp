@@ -16,7 +16,7 @@ namespace OperationGuidance_new.Tasks {
         private StopBits _stopBits;
         private DataTypes _dataType;
         private SerialPortStream? serialPortStreamClient;
-        private DeviceTypeSerialPort _serialPort;
+        private DeviceTypeSerialPort _serialPortType;
         private Action<string>? _actionAfterDataReceived;
         #endregion
 
@@ -31,6 +31,7 @@ namespace OperationGuidance_new.Tasks {
         public int DataBits { get => _dataBits; set => _dataBits = value; }
         public StopBits StopBits { get => _stopBits; set => _stopBits = value; }
         public DataTypes DataType { get => _dataType; set => _dataType = value; }
+        public DeviceTypeSerialPort SerialPortType { get => _serialPortType; set => _serialPortType = value; }
         public string? Result { get; set; }
         public SerialPortStream? SerialPortStreamClient { get => serialPortStreamClient; }
         public Action<string>? ActionAfterDataReceived { get => _actionAfterDataReceived; set => _actionAfterDataReceived = value; }
@@ -46,7 +47,8 @@ namespace OperationGuidance_new.Tasks {
             _dataBits = dataBits;
             _stopBits = stopBits;
             _dataType = dataType;
-            _serialPort = serialPort;
+            _serialPortType = serialPort;
+            DeviceType = serialPort;
             Status = DISCONNECTED;
         }
         #endregion

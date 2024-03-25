@@ -9,6 +9,7 @@ namespace OperationGuidance_new.Configs {
         private bool _isUserInfoPanel = false;
         private List<MenuConfig> _children;
         private EventHandler? _click;
+        private bool _openFirst = false;
 
         public int Id { get => _id; set => _id = value; }
         public string Name { get => _name; set => _name = value; }
@@ -19,6 +20,7 @@ namespace OperationGuidance_new.Configs {
         public bool IsUserInfoPanel { get => _isUserInfoPanel; set => _isUserInfoPanel = value; }
         public List<MenuConfig> Children { get => _children; set => _children = value; }
         public EventHandler? Click { get => _click; set => _click = value; }
+        public bool OpenFirst { get => _openFirst; set => _openFirst = value; }
 
         public event EventHandler OnClick { add => _click += value; remove => _click -= value; }
 

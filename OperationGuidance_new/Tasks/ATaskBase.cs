@@ -1,9 +1,11 @@
+using OperationGuidance_new.Constants;
+
 namespace OperationGuidance_new.Tasks {
     public abstract class ATaskBase {
         #region Readonly fields
         protected string? _device_name = "";
         protected readonly int LoopingInterval = 25;
-        protected readonly int AuotReconnectingTrialDelay = 1000; // 断线重连尝试间隔
+        public readonly int AuotReconnectingTrialDelay = 1000; // 断线重连尝试间隔
         public static readonly int DISCONNECTED = 0;
         public static readonly int CONNECTING = 1;
         public static readonly int CONNECTED = 2;
@@ -11,6 +13,7 @@ namespace OperationGuidance_new.Tasks {
         
         #region Properties
         public string Name => _device_name ?? "";
+        public DeviceTypeBase DeviceType { get; set; } = new(-1, "未设置");
         public abstract bool Connected { get; }
         public int Status { get; set; }
         public bool CloseConnectionManually { get; set; } = false;

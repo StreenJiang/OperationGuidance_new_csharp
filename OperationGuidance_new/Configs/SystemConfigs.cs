@@ -32,6 +32,7 @@ namespace OperationGuidance_new.Configs {
                 Name = "工作台", 
                 Icon = Properties.Resources.workplace, 
                 ViewType = typeof(WorkplaceMissionView), 
+                OpenFirst = true,
             },
             new() {
                 Id = 300, 

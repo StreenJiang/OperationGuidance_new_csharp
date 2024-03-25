@@ -124,7 +124,7 @@ namespace CustomLibrary.DateTimePickers {
             int iconSide = Height - _vPadding * 2;
             _textAreaRect = new(_hPadding, _vPadding, Width - _hPadding *2 - _borderThickness * 2 - iconSide * 2, Height - _vPadding *2 - _borderThickness * 2);
             _iconAreaRect = new(Width - Height, 0, Height, Height);
-            _iconShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_icon, iconSide, iconSide);
+            _iconShowing = WidgetUtils.ResizeImage(_icon, iconSide, iconSide);
             Invalidate();
         }
         protected override void OnMouseMove(MouseEventArgs e) {

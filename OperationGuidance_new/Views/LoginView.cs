@@ -28,7 +28,7 @@ namespace OperationGuidance_new.Views {
         public LoginView(Size size, Image back, Action<Size> afterLogin, Size mainFormSize) {
             Size = size;
             _back = back;
-            _backShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_back, size);
+            _backShowing = WidgetUtils.ResizeImage(_back, size);
             _afterLogin = afterLogin;
             _mainFormSize = mainFormSize;
             ShowLoginForm();

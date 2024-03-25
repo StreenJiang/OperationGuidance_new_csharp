@@ -93,7 +93,7 @@ namespace CustomLibrary.Utils {
         /// <param name="newWidth">New width of new Image.</param>
         /// <param name="newHeight">New height of new Image.</param>
         /// <returns>New image witdh new size.</returns>        
-        public static Image ResizeImageWithoutLosingQuality(Image image, int newWidth, int newHeight) {
+        public static Image ResizeImage(Image image, int newWidth, int newHeight) {
             lock(_imageLocker) {
                 if (newWidth <= 0 || newHeight <= 0) {
                     return image;
@@ -103,15 +103,17 @@ namespace CustomLibrary.Utils {
                     g.CompositingMode = CompositingMode.SourceCopy;
                     g.CompositingQuality = CompositingQuality.HighQuality;
                     g.SmoothingMode = SmoothingMode.HighQuality;
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    // g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    // g.InterpolationMode = InterpolationMode.Bilinear; // 用这个效率高很多，并且图片质量也不错
+                    g.InterpolationMode = InterpolationMode.NearestNeighbor; // 用这个效率更高，只是质量差些
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
                 }
                 return resultImage;
             }
         }
-        public static Image ResizeImageWithoutLosingQuality(Image image, Size newSize) {
-            return ResizeImageWithoutLosingQuality(image, newSize.Width, newSize.Height);
+        public static Image ResizeImage(Image image, Size newSize) {
+            return ResizeImage(image, newSize.Width, newSize.Height);
         }
 
         /// <summary>
@@ -146,7 +148,7 @@ namespace CustomLibrary.Utils {
             if (newSize.Height <= 0) {
                 newSize.Height = 1;
             }
-            return WidgetUtils.ResizeImageWithoutLosingQuality(image, newSize);
+            return WidgetUtils.ResizeImage(image, newSize);
         }
 
         /// <summary>

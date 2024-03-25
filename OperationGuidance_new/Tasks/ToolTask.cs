@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using CustomLibrary.Utils;
@@ -13,17 +12,18 @@ namespace OperationGuidance_new.Tasks {
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTypeTool _tool;
+        private DeviceTypeTool _toolType;
         private int HeartBeatCounter = 0;
         private Action<TighteningData>? _actionAfterAnalysis;
         #endregion
 
         #region Properties
         // Override properties
-        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
+        public override bool Connected => socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip) && !CloseConnectionManually;
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
+        public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public Queue<string> Commands { get; set; }
         public string? Result { get; set; }
         public bool Locked { get; set; }
@@ -35,7 +35,8 @@ namespace OperationGuidance_new.Tasks {
             _device_name = name;
             _ip = ip;
             _port = port;
-            _tool = tool;
+            _toolType = tool;
+            DeviceType = tool;
             Commands = new();
             Locked = false;
             Status = DISCONNECTED;
@@ -54,11 +55,11 @@ namespace OperationGuidance_new.Tasks {
                             // Send command to controller
                             socketClient.Send(Encoding.ASCII.GetBytes(command));
                         } else {
-                            if (_tool.COMMAND_HEART_ASCII != null &&HeartBeatCounter >= 5000) {
+                            if (_toolType.COMMAND_HEART_ASCII != null &&HeartBeatCounter >= 5000) {
                                 HeartBeatCounter = 0;
                                 System.Console.WriteLine("Send heart beat command to keep alive...");
                                 // Send heart beat command to controller
-                                Commands.Enqueue(_tool.COMMAND_HEART_ASCII.GetMessage());
+                                Commands.Enqueue(_toolType.COMMAND_HEART_ASCII.GetMessage());
                             }
                         }
                         // Looping interval
@@ -127,7 +128,7 @@ namespace OperationGuidance_new.Tasks {
                 byte[] msgBytes = new byte[1024 * 1024];
                 int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                 string resultTemp = Encoding.ASCII.GetString(msgBytes);
-                result = _tool.AnalyzeData(resultTemp, _actionAfterAnalysis);
+                result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis);
             }
             // 这个方法封装起来就是为了让 result awaitable
             return result;
@@ -145,7 +146,7 @@ namespace OperationGuidance_new.Tasks {
             bool enableMsgSuccess = false;
 
             // 1. check ping
-            pingSuccess = PingHost(_ip);
+            pingSuccess = MainUtils.PingHost(_ip);
             if (pingSuccess) {
                 // 2. check socket
                 try {
@@ -155,8 +156,8 @@ namespace OperationGuidance_new.Tasks {
                     connectSuccess = true;
 
                     // 3. send connecting message
-                    if (connectSuccess && _tool.COMMAND_CONNECT_ASCII != null) {
-                        string connectCommand = _tool.COMMAND_CONNECT_ASCII.GetMessage();
+                    if (connectSuccess && _toolType.COMMAND_CONNECT_ASCII != null) {
+                        string connectCommand = _toolType.COMMAND_CONNECT_ASCII.GetMessage();
                         socketClient.Send(Encoding.ASCII.GetBytes(connectCommand));
                         byte[] msgBytes = new byte[1024 * 1024];
                         int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
@@ -165,8 +166,8 @@ namespace OperationGuidance_new.Tasks {
                         sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
 
                         // 4. send data receving enable message
-                        if (sendConnectMsgSuceess && _tool.COMMAND_DATA_ASCII != null) {
-                            string enableMsgCommand = _tool.COMMAND_DATA_ASCII.GetMessage();
+                        if (sendConnectMsgSuceess && _toolType.COMMAND_DATA_ASCII != null) {
+                            string enableMsgCommand = _toolType.COMMAND_DATA_ASCII.GetMessage();
                             socketClient.Send(Encoding.ASCII.GetBytes(enableMsgCommand));
                             byte[] msgBytes2 = new byte[1024 * 1024];
                             int msgLen2 = socketClient.Receive(new ArraySegment<byte>(msgBytes2), SocketFlags.None);
@@ -186,22 +187,12 @@ namespace OperationGuidance_new.Tasks {
             } else {
                 System.Console.WriteLine($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
             }
-            return pingSuccess && connectSuccess && sendConnectMsgSuceess && enableMsgSuccess;
-        }
-        private bool PingHost(string namrOrAddress) {
-            Ping? pinger = null;
-            try {
-                pinger = new();
-                PingReply pingReply = pinger.Send(namrOrAddress);
-                return pingReply.Status == IPStatus.Success;
-            } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error: {pe}");
-                return false;
-            } finally {
-                if (pinger != null) {
-                    pinger.Dispose();
+            if (!(pingSuccess && connectSuccess && sendConnectMsgSuceess && enableMsgSuccess)) {
+                if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
+                    socketClient.Close();
                 }
             }
+            return pingSuccess && connectSuccess && sendConnectMsgSuceess && enableMsgSuccess;
         }
         public void SendCommand(string command) {
             Commands.Enqueue(command);
@@ -229,8 +220,8 @@ namespace OperationGuidance_new.Tasks {
         public void SendPSet(int pSetNumber) {
             if (pSetNumber <= 0 || pSetNumber >= 999) {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
-            } else if (_tool.COMMAND_PSET_ASCII != null) {
-                string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
+            } else if (_toolType.COMMAND_PSET_ASCII != null) {
+                string command = _toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
                 System.Console.WriteLine($"Send pset command: {command}");
                 SendCommand(command);
             }
@@ -238,32 +229,32 @@ namespace OperationGuidance_new.Tasks {
         public async Task<bool> SendPSetAsync(int pSetNumber) {
             if (pSetNumber <= 0 || pSetNumber >= 999) {
                 WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
-            } else if (_tool.COMMAND_PSET_ASCII != null) {
-                string command = _tool.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
+            } else if (_toolType.COMMAND_PSET_ASCII != null) {
+                string command = _toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
                 System.Console.WriteLine($"Send pset command: {command}");
                 string? result = await SendCommandAsync(command);
                 System.Console.WriteLine($"Send pset command - result: {result}");
-                return result != null && _tool.GetMidFromResult(result) == "0005";
+                return result != null && _toolType.GetMidFromResult(result) == "0005";
             }
             return false;
         }
         public async void SendLock() {
-            if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
-                string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
+            if (_toolType.COMMAND_LOCK_ASCII != null && !Locked) {
+                string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 System.Console.WriteLine($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
-                if (result != null && _tool.GetMidFromResult(result) == "0005") {
+                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
                     Locked = true;
                 }
             }
         }
         public async Task<bool> SendLockAsync() {
-            if (_tool.COMMAND_LOCK_ASCII != null && !Locked) {
-                string command = _tool.COMMAND_LOCK_ASCII.GetMessage();
+            if (_toolType.COMMAND_LOCK_ASCII != null && !Locked) {
+                string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 System.Console.WriteLine($"Send lock command: {command}");
                 string? result = await SendCommandAsync(command);
                 System.Console.WriteLine($"Send lock command - result: {result}");
-                if (result != null && _tool.GetMidFromResult(result) == "0005") {
+                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
                     Locked = true;
                     return true;
                 }
@@ -272,22 +263,22 @@ namespace OperationGuidance_new.Tasks {
             return false;
         }
         public async void SendUnlock() {
-            if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
-                string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
+            if (_toolType.COMMAND_UNLOCK_ASCII != null && Locked) {
+                string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 System.Console.WriteLine($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
-                if (result != null && _tool.GetMidFromResult(result) == "0005") {
+                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
                     Locked = false;
                 }
             }
         }
         public async Task<bool> SendUnlockAsync() {
-            if (_tool.COMMAND_UNLOCK_ASCII != null && Locked) {
-                string command = _tool.COMMAND_UNLOCK_ASCII.GetMessage();
+            if (_toolType.COMMAND_UNLOCK_ASCII != null && Locked) {
+                string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 System.Console.WriteLine($"Send unlock command: {command}");
                 string? result = await SendCommandAsync(command);
                 System.Console.WriteLine($"Send unlock command - result: {result}");
-                if (result != null && _tool.GetMidFromResult(result) == "0005") {
+                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
                     Locked = false;
                     return true;
                 }

@@ -40,7 +40,7 @@ namespace CustomLibrary.Buttons {
         protected override void ResizeIconImage() {
             if (this.Icon != null) {
                 int newImageSide = CalcNewImageSide();
-                this.ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(this.Icon, newImageSide, newImageSide);
+                this.ImageShowing = WidgetUtils.ResizeImage(this.Icon, newImageSide, newImageSide);
                 // Recalculate image location
                 this.ImageX = (this.Width - newImageSide) / 2;
                 if (!this.OnlyIcon) {

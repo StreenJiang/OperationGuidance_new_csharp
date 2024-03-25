@@ -210,10 +210,8 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<DeviceCommunicationVO> QueryList() {
-            QueryDeviceCommunicationListRsp rsp = apis.QueryDeviceCommunicationList(new() {
-                UserId = SystemUtils.LoggedUserId,
-            });
-            _dataDTOList = rsp.DeviceCommunicationDTOs;
+            QueryDeviceCommunicationListRsp rsp = apis.QueryDeviceCommunicationList(new());
+            _dataDTOList = rsp.DeviceCommunicationDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
             List<DeviceCommunicationVO> vos = new();
             CommonUtils.ObjectConverter<DeviceCommunicationDTO, DeviceCommunicationVO>(_dataDTOList, vos);
             // TODO: can use BackgroundWorker to do this

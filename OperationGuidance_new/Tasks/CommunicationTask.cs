@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
@@ -11,15 +10,16 @@ namespace OperationGuidance_new.Tasks {
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTypeCommunication _comminucation;
+        private DeviceTypeCommunication _comminucationType;
         #endregion
 
         #region Properties
         // Override properties
-        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
+        public override bool Connected => socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip) && !CloseConnectionManually;
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
+        public DeviceTypeCommunication ComminucationType { get => _comminucationType; set => _comminucationType = value; }
         public Queue<string> Commands { get; set; }
         public string? Result { get; set; }
         public bool Locked { get; set; }
@@ -30,7 +30,8 @@ namespace OperationGuidance_new.Tasks {
             _device_name = name;
             _ip = ip;
             _port = port;
-            _comminucation = communication;
+            _comminucationType = communication;
+            DeviceType = communication;
             Commands = new();
             Locked = false;
             Status = DISCONNECTED;
@@ -112,7 +113,7 @@ namespace OperationGuidance_new.Tasks {
             bool connectSuccess = false;
 
             // 1. check ping
-            pingSuccess = PingHost(_ip);
+            pingSuccess = MainUtils.PingHost(_ip);
             if (pingSuccess) {
                 // 2. check socket
                 try {
@@ -128,21 +129,6 @@ namespace OperationGuidance_new.Tasks {
                 System.Console.WriteLine($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
-        }
-        private bool PingHost(string namrOrAddress) {
-            Ping? pinger = null;
-            try {
-                pinger = new();
-                PingReply pingReply = pinger.Send(namrOrAddress);
-                return pingReply.Status == IPStatus.Success;
-            } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error: {pe}");
-                return false;
-            } finally {
-                if (pinger != null) {
-                    pinger.Dispose();
-                }
-            }
         }
         public void SendCommand(string command) {
             Commands.Enqueue(command);

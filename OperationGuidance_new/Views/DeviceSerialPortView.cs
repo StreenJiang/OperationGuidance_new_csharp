@@ -310,10 +310,8 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<DeviceSerialPortVO> QueryList() {
-            QueryDeviceSerialPortListRsp rsp = apis.QueryDeviceSerialPortList(new() {
-                UserId = SystemUtils.LoggedUserId,
-            });
-            _dataDTOList = rsp.DeviceSerialPortDTOs;
+            QueryDeviceSerialPortListRsp rsp = apis.QueryDeviceSerialPortList(new());
+            _dataDTOList = rsp.DeviceSerialPortDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
             List<DeviceSerialPortVO> vos = new();
             CommonUtils.ObjectConverter<DeviceSerialPortDTO, DeviceSerialPortVO>(_dataDTOList, vos);
             // TODO: can use BackgroundWorker to do this

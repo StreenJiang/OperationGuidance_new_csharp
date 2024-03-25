@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Views {
 
         protected override void ResizeIconImage() {
             if (Icon != null) {
-                ImageShowing = WidgetUtils.ResizeImageWithoutLosingQuality(Icon, new(Height, Height));
+                ImageShowing = WidgetUtils.ResizeImage(Icon, new(Height, Height));
                 // Recalculate image location
                 ImageX = 0;
                 ImageY = 0;

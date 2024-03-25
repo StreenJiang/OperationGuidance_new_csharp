@@ -148,21 +148,26 @@ namespace OperationGuidance_service.Controllers {
                 succeed = false;
                 failedReason = "账户名不存在";
             } else {
-                UserAccountInfo user = users.Single(u => u.account == req.Account);
-                userDTO = new();
-                CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(user, userDTO);
-                
-                string? password = req.Password;
-                if (user.password != null && password != null) {
-                    string md5_password = SystemUtils.ToMD5String(password);
-                    if (user.password != md5_password && user.password.ToLower() != md5_password.ToLower() && user.password != password) {
+                UserAccountInfo? user = users.SingleOrDefault(u => u.account == req.Account);
+                if (user == null) {
+                    succeed = false;
+                    failedReason = "账户名不存在";
+                } else {
+                    userDTO = new();
+                    CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(user, userDTO);
+                    
+                    string? password = req.Password;
+                    if (user.password != null && password != null) {
+                        string md5_password = SystemUtils.ToMD5String(password);
+                        if (user.password != md5_password && user.password.ToLower() != md5_password.ToLower() && user.password != password) {
+                            succeed = false;
+                            failedReason = "密码错误";
+                        }
+                    } else if (string.IsNullOrEmpty(user.password) && !string.IsNullOrEmpty(password) 
+                        || !string.IsNullOrEmpty(user.password) && string.IsNullOrEmpty(password)) {
                         succeed = false;
                         failedReason = "密码错误";
                     }
-                } else if (string.IsNullOrEmpty(user.password) && !string.IsNullOrEmpty(password) 
-                    || !string.IsNullOrEmpty(user.password) && string.IsNullOrEmpty(password)) {
-                    succeed = false;
-                    failedReason = "密码错误";
                 }
             }
             return new() {
@@ -582,7 +587,12 @@ namespace OperationGuidance_service.Controllers {
         #region 力臂相关
         // 查询力臂列表
         public QueryDeviceArmListRsp QueryDeviceArmList(QueryDeviceArmListReq req) {
-            List<DeviceArm> deviceCategories = _deviceArmService.QueryListWithoutUserId();
+            List<DeviceArm> deviceCategories;
+            if (!req.IncludingDeleted) {
+                deviceCategories = _deviceArmService.QueryListWithoutUserId();
+            } else {
+                deviceCategories = _deviceArmService.FindBySql($"select * from {_deviceArmService.TableName}", null);
+            }
             List<DeviceArmDTO> deviceArmDTOs = new();
             CommonUtils.ObjectConverter<DeviceArm, DeviceArmDTO>(deviceCategories, deviceArmDTOs);
 
@@ -620,7 +630,12 @@ namespace OperationGuidance_service.Controllers {
         #region 工具相关
         // 查询工具列表
         public QueryDeviceToolListRsp QueryDeviceToolList(QueryDeviceToolListReq req) {
-            List<DeviceTool> deviceCategories = _deviceToolService.QueryListWithoutUserId();
+            List<DeviceTool> deviceCategories;
+            if (!req.IncludingDeleted) {
+                deviceCategories = _deviceToolService.QueryListWithoutUserId();
+            } else {
+                deviceCategories = _deviceToolService.FindBySql($"select * from {_deviceToolService.TableName}", null);
+            }
             List<DeviceToolDTO> deviceToolDTOs = new();
             CommonUtils.ObjectConverter<DeviceTool, DeviceToolDTO>(deviceCategories, deviceToolDTOs);
 
@@ -658,7 +673,12 @@ namespace OperationGuidance_service.Controllers {
         #region 串口设备相关
         // 查询串口设备列表
         public QueryDeviceSerialPortListRsp QueryDeviceSerialPortList(QueryDeviceSerialPortListReq req) {
-            List<DeviceSerialPort> deviceCategories = _deviceSerialPortService.QueryListWithoutUserId();
+            List<DeviceSerialPort> deviceCategories;
+            if (!req.IncludingDeleted) {
+                deviceCategories = _deviceSerialPortService.QueryListWithoutUserId();
+            } else {
+                deviceCategories = _deviceSerialPortService.FindBySql($"select * from {_deviceSerialPortService.TableName}", null);
+            }
             List<DeviceSerialPortDTO> deviceSerialPortDTOs = new();
             CommonUtils.ObjectConverter<DeviceSerialPort, DeviceSerialPortDTO>(deviceCategories, deviceSerialPortDTOs);
 
@@ -696,7 +716,12 @@ namespace OperationGuidance_service.Controllers {
         #region 通讯设备相关
         // 查询通讯设备列表
         public QueryDeviceCommunicationListRsp QueryDeviceCommunicationList(QueryDeviceCommunicationListReq req) {
-            List<DeviceCommunication> deviceCategories = _deviceCommunicationService.QueryListWithoutUserId();
+            List<DeviceCommunication> deviceCategories;
+            if (!req.IncludingDeleted) {
+                deviceCategories = _deviceCommunicationService.QueryListWithoutUserId();
+            } else {
+                deviceCategories = _deviceCommunicationService.FindBySql($"select * from {_deviceCommunicationService.TableName}", null);
+            }
             List<DeviceCommunicationDTO> deviceCommunicationDTOs = new();
             CommonUtils.ObjectConverter<DeviceCommunication, DeviceCommunicationDTO>(deviceCategories, deviceCommunicationDTOs);
 

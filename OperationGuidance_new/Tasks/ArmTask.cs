@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
@@ -13,21 +12,23 @@ namespace OperationGuidance_new.Tasks {
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTypeArm _arm;
+        private DeviceTypeArm _armType;
         private Coordinates3D? _currentCoordinates;
         private Action<Coordinates3D> _actionAfterReceiving;
         #endregion
 
         #region Properties
         // Override properties
-        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
+        public override bool Connected => socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip) && !CloseConnectionManually;
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
+        public DeviceTypeArm ArmType { get => _armType; set => _armType = value; }
         public Queue<string> Commands { get; set; } = new();
         public string? Result { get; set; }
         public bool RetrieveResult { get; set; } = false;
         public Action<Coordinates3D> ActionAfterReceiving { get => _actionAfterReceiving; set => _actionAfterReceiving = value; }
+
         public event Action<Coordinates3D> OnActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
         #endregion
 
@@ -36,7 +37,8 @@ namespace OperationGuidance_new.Tasks {
             _device_name = name;
             _ip = ip;
             _port = port;
-            _arm = arm;
+            _armType = arm;
+            DeviceType = arm;
             _actionAfterReceiving += c => {};
             Status = DISCONNECTED;
         }
@@ -118,7 +120,7 @@ namespace OperationGuidance_new.Tasks {
             bool connectSuccess = false;
 
             // 1. check ping
-            pingSuccess = PingHost(_ip);
+            pingSuccess = MainUtils.PingHost(_ip);
             if (pingSuccess) {
                 // 2. check socket
                 try {
@@ -134,21 +136,6 @@ namespace OperationGuidance_new.Tasks {
                 System.Console.WriteLine($"Failed to ping ARM[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
-        }
-        private bool PingHost(string namrOrAddress) {
-            Ping? pinger = null;
-            try {
-                pinger = new();
-                PingReply pingReply = pinger.Send(namrOrAddress);
-                return pingReply.Status == IPStatus.Success;
-            } catch (PingException pe) {
-                System.Console.WriteLine($"Ping error while pinging to ARM[{_device_name} - {_ip}: {_port}]: {pe}");
-                return false;
-            } finally {
-                if (pinger != null) {
-                    pinger.Dispose();
-                }
-            }
         }
         public void SendCommand(string command) {
             Commands.Enqueue(command);
@@ -184,16 +171,16 @@ namespace OperationGuidance_new.Tasks {
             Coordinates3D? coordinates = null;
             if (Connected) {
                 coordinates = new();
-                string? x = await SendCommandAsync(_arm.COMMAND_READ_X_HEX.GetMessage());
+                string? x = await SendCommandAsync(_armType.COMMAND_READ_X_HEX.GetMessage());
                 if (x != null) {
                     coordinates.X = ParseResult(x);
                 }
-                string? y = await SendCommandAsync(_arm.COMMAND_READ_Y_HEX.GetMessage());
+                string? y = await SendCommandAsync(_armType.COMMAND_READ_Y_HEX.GetMessage());
                 if (y != null) {
                     coordinates.Y = ParseResult(y);
                 }
-                if (_arm.COMMAND_READ_Z_HEX != null) {
-                    string? z = await SendCommandAsync(_arm.COMMAND_READ_Z_HEX.GetMessage());
+                if (_armType.COMMAND_READ_Z_HEX != null) {
+                    string? z = await SendCommandAsync(_armType.COMMAND_READ_Z_HEX.GetMessage());
                     if (z != null) {
                         coordinates.Z = ParseResult(z);
                     }

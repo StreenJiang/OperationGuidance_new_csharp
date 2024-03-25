@@ -626,8 +626,8 @@ namespace CustomLibrary.ComboBoxes {
             private void Resizing(object? s, EventArgs e) {
                 // Resize and relocate icon
                 int iconSide = (int) (Height * .5);
-                _iconCollapseShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_iconCollapse, iconSide, iconSide);
-                _iconExpandShowing = WidgetUtils.ResizeImageWithoutLosingQuality(_iconExpand, iconSide, iconSide);
+                _iconCollapseShowing = WidgetUtils.ResizeImage(_iconCollapse, iconSide, iconSide);
+                _iconExpandShowing = WidgetUtils.ResizeImage(_iconExpand, iconSide, iconSide);
                 SetIcon();
                 _iconPosition = new(Width - (int) (iconSide + (Height / 3.5)), (Height - iconSide) / 2);
             }
