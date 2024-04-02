@@ -2,5 +2,7 @@
 
 namespace OperationGuidance_service.Models.Requests {
     public partial class QueryProductMissionsReq: HttpRequest {
+        public int MacsId { get; set; }
+        public QueryProductMissionsReq(int macsId) => MacsId = macsId;
     }
 }

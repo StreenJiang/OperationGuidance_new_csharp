@@ -65,10 +65,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<ProductMissionDTO>? blockClickAction, bool toggleBlock = false) {
-            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- 111111111111111111111111 start");
-            _currentToggledMission = null;
+        public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
             if (missionDTOs.Count > 0) {
                 _contentPanel.BigButtonPanel.Hide();
                 _contentPanel.MissionsTable.Show();
@@ -117,7 +114,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                 }
                             }
                             if (blockClickAction != null) {
-                                blockClickAction(block.Entity);
+                                blockClickAction(block.Entity.id);
                             }
                         };
                     }
@@ -131,7 +128,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _contentPanel.BigButtonPanel.Show();
             }
             _contentPanel.ResizeCells();
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- 1111111111111111111111111 end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

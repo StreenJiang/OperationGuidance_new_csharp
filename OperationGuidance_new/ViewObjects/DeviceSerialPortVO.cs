@@ -82,5 +82,6 @@ namespace OperationGuidance_new.ViewObjects {
         }
         [GridColumn("无效字符")]
         public string? invalid_char { get; set; }
+        public int macs_id { get; set; }
     }
 }

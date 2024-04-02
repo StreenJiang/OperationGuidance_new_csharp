@@ -21,33 +21,52 @@ using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView: CustomContentPanel {
-        private ProductMissionDTO _missionDTO;
+        private readonly OperationGuidanceApis apis;
+        private ProductMissionDTO? _missionDTO;
         private MissionEditionPage? _editionPage;
 
-        public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
+        public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage? EditionPage { get => _editionPage; set => _editionPage = value; }
 
         public MissionEditionView() {
+            apis = SystemUtils.GetApis();
             CreateANewOne();
         }
 
         public MissionEditionPage CreateANewOne() {
-            _missionDTO = new() {
-                name = "新建任务",
-                ProductSides = new(),
-            };
-            return OpenEditionPage(_missionDTO);
+            return OpenEditionPage(null);
         }
 
-        public MissionEditionPage OpenEditionPage(ProductMissionDTO missionDTO) {
+        public MissionEditionPage OpenEditionPage(int? missionId) {
+            if (missionId == null) {
+                _missionDTO = new() {
+                    name = "新建任务",
+                    ProductSides = new() {
+                        new() {
+                            name = "产品面1",
+                        },
+                    },
+                };
+            } else {
+                _missionDTO = apis.QueryProductMissionDetail(new(missionId.Value)).ProductMissionDTO;
+                if (_missionDTO == null) {
+                    _missionDTO = new() {
+                        name = "新建任务",
+                        ProductSides = new() {
+                            new() {
+                                name = "产品面1",
+                            },
+                        },
+                    };
+                }
+            }
             // Clear all child controls
             Controls.Clear();
             // Create a new page according to missionbody and show
             if (_editionPage != null) {
                 _editionPage.Dispose();
             }
-            _missionDTO = missionDTO;
-            _editionPage = new(this, missionDTO);
+            _editionPage = new(this, _missionDTO);
             _editionPage.ResizeChildren();
             return _editionPage;
         }
@@ -212,7 +231,7 @@ namespace OperationGuidance_new.Views {
                     BlockHoverUp = true,
                 };
                 _editDetail.Click += (s, e) => {
-                    List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new() { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
+                    List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
                     _detialPopUpForm = new(_missionDTO, barCodeMatchingRuleDTOs) {
                         Title = "编辑任务详情",
                     };
@@ -232,6 +251,12 @@ namespace OperationGuidance_new.Views {
                             _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
                         }
+                        string passwordNeedTime = _detialPopUpForm.PasswordNeedTime.GetTextBox(0).Box.Text;
+                        if (string.IsNullOrEmpty(passwordNeedTime)) {
+                            check = false;
+                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
+                        }
 
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
@@ -239,6 +264,7 @@ namespace OperationGuidance_new.Views {
                             _missionName.SetValue(0, missionName);
                             _missionDTO.name = missionName;
                             _missionDTO.max_ng_num = int.Parse(maxNGNum);
+                            _missionDTO.password_need_time = int.Parse(passwordNeedTime);
                             _detialPopUpForm.Hide();
                         }
                     };
@@ -264,6 +290,7 @@ namespace OperationGuidance_new.Views {
                         _missionDTO = rsp.ProductMissionDTO;
                         // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                         foreach (SideButton sideBtn in _sideButtons) {
+                            System.Console.WriteLine($"sideBtn.ProductImageFileNew.Image: {sideBtn.ProductImageFileNew.Image}");
                             MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
                         }
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1163,6 +1190,7 @@ namespace OperationGuidance_new.Views {
             private TableLayoutPanel _tablePanel;
             private CustomTextBoxGroup _missionName;
             private CustomTextBoxGroup _maxNGNum;
+            private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
             private CustomTextBoxGroup _partsBarCodeNum;
 
@@ -1170,6 +1198,7 @@ namespace OperationGuidance_new.Views {
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public CustomTextBoxGroup MissionName { get => _missionName; set => _missionName = value; }
             public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
+            public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
 
@@ -1189,7 +1218,13 @@ namespace OperationGuidance_new.Views {
                     Parent = _tablePanel,
                     Ratio = 6.75,
                     NameAlignment = HorizontalAlignment.Right,
-                    NumberOnly = true,
+                    PositiveIntOnly = true,
+                };
+                _passwordNeedTime = new("第几次起需密码") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    PositiveIntOnly = true,
                 };
                 _productsBarCodeNum = new("产品条码") {
                     Parent = _tablePanel,
@@ -1207,6 +1242,7 @@ namespace OperationGuidance_new.Views {
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
                 _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
+                _passwordNeedTime.SetValue(0, missionDTO.password_need_time + "");
 
                 int productsBarCodeNum = 0;
                 int partsBarCodeNum = 0;
@@ -1236,7 +1272,7 @@ namespace OperationGuidance_new.Views {
                 int subTitleMargin = subTitleHeight / 5;
                 int tableHeight = 0;
                 int previousRowIndex = -1;
-                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .65);
+                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .825);
                 int tableWidth = cntentWidth - contentPadding.Size.Width;
                 int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
                 foreach (Control control in _tablePanel.Controls) {

@@ -4,6 +4,19 @@ using System.Reflection;
 
 namespace OperationGuidance_service.Utils {
     public static class CommonUtils {
+        public static string GetBaseDirectory() {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath, "");
+            }
+            string visualStudioDebugPath2 = "\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath2)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath2, "");
+            }
+            return baseDirectory;
+        }
+
         public static Point PointStringToPoint(string? pointString) {
             if (pointString != null) {
                 string[] pointStringArr = pointString.Replace("{X=", "").Replace("Y=", "").Replace("}", "").Split(",");

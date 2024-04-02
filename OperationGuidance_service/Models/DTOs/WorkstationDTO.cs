@@ -1,4 +1,5 @@
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class WorkstationDTO: ADTOBase {
@@ -32,5 +33,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? communication_ip { get; set; }
         public int? communication_port { get; set; }
         public int? enabled { get; set; }
+        public int macs_id { get; set; } = SystemUtils.MacAddressesDTO.id;
     }
 }

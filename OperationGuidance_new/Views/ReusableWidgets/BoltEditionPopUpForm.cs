@@ -97,7 +97,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 8.25,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            QueryWorkstationListRsp queryWorkstationListRsp = apis.QueryWorkstationList(new());
+            QueryWorkstationListRsp queryWorkstationListRsp = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id));
             _workstationsDTOs = queryWorkstationListRsp.WorkstationsDTOs;
             foreach (WorkstationDTO dto in _workstationsDTOs) {
                 _workstation.AddItem(CommonUtils.CannotBeNull(dto.name), dto);

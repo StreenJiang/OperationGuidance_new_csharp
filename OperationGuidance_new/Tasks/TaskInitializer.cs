@@ -24,7 +24,7 @@ namespace OperationGuidance_new.Tasks {
             Task.Run(async () => {
                 while (true) {
                     // Initialize tool tasks
-                    List<DeviceToolDTO> toolDTOs = apis.QueryDeviceToolList(new() { IncludingDeleted = true }).DeviceToolDTOs;
+                    List<DeviceToolDTO> toolDTOs = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceToolDTOs;
                     // Remove tools which had been deleted
                     toolDTOs.ForEach(dto => {
                         if (MainUtils.ToolTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
@@ -72,7 +72,7 @@ namespace OperationGuidance_new.Tasks {
                     });
 
                     // Initialize arm tasks
-                    List<DeviceArmDTO> armDTOs = apis.QueryDeviceArmList(new() { IncludingDeleted = true }).DeviceArmDTOs;
+                    List<DeviceArmDTO> armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs;
                     // Remove arms which had been deleted
                     armDTOs.ForEach(dto => {
                         if (MainUtils.ArmTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
@@ -119,7 +119,7 @@ namespace OperationGuidance_new.Tasks {
                     });
                     
                     // Initialize communication tasks
-                    List<DeviceCommunicationDTO> communicationDTOs = apis.QueryDeviceCommunicationList(new() { IncludingDeleted = true }).DeviceCommunicationDTOs;
+                    List<DeviceCommunicationDTO> communicationDTOs = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceCommunicationDTOs;
                     // Remove communications which had been deleted
                     communicationDTOs.ForEach(dto => {
                         if (MainUtils.CommunicationTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
@@ -166,7 +166,7 @@ namespace OperationGuidance_new.Tasks {
                     });
 
                     // Initialize serialPort tasks
-                    List<DeviceSerialPortDTO> serialPortDTOs = apis.QueryDeviceSerialPortList(new() { IncludingDeleted = true }).DeviceSerialPortDTOs;
+                    List<DeviceSerialPortDTO> serialPortDTOs = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceSerialPortDTOs;
                     // Remove serialPorts which had been deleted
                     serialPortDTOs.ForEach(dto => {
                         if (MainUtils.SerialPortTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {

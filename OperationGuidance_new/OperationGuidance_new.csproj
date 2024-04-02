@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>ico.ico</ApplicationIcon>
+    <ApplicationManifest>Properties\Manifest\manifest.xml</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

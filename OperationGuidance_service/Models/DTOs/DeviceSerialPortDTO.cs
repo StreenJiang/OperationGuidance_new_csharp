@@ -1,4 +1,5 @@
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class DeviceSerialPortDTO: ADTOBase {
@@ -13,5 +14,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public int stop_bit { get; set; }
         public int data_type { get; set; }
         public string? invalid_char { get; set; }
+        public int macs_id { get; set; } = SystemUtils.MacAddressesDTO.id;
     }
 }

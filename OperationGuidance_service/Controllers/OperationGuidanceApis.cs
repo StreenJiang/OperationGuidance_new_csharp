@@ -37,6 +37,8 @@ namespace OperationGuidance_service.Controllers {
         private BarCodeMatchingRuleService _barCodeMatchingRuleService;
         [Autowired]
         private MissionRecordService _missionRecordService;
+        [Autowired]
+        private MacAddressesService _macAddressesService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -191,106 +193,142 @@ namespace OperationGuidance_service.Controllers {
         }
         #endregion
 
+        #region Mac地址相关
+        public AddOrUpdateMacAddressesRsp AddOrUpdateMacAddresses(AddOrUpdateMacAddressesReq req) {
+            MacAddressesDTO macAddressesDTO = req.MacAddressesDTO;
+            MacAddresses macAddresses = new();
+            CommonUtils.ObjectConverter<MacAddressesDTO, MacAddresses>(macAddressesDTO, macAddresses);
+            MacAddresses? macAddressesNew = _macAddressesService.InsertOrUpdate(macAddresses);
+            if (macAddressesNew != null) {
+                macAddressesDTO.id = macAddressesNew.id;
+                return new() { MacAddressesDTO = macAddressesDTO };
+            }
+
+            return new();
+        }
+        public FindMacAddressesByMacsRsp FindMacAddressesByMacs(FindMacAddressesByMacsReq req) {
+            List<string> macs = req.Macs;
+            if (macs.Count > 0) {
+                string sql = $"select * from {_macAddressesService.TableName} where 1 = 1";
+                Dictionary<string, object> parameters = new();
+                sql += " and (";
+                for (int i = 0; i < macs.Count; i++) {
+                    string mac = macs[i];
+                    if (i > 0) {
+                        sql += " or ";
+                    }
+                    sql += $"macs like @mac{i}";
+                    parameters.Add($"mac{i}", $"%{mac}%");
+                }
+                sql += ") limit 1";
+
+                List<MacAddresses> macAddresses = _macAddressesService.FindBySql(sql, parameters);
+                if (macAddresses.Count > 0) {
+                    MacAddressesDTO macAddressesDTO = new();
+                    CommonUtils.ObjectConverter<MacAddresses, MacAddressesDTO>(macAddresses[0], macAddressesDTO);
+                    return new() { MacAddressesDTO = macAddressesDTO };
+                }
+            }
+
+            return new();
+        }
+        #endregion
+
         #region 产品任务相关
         // 查询所有未被删除的产品任务列表
         public QueryProductMissionsRsp QueryProductMissions(QueryProductMissionsReq req) {
-            // 先查询任务清单
-            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
-            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
+            List<ProductMission> missions;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            if (role != null && role != Roles.DEVELOPER) {
+                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
+                Dictionary<string, object> parameters = new();
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("macs_id", req.MacsId);
+                missions = _productMissionService.FindBySql(sql, parameters);
+            } else {
+                missions = _productMissionService.QueryListWithoutUserId();
+            }
+
             List<ProductMissionDTO> productMissionDTOs = new();
             CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
             return new() {
                 ProductMissionsDTOs = productMissionDTOs
             };
         }
-        public QueryProductMissionsWithCoverRsp QueryProductMissionsWithCover(QueryProductMissionsWithCoverReq req) {
+        public QueryProductMissionListRsp QueryProductMissionList(QueryProductMissionListReq req) {
             // 先查询任务清单
-            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
-            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- _productMissionService.QueryListWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-            List<ProductMissionDTO> productMissionDTOs = new();
-            CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
+            List<ProductMission> missions;
 
-            List<ProductSide> sides = new();
-            List<ProductBolt> bolts = new();
-            // 根据任务查询关联的其他表
-            List<int> missionIds = missions.Select(m => m.id).ToList();
-            if (missionIds.Count > 0) {
-                sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
-                System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-                List<int> boltIds = sides.Select(s => s.id).ToList();
-                if (boltIds.Count > 0) {
-                    bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
-                    System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-                }
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            if (role != null && role != Roles.DEVELOPER) {
+                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
+                Dictionary<string, object> parameters = new();
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("macs_id", req.MacsId);
+                missions = _productMissionService.FindBySql(sql, parameters);
+            } else {
+                missions = _productMissionService.QueryListWithoutUserId();
             }
 
-            // 根据任务找到第一个side，用该side的图片做封面
-            // TODO: 后面再优化这个
-            for (int i = 0 ; i < missions.Count ; i++) {
-                ProductMissionDTO missionDTO = productMissionDTOs[i];
-                List<ProductSideDTO> productSideDTOs = new();
-                CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides.Where(m => m.mission_id == missionDTO.id).ToList(), productSideDTOs);
-                // 根据当前任务的所有side遍历找到对应的所有bolts
-                foreach (ProductSideDTO sideDTO in productSideDTOs) {
-                    List<ProductBoltDTO> productBoltDTOs = new();
-                    CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts.Where(b => b.side_id == sideDTO.id).ToList(), productBoltDTOs);
-                    sideDTO.Bolts = productBoltDTOs;
+            // 根据任务清单查询对应的封面 side
+            if (missions.Count > 0) {
+                List<ProductMissionDTO> productMissionDTOs = new();
+                CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
+
+                string sidesSql = $"select * from {_productSideService.TableName} t where id in (select min(id) from {_productSideService.TableName} where mission_id in @mission_ids group by mission_id)";
+                if (req.IsEditing == null || !req.IsEditing.Value) {
+                    sidesSql += $" and image is not null and image <> '' and exists (select 1 from {_productBoltService.TableName} where side_id = t.id)";
                 }
-                // 设定当前mission的所有sides
-                productMissionDTOs[i].ProductSides = productSideDTOs;
+                sidesSql += " order by mission_id";
+                List<ProductSide> sides = _productSideService.FindBySql(sidesSql, new { @mission_ids = missions.Select(m => m.id).ToList()}).ToList();
+
+                // 将 sides 组装到对应的 mission 中
+                foreach (ProductMissionDTO missionDTO in productMissionDTOs.ToList()) {
+                    ProductSide? sideDTO = sides.Find(side => side.mission_id == missionDTO.id);
+                    if (sideDTO != null) {
+                        ProductSideDTO productSideDTO = new();
+                        CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sideDTO, productSideDTO);
+                        missionDTO.ProductSides = new() { productSideDTO };
+                    } else {
+                        productMissionDTOs.Remove(missionDTO);
+                    }
+                }
+
+                return new(productMissionDTOs);
             }
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-            return new() {
-                ProductMissionsDTOs = productMissionDTOs
-            };
+
+            return new(new());
         }
-        public QueryProductMissionsAndDetailsRsp QueryProductMissionsAndDetails(QueryProductMissionsAndDetailsReq req) {
-            // 先查询任务清单
-            double start = DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- start");
-            List<ProductMission> missions = _productMissionService.QueryListWithoutUserId();
-            List<ProductMissionDTO> productMissionDTOs = new();
-            CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
+        public QueryProductMissionDetailRsp QueryProductMissionDetail(QueryProductMissionDetailReq req) {
+            // 先查询任务
+            ProductMission? productMission = _productMissionService.FindById(req.MissionId);
+            if (productMission != null) {
+                ProductMissionDTO productMissionDTO = new();
+                CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(productMission, productMissionDTO);
 
-            List<ProductSide> sides = new();
-            List<ProductBolt> bolts = new();
-            // 根据任务查询关联的其他表
-            List<int> missionIds = missions.Select(m => m.id).ToList();
-            if (missionIds.Count > 0) {
-                sides = _productSideService.FindBySqlWithoutUserId($"mission_id in ({string.Join(",", missionIds)})").OrderBy(m => missionIds.IndexOf(m.id)).ToList();
-                System.Console.WriteLine($"-------------------------------------------------------------------------------- _productSideService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-                List<int> boltIds = sides.Select(s => s.id).ToList();
-                if (boltIds.Count > 0) {
-                    bolts = _productBoltService.FindBySqlWithoutUserId($"side_id in ({string.Join(",", boltIds)})").OrderBy(s => boltIds.IndexOf(s.id)).ToList();
-                    System.Console.WriteLine($"-------------------------------------------------------------------------------- _productBoltService.FindBySqlWithoutUserId: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
+                List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new { @mission_id = req.MissionId }).ToList();
+                List<ProductBolt> bolts = new();
+                if (sides.Count > 0) {
+                    bolts = _productBoltService.FindBySql($"select * from {_productBoltService.TableName} where side_id in @side_ids", new { @side_ids = sides.Select(s => s.id).ToList() }).ToList();
                 }
-            }
 
-            // 根据任务找到第一个side，用该side的图片做封面
-            // TODO: 后面再优化这个
-            for (int i = 0 ; i < missions.Count ; i++) {
-                ProductMissionDTO missionDTO = productMissionDTOs[i];
+                // 将 sides, bolts 组装到 mission 中
                 List<ProductSideDTO> productSideDTOs = new();
-                CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides.Where(m => m.mission_id == missionDTO.id).ToList(), productSideDTOs);
-                // 根据当前任务的所有side遍历找到对应的所有bolts
-                foreach (ProductSideDTO sideDTO in productSideDTOs) {
+                CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sides.Where(m => m.mission_id == productMissionDTO.id).ToList(), productSideDTOs);
+                productMissionDTO.ProductSides = productSideDTOs;
+                productSideDTOs.ForEach(sideDTO => {
                     List<ProductBoltDTO> productBoltDTOs = new();
-                    CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts.Where(b => b.side_id == sideDTO.id).ToList(), productBoltDTOs);
+                    CommonUtils.ObjectConverter<ProductBolt, ProductBoltDTO>(bolts.Where(m => m.side_id == sideDTO.id).ToList(), productBoltDTOs);
                     sideDTO.Bolts = productBoltDTOs;
-                }
-                // 设定当前mission的所有sides
-                productMissionDTOs[i].ProductSides = productSideDTOs;
-            }
+                });
 
-            System.Console.WriteLine($"-------------------------------------------------------------------------------- end: {DateTime.Now.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds - start}");
-            return new() {
-                ProductMissionsDTOs = productMissionDTOs
-            };
+                return new() {
+                    ProductMissionDTO = productMissionDTO
+                };
+            }
+            return new();
         }
         // 新增或修改任务
         public AddOrUpdateProductMissionRsp AddOrUpdateProductMission(AddOrUpdateProductMissionReq req) {
@@ -413,7 +451,19 @@ namespace OperationGuidance_service.Controllers {
         #region 站点（或者叫工作站、工位？）相关
         // 查询站点列表
         public QueryWorkstationListRsp QueryWorkstationList(QueryWorkstationListReq req) {
-            List<Workstation> workstations = _workstationService.QueryListWithoutUserId();
+            List<Workstation> workstations;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            if (role != null && role != Roles.DEVELOPER) {
+                string sql = $"select * from {_workstationService.TableName} where deleted = @deleted and macs_id = @macs_id";
+                Dictionary<string, object> parameters = new();
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("macs_id", req.MacsId);
+                workstations = _workstationService.FindBySql(sql, parameters);
+            } else {
+                workstations = _workstationService.QueryListWithoutUserId();
+            }
+            
             List<WorkstationDTO> workstationDTOs = new();
             CommonUtils.ObjectConverter<Workstation, WorkstationDTO>(workstations, workstationDTOs);
 
@@ -542,9 +592,22 @@ namespace OperationGuidance_service.Controllers {
         }
         // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            string sql = $"select 1 from {_missionRecordService.TableName} where product_bar_code = @product_bar_code";
+            string sql = $"select 1 from {_missionRecordService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+
+            if (req.ProductBarCode != null) {
+                sql += " and product_bar_code = @product_bar_code";
+                parameters.Add("product_bar_code", req.ProductBarCode);
+            }
+            if (req.PartsBarCode != null) {
+                sql += " and parts_bar_code like @parts_bar_code";
+                parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
+            }
+            sql += " limit 1";
+
+            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, parameters);
             return new() {
-                Yes = _missionRecordService.FindBySql(sql, new { @product_bar_code = req.ProductBarCode }).Count > 0,
+                Yes = missionRecords.Count > 0,
             };
         }
         // 查询最新一条任务记录，用于获取其产品批次，作回填使用
@@ -588,11 +651,27 @@ namespace OperationGuidance_service.Controllers {
         // 查询力臂列表
         public QueryDeviceArmListRsp QueryDeviceArmList(QueryDeviceArmListReq req) {
             List<DeviceArm> deviceCategories;
-            if (!req.IncludingDeleted) {
-                deviceCategories = _deviceArmService.QueryListWithoutUserId();
-            } else {
-                deviceCategories = _deviceArmService.FindBySql($"select * from {_deviceArmService.TableName}", null);
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_deviceArmService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            // 如果是为了启动线程而查询则不需要考虑权限，一定要检查mac地址，并且被删掉的数据也要查询
+            if (req.ForTask) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
             }
+            // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
+            else {
+                sql += " and deleted = @deleted";
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                // 不是管理员就需要检查mac地址
+                if (role != null && role != Roles.DEVELOPER) {
+                    sql += " and macs_id = @macs_id";
+                    parameters.Add("macs_id", req.MacsId);
+                }
+            }
+            deviceCategories = _deviceArmService.FindBySql(sql, parameters);
+
             List<DeviceArmDTO> deviceArmDTOs = new();
             CommonUtils.ObjectConverter<DeviceArm, DeviceArmDTO>(deviceCategories, deviceArmDTOs);
 
@@ -631,11 +710,27 @@ namespace OperationGuidance_service.Controllers {
         // 查询工具列表
         public QueryDeviceToolListRsp QueryDeviceToolList(QueryDeviceToolListReq req) {
             List<DeviceTool> deviceCategories;
-            if (!req.IncludingDeleted) {
-                deviceCategories = _deviceToolService.QueryListWithoutUserId();
-            } else {
-                deviceCategories = _deviceToolService.FindBySql($"select * from {_deviceToolService.TableName}", null);
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_deviceToolService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            // 如果是为了启动线程而查询则不需要考虑权限，一定要检查mac地址，并且被删掉的数据也要查询
+            if (req.ForTask) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
             }
+            // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
+            else {
+                sql += " and deleted = @deleted";
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                // 不是管理员就需要检查mac地址
+                if (role != null && role != Roles.DEVELOPER) {
+                    sql += " and macs_id = @macs_id";
+                    parameters.Add("macs_id", req.MacsId);
+                }
+            }
+            deviceCategories = _deviceToolService.FindBySql(sql, parameters);
+
             List<DeviceToolDTO> deviceToolDTOs = new();
             CommonUtils.ObjectConverter<DeviceTool, DeviceToolDTO>(deviceCategories, deviceToolDTOs);
 
@@ -674,11 +769,27 @@ namespace OperationGuidance_service.Controllers {
         // 查询串口设备列表
         public QueryDeviceSerialPortListRsp QueryDeviceSerialPortList(QueryDeviceSerialPortListReq req) {
             List<DeviceSerialPort> deviceCategories;
-            if (!req.IncludingDeleted) {
-                deviceCategories = _deviceSerialPortService.QueryListWithoutUserId();
-            } else {
-                deviceCategories = _deviceSerialPortService.FindBySql($"select * from {_deviceSerialPortService.TableName}", null);
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_deviceSerialPortService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            // 如果是为了启动线程而查询则不需要考虑权限，一定要检查mac地址，并且被删掉的数据也要查询
+            if (req.ForTask) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
             }
+            // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
+            else {
+                sql += " and deleted = @deleted";
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                // 不是管理员就需要检查mac地址
+                if (role != null && role != Roles.DEVELOPER) {
+                    sql += " and macs_id = @macs_id";
+                    parameters.Add("macs_id", req.MacsId);
+                }
+            }
+            deviceCategories = _deviceSerialPortService.FindBySql(sql, parameters);
+
             List<DeviceSerialPortDTO> deviceSerialPortDTOs = new();
             CommonUtils.ObjectConverter<DeviceSerialPort, DeviceSerialPortDTO>(deviceCategories, deviceSerialPortDTOs);
 
@@ -717,11 +828,27 @@ namespace OperationGuidance_service.Controllers {
         // 查询通讯设备列表
         public QueryDeviceCommunicationListRsp QueryDeviceCommunicationList(QueryDeviceCommunicationListReq req) {
             List<DeviceCommunication> deviceCategories;
-            if (!req.IncludingDeleted) {
-                deviceCategories = _deviceCommunicationService.QueryListWithoutUserId();
-            } else {
-                deviceCategories = _deviceCommunicationService.FindBySql($"select * from {_deviceCommunicationService.TableName}", null);
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_deviceCommunicationService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            // 如果是为了启动线程而查询则不需要考虑权限，一定要检查mac地址，并且被删掉的数据也要查询
+            if (req.ForTask) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
             }
+            // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
+            else {
+                sql += " and deleted = @deleted";
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                // 不是管理员就需要检查mac地址
+                if (role != null && role != Roles.DEVELOPER) {
+                    sql += " and macs_id = @macs_id";
+                    parameters.Add("macs_id", req.MacsId);
+                }
+            }
+            deviceCategories = _deviceCommunicationService.FindBySql(sql, parameters);
+
             List<DeviceCommunicationDTO> deviceCommunicationDTOs = new();
             CommonUtils.ObjectConverter<DeviceCommunication, DeviceCommunicationDTO>(deviceCategories, deviceCommunicationDTOs);
 
@@ -759,13 +886,24 @@ namespace OperationGuidance_service.Controllers {
         #region 条码匹配规则相关
         // 查询条码匹配规则列表
         public QueryBarCodeMatchingRuleListRsp QueryBarCodeMatchingRuleList(QueryBarCodeMatchingRuleListReq req) {
-            string? condition = "";
-            if (req.MissionId != null) {
-                condition = $"mission_id = {req.MissionId}";
+            List<BarCodeMatchingRule> barCodeMatchingRule;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_barCodeMatchingRuleService.TableName} where deleted = @deleted";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("deleted", (int) YesOrNo.NO);
+            if (role != null && role != Roles.DEVELOPER) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
             }
-            List<BarCodeMatchingRule> deviceCategories = _barCodeMatchingRuleService.FindBySqlWithoutUserId(condition);
+            if (req.MissionId != null) {
+                sql += $" and mission_id = @mission_id";
+                parameters.Add("mission_id", req.MissionId);
+            }
+            barCodeMatchingRule = _barCodeMatchingRuleService.FindBySql(sql, parameters);
+
             List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = new();
-            CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(deviceCategories, barCodeMatchingRuleDTOs);
+            CommonUtils.ObjectConverter<BarCodeMatchingRule, BarCodeMatchingRuleDTO>(barCodeMatchingRule, barCodeMatchingRuleDTOs);
 
             return new() {
                 BarCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs,

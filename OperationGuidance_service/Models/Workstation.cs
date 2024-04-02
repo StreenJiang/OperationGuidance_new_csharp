@@ -11,5 +11,6 @@ namespace OperationGuidance_service.Models {
         public int? serial_port_id { get; set; }
         public int? communication_id { get; set; }
         public int enabled { get; set; } = (int) YesOrNo.YES;
+        public int macs_id { get; set; }
     }
 }

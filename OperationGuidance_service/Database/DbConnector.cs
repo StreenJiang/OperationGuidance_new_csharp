@@ -1,5 +1,7 @@
 using OperationGuidance_service.Configurations;
 using OperationGuidance_service.Database.AbstractClasses;
+using OperationGuidance_service.Exceptions;
+using OperationGuidance_service.Utils;
 using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
@@ -7,7 +9,9 @@ namespace OperationGuidance_service.Database {
         private static readonly ADbConnector connector;
 
         static DbConnector() {
-            switch (DBConfig.DBType) {
+            SystemUtils.InitMySqlConfigs();
+            SystemUtils.InitSQLiteConfigs();
+            switch (SystemUtils.GetDBTypes()) {
                 default:
                 case DBTypes.SQLITE:
                     connector = new SQLiteConnector();
@@ -18,6 +22,12 @@ namespace OperationGuidance_service.Database {
             }
         }
 
-        public static DbConnection GetConnection() => connector.GetDbConnection();
+        public static DbConnection GetConnection() {
+            DbConnection? dbConnection = connector.GetDbConnection();
+            if (dbConnection == null) {
+                throw new DatabaseException("数据库连接失败，请检查配置与数据库信息是否匹配");
+            }
+            return dbConnection;
+        }
     }
 }

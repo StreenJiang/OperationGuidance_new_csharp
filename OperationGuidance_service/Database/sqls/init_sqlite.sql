@@ -10,10 +10,35 @@
  Target Server Version : 3030001
  File Encoding         : 65001
 
- Date: 09/03/2024 14:52:35
+ Date: 31/03/2024 23:27:07
 */
 
 PRAGMA foreign_keys = false;
+
+-- ----------------------------
+-- Table structure for bar_code_matching_rule
+-- ----------------------------
+DROP TABLE IF EXISTS "bar_code_matching_rule";
+CREATE TABLE "bar_code_matching_rule" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "length" integer(8),
+  "end_char" text(8),
+  "key_position" text(64),
+  "key_char" text(64),
+  "type" integer(2) NOT NULL,
+  "mission_id" integer,
+  "macs_id" integer,
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Records of bar_code_matching_rule
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for device_arm
@@ -26,6 +51,7 @@ CREATE TABLE "device_arm" (
   "ip" text(16),
   "port" integer(8),
   "type" integer(4),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -34,7 +60,9 @@ CREATE TABLE "device_arm" (
   "modify_time" text(64) NOT NULL
 );
 
-
+-- ----------------------------
+-- Records of device_arm
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for device_communication
@@ -47,6 +75,7 @@ CREATE TABLE "device_communication" (
   "ip" text(16),
   "port" integer(8),
   "type" integer(4),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -76,6 +105,7 @@ CREATE TABLE "device_serial_port" (
   "stop_bit" integer(4),
   "data_type" integer(4),
   "invalid_char" text(128),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -84,7 +114,9 @@ CREATE TABLE "device_serial_port" (
   "modify_time" text(64) NOT NULL
 );
 
-
+-- ----------------------------
+-- Records of device_serial_port
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for device_tool
@@ -97,6 +129,7 @@ CREATE TABLE "device_tool" (
   "ip" text(16),
   "port" integer(8),
   "type" integer(4),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -105,6 +138,52 @@ CREATE TABLE "device_tool" (
   "modify_time" text(64) NOT NULL
 );
 
+-- ----------------------------
+-- Records of device_tool
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for mac_addresses
+-- ----------------------------
+DROP TABLE IF EXISTS "mac_addresses";
+CREATE TABLE "mac_addresses" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "macs" text(512) NOT NULL,
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Records of mac_addresses
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for mission_record
+-- ----------------------------
+DROP TABLE IF EXISTS "mission_record";
+CREATE TABLE "mission_record" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "mission_id" integer NOT NULL,
+  "product_batch" text(64) NOT NULL,
+  "product_bar_code" text(512),
+  "parts_bar_code" text(512),
+  "mission_result" integer(2) NOT NULL,
+  "is_redo" integer(2) NOT NULL,
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
+-- Records of mission_record
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for operation_data
@@ -224,7 +303,9 @@ CREATE TABLE "product_bolt" (
   "modify_time" text(64) NOT NULL
 );
 
-
+-- ----------------------------
+-- Records of product_bolt
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for product_mission
@@ -235,7 +316,9 @@ CREATE TABLE "product_mission" (
   "name" text(128),
   "pn_code" text(64),
   "max_ng_num" integer(4),
+  "password_need_time" integer(4),
   "enabled" integer(1),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -244,7 +327,9 @@ CREATE TABLE "product_mission" (
   "modify_time" text(64) NOT NULL
 );
 
-
+-- ----------------------------
+-- Records of product_mission
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for product_side
@@ -272,7 +357,26 @@ CREATE TABLE "product_side" (
   "modify_time" text(64) NOT NULL
 );
 
+-- ----------------------------
+-- Records of product_side
+-- ----------------------------
 
+-- ----------------------------
+-- Records of sqlite_sequence
+-- ----------------------------
+INSERT INTO "sqlite_sequence" VALUES ('user_account_info', 1);
+INSERT INTO "sqlite_sequence" VALUES ('operation_data', 1);
+INSERT INTO "sqlite_sequence" VALUES ('mission_record', 1);
+INSERT INTO "sqlite_sequence" VALUES ('bar_code_matching_rule', 1);
+INSERT INTO "sqlite_sequence" VALUES ('device_arm', 1);
+INSERT INTO "sqlite_sequence" VALUES ('device_communication', 1);
+INSERT INTO "sqlite_sequence" VALUES ('device_serial_port', 1);
+INSERT INTO "sqlite_sequence" VALUES ('workstation', 1);
+INSERT INTO "sqlite_sequence" VALUES ('product_bolt', 1);
+INSERT INTO "sqlite_sequence" VALUES ('product_mission', 1);
+INSERT INTO "sqlite_sequence" VALUES ('product_side', 1);
+INSERT INTO "sqlite_sequence" VALUES ('device_tool', 1);
+INSERT INTO "sqlite_sequence" VALUES ('mac_addresses', 1);
 
 -- ----------------------------
 -- Table structure for user_account_info
@@ -298,7 +402,8 @@ CREATE TABLE "user_account_info" (
 -- ----------------------------
 -- Records of user_account_info
 -- ----------------------------
-INSERT INTO "user_account_info" VALUES (1, -1, 'Developr', NULL, 'sys', 'aneng135', 1, NULL, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO "user_account_info" VALUES (1, -1, 'Developr', NULL, 'sys', '8BA05BCA959209F6CC8C4409C66E2CB5', 1, NULL, -1, 2, 'Developr', 'Developr', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO "user_account_info" VALUES (2, -2, 'Admin', NULL, 'admin', '21232F297A57A5A743894A0E4A801FC3', 2, '21232F297A57A5A743894A0E4A801FC3', -1, 2, 'Developr', 'Developr', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
 
 
 -- ----------------------------
@@ -313,6 +418,7 @@ CREATE TABLE "workstation" (
   "serial_port_id" integer,
   "communication_id" integer,
   "enabled" integer(1),
+  "macs_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
@@ -321,104 +427,35 @@ CREATE TABLE "workstation" (
   "modify_time" text(64) NOT NULL
 );
 
+-- ----------------------------
+-- Records of workstation
+-- ----------------------------
 
 -- ----------------------------
--- Table structure for bar_code_matching_rule
+-- Indexes structure for table mac_addresses
 -- ----------------------------
-DROP TABLE IF EXISTS "bar_code_matching_rule";
-CREATE TABLE "bar_code_matching_rule" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "length" integer(8),
-  "end_char" text(8),
-  "key_position" text(64),
-  "key_char" text(64),
-  "type" integer(2) NOT NULL,
-  "mission_id" integer,
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
-);
-
-
--- ----------------------------
--- Table structure for mission_record
--- ----------------------------
-DROP TABLE IF EXISTS "mission_record";
-CREATE TABLE "mission_record" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "mission_id" integer NOT NULL,
-  "product_batch" text(64) NOT NULL,
-  "product_bar_code" text(512),
-  "parts_bar_code" text(2048),
-  "mission_result" integer(2) NOT NULL,
-  "is_redo" integer(2) NOT NULL,
-  "user_id" integer NOT NULL,
-  "deleted" integer(1) NOT NULL,
-  "creator" text(128) NOT NULL,
-  "modifier" text(128) NOT NULL,
-  "create_time" text(64) NOT NULL,
-  "modify_time" text(64) NOT NULL
+CREATE INDEX "index_macs"
+ON "mac_addresses" (
+  "macs" ASC
 );
 
 -- ----------------------------
 -- Indexes structure for table mission_record
 -- ----------------------------
+CREATE INDEX "index_parts_bar_code"
+ON "mission_record" (
+  "parts_bar_code" ASC
+);
 CREATE INDEX "index_product_bar_code"
 ON "mission_record" (
   "product_bar_code" ASC
 );
 
--- ----------------------------
--- Auto increment value for device_arm
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_arm';
-
--- ----------------------------
--- Auto increment value for device_serial_port
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_serial_port';
-
--- ----------------------------
--- Auto increment value for device_tool
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'device_tool';
-
--- ----------------------------
--- Auto increment value for product_bolt
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_bolt';
-
--- ----------------------------
--- Auto increment value for product_mission
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_mission';
-
--- ----------------------------
--- Auto increment value for product_side
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'product_side';
 
 -- ----------------------------
 -- Auto increment value for user_account_info
 -- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 2 WHERE name = 'user_account_info';
+UPDATE "sqlite_sequence" SET seq = 3 WHERE name = 'user_account_info';
 
--- ----------------------------
--- Auto increment value for workstation
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'workstation';
-
--- ----------------------------
--- Auto increment value for bar_code_matching_rule
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'bar_code_matching_rule';
-
--- ----------------------------
--- Auto increment value for mission_record
--- ----------------------------
-UPDATE "sqlite_sequence" SET seq = 1 WHERE name = 'mission_record';
 
 PRAGMA foreign_keys = true;

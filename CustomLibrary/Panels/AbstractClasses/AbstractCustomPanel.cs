@@ -25,7 +25,7 @@
             base.OnSizeChanged(e);
         }
 
-        protected sealed override void OnVisibleChanged(EventArgs e) {
+        protected override void OnVisibleChanged(EventArgs e) {
             base.OnVisibleChanged(e);
             if (Visible) {
                 VisibleToTrue();

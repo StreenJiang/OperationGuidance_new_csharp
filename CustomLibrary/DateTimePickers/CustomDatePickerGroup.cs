@@ -10,7 +10,6 @@ namespace CustomLibrary.DateTimePickers {
         private HorizontalAlignment _nameAlignment;
         private Point _pickerBeginLocation;
         private int _gapNameAndPicker;
-        private int _gapPickers;
         private string _separator;
         private List<SeparatorControl> _separators;
 
@@ -18,7 +17,6 @@ namespace CustomLibrary.DateTimePickers {
         private FlowLayoutPanel _pickersPanel;
         private List<CustomDatePicker> _pickers;
         private Color _pickerBackColor;
-        private Color? _disabledBackColor;
         private Color? _borderColor;
 
         public new bool Enabled { 

@@ -1,5 +1,4 @@
 ﻿using CustomLibrary.Configs;
-using CustomLibrary.Events;
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 using System.ComponentModel;
@@ -133,9 +132,6 @@ namespace CustomLibrary.TextBoxes {
                 Parent = this,
                 BorderStyle = BorderStyle.None,
                 Multiline = false,
-            };
-            _box.GotFocus += (sender, eventArgs) => {
-                EventFuncs.CurrentActiveControl = sender as Control;
             };
             _errorTip = new();
             _box.TextChanged += (sender, eventArgs) => {

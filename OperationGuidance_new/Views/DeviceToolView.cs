@@ -143,7 +143,7 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
-                List<DeviceToolDTO> allData = apis.QueryDeviceToolList(new()).DeviceToolDTOs;
+                List<DeviceToolDTO> allData = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id)).DeviceToolDTOs;
                 if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
                     check = false;
                     name.GetTextBox(0).IsError = true;
@@ -210,7 +210,7 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<DeviceToolVO> QueryList() {
-            QueryDeviceToolListRsp rsp = apis.QueryDeviceToolList(new());
+            QueryDeviceToolListRsp rsp = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id));
             _dataDTOList = rsp.DeviceToolDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
             List<DeviceToolVO> vos = new();
             CommonUtils.ObjectConverter<DeviceToolDTO, DeviceToolVO>(_dataDTOList, vos);

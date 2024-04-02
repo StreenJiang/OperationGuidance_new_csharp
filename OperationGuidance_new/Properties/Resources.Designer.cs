@@ -611,6 +611,24 @@ namespace OperationGuidance_new.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+        ///&lt;asmv1:assembly manifestVersion=&quot;1.0&quot; xmlns=&quot;urn:schemas-microsoft-com:asm.v1&quot; 
+        ///				xmlns:asmv1=&quot;urn:schemas-microsoft-com:asm.v1&quot; 
+        ///				xmlns:asmv2=&quot;urn:schemas-microsoft-com:asm.v2&quot; 
+        ///				xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
+        ///	&lt;assemblyIdentity version=&quot;1.0.0.0&quot; name=&quot;MyApplication&quot; /&gt;
+        ///	&lt;trustInfo xmlns=&quot;urn:schemas-microsoft-com:asm.v2&quot;&gt;
+        ///		&lt;security&gt;
+        ///			&lt;requestedPrivileges xmlns=&quot;urn:schemas-microsoft-com:asm.v3&quot;&gt;
+        ///				&lt;requestedExecutionLev [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string manifest {
+            get {
+                return ResourceManager.GetString("manifest", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap manual_control {

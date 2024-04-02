@@ -96,6 +96,7 @@ namespace OperationGuidance_new.Tasks {
             CloseConnectionManually = true;
             Result = null;
         }
+        public override bool WorkplaceCheckConnection() => Connected;
         #endregion
 
         #region Methods

@@ -5,7 +5,6 @@ using System.ComponentModel;
 namespace CustomLibrary.ComboBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomComboBoxButtonGroup<T>: CustomComboBoxGroup<T> {
-        private int _gapButtons;
         private List<CommonButton> _buttons;
 
         public new bool Enabled { 

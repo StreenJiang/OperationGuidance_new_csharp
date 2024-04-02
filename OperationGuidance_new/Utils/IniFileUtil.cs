@@ -1,10 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using OperationGuidance_new.Utils;
 
-namespace OperationGuidance_new {
+namespace OperationGuidance_new.Utils {
     // Got from https://stackoverflow.com/questions/217902/reading-writing-an-ini-file
-    public class IniFile {
+    public class IniFileUtil {
         #region Fileds
         private string _path;
         private string _fileName = "Settings";
@@ -18,7 +17,7 @@ namespace OperationGuidance_new {
         #endregion
 
         #region Constructors
-        public IniFile(string? IniPath = null) => _path = new FileInfo(IniPath ?? MainUtils.GetBaseDirectory() + _fileName + ".ini").FullName;
+        public IniFileUtil(string? IniPath = null) => _path = new FileInfo(IniPath ?? MainUtils.GetBaseDirectory() + _fileName + ".ini").FullName;
         #endregion
 
         #region Main methods

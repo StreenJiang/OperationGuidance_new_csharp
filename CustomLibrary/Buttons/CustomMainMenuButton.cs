@@ -9,6 +9,7 @@ namespace CustomLibrary.Buttons {
         private int _gapBetweenImageAndText;
         private Color _linerColorUp;
         private Color _linerColorDown;
+        private bool _openFirst = false;
 
         public CustomMainMenuButton(Color linerColorUp, Color linerColorDown) {
             this._linerColorUp = linerColorUp;
@@ -23,6 +24,7 @@ namespace CustomLibrary.Buttons {
             get => this._linerColorDown;
             set => this._linerColorDown = value;
         }
+        public bool OpenFirst { get => _openFirst; set => _openFirst = value; }
 
         protected override void OnSizeChanged(EventArgs e) {
             _gapBetweenImageAndText = this.Height / 20;

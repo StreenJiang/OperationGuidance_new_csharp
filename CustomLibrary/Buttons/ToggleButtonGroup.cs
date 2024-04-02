@@ -4,7 +4,6 @@ using System.ComponentModel;
 namespace CustomLibrary.Buttons {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class ToggleButtonGroup: UserControl {
-        private bool _enabled;
         private string _textName;
         private int _nameWidth;
         private HorizontalAlignment _nameAlignment;

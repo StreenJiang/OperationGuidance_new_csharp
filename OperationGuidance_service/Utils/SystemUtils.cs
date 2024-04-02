@@ -5,11 +5,13 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Constants;
 using System.Text;
 using System.Security.Cryptography;
+using OperationGuidance_service.Database;
 
 namespace OperationGuidance_service.Utils {
     public static class SystemUtils {
         private static UserAccountInfoDTO? _user;
         private static OperationGuidanceApis? apis;
+        public static MacAddressesDTO MacAddressesDTO { get; set; }
 
         public static UserAccountInfoDTO UserInfo {
             set {
@@ -27,6 +29,65 @@ namespace OperationGuidance_service.Utils {
         public static int LoggedUserId => _user != null && _user.id > 0 ? _user.id : 0;
         public static string LoggedUserName => _user != null && _user.name != null ? _user.name : "UnKnownUser";
         public static bool IsAdmin => _user != null && (_user.role_type == (int) Roles.DEVELOPER || _user.role_type == (int) Roles.ADMIN);
+
+        private static IniFileUtil DatabaseConfigs { get; } = new();
+
+        // Data base type
+        public static DBTypes GetDBTypes() {
+            string dbType = DatabaseConfigs.Read(IniFileKeys.DatabaseType);
+            if (string.IsNullOrEmpty(dbType)) {
+                dbType = DBTypes.MYSQL + "";
+                DatabaseConfigs.Write(IniFileKeys.DatabaseType, dbType);
+            }
+            return (DBTypes) Enum.Parse(typeof(DBTypes), dbType);
+        }
+        // Mysql
+        public static void InitMySqlConfigs() {
+            string server = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_server);
+            string port = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_port);
+            string database = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_database);
+            string user = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_user);
+            string password = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_password);
+
+            if (string.IsNullOrEmpty(server)
+                || string.IsNullOrEmpty(port)
+                || string.IsNullOrEmpty(database)
+                || string.IsNullOrEmpty(user)
+                || string.IsNullOrEmpty(password)
+            ) {
+                MySqlConnector.Server = "localhost";
+                MySqlConnector.Port = "3307";
+                MySqlConnector.Database = "aneng";
+                MySqlConnector.User = "aneng";
+                MySqlConnector.Password = "aneng123";
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigMYSQL_server, MySqlConnector.Server);
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigMYSQL_port, MySqlConnector.Port);
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigMYSQL_database, MySqlConnector.Database);
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigMYSQL_user, MySqlConnector.User);
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigMYSQL_password, MySqlConnector.Password);
+            } else {
+                MySqlConnector.Server = server;
+                MySqlConnector.Port = port;
+                MySqlConnector.Database = database;
+                MySqlConnector.User = user;
+                MySqlConnector.Password = password;
+            }
+        }
+        // Sqlite
+        public static void InitSQLiteConfigs() {
+            string database = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigSQLITE_database);
+            string path = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigSQLITE_path);
+
+            if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(path)) {
+                SQLiteConnector.Database = "database.db";
+                SQLiteConnector.Path = "OperationGuidance_service\\Database\\";
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigSQLITE_database, SQLiteConnector.Database);
+                DatabaseConfigs.Write(IniFileKeys.DatabaseConfigSQLITE_path, SQLiteConnector.Path);
+            } else {
+                SQLiteConnector.Database = database;
+                SQLiteConnector.Path = path;
+            }
+        }
 
         public static Roles? GetRoleNameByUserId(int id) {
             UserAccountInfoDTO? userAccountInfoDTO;

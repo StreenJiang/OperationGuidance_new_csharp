@@ -18,6 +18,8 @@ using RJCP.IO.Ports;
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static LoginView LoginView { get; set; }
+        public static bool LoginFlag { get; set; } = true;
+        public static string? LastProductBatch { get; set; }
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
         public static readonly string DATETIME_FORMAT_FULL_NO_PUNCTUATION = "yyyyMMddHHmmss";
@@ -37,7 +39,7 @@ namespace OperationGuidance_new.Utils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD = "yyyy-MM-dd_ddd";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
-        public static IniFile Settings { get; } = new();
+        private static IniFileUtil Settings { get; } = new();
         public static List<string> InvalidCharacters { get; } = new() {
             "\u0000","\u0001","\u0002","\u0003","\u0004","\u0005","\u0006","\u0007","\u0008",
             "\u000B","\u000C",
@@ -50,6 +52,10 @@ namespace OperationGuidance_new.Utils {
             string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
             if (baseDirectory.Contains(visualStudioDebugPath)) {
                 baseDirectory = baseDirectory.Replace(visualStudioDebugPath, "");
+            }
+            string visualStudioDebugPath2 = "\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath2)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath2, "");
             }
             return baseDirectory;
         }
@@ -103,14 +109,35 @@ namespace OperationGuidance_new.Utils {
             image.Save(imageFilePath);
         }
 
+        // Settings
+        // Resolution
+        public static Size GetSettingResolution() {
+            Size size;
+            string resolution = Settings.Read(IniFileKeys.Resolution);
+            if (!string.IsNullOrEmpty(resolution)) {
+                string[] strings = resolution.Split(",");
+                int width = int.Parse(strings[0].Trim());
+                int height = int.Parse(strings[1].Trim());
+                size = new(width, height);
+            } else {
+                size = GetDefaultSettingResolution();
+                SetSettingResolution(size);
+            }
+            return size;
+        }
+        public static Size GetDefaultSettingResolution() => WidgetUtils.GetScreenWorkingArea().Size;
+        public static void SetSettingResolution(Size newSize) => Settings.Write(IniFileKeys.Resolution, $"{newSize.Width}, {newSize.Height}");
+        // Storage file name format
         public static string GetStorageFileName() {
             string nameFormat = Settings.Read(IniFileKeys.DataStorageNameFormat);
             if (string.IsNullOrEmpty(nameFormat)) {
-                nameFormat = MainUtils.DATETIME_FORMAT_YYYY_MM_DD;
-                Settings.Write(IniFileKeys.DataStorageNameFormat, nameFormat);
+                nameFormat = GetDefaultStorageFileName();
+                SetStorageFileName(nameFormat);
             }
             return nameFormat;
         }
+        public static string GetDefaultStorageFileName() => DATETIME_FORMAT_YYYY_MM_DD;
+        public static void SetStorageFileName(string nameFormat) => Settings.Write(IniFileKeys.DataStorageNameFormat, nameFormat);
         public static string GetStorageFormattedName() {
             DateTime now = DateTime.Now;
             string nameFormatted = GetStorageFileName();
@@ -132,27 +159,40 @@ namespace OperationGuidance_new.Utils {
                 return false;
             }
         }
+        // Storage path
         public static string GetStoragePath() {
             string dataStoragePath = Settings.Read(IniFileKeys.DataStoragePath);
             if (string.IsNullOrEmpty(dataStoragePath)) {
-                dataStoragePath = GetBaseDirectory() + "OperationDataStorage\\";
-                Settings.Write(IniFileKeys.DataStoragePath, dataStoragePath);
+                dataStoragePath = GetDefaultStoragePath();
+                SetStoragePath(dataStoragePath);
             }
             return dataStoragePath;
         }
+        public static string GetDefaultStoragePath() {
+            string defaultPath = GetBaseDirectory() + "OperationDataStorage\\";
+            // 如果文件夹不存在，则创建文件夹
+            if (!Directory.Exists(defaultPath)) {
+                Directory.CreateDirectory(defaultPath);
+            }
+            return defaultPath;
+        }
+        public static void SetStoragePath(string newPath) => Settings.Write(IniFileKeys.DataStoragePath, newPath);
+        // Fields sort config
         public static List<int> GetSortConfig() {
             List<int>? sortConfig = null;
-            string dataStorageFields = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSort);
+            string dataStorageFields = Settings.Read(IniFileKeys.DataStorageFieldsSort);
             sortConfig = JsonConvert.DeserializeObject<List<int>>(dataStorageFields);
             if (sortConfig == null) {
-                sortConfig = new() { 1, 2, 14, 33, 34, 35, 36, 37, 40, 43, 44, 17, 15, 21, 16 };
+                sortConfig = GetDefaultSortConfig();
+                SetSortConfig(sortConfig);
             }
             return sortConfig;
         }
-        public static List<int>? GetSortConfigCurr() {
-            string dataStorageFieldsCurr = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSortCurr);
-            return JsonConvert.DeserializeObject<List<int>>(dataStorageFieldsCurr);
-        }
+        public static List<int> GetDefaultSortConfig() => new List<int>() { 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 45, 46, 47, 48 };
+        public static void SetSortConfig(List<int> fieldsSortConfig) => Settings.Write(IniFileKeys.DataStorageFieldsSort, JsonConvert.SerializeObject(fieldsSortConfig));
+        // Fields sort config current
+        public static List<int>? GetSortConfigCurr() => JsonConvert.DeserializeObject<List<int>>(Settings.Read(IniFileKeys.DataStorageFieldsSortCurr));
+        public static void SetSortConfigCurr(List<int>? fieldsSortConfigCurr) => Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(fieldsSortConfigCurr));
         public static List<OperationDataField> GetOperationDataFields(List<int>? sortConfig = null) {
             List<PropertyInfo> props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
             List<OperationDataField> fields = new();
@@ -173,7 +213,6 @@ namespace OperationGuidance_new.Utils {
                 }
             });
             // Get config
-            string dataStorageFields = MainUtils.Settings.Read(IniFileKeys.DataStorageFieldsSort);
             if (sortConfig == null) {
                 sortConfig = GetSortConfig();
             }
@@ -191,37 +230,81 @@ namespace OperationGuidance_new.Utils {
             });
             return fields;
         }
+        // Store loosening data
         public static bool GetStoreLooseningData() {
-            string storeLooseningData = MainUtils.Settings.Read(IniFileKeys.DataStorageStoreLooseningData);
+            string storeLooseningData = Settings.Read(IniFileKeys.DataStorageStoreLooseningData);
             if (string.IsNullOrEmpty(storeLooseningData)) {
-                MainUtils.Settings.Write(IniFileKeys.DataStorageStoreLooseningData, "1");
-                return true;
+                bool flag = GetDefaultStoreLooseningData();
+                SetStoreLooseningData(flag);
+                return flag;
             }
             return int.Parse(storeLooseningData) == (int) YesOrNo.YES;
         }
+        public static bool GetDefaultStoreLooseningData() => true;
+        public static void SetStoreLooseningData(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.NO + "");
+            }
+        }
+        // Arm locating enabled
         public static bool IsArmLocatingEnabled() {
-            string armLocatingEnabled = MainUtils.Settings.Read(IniFileKeys.MissionArmLocatingEnabled);
+            string armLocatingEnabled = Settings.Read(IniFileKeys.MissionArmLocatingEnabled);
             if (string.IsNullOrEmpty(armLocatingEnabled)) {
-                MainUtils.Settings.Write(IniFileKeys.MissionArmLocatingEnabled, "1");
-                return true;
+                bool flag = DefaultIsArmLocatingEnabled();
+                SetArmLocatingEnabled(flag);
+                return flag;
             }
             return int.Parse(armLocatingEnabled) == (int) YesOrNo.YES;
         }
+        public static bool DefaultIsArmLocatingEnabled() => true;
+        public static void SetArmLocatingEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.NO + "");
+            }
+        }
+        // Arm locating accuracy
         public static int GetArmLocatingAccuracy() {
-            string armLocatingAccuracy = MainUtils.Settings.Read(IniFileKeys.MissionArmLocatingAccuracy);
+            string armLocatingAccuracy = Settings.Read(IniFileKeys.MissionArmLocatingAccuracy);
             if (string.IsNullOrEmpty(armLocatingAccuracy)) {
-                MainUtils.Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, "20");
-                return 20;
+                int accuracy = GetDefaultArmLocatingAccuracy();
+                SetArmLocatingAccuracy(accuracy);
+                return accuracy;
             }
             return int.Parse(armLocatingAccuracy);
         }
+        public static int GetDefaultArmLocatingAccuracy() => 100;
+        public static void SetArmLocatingAccuracy(int accuracy) => Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, accuracy + "");
+        // Prodcut batch notice
+        public static bool IsProductBatchNoticeEnabled() {
+            string productBatchNoticeEnabled = Settings.Read(IniFileKeys.MissionProductBatchNotice);
+            if (string.IsNullOrEmpty(productBatchNoticeEnabled)) {
+                bool flag = DefaultIsProductBatchNoticeEnabled();
+                SetProductBatchNoticeEnabled(flag);
+                return flag;
+            }
+            return int.Parse(productBatchNoticeEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultIsProductBatchNoticeEnabled() => true;
+        public static void SetProductBatchNoticeEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.NO + "");
+            }
+        }
 
+        // Ping util method
         public static bool PingHost(string nameOrAddress) {
             Ping? pinger = null;
             try {
                 pinger = new();
                 PingReply pingReply = pinger.Send(IPAddress.Parse(nameOrAddress), 2500);
-                return pingReply.Status == IPStatus.Success;
+                bool pingResult = pingReply.Status == IPStatus.Success;
+                return pingResult;
             } catch (PingException pe) {
                 System.Console.WriteLine($"Ping error while pinging to [{nameOrAddress}]: {pe}");
             } finally {

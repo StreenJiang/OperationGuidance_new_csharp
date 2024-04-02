@@ -40,6 +40,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         #endregion
 
         #region Properties
+        public T FilterParametersVO { get => _filterParametersVO; set => _filterParametersVO = value; }
         public int FiltersTableColumnNums { get => _filtersTableColumnNums; set => _filtersTableColumnNums = value; }
         public DataGridViewPanel<T> VoGridView { get => _voGridView; set => _voGridView = value; }
         public List<CommonButton> ExtraButtons { get => _extraButtons; }
@@ -306,6 +307,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         public override void VisibleToTrue() {
             QueryAndRefresh();
+            ResizeChildren();
         }
         #endregion
     }

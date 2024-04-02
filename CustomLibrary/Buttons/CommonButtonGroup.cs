@@ -5,7 +5,6 @@ namespace CustomLibrary.Buttons {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CommonButtonGroup: UserControl {
         private bool _enabled;
-        private bool _readOnly;
         private string _textName;
         private Color _textColor;
         private int _nameWidth;

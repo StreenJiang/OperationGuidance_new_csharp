@@ -1,4 +1,5 @@
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class BarCodeMatchingRuleDTO: ADTOBase {
@@ -8,5 +9,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? key_char { get; set; }
         public int type { get; set; }
         public int mission_id { get; set; }
+        public int macs_id { get; set; } = SystemUtils.MacAddressesDTO.id;
     }
 }

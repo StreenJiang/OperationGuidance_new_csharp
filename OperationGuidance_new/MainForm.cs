@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using CustomLibrary.Configs;
 using log4net;
 
 namespace OperationGuidance_new {
@@ -32,6 +33,11 @@ namespace OperationGuidance_new {
             }
         }
 
+        protected override void OnPaint(PaintEventArgs e) {
+            base.OnPaint(e);
+            ControlPaint.DrawBorder(e.Graphics, ClientRectangle, ColorConfigs.COLOR_MAIN_MENU_BACKGROUND, ButtonBorderStyle.Solid);
+        }
+
         private void Form_Load(object sender, EventArgs e) {
             AllocConsole();
         }
@@ -39,5 +45,18 @@ namespace OperationGuidance_new {
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool AllocConsole();
+
+        const int WS_MINIMIZEBOX = 0x20000;
+        const int CS_DBLCLKS = 0x8;
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= WS_MINIMIZEBOX;
+                cp.ClassStyle |= CS_DBLCLKS;
+                return cp;
+            }
+        }
     }
 }

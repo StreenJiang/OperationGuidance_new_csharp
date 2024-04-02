@@ -11,7 +11,7 @@
  Target Server Version : 50744
  File Encoding         : 65001
 
- Date: 21/03/2024 14:50:28
+ Date: 31/03/2024 23:44:48
 */
 
 SET NAMES utf8mb4;
@@ -29,6 +29,7 @@ CREATE TABLE `bar_code_matching_rule`  (
   `key_char` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `type` int(2) NOT NULL,
   `mission_id` int(11) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -53,6 +54,7 @@ CREATE TABLE `device_arm`  (
   `ip` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `port` int(8) NULL DEFAULT NULL,
   `type` int(4) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -77,6 +79,7 @@ CREATE TABLE `device_communication`  (
   `ip` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `port` int(8) NULL DEFAULT NULL,
   `type` int(4) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -107,6 +110,7 @@ CREATE TABLE `device_serial_port`  (
   `stop_bit` int(4) NULL DEFAULT NULL,
   `data_type` int(4) NULL DEFAULT NULL,
   `invalid_char` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -131,6 +135,7 @@ CREATE TABLE `device_tool`  (
   `ip` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `port` int(8) NULL DEFAULT NULL,
   `type` int(4) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -145,6 +150,27 @@ CREATE TABLE `device_tool`  (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for mac_addresses
+-- ----------------------------
+DROP TABLE IF EXISTS `mac_addresses`;
+CREATE TABLE `mac_addresses`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `macs` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `deleted` int(1) NOT NULL,
+  `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `modifier` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `create_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `modify_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `index_macs`(`macs`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of mac_addresses
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for mission_record
 -- ----------------------------
 DROP TABLE IF EXISTS `mission_record`;
@@ -153,7 +179,7 @@ CREATE TABLE `mission_record`  (
   `mission_id` int(11) NOT NULL,
   `product_batch` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `product_bar_code` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `parts_bar_code` varchar(2048) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `parts_bar_code` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `mission_result` int(2) NOT NULL,
   `is_redo` int(2) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -163,7 +189,8 @@ CREATE TABLE `mission_record`  (
   `create_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `modify_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `index_product_bar_code`(`product_bar_code`) USING BTREE
+  INDEX `index_product_bar_code`(`product_bar_code`) USING BTREE,
+  INDEX `index_parts_bar_code`(`parts_bar_code`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -303,7 +330,9 @@ CREATE TABLE `product_mission`  (
   `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `pn_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `max_ng_num` int(4) NULL DEFAULT NULL,
+  `password_need_time` int(4) NULL DEFAULT NULL,
   `enabled` int(1) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -368,12 +397,13 @@ CREATE TABLE `user_account_info`  (
   `create_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `modify_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of user_account_info
 -- ----------------------------
-INSERT INTO `user_account_info` VALUES (1, -1, 'Developr', NULL, 'sys', 'aneng135', 1, NULL, -1, 2, 'Admin', 'Admin', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO `user_account_info` VALUES (1, -1, 'Developr', NULL, 'sys', '8BA05BCA959209F6CC8C4409C66E2CB5', 1, NULL, -1, 2, 'Developr', 'Developr', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
+INSERT INTO `user_account_info` VALUES (2, -2, 'Admin', NULL, 'admin', '21232F297A57A5A743894A0E4A801FC3', 2, '21232F297A57A5A743894A0E4A801FC3', -1, 2, 'Developr', 'Developr', '2023-12-26 00:00:00', '2023-12-26 00:00:00');
 
 -- ----------------------------
 -- Table structure for workstation
@@ -387,6 +417,7 @@ CREATE TABLE `workstation`  (
   `serial_port_id` int(11) NULL DEFAULT NULL,
   `communication_id` int(11) NULL DEFAULT NULL,
   `enabled` int(1) NULL DEFAULT NULL,
+  `macs_id` int(8) NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
@@ -399,5 +430,6 @@ CREATE TABLE `workstation`  (
 -- ----------------------------
 -- Records of workstation
 -- ----------------------------
+
 
 SET FOREIGN_KEY_CHECKS = 1;

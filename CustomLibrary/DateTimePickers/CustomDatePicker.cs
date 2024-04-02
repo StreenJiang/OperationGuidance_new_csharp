@@ -17,7 +17,6 @@ namespace CustomLibrary.DateTimePickers {
         private Font _font;
         private int _hPadding;
         private int _vPadding;
-        private bool _darkenIcon = false;
         private DateTime? _realTimeValue;
         #endregion
 

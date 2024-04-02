@@ -7,6 +7,9 @@ namespace CustomLibrary.Events {
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetCursorPos(out POINT lpPoint);
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+        public static bool IsOnTopNow(IntPtr handle) => GetForegroundWindow() == handle;
 
         private static List<Control> _autoActivatingControls = new();
         public static List<Action> _mouseUpActions = new();

@@ -17,7 +17,7 @@ namespace CustomLibrary.ComboBoxes {
         private int _collapseStep; // How many pixels increase/decrease each interval
         private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
-        private Form? _itemsOuterForm;
+        private OuterForm? _itemsOuterForm;
         private ItemsScrollPanel? _itemsScrollPanel;
         private ItemsInnerPanel? _itemsInnerPanel;
         private int _itemsPanelHeight;
@@ -197,6 +197,7 @@ namespace CustomLibrary.ComboBoxes {
                                 _itemsScrollPanel.Size = _itemsOuterForm.Size;
                             }
                         };
+                        _itemsOuterForm.HandleDestroyed += (s, e) => ItemsPanelClosed();
                         _itemsInnerPanel = new() {
                             Margin = new(0), 
                             FlowDirection = FlowDirection.TopDown,
@@ -230,6 +231,17 @@ namespace CustomLibrary.ComboBoxes {
                             }
                         }
                     }
+                    // 启动自动关闭检查
+                    Task.Run(() => {
+                        BeginInvoke(async () => {
+                            while (!_selectButton.IsCollapsed) {
+                                if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed && !EventFuncs.IsOnTopNow(_itemsOuterForm.Handle)) {
+                                    ItemsPanelClosed();
+                                }
+                                await Task.Delay(250);
+                            }
+                        });
+                    });
                 } else {
                     if (_selectButton.SelectedItem != null) {
                         _itemSelected();
@@ -319,6 +331,14 @@ namespace CustomLibrary.ComboBoxes {
                 _selectButton.SelectedItem.SetToggle(true);
             }
             _itemButtons.RemoveAt(trueIndex);
+            _selectButton.Invalidate();
+        }
+
+        public void ClearItem() {
+            _itemButtons.Clear();
+            if (_needDefaultLabel) {
+                AddDefault();
+            }
             _selectButton.Invalidate();
         }
         
@@ -465,27 +485,44 @@ namespace CustomLibrary.ComboBoxes {
         }
 
         private void ItemsPanelAutoClose() {
-            if (_itemsOuterForm != null && _itemsScrollPanel != null) {
+            if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed && _itemsScrollPanel != null && !_itemsScrollPanel.IsDisposed) {
                 Point realTimePoint = EventFuncs.RealTimePoint;
                 if (!new Rectangle(_itemsOuterForm.PointToScreen(Point.Empty), _itemsOuterForm.Size).Contains(realTimePoint) 
                         && !new Rectangle(_selectButton.PointToScreen(Point.Empty), _selectButton.Size).Contains(realTimePoint)) {
-                    if (!_selectButton.IsCollapsed) {
-                        _selectButton.IsCollapsed = true;
-                    }
-                    if (_itemsInnerPanel != null) {
-                        _itemsInnerPanel.Controls.Clear();
-                    }
-                    _itemsScrollPanel.Dispose();
-                    _itemsScrollPanel = null;
-                    _itemsOuterForm.Dispose();
-                    _itemsOuterForm = null;
+                    ItemsPanelClosed();
                 }
+            }
+        }
+        private void ItemsPanelClosed() {
+            if (!_selectButton.IsCollapsed) {
+                _selectButton.IsCollapsed = true;
+            }
+            if (_itemsInnerPanel != null) {
+                _itemsInnerPanel.Controls.Clear();
+            }
+            if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed) {
+                _itemsOuterForm.Dispose();
+                _itemsOuterForm = null;
+            }
+            if (_itemsScrollPanel != null && !_itemsScrollPanel.IsDisposed) {
+                _itemsScrollPanel.Dispose();
+                _itemsScrollPanel = null;
             }
         }
 
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             SizeChanged += ResizeChildren;
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+            if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed) {
+                _itemsOuterForm.Dispose();
+            }
+            if (_itemsScrollPanel != null && !_itemsScrollPanel.IsDisposed) {
+                _itemsScrollPanel.Dispose();
+            }
         }
 
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
@@ -653,6 +690,17 @@ namespace CustomLibrary.ComboBoxes {
 
             public void TriggerClick() {
                 OnClick(EventArgs.Empty);
+            }
+        }
+
+        // Outer form
+        public class OuterForm: Form {
+            protected override CreateParams CreateParams {
+                get {
+                    CreateParams cp = base.CreateParams;
+                    cp.ExStyle |= 0x80;
+                    return cp;
+                }
             }
         }
 

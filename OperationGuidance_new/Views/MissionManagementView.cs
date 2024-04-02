@@ -3,8 +3,6 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Models.Requests;
-using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
@@ -33,16 +31,7 @@ namespace OperationGuidance_new.Views {
             _missionListPanel = new(
                 "任务列表", 
                 "新建任务", 
-                (sender, eventArgs) => {
-                    OpenEditionPageView(new ProductMissionDTO() {
-                        name = "新建任务",
-                        ProductSides = new() {
-                            new() {
-                                name = "产品面1",
-                            },
-                        },
-                    });
-                }
+                (sender, eventArgs) => OpenEditionPageView(null)
             ) {
                 Margin = new Padding(0),
                 Parent = this,
@@ -72,20 +61,16 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private void OpenEditionPageView(ProductMissionDTO missionDTO) {
+        private void OpenEditionPageView(int? missionId) {
             if (EditionView.EditionPage == null || !EditionView.EditionPage.Modified || WidgetUtils.ShowConfirmPopUp("编辑界面存在未保存内容，是否打开新的界面？")) {
-                EditionView.OpenEditionPage(missionDTO);
+                EditionView.OpenEditionPage(missionId);
                 // Hide current view and release corresponding menu button
                 CommonUtils.CannotBeNull(EditionView.CorrespondingMenuButton).TriggerClick(EventArgs.Empty);
             }
         }
 
         private void FetchData() {
-            QueryProductMissionsWithCoverReq req = new();
-            QueryProductMissionsWithCoverRsp rsp;
-
-            rsp = apis.QueryProductMissionsWithCover(req);
-            _productMissionDTOs = rsp.ProductMissionsDTOs;
+            _productMissionDTOs = apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id) { IsEditing = true }).ProductMissionDTOs;
         }
     }
 }

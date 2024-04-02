@@ -222,7 +222,7 @@ namespace CustomLibrary.Forms
                     _buttonsInnerPanel.Location = new(_buttonsPanel.Width - _buttonsInnerPanel.Width - _buttonsPanel.Padding.Left, _buttonsPanel.Padding.Top);
                     break;
                 default:
-                    _buttonsInnerPanel.Location = new((_buttonsPanel.Width - _buttonsInnerPanel.Width - _buttonsPanel.Padding.Size.Width) / 2, _buttonsPanel.Padding.Top);
+                    _buttonsInnerPanel.Location = new((_buttonsPanel.Width - _buttonsInnerPanel.Width) / 2, _buttonsPanel.Padding.Top);
                     break;
             }
         }

@@ -27,6 +27,7 @@ namespace OperationGuidance_new.Tasks {
             return Connect();
         }
         public abstract void CloseConnection();
+        public abstract bool WorkplaceCheckConnection();
         #endregion
 
         #region Common reusable methods

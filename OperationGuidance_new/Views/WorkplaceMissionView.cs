@@ -14,8 +14,6 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Models.Requests;
-using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
@@ -23,9 +21,7 @@ using OperationGuidance_new.Extensions;
 using CustomLibrary.TextBoxes;
 using System.Reflection;
 using OperationGuidance_new.ViewObjects;
-using Newtonsoft.Json;
 using OperationGuidance_service.Constants;
-using OperationGuidance_new.Attributes;
 using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Views {
@@ -62,14 +58,7 @@ namespace OperationGuidance_new.Views {
             };
         }
         private void OpenWorkplaceViewDirectly() {
-            OpenWorkplaceView(new ProductMissionDTO() {
-                name = "未选择任务",
-                ProductSides = new() {
-                    new() {
-                        name = "-",
-                    },
-                },
-            });
+            OpenWorkplaceView(null);
         }
 
         private void CheckAndDisplay() {
@@ -105,7 +94,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private void OpenWorkplaceView(ProductMissionDTO missionDTO) {
+        private void OpenWorkplaceView(int? missionId) {
             if (_pagePanel != null && !_pagePanel.IsDisposed) {
                 _pagePanel.Dispose();
             }
@@ -120,7 +109,7 @@ namespace OperationGuidance_new.Views {
                 Parent = WidgetUtils.MainForm,
                 Size = WidgetUtils.MainForm.ClientSize,
             };
-            _topBar = new(missionDTO.name, _operatorOpenning) {
+            _topBar = new(_operatorOpenning) {
                 Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
                 MainMenuLogo = Properties.Resources.logo,
@@ -128,7 +117,7 @@ namespace OperationGuidance_new.Views {
                 PanelDirection = MenuPanelDirection.TOP,
                 TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
             };
-            _workplacePanel = new(missionDTO, missionName => {
+            _workplacePanel = new(missionId, missionName => {
                     _topBar.Title = missionName;
                 }) {
                 Parent = _pagePanel,
@@ -151,16 +140,7 @@ namespace OperationGuidance_new.Views {
 
         private void FetchData() {
             if (apis != null) {
-                QueryProductMissionsWithCoverReq req = new();
-                QueryProductMissionsWithCoverRsp rsp;
-
-                rsp = apis.QueryProductMissionsWithCover(req);
-                // 过滤掉某些产品面图片没有配置的不合格的任务
-                _productMissionDTOs = rsp.ProductMissionsDTOs
-                    .Where(dto => CommonUtils.CannotBeNull(dto.ProductSides).
-                            Where(side => side.image == null || side.image == "" 
-                                || side.Bolts == null || side.Bolts.Count == 0).Count() == 0)
-                    .ToList();
+                _productMissionDTOs = apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
             }
         }
     }
@@ -191,8 +171,8 @@ namespace OperationGuidance_new.Views {
         }
         public WorkplaceContentPanel? Workplace { get => _workplace; set => _workplace = value; }
 
-        public TopBar(string title, bool operatorOpenning) : base() {
-            _title = title;
+        public TopBar(bool operatorOpenning) : base() {
+            _title = "";
             _operatorOpenning = operatorOpenning;
             _backButton = new() {
                 Parent = this,
@@ -296,9 +276,10 @@ namespace OperationGuidance_new.Views {
         private bool _activated;
         private bool _finished;
         private Image _defaultImage;
+        private readonly int _checkDevicesConnectionDelay = 2500;
+        private readonly int _resendPsetMaxTimes = 5;
 
         private List<WorkstationDTO> _workstationsDTOs = new();
-        private readonly int _checkDevicesConnectionDelay = 2500;
         private List<DeviceArmDTO> _arms;
         private List<DeviceToolDTO> _tools;
         private List<DeviceSerialPortDTO> _serialPorts;
@@ -308,7 +289,6 @@ namespace OperationGuidance_new.Views {
         private Dictionary<int, CommunicationTask> _communicationTask = new();
         private MissionRecordDTO? _missionRecord;
         private TighteningData? _tighteningData;
-        private List<OperationDataDTO> _dataNeedToBeStored = new();
         private bool _needLoosening = false;
         private bool? _adminConfirmed = null;
         private CustomPopUpForm? _adminPasswordPopUpForm;
@@ -402,10 +382,32 @@ namespace OperationGuidance_new.Views {
         public BarCodeObj BarCodeObj => _barCodeObj;
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
 
-        public WorkplaceContentPanel(ProductMissionDTO mission, Action<string> resetMissionName) : base() {
+        public WorkplaceContentPanel(int? missionId, Action<string> resetMissionName) : base() {
             _apis = SystemUtils.GetApis();
-            _mission = mission;
+            if (missionId == null) {
+                _mission = new ProductMissionDTO() {
+                    name = "未选择任务",
+                    ProductSides = new() {
+                        new() {
+                            name = "-",
+                        },
+                    }
+                };
+            } else {
+                _mission = _apis.QueryProductMissionDetail(new(missionId.Value)).ProductMissionDTO;
+                if (_mission == null) {
+                    _mission = new ProductMissionDTO() {
+                        name = "未选择任务",
+                        ProductSides = new() {
+                            new() {
+                                name = "-",
+                            },
+                        }
+                    };
+                }
+            }
             _resetMissionName = resetMissionName;
+            _resetMissionName(_mission.name);
             _activated = false;
             _finished = false;
             _defaultImage = Properties.Resources.image_choose;
@@ -433,7 +435,7 @@ namespace OperationGuidance_new.Views {
         // 获取条码匹配规则
         private async void GetBarCodeMatchingRules() {
             await Task.Run(() => {
-                _barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new()).BarCodeMatchingRuleDTOs;
+                _barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id)).BarCodeMatchingRuleDTOs;
                 _productBarCodeMatchingRules = new();
                 _partsBarCodeMatchingRules = new();
                 foreach (BarCodeMatchingRuleDTO dto in _barCodeMatchingRuleDTOs) {
@@ -452,7 +454,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
                 // 检查匹配规则中所对应的任务是否还存在
-                List<int> missionIds = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Select(m => m.id).ToList();
+                List<int> missionIds = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id)).ProductMissionsDTOs.Select(m => m.id).ToList();
                 Dictionary<int, List<BarCodeMatchingRuleDTO>>.Enumerator productCodes = _productBarCodeMatchingRules.GetEnumerator();
                 while (productCodes.MoveNext()) {
                     int currId = productCodes.Current.Key;
@@ -825,10 +827,7 @@ namespace OperationGuidance_new.Views {
                 if (_activated) {
                     WidgetUtils.ShowWarningPopUp("任务已激活，无法切换任务");
                 } else {
-                    List<ProductMissionDTO> missions = _apis.QueryProductMissionsWithCover(new()).ProductMissionsDTOs
-                        .Where(dto => CommonUtils.CannotBeNull(dto.ProductSides)
-                        .Where(side => side.image == null || side.image == "" || side.Bolts == null || side.Bolts.Count == 0).Count() == 0)
-                        .ToList();
+                    List<ProductMissionDTO> missions = _apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
                     if (missions.Count > 0) {
                         PopUpMissionListForm(missions);
                     } else {
@@ -859,13 +858,45 @@ namespace OperationGuidance_new.Views {
 
             SetMissionDetails();
         }
-        private void SetMissionDetails() {
-            MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-            if (missionRecordDTO != null) {
-                _productBatch.SetValue(0, missionRecordDTO.product_batch);
-            }
+        private async void SetMissionDetails() {
             _missionSelectedName.SetValue(0, _mission.name);
             ResetMissionDetails();
+
+            await Task.Run(async () => {
+                while (!IsHandleCreated) {
+                    await Task.Delay(200);
+                }
+                BeginInvoke(() => {
+                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
+                    // 存在可以回填的数据
+                    if (missionRecordDTO != null) {
+                        // 刚登录
+                        if (MainUtils.LoginFlag) {
+                            // 需要回填确认
+                            if (MainUtils.IsProductBatchNoticeEnabled()) {
+                                // 弹出提示确认是否回填
+                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
+                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                                }
+                            } 
+                            // 不需要提示则直接回填
+                            else {
+                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                            }
+                        }
+                        // 最新查到的批次信息与缓存的不一致，则换掉
+                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
+                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                        }
+                        // 不管是否回填，登录标识都要改
+                        MainUtils.LoginFlag = false;
+                        // 不为空就回填
+                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
+                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
+                        }
+                    }
+                });
+            });
         }
         private void ResetMissionDetails() {
             SetTodayData();
@@ -886,18 +917,18 @@ namespace OperationGuidance_new.Views {
             _okSumPerDay.SetValue(0, okSum + "");
             _ngRatePerDay.SetValue(0, ngRate + "%");
         }
-        private void SetPset() {
-            if (_currentWorkingBolt != null) {
-                SetPset(_currentWorkingBolt.BoltDTO.parameters_set);
+        private void SetPset() => SetPset(null);
+        private void SetPset(string? customMsg) {
+            if (!string.IsNullOrEmpty(customMsg)) {
+                _pset.SetValue(0, customMsg);
+            } else if (_currentWorkingBolt != null) {
+                if (_currentWorkingBolt.CurrentParameterSet != null) {
+                    _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet + "");
+                } else {
+                    _pset.SetValue(0, "未配置程序号");
+                }
             } else {
                 _pset.SetValue(0, null);
-            }
-        }
-        private void SetPset(int? pset) {
-            if (pset != null) {
-                _pset.SetValue(0, pset.Value + "");
-            } else {
-                _pset.SetValue(0, "未配置程序号");
             }
         }
         private void PopUpMissionListForm(List<ProductMissionDTO> missions) {
@@ -914,7 +945,7 @@ namespace OperationGuidance_new.Views {
                     // 手动切换任务需要清空一下条码缓存
                     _barCodeObj.Reset();
                     _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
-                    SwitchToMission(missionListPanel.CurrentToggledMission.Entity);
+                    SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
                     popUpForm.Hide();
                 }
             };
@@ -948,20 +979,17 @@ namespace OperationGuidance_new.Views {
         private void InitializeMiddle() {
             _tighteningDataPanel = new(gridView => {
                 DataGridViewColumn[] columnRange = {};
-                Type type = typeof(OperationDataVO);
-                columnRange = columnRange.Append(GetColumn(type, "bolt_serial_num")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "tightening_status_str")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "torque_min_limit")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "torque_max_limit")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "torque_final_target")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "angle_min")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "angle_max")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "angle_final_target")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "str_arm_position_x")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "str_arm_position_y")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "rundown_torque_min")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "rundown_torque_max")).ToArray();
-                columnRange = columnRange.Append(GetColumn(type, "rundown_torque_target")).ToArray();
+                List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
+                foreach (OperationDataField field in operationDataFields) {
+                    if (field.Visible) {
+                        DataGridViewTextBoxColumn column = new() {
+                            DataPropertyName = field.PropertyName,
+                            HeaderText = field.FieldName,
+                            ReadOnly = true,
+                        };
+                        columnRange = columnRange.Append(column).ToArray();
+                    } 
+                }
                 gridView.Columns.Clear();
                 gridView.Columns.AddRange(columnRange);
                 gridView.Columns[0].Frozen = true;
@@ -976,31 +1004,6 @@ namespace OperationGuidance_new.Views {
             _tighteningDataPanel.HandleCreated += (s, e) => {
                 _tighteningDataPanel.DataSource = _tighteningDataVOs;
             };
-
-            DataGridViewColumn GetColumn(Type type, string propertyName) {
-                string fieldName = propertyName;
-                PropertyInfo? property = type.GetProperty(propertyName);
-                if (property != null) {
-                    IEnumerable<Attribute> enumerable = property.GetCustomAttributes();
-                    foreach (Attribute attribute in enumerable) {
-                        if (attribute is GridColumnAttribute gridColumn) {
-                            string columnName;
-                            if (gridColumn.ColumnName != null && gridColumn.ColumnName != string.Empty) {
-                                columnName = gridColumn.ColumnName;
-                            } else {
-                                columnName = property.Name;
-                            }
-                            fieldName = columnName;
-                        }
-                    }
-                }
-                DataGridViewTextBoxColumn column = new() {
-                    DataPropertyName = propertyName,
-                    HeaderText = fieldName,
-                    ReadOnly = true,
-                };
-                return column;
-            }
         }
 
         // 初始化底部
@@ -1505,11 +1508,11 @@ namespace OperationGuidance_new.Views {
         private async void LoadDevicesAsync() {
             await Task.Run(async () => {
                 // 查询所有站点信息
-                _workstationsDTOs = _apis.QueryWorkstationList(new()).WorkstationsDTOs.ToList();
+                _workstationsDTOs = _apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs.ToList();
                 // 查询所有设备信息
-                _arms = _apis.QueryDeviceArmList(new()).DeviceArmDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                _tools = _apis.QueryDeviceToolList(new()).DeviceToolDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                _serialPorts = _apis.QueryDeviceSerialPortList(new()).DeviceSerialPortDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                _arms = _apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id)).DeviceArmDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                _tools = _apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id)).DeviceToolDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                _serialPorts = _apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id)).DeviceSerialPortDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                 // 根据不同的设备类型针对性进行配置
                 foreach (DeviceBlock block in _deviceBlocks) {
                     DeviceCategory category = block.Category;
@@ -1569,7 +1572,7 @@ namespace OperationGuidance_new.Views {
             foreach (KeyValuePair<int, List<BarCodeMatchingRuleDTO>> pair in rules) {
                 foreach (BarCodeMatchingRuleDTO rule in pair.Value) {
                     if (MainUtils.CheckBarCodeIsMatched(barCode, rule.end_char, rule.length, MainUtils.GetKeyMatchingRule(rule.key_position, rule.key_char))) {
-                        mission = _apis.QueryProductMissionsWithCover(new()).ProductMissionsDTOs.Single(m => m.id == pair.Key);
+                        mission = _apis.QueryProductMissionDetail(new(pair.Key)).ProductMissionDTO;
                         break;
                     }
                 }
@@ -1627,7 +1630,7 @@ namespace OperationGuidance_new.Views {
                     return;
                 } else {
                     foreach (T task in tasks) {
-                        if (!task.Connected) {
+                        if (!task.WorkplaceCheckConnection()) {
                             block.ResetIconByStatus(DeviceStatus.ERROR);
                             return;
                         }
@@ -1666,29 +1669,23 @@ namespace OperationGuidance_new.Views {
                     _currentWorkingBolt = null;
                     return;
                 }
-                int? pset = boltDTO.parameters_set;
-                if (pset != null) {
-                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-                }
-                _currentWorkingBolt.CurrentParameterSet = pset;
-                // if (pset == null) {
-                //     WidgetUtils.ShowErrorPopUp($"点位[{_currentWorkingBolt.BoltDTO.serial_num}]没有配置程序号，无法激活任务");
-                //     _currentWorkingBolt = null;
-                //     return;
-                // }
-                // 4. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
+                // 4. 初始化工具拧紧而非反松
+                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                // 5. 如果力臂开关开启，则开始读取数据，同时开始监听点位状态
                 if (_locating_enabled) {
                     if (armId != null) {
                         ArmTask armTask = _armTasks[armId.Value];
                         armTask.RetrieveResult = true;
                         armTask.OnActionAfterReceiving += ActionAfterArmDataReceived;
-                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
+                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.ACTIVATED;
+                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                     }
+                } else {
+                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.ACTIVATED;
+                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                 }
-                // 5. 切换点位状态（包括一些操作）
+                // 6. 切换点位状态（包括一些操作）
                 ChangeBoltStatusToWorking(_currentWorkingBolt, _locating_enabled);
-                // 6. 初始化工具拧紧而非反松
-                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                 // 7. 清空数据展示列表
                 _tighteningDataVOs.Clear();
                 RefreshTighteningDataPanel();
@@ -1712,8 +1709,6 @@ namespace OperationGuidance_new.Views {
 
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
-            // Store all data left
-            StoreTighteningData();
             foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
                 // Clear all delegates once this workplace handle has been destroyed to ensure running performance
                 pair.Value.ActionAfterReceiving = new(c => {});
@@ -1725,71 +1720,68 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private async void StoreTighteningData() {
+        private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
-                if (_dataNeedToBeStored.Count > 0) {
-                    List<string>? headers = null;
-                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                    // 检查当前文件是否存在
-                    bool textFileExists = File.Exists(textFilePath);
-                    bool excelFileExists = File.Exists(excelFilePath);
-                    // 从配置文件读取配置
-                    List<int> sortConfig = MainUtils.GetSortConfig();
-                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                    // 检查当前是否存在正在使用的字段配置
-                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                        sortConfigCurr = sortConfig;
-                        MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
-                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                    }
-                    // 组装数据
-                    List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    List<OperationDataVO> dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataNeedToBeStored, dataFormatted);
-                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                    dataFormatted.ForEach(dto => {
-                        Dictionary<int, object?> record = new();
-                        for (int i = 0; i < propertyNames.Count; i++) {
-                            string pName = propertyNames[i];
-                            PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
-                            if (propertyInfo != null) {
-                                record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
-                            }
-                        }
-                        dataWithConfigFields.Add(record);
-                    });
-                    // 组装最终数据
-                    List<List<object?>> finalData = new();
-                    dataWithConfigFields.ForEach(dict => {
-                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                    });
-                    // 写入数据
-                    // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
-                    // if (succeed) {
-                    //     _apis.BatchAddOperationData(new(_dataNeedToBeStored));
-                    //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    //     _dataNeedToBeStored.Clear();
-                    // } else {
-                    //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
-                    // }
-
-                    // 先将组装好的VOs加入到实时显示数据列表中
-                    _tighteningDataVOs.AddRange(dataFormatted);
-                    RefreshTighteningDataPanel();
-                    // 显示完后立马存好，存好后立马清除
-                    _apis.BatchAddOperationData(new(_dataNeedToBeStored));
-                    _dataNeedToBeStored.Clear();
-                    // 最后再存进本地文件
-                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                List<OperationDataDTO> data = new() { operationDataDTO };
+                List<string>? headers = null;
+                string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                // 检查当前文件是否存在
+                bool textFileExists = File.Exists(textFilePath);
+                bool excelFileExists = File.Exists(excelFilePath);
+                // 从配置文件读取配置
+                List<int> sortConfig = MainUtils.GetSortConfig();
+                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                // 检查当前是否存在正在使用的字段配置
+                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                    sortConfigCurr = sortConfig;
+                    MainUtils.SetSortConfigCurr(sortConfigCurr);
+                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                 }
+                // 组装数据
+                List<Dictionary<int, object?>> dataWithConfigFields = new();
+                List<OperationDataVO> dataFormatted = new();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(data, dataFormatted);
+                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                dataFormatted.ForEach(dto => {
+                    Dictionary<int, object?> record = new();
+                    for (int i = 0; i < propertyNames.Count; i++) {
+                        string pName = propertyNames[i];
+                        PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
+                        if (propertyInfo != null) {
+                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+                        }
+                    }
+                    dataWithConfigFields.Add(record);
+                });
+                // 组装最终数据
+                List<List<object?>> finalData = new();
+                dataWithConfigFields.ForEach(dict => {
+                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                });
+                // 写入数据
+                // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
+                // if (succeed) {
+                //     _apis.BatchAddOperationData(new(data));
+                //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                // } else {
+                //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
+                // }
+
+                // 先将组装好的VOs加入到实时显示数据列表中
+                _tighteningDataVOs.AddRange(dataFormatted);
+                RefreshTighteningDataPanel();
+                // 显示完后立马存入数据库
+                _apis.BatchAddOperationData(new(data));
+                // 最后再存进本地文件
+                finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
             });
         }
         private void RefreshTighteningDataPanel() {
@@ -1812,22 +1804,64 @@ namespace OperationGuidance_new.Views {
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
             int? pset = boltDTO.parameters_set;
-            ToolTask toolTask = _toolTasks[toolId.Value];
+            boltButton.CurrentParameterSet = null;
+            // 将当前螺栓点位的serial_num传给process poanel
+            _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
             // 将工具锁住防止误操作（如果没有配置程序号，则默认锁枪）
+            ToolTask toolTask = _toolTasks[toolId.Value];
             if (lockTool || pset == null) {
                 toolTask.SendLock();
             } else {
                 toolTask.SendUnlock();
             }
             // 下发当前螺栓点位的程序号至控制器
-            if (pset != null) {
-                toolTask.SendPSet(pset.Value);
-            }
-            // 实时显示pset到任务信息框
-            SetPset(pset);
+            SendPSet(toolTask, pset);
+            // 修改点位状态
             boltButton.BoltStatus = BoltStatus.WORKING;
-            // 将当前螺栓点位的serial_num传给process poanel
-            _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
+        }
+        // 下发程序号，失败时持续尝试
+        private async void SendPSet(ToolTask task, int? pset) {
+            // 显示信息
+            SetPset();
+            if (_currentWorkingBolt == null) {
+                return;
+            }
+            if (pset == null) {
+                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                _workingProcessPanel.AppendDesc(_workingProcessPanel.PsetNullError);
+                return;
+            }
+            // 下发程序号
+            await Task.Run(() => {
+                BeginInvoke(async () => {
+                    int sendTimes = 0;
+                    while (!IsDisposed && !(await task.SendPSetAsync(pset.Value))) {
+                        // 如果手动下发了，则不再尝试下发
+                        if (_currentWorkingBolt.CurrentParameterSet != null) {
+                            return;
+                        }
+                        sendTimes++;
+                        if (sendTimes >= _resendPsetMaxTimes) {
+                            WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，无法再次下发，请检查任务配置");
+                            return;
+                        }
+                        // 显示状态和信息
+                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                        _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                        _workingProcessPanel.AppendDesc(_workingProcessPanel.PsetFailedError);
+                        // 实时显示pset到任务信息框
+                        SetPset("程序号下发失败");
+                        if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
+                            return;
+                        }
+                    }
+                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.PsetFailedError);
+                    _currentWorkingBolt.CurrentParameterSet = pset;
+                    // 经过一些列操作后，更新显示信息
+                    SetPset();
+                });
+            });
         }
 
         // 读取力臂数据并根据当前螺栓点位配置信息进行解锁、锁枪
@@ -1844,31 +1878,59 @@ namespace OperationGuidance_new.Views {
                             int x = armCoordinates.X;
                             int y = armCoordinates.Y;
                             int z = armCoordinates.Z;
+                            // 力臂位置在点位范围内
                             if (Math.Abs(x - boltCoordinates.X) < _armLocatingAccuracy && Math.Abs(y - boltCoordinates.Y) < _armLocatingAccuracy
                                     && (boltCoordinates.Z == 0 || Math.Abs(z - boltCoordinates.Z) < _armLocatingAccuracy)) {
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.ArmPositionError);
+                                // 需要管理员输入密码并确认
                                 if (_adminConfirmed != null) {
+                                    // 管理员已确认
                                     if (_adminConfirmed.Value) {
                                         toolTask.SendUnlock();
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                        _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
                                         _adminConfirmed = null;
-                                    } else {
+                                    } 
+                                    // 管理员未确认
+                                    else {
                                         toolTask.SendLock();
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_NG;
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                        _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                        _workingProcessPanel.AppendDesc(_workingProcessPanel.AdminConfirmation);
                                         if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                             _adminConfirmed = false;
                                             NGConfirmPopUp();
                                         }
                                     }
-                                } else if (_currentWorkingBolt.CurrentParameterSet == null) {
+                                } 
+                                // 当前点位没有设置程序号
+                                else if (_currentWorkingBolt.CurrentParameterSet == null) {
                                     toolTask.SendLock();
-                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_PSET;
-                                } else {
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                    // 如果是没有配置就显示对应错误信息，否则可能是下发失败
+                                    if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
+                                        _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNullError);
+                                    }
+                                } 
+                                // // 当前下发的程序与点位的不匹配（可能是手动下发）
+                                // else if (_currentWorkingBolt.BoltDTO.parameters_set != _currentWorkingBolt.CurrentParameterSet) {
+                                //     toolTask.SendLock();
+                                //     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                //     _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNotMatchedError);
+                                // } 
+                                // 所有检查正常
+                                else {
                                     toolTask.SendUnlock();
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                 }
-                            } else {
+                            } 
+                            // 力臂位置不在点位范围内
+                            else {
                                 toolTask.SendLock();
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_ARM;
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                _workingProcessPanel.AppendDesc(_workingProcessPanel.ArmPositionError);
                             }
                         }
                     }
@@ -1925,14 +1987,14 @@ namespace OperationGuidance_new.Views {
                                 }
                             }
                             // 检查控制器返回数据与螺栓点位配置的数据是否一致
-                            // 程序号（pset）校验
-                            if (boltDTO.parameters_set != null && boltDTO.parameters_set != _tighteningData.parameter_set_number) {
-                                tighteningOK = false;
-                                if (!string.IsNullOrEmpty(errorMsg)) {
-                                    errorMsg += "\r\n";
-                                }
-                                errorMsg += "程序号与配置不符";
-                            }
+                            // // 程序号（pset）校验
+                            // if (boltDTO.parameters_set != null && boltDTO.parameters_set != _tighteningData.parameter_set_number) {
+                            //     tighteningOK = false;
+                            //     if (!string.IsNullOrEmpty(errorMsg)) {
+                            //         errorMsg += "\r\n";
+                            //     }
+                            //     errorMsg += "程序号与配置不符";
+                            // }
                             // 扭矩校验
                             if (boltDTO.torque_max > 0 && (_tighteningData.torque < boltDTO.torque_min || _tighteningData.torque > boltDTO.torque_max)) {
                                 tighteningOK = false;
@@ -1972,10 +2034,6 @@ namespace OperationGuidance_new.Views {
                                 }
                                 if (nextIndex < _allBolts.Count) {
                                     _currentWorkingBolt = SwitchBoltAndChangeStatus(nextIndex, _locating_enabled);
-                                    _currentWorkingBolt.CurrentParameterSet = _currentWorkingBolt.BoltDTO.parameters_set;
-                                    if (_currentWorkingBolt.CurrentParameterSet == null) {
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_PSET;
-                                    }
                                 } else {
                                     // 打完了直接锁枪
                                     _toolTasks[toolId].SendLock();
@@ -2007,8 +2065,7 @@ namespace OperationGuidance_new.Views {
                                 }
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
                                 // 记录数据
-                                _dataNeedToBeStored.Add(dataDTO);
-                                StoreTighteningData();
+                                StoreTighteningData(dataDTO);
                             } else {
                                 // 先锁枪
                                 if (_locating_enabled) {
@@ -2025,7 +2082,7 @@ namespace OperationGuidance_new.Views {
                                     _currentWorkingBolt.StopFlickering();
                                     _currentWorkingBolt = null;
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_NG;
-                                    _workingProcessPanel.StatusDesc += "，" + errorMsg;
+                                    _workingProcessPanel.AppendDesc(errorMsg);
                                     _workingProcessPanel.BoltSerialNum = null;
                                     // 扭矩角度数据颜色改回黑色
                                     _torque.ForeColor = Color.Black;
@@ -2044,25 +2101,25 @@ namespace OperationGuidance_new.Views {
                                     // 重置任务信息
                                     ResetMissionDetails();
                                     // 记录数据
-                                    _dataNeedToBeStored.Add(dataDTO);
-                                    StoreTighteningData();
+                                    StoreTighteningData(dataDTO);
                                     // 先记录数据再弹出提示
                                     WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                 } else { 
                                     // 扭矩角度数据颜色改成红色
                                     _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                     _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE_NG;
-                                    _workingProcessPanel.StatusDesc = errorMsg;
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                    _workingProcessPanel.AppendDesc(errorMsg);
                                     _needLoosening = true;
                                     _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-                                    // 需要管理员密码弹窗
-                                    _adminConfirmed = false;
                                     // 记录数据
-                                    _dataNeedToBeStored.Add(dataDTO);
-                                    StoreTighteningData();
-                                    // 先记录数据再打开弹窗
-                                    NGConfirmPopUp();
+                                    StoreTighteningData(dataDTO);
+                                    // 需要管理员密码弹窗
+                                    if (_mission.password_need_time == 0 || _currentWorkingBolt.NgTimes >= _mission.password_need_time) {
+                                        _adminConfirmed = false;
+                                        // 先记录数据再打开弹窗
+                                        NGConfirmPopUp();
+                                    }
                                 }
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
                             }
@@ -2074,8 +2131,7 @@ namespace OperationGuidance_new.Views {
                             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                             if (MainUtils.GetStoreLooseningData()) {
                                 // 记录数据
-                                _dataNeedToBeStored.Add(dataDTO);
-                                StoreTighteningData();
+                                StoreTighteningData(dataDTO);
                             }
                         }
                     }
@@ -2126,6 +2182,7 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowNoticePopUp("验证成功");
                     _adminConfirmed = true;
                     _adminPasswordPopUpForm.Dispose();
+                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;
@@ -2521,14 +2578,18 @@ namespace OperationGuidance_new.Views {
                 box.GetTextBox(0).IsError = true;
                 return;
             } else if (_workplace.BarCodeObj.PartsBarCodes.Contains(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"已录入的条码请勿重复录入");
+                WidgetUtils.ShowWarningPopUp($"请勿重复录入物料");
+                box.GetTextBox(0).IsError = true;
+                return;
+            } else if (_workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new() { PartsBarCode = barCode }).Yes) {
+                WidgetUtils.ShowWarningPopUp($"检测到数据库存在重复条码信息，请勿重复录入物料");
                 box.GetTextBox(0).IsError = true;
                 return;
             }
             // 物料条码校验不通过
             int ruleId = CheckPartsBarCodeMatchedMission(barCode);
             if (ruleId < 0) {
-                WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与当前任务所配置的物料码不匹配");
+                WidgetUtils.ShowWarningPopUp($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
                 box.GetTextBox(0).IsError = true;
             } 
             // 物料条码校验通过
@@ -2583,7 +2644,7 @@ namespace OperationGuidance_new.Views {
             foreach (KeyValuePair<int, List<BarCodeMatchingRuleDTO>> pair in _productBarCodeRules) {
                 foreach (BarCodeMatchingRuleDTO rule in pair.Value) {
                     if (MainUtils.CheckBarCodeIsMatched(barCode, rule.end_char, rule.length, MainUtils.GetKeyMatchingRule(rule.key_position, rule.key_char))) {
-                        mission = _workplace.Apis.QueryProductMissionsWithCover(new()).ProductMissionsDTOs.Single(m => m.id == pair.Key);
+                        mission = _workplace.Apis.QueryProductMissionDetail(new(pair.Key)).ProductMissionDTO;
                         break;
                     }
                 }
@@ -2694,7 +2755,14 @@ namespace OperationGuidance_new.Views {
     }
 
     public class WorkingProcessPanel: Panel {
-        private readonly int _loopingInterval = 50;
+        private readonly int _loopingInterval       = 50;
+        public readonly string TighteningDesc       = "正在拧紧{0}号螺丝";
+        public readonly string LooseningDesc        = "正在反松{0}号螺丝";
+        public readonly string ArmPositionError     = "力臂未在指定位置";
+        public readonly string AdminConfirmation    = "需要管理员确认";
+        public readonly string PsetNullError        = "{0}号螺丝未配置程序号，工具锁定";
+        public readonly string PsetFailedError      = "{0}号螺丝程序号下发失败，工具锁定";
+        public readonly string PsetNotMatchedError  = "{0}号螺丝程序号与控制器不匹配，工具锁定";
 
         private Image _clockwiseIcon;
         private Image _anticlockwiseIcon;
@@ -2714,6 +2782,7 @@ namespace OperationGuidance_new.Views {
         private string _statusDesc;
         private Font _statusFont;
         private Font _statusDescFont;
+        private List<string> _descList = new();
 
         private WorkplaceProcessStatus _workplaceProcessStatus;
         private int? _boltSerialNum;
@@ -2727,7 +2796,6 @@ namespace OperationGuidance_new.Views {
             }
         }
         public int? BoltSerialNum { get => _boltSerialNum; set => _boltSerialNum = value; }
-        public string StatusDesc { get => _statusDesc; set => _statusDesc = value; }
         public WorkplaceProcessStatus WorkplaceProcessStatus {
             get => _workplaceProcessStatus;
             set {
@@ -2735,38 +2803,34 @@ namespace OperationGuidance_new.Views {
                 switch (_workplaceProcessStatus) {
                     case WorkplaceProcessStatus.UNACTIVATED:
                         _statusTxt = "未激活";
+                        ClearDesc();
+                        _picturePanel.Visible = false;
+                        break;
+                    case WorkplaceProcessStatus.ACTIVATED:
+                        _statusTxt = "已激活";
+                        ClearDesc();
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.OPERATION_ENABLE:
                         if (_tightenOrLoosen == TightenOrLoosen.TIGHTENING) {
-                            _statusDesc = "正在拧紧{0}号螺丝";
+                            SetDesc(TighteningDesc);
                         } else {
-                            _statusDesc = "正在反松{0}号螺丝";
+                            SetDesc(LooseningDesc);
                         }
                         _picturePanel.Visible = true;
                         break;
-                    case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
+                    case WorkplaceProcessStatus.OPERATION_DISABLE:
                         _statusTxt = "已锁定";
-                        _statusDesc = "力臂未在指定位置";
-                        _picturePanel.Visible = false;
-                        break;
-                    case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
-                        _statusTxt = "已锁定";
-                        _statusDesc = "未配置程序号，工具锁定";
-                        _picturePanel.Visible = false;
-                        break;
-                    case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
-                        _statusTxt = "NG";
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.FINISHED_NG:
                         _statusTxt = "NG";
-                        _statusDesc = "任务失败";
+                        SetDesc("任务失败");
                         _picturePanel.Visible = false;
                         break;
                     case WorkplaceProcessStatus.FINISHED_OK:
                         _statusTxt = "OK";
-                        _statusDesc = "任务完成";
+                        SetDesc("任务完成");
                         _picturePanel.Visible = false;
                         break;
                     default:
@@ -2774,12 +2838,42 @@ namespace OperationGuidance_new.Views {
                 }
             }
         }
+        public void SetDesc(string desc) {
+            ClearDesc();
+            _descList.Add(desc);
+            _statusDesc = desc;
+            if (_boltSerialNum != null) {
+                _statusDesc = string.Format(_statusDesc, _boltSerialNum);
+            }
+        }
+        public void AppendDesc(string desc) {
+            if (!_descList.Contains(desc)) {
+                _descList.Add(desc);
+            }
+            _statusDesc = string.Join("\r\n", _descList);
+            if (_boltSerialNum != null) {
+                _statusDesc = string.Format(_statusDesc, _boltSerialNum);
+            }
+        }
+        public void RemoveDesc(string desc) {
+            if (_descList.Contains(desc)) {
+                _descList.Remove(desc);
+            }
+            _statusDesc = string.Join("\r\n", _descList);
+            if (_boltSerialNum != null) {
+                _statusDesc = string.Format(_statusDesc, _boltSerialNum);
+            }
+        }
+        public void ClearDesc() {
+            _descList.Clear();
+            _statusDesc = string.Empty;
+        }
 
         public WorkingProcessPanel() : base() {
             _clockwiseIcon = Properties.Resources.processing_clockwise;
             _anticlockwiseIcon = Properties.Resources.processing_anticlockwise;
             _statusTxt = "未激活";
-            _statusDesc = "";
+            _statusDesc = string.Empty;
             _workplaceProcessStatus = WorkplaceProcessStatus.UNACTIVATED;
 
             BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
@@ -2813,6 +2907,11 @@ namespace OperationGuidance_new.Views {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
                                 }
                                 break;
+                            case WorkplaceProcessStatus.ACTIVATED:
+                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_BLUE.ToArgb()) {
+                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_BLUE;
+                                }
+                                break;
                             case WorkplaceProcessStatus.OPERATION_ENABLE:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_WHITE.ToArgb()) {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_WHITE;
@@ -2828,9 +2927,7 @@ namespace OperationGuidance_new.Views {
                                 _pictureBox.Image = image;
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
-                            case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
-                            case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
-                            case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
+                            case WorkplaceProcessStatus.OPERATION_DISABLE:
                             case WorkplaceProcessStatus.FINISHED_NG:
                                 if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
                                     BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
@@ -2862,7 +2959,7 @@ namespace OperationGuidance_new.Views {
         private void InvokeResizing() {
             _borderRect.Size = Size;
             _borderSize = Width / 40 + Height / 80;
-            _picturePanelHeight = (int) ((Height - _borderSize * 2) * .75F);
+            _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F);
             _picturePanel.Size = new(Width - _borderSize * 2, _picturePanelHeight);
             _picturePanel.Location = new(_borderSize, _borderSize);
 
@@ -2877,8 +2974,8 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private Font ResetControlFont(string text, float fontRatio) {
-            using (Graphics graphics = CreateGraphics()) {
+            private Font ResetControlFont(string text, float fontRatio) {
+                using (Graphics graphics = CreateGraphics()) {
                 return ResetControlFont(graphics, text, fontRatio -= .005f);
             }
         }
@@ -2895,16 +2992,19 @@ namespace OperationGuidance_new.Views {
             base.OnPaint(e);
             Graphics graphics = e.Graphics;
             graphics.Clear(BackColor);
-            _statusFont = ResetControlFont(_statusTxt, .3f);
-            _statusDescFont = ResetControlFont(_statusDesc, .1f);
-            int lines = _statusDesc.Length - _statusDesc.Replace(Environment.NewLine, string.Empty).Length;
+            _statusFont = ResetControlFont(_statusTxt, .325f);
+            _statusDescFont = ResetControlFont(_statusDesc, .1f - _descList.Count * .005F);
             int statusWidth = (int) (graphics.MeasureString(_statusTxt, _statusFont).Width);
             int statusDescWidth = (int) (graphics.MeasureString(_statusDesc, _statusDescFont).Width);
             Point statusPoint;
             Point statusDescPoint;
             int otherHeihgt = _borderSize + _picturePanelHeight;
+            StringFormat stringFormat = new StringFormat();
+            stringFormat.Alignment = StringAlignment.Center;
+            stringFormat.LineAlignment = StringAlignment.Center;
             switch (_workplaceProcessStatus) {
                 case WorkplaceProcessStatus.UNACTIVATED:
+                case WorkplaceProcessStatus.ACTIVATED:
                     // graphics.FillRectangle(new SolidBrush(_warningColor), _borderRect);
                     statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 2);
                     graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
@@ -2916,19 +3016,18 @@ namespace OperationGuidance_new.Views {
                     if (_boltSerialNum != null) {
                         descShowing = string.Format(descShowing, _boltSerialNum);
                     }
-                    statusDescWidth = (int) (graphics.MeasureString(descShowing, _statusDescFont).Width);
-                    statusDescPoint = new Point((Width - statusDescWidth) / 2, otherHeihgt + (Height - otherHeihgt - _statusDescFont.Height * lines) / 2);
-                    graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint);
+                    // 使用 StringFormat 进行居中时，是以坐标点位为中心，因此 x，y 都要设置为中心点
+                    statusDescPoint = new Point(Width / 2, otherHeihgt + (Height - otherHeihgt) / 2);
+                    graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint, stringFormat);
                     break;
-                case WorkplaceProcessStatus.OPERATION_DISABLE_ARM:
-                case WorkplaceProcessStatus.OPERATION_DISABLE_PSET:
-                case WorkplaceProcessStatus.OPERATION_DISABLE_NG:
+                case WorkplaceProcessStatus.OPERATION_DISABLE:
                 case WorkplaceProcessStatus.FINISHED_NG:
                 case WorkplaceProcessStatus.FINISHED_OK:
-                    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 3);
+                    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 3 - _descList.Count * (int) (_statusFont.Height * 0.05));
                     graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
-                    statusDescPoint = new Point((Width - statusDescWidth) / 2, otherHeihgt + (Height - otherHeihgt - _statusDescFont.Height * lines) / 2);
-                    graphics.DrawString(_statusDesc, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusDescPoint);
+                    // 使用 StringFormat 进行居中时，是以坐标点位为中心，因此 x，y 都要设置为中心点
+                    statusDescPoint = new Point(Width / 2, otherHeihgt + (Height - otherHeihgt) / 2);
+                    graphics.DrawString(_statusDesc, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusDescPoint, stringFormat);
                     break;
                 //case WorkplaceProcessStatus.FINISHED_NG:
                 //case WorkplaceProcessStatus.FINISHED_OK:
@@ -3279,13 +3378,17 @@ namespace OperationGuidance_new.Views {
                         pset = int.Parse(parameterSet);
                         if (await toolTask.SendPSetAsync(pset)) {
                             WidgetUtils.ShowNoticePopUp("操作成功！");
+                            // 下发成功自动解锁
+                            toolTask.SendUnlock();
+                            canUnlock = true;
                             if (_currentWorkingBolt != null) {
                                 _currentWorkingBolt.CurrentParameterSet = pset;
-                                toolTask.SendUnlock();
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.PsetFailedError);
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.PsetNullError);
+                                _setPset();
+                                // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
+                                Dispose();
                             }
-                            _setPset();
-                            canUnlock = true;
                         } else {
                             WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令\r\n2. 控制器未配置【程序{parameterSet}】, 工具锁定");
                             canUnlock = false;

@@ -66,9 +66,7 @@
         public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {
             string? result = null;
             string mid = GetMidFromResult(dataMessage);
-            if (mid == "9999") { // Skip the heart beating result
-                result = null;
-            } else if (mid == "0061") {
+            if (mid == "0061") {
                 result = null;
                 TighteningData tighteningData = new() {
                     cell_id = int.Parse(dataMessage.Substring(22, 4)),
@@ -166,9 +164,7 @@
         public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {
             string? result = null;
             string mid = GetMidFromResult(dataMessage);
-            if (mid == "9999") { // Skip the heart beating result
-                result = null;
-            } else if (mid == "0061") {
+            if (mid == "0061") {
                 result = null;
                 TighteningData tighteningData = new() {
                     cell_id = int.Parse(dataMessage.Substring(22, 4)),

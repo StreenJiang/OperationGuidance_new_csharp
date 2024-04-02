@@ -24,5 +24,6 @@ namespace OperationGuidance_new.ViewObjects {
                 }
             } 
         }
+        public int macs_id { get; set; }
     }
 }

@@ -27,5 +27,6 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("匹配任务")]
         public string? mission_name { get; set; }
         public int? mission_id { get; set; }
+        public int macs_id { get; set; }
     }
 }

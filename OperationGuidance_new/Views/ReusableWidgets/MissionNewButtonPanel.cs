@@ -16,10 +16,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 MissionEditionView editionView = WidgetUtils.GetView<MissionEditionView>();
                 CustomMainMenuButton missionManagementButton = WidgetUtils.GetMainMenu(100);
                 if (editionView.EditionPage == null || !editionView.EditionPage.Modified || WidgetUtils.ShowConfirmPopUp("编辑界面存在未保存内容，是否打开新的界面？")) {
-                    editionView.OpenEditionPage(new() {
-                        name = "新建任务",
-                        ProductSides = new(),
-                    });
+                    editionView.OpenEditionPage(null);
                     CommonUtils.CannotBeNull(editionView.CorrespondingMenuButton).TriggerClick(EventArgs.Empty);
                     missionManagementButton.TriggerClick(EventArgs.Empty);
                 }

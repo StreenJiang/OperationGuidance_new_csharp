@@ -28,6 +28,7 @@
         public static Color COLOR_WORKPLACE_BOLT_BG_DONE => COLOR_2AB514;
         public static Color COLOR_WORKPLACE_BOLT_BG_ERROR => COLOR_F01414;
         public static Color COLOR_WORKING_PROCESS_GREEN => COLOR_2AB514;
+        public static Color COLOR_WORKING_PROCESS_BLUE => COLOR_5089F6;
         public static Color COLOR_WORKING_PROCESS_RED => COLOR_F01414;
         public static Color COLOR_WORKING_PROCESS_THEME => COLOR_E86C10;
         public static Color COLOR_WORKING_PROCESS_WHITE => COLOR_FEFEFE;
@@ -66,5 +67,6 @@
         private static Color COLOR_F01414 => ColorTranslator.FromHtml("#F01414");
         private static Color COLOR_EEEEEE => ColorTranslator.FromHtml("#EEEEEE");
         private static Color COLOR_BBBBBB => ColorTranslator.FromHtml("#BBBBBB");
+        private static Color COLOR_5089F6 => ColorTranslator.FromHtml("#5089F6");
     }
 }

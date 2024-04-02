@@ -15,6 +15,10 @@ using System.Net.NetworkInformation;
 using System.ComponentModel;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Database;
+using OperationGuidance_service.Exceptions;
+using OperationGuidance_service.Models.DTOs;
+using System.Diagnostics;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -49,8 +53,18 @@ namespace OperationGuidance_new {
         #region Windows Form manually initialization code
 
         private void InitializeComponentManually() {
+            
+            String thisprocessname = Process.GetCurrentProcess().ProcessName;
             // AllocConsole();
 
+            // 先连接一下数据库，看看数据库是否正常
+            try {
+                DbConnector.GetConnection();
+            } catch (DatabaseException de) {
+                throw de;
+            }
+            
+            this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
             // Get MAC address
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
@@ -68,9 +82,20 @@ namespace OperationGuidance_new {
                 // others
                 || macs.Contains("E43A6E5CBE6A")
                 || macs.Contains("E43A6E4B2F12")
+                // 西艾爱
+                || macs.Contains("E43A6E7936B1")
             )) {
-                WidgetUtils.ShowErrorPopUp("当前设备未授权");
                 throw new Exception("当前设备未授权");
+            }
+
+            // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
+            SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
+            if (SystemUtils.MacAddressesDTO == null) {
+                MacAddressesDTO? macAddressesDTOTemp = SystemUtils.GetApis().AddOrUpdateMacAddresses(new(new() { macs = string.Join(",", macs) })).MacAddressesDTO;
+                if (macAddressesDTOTemp == null) {
+                    throw new Exception("物理地址存储至数据库失败");
+                }
+                SystemUtils.MacAddressesDTO = macAddressesDTOTemp;
             }
 
             // MainForm
@@ -78,14 +103,15 @@ namespace OperationGuidance_new {
             Name = "MainForm";
             Text = "MainForm";
             // Set size
-            WidgetUtils.RefreshMainSize(MainUtils.Settings.Read(IniFileKeys.Resolution));
+            WidgetUtils.RefreshMainSize(MainUtils.GetSettingResolution());
             Size mainFormSize = WidgetUtils.MainSize;
 
             // Resize for login view
             Size loginViewSize = WidgetUtils.GetLoginViewSize(mainFormSize);
             Size = loginViewSize;
             ClientSize = loginViewSize;
-            CenterToScreen();
+            Rectangle workingArea = WidgetUtils.GetScreenWorkingArea();
+            Location = new((workingArea.Width - loginViewSize.Width) / 2 + workingArea.Location.X, (workingArea.Height - loginViewSize.Height) / 2 + workingArea.Location.Y);
             LoginView loginView = new(loginViewSize, Properties.Resources.login_back, AfterLogin, mainFormSize);
             loginView.Parent = this;
             MainUtils.LoginView = loginView;
@@ -128,7 +154,10 @@ namespace OperationGuidance_new {
                                     _operatorView.Dispose();
                                 }
                                 if (mainPanel != null) {
-                                    mainPanel.Size = mainFormSize;
+                                    CustomMainMenuButton? openFirstButton = WidgetUtils.MainMenus.Values.SingleOrDefault(btn => btn.OpenFirst);
+                                    if (openFirstButton != null) {
+                                        openFirstButton.PerformClick();
+                                    }
                                     mainPanel.Show();
                                 }
                             } else {
@@ -151,8 +180,8 @@ namespace OperationGuidance_new {
                         mainForm.WindowState = FormWindowState.Normal;
                     }
                     mainForm.ClientSize = loginViewSize;
-                    mainForm.Location = new((screenSize.Width - loginViewSize.Width) / 2, (screenSize.Height - loginViewSize.Height) / 2);
-                    // mainPanel.Size = loginView.MainFormSize;
+                    Point location = WidgetUtils.GetScreenWorkingArea().Location;
+                    mainForm.Location = new((screenSize.Width - loginViewSize.Width) / 2 + location.X, (screenSize.Height - loginViewSize.Height) / 2 + location.Y);
                     loginView.Size = loginViewSize;
                     loginView.BackShowing = WidgetUtils.ResizeImage(loginView.Back, loginViewSize);
                     // 显示登录界面
@@ -182,7 +211,6 @@ namespace OperationGuidance_new {
                 mainPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
                 mainPanel.Margin = new Padding(0);
                 mainPanel.Name = "mainPanel";
-                mainPanel.Size = mainFormSize;
                 mainPanel.Hide();
                 // Store this mainPanel incase wherever needs to reach it
                 WidgetUtils.MainPanel = mainPanel;
@@ -349,6 +377,7 @@ namespace OperationGuidance_new {
                         mainMenuButton.CorrespondingContentPanel.Visible = false;
                     }
                     if (mainMenuConfig.OpenFirst) {
+                        mainMenuButton.OpenFirst = mainMenuConfig.OpenFirst;
                         mainMenuButton.PerformClick();
                     }
                 }
@@ -356,18 +385,6 @@ namespace OperationGuidance_new {
                 AllCreated = true;
                 mainPanel.Show();
             }
-
-            // Resize after login in
-            Size screenSize = WidgetUtils.GetScreenResolution();
-            if (mainFormSize == screenSize) {
-                WindowState = FormWindowState.Maximized;
-            } else {
-                Size = mainFormSize;
-                ClientSize = mainFormSize;
-                CenterToScreen();
-            }
-            MinimumSize = new Size(400, 300);
-            MaximumSize = screenSize;
 
             // BackgroundWorker
             backgroundWorker = new() {
@@ -379,7 +396,15 @@ namespace OperationGuidance_new {
             backgroundWorker.ProgressChanged += (sender, eventArgs) => {
                 foreach (Control control in Controls) {
                     if (!MainUtils.LoginView.Visible) {
-                        control.Size = this.ClientSize;
+                        // control.Size = this.ClientSize;
+                        // 留出边框的位置
+                        control.Width = ClientSize.Width - 2;
+                        control.Height = ClientSize.Height - 2;
+                        if (control is LoginView loginView) {
+                            loginView.Location = new(0, 0);
+                        } else {
+                            control.Location = new(1, 1);
+                        }
                     }
                 }
             };
@@ -396,6 +421,23 @@ namespace OperationGuidance_new {
                 }
                 backgroundWorker.RunWorkerAsync();
             };
+
+            // Resize after login in
+            Size screenSize = WidgetUtils.GetScreenResolution();
+            if (mainFormSize == screenSize) {
+                WindowState = FormWindowState.Maximized;
+            } else {
+                Size = mainFormSize;
+                ClientSize = mainFormSize;
+                CenterToScreen();
+            }
+            MinimumSize = new Size(400, 300);
+            MaximumSize = screenSize;
+
+            // 如果登录界面的分辨率与主界面一模一样，则会出现不触发 sizeChanged 事件的情况，因此这里手动触发一下
+            if (!backgroundWorker.IsBusy) {
+                backgroundWorker.RunWorkerAsync();
+            }
         }
         #endregion
     }

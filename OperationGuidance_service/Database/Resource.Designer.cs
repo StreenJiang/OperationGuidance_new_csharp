@@ -64,6 +64,37 @@ namespace OperationGuidance_service.Database {
         ///   Looks up a localized string similar to /*
         /// Navicat Premium Data Transfer
         ///
+        /// Source Server         : AnengDB
+        /// Source Server Type    : MySQL
+        /// Source Server Version : 50744
+        /// Source Host           : localhost:3307
+        /// Source Schema         : aneng
+        ///
+        /// Target Server Type    : MySQL
+        /// Target Server Version : 50744
+        /// File Encoding         : 65001
+        ///
+        /// Date: 31/03/2024 23:44:48
+        ///*/
+        ///
+        ///SET NAMES utf8mb4;
+        ///SET FOREIGN_KEY_CHECKS = 0;
+        ///
+        ///-- ----------------------------
+        ///-- Table structure for bar_code_matching_rule
+        ///-- ----------------------------
+        ///DROP  [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string init_mysql {
+            get {
+                return ResourceManager.GetString("init_mysql", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to /*
+        /// Navicat Premium Data Transfer
+        ///
         /// Source Server         : SQLite
         /// Source Server Type    : SQLite
         /// Source Server Version : 3030001
@@ -73,17 +104,16 @@ namespace OperationGuidance_service.Database {
         /// Target Server Version : 3030001
         /// File Encoding         : 65001
         ///
-        /// Date: 09/03/2024 14:52:35
+        /// Date: 31/03/2024 23:27:07
         ///*/
         ///
         ///PRAGMA foreign_keys = false;
         ///
         ///-- ----------------------------
-        ///-- Table structure for device_arm
+        ///-- Table structure for bar_code_matching_rule
         ///-- ----------------------------
-        ///DROP TABLE IF EXISTS &quot;device_arm&quot;;
-        ///CREATE TABLE &quot;device_arm&quot; (
-        ///  &quot;id&quot; i [rest of string was truncated]&quot;;.
+        ///DROP TABLE IF EXISTS &quot;bar_code_matching_rule&quot;;
+        ///CREATE TABLE  [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string init_sqlite {
             get {

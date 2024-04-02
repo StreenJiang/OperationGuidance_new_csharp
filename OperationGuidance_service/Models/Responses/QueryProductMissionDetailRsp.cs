@@ -2,8 +2,8 @@
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class QueryProductMissionsAndDetailsRsp: HttpResponse {
-        public List<ProductMissionDTO> ProductMissionsDTOs {
+    public class QueryProductMissionDetailRsp: HttpResponse {
+        public ProductMissionDTO? ProductMissionDTO {
             get; set; 
         }
     }

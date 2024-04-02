@@ -1,8 +1,8 @@
 using OperationGuidance_service.Models.AbstractClasses;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.Requests {
     public class QueryWorkstationListReq: HttpRequest {
-        public int UserId { get; set; } = SystemUtils.LoggedUserId;
+        public int MacsId { get; set; }
+        public QueryWorkstationListReq(int macsId) => MacsId = macsId;
     }
 }

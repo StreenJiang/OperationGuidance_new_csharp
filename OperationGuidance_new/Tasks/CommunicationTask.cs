@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Tasks {
 
         #region Properties
         // Override properties
-        public override bool Connected => socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip) && !CloseConnectionManually;
+        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
@@ -99,6 +99,7 @@ namespace OperationGuidance_new.Tasks {
             Result = null;
             Commands.Clear();
         }
+        public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         #endregion
 
         #region Methods

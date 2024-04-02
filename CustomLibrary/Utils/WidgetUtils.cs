@@ -7,6 +7,7 @@ using CustomLibrary.ComboBoxes;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Panels.BaseClasses;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
@@ -19,6 +20,20 @@ namespace CustomLibrary.Utils {
         public static CustomTabPanel? MainPanel { get; set; }
         public static CustomMainMenuPanel MainMenuPanel { get; set; }
         public static Size MainSize { get; private set;}
+        public static Dictionary<int, CustomMainMenuButton> MainMenus { get => _mainMenus; set => _mainMenus = value; }
+        public static CustomContentPanelBase CurrentPanel { get; set; }
+        public static Func<bool>? CheckSavedFunc = null;
+        private static bool _checkSaved = true;
+        public static bool CheckSaved { 
+            get {
+                _checkSaved = !(CheckSavedFunc != null && !CheckSavedFunc());
+                return _checkSaved;
+            }
+            set {
+                _checkSaved = value;
+            }
+        }
+
         public static void RefreshMainSize(string resolution) {
             Size screenSize = WidgetUtils.GetScreenResolution();
             if (!string.IsNullOrEmpty(resolution)) {
@@ -82,8 +97,11 @@ namespace CustomLibrary.Utils {
             throw new NullReferenceException("Can not find main menu by key <" + menuKey + ">, please check system config.");
         }
 
+        public static Rectangle GetScreenWorkingArea() {
+            return Screen.FromHandle(MainForm.Handle).WorkingArea;
+        }
         public static Size GetScreenResolution() {
-            return Screen.PrimaryScreen.Bounds.Size;
+            return GetScreenWorkingArea().Size;
         }
 
         /// <summary>

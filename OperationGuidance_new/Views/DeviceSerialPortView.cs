@@ -227,7 +227,7 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
-                List<DeviceSerialPortDTO> allData = apis.QueryDeviceSerialPortList(new()).DeviceSerialPortDTOs;
+                List<DeviceSerialPortDTO> allData = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id)).DeviceSerialPortDTOs;
                 if (string.IsNullOrEmpty(name.GetTextBox(0).Box.Text)) {
                     check = false;
                     name.GetTextBox(0).IsError = true;
@@ -310,7 +310,7 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<DeviceSerialPortVO> QueryList() {
-            QueryDeviceSerialPortListRsp rsp = apis.QueryDeviceSerialPortList(new());
+            QueryDeviceSerialPortListRsp rsp = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id));
             _dataDTOList = rsp.DeviceSerialPortDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
             List<DeviceSerialPortVO> vos = new();
             CommonUtils.ObjectConverter<DeviceSerialPortDTO, DeviceSerialPortVO>(_dataDTOList, vos);

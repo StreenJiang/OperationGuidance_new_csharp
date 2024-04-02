@@ -15,5 +15,6 @@ namespace OperationGuidance_service.Models {
         public int? stop_bit { get; set; }
         public int? data_type { get; set; }
         public string? invalid_char { get; set; }
+        public int macs_id { get; set; }
     }
 }

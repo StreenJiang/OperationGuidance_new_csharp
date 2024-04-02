@@ -131,19 +131,19 @@ namespace OperationGuidance_new.Views {
         #region Reusable methods
         private void GetComboOptions() {
             // 获取工具信息
-            QueryDeviceToolListRsp queryDeviceToolListRsp = apis.QueryDeviceToolList(new());
+            QueryDeviceToolListRsp queryDeviceToolListRsp = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id));
             _toolDTOs = queryDeviceToolListRsp.DeviceToolDTOs;
             _toolIdOptions = _toolDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
             // 获取力臂信息
-            QueryDeviceArmListRsp queryDeviceArmListRsp = apis.QueryDeviceArmList(new());
+            QueryDeviceArmListRsp queryDeviceArmListRsp = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id));
             _armDTOs = queryDeviceArmListRsp.DeviceArmDTOs;
             _armIdOptions = _armDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
             // 获取通讯设备信息
-            QueryDeviceCommunicationListRsp queryDeviceCommunicationListRsp = apis.QueryDeviceCommunicationList(new());
+            QueryDeviceCommunicationListRsp queryDeviceCommunicationListRsp = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id));
             _communicationDTOs = queryDeviceCommunicationListRsp.DeviceCommunicationDTOs;
             _communicationIdOptions = _communicationDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
             // 获取串口设备信息
-            QueryDeviceSerialPortListRsp queryDeviceSerialPortListRsp = apis.QueryDeviceSerialPortList(new());
+            QueryDeviceSerialPortListRsp queryDeviceSerialPortListRsp = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id));
             _serialPortDTOs = queryDeviceSerialPortListRsp.DeviceSerialPortDTOs;
             _serialPortIdOptions = _serialPortDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
         }
@@ -512,7 +512,7 @@ namespace OperationGuidance_new.Views {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
-                List<WorkstationDTO> allData = apis.QueryWorkstationList(new()).WorkstationsDTOs;
+                List<WorkstationDTO> allData = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
                 if (string.IsNullOrEmpty(stationName.GetTextBox(0).Box.Text)) {
                     check = false;
                     stationName.GetTextBox(0).IsError = true;
@@ -604,9 +604,7 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<WorkstationVO> QueryList() {
-            QueryWorkstationListRsp rsp = apis.QueryWorkstationList(new() {
-                UserId = SystemUtils.LoggedUserId,
-            });
+            QueryWorkstationListRsp rsp = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id));
             _dataDTOList = rsp.WorkstationsDTOs;
             List<WorkstationVO> vos = new();
             CommonUtils.ObjectConverter<WorkstationDTO, WorkstationVO>(_dataDTOList, vos);

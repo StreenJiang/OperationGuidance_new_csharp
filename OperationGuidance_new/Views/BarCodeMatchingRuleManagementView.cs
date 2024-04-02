@@ -90,8 +90,9 @@ namespace OperationGuidance_new.Views {
 
         #region Reusable methods
         private void RefreshMissionOptions() {
-            _missions = apis.QueryProductMissions(new()).ProductMissionsDTOs;
-            foreach (ProductMissionDTO mission in _missions.Where(dto => !_missionNameComboBox.Items.Contains(dto.id))) {
+            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id)).ProductMissionsDTOs;
+            _missionNameComboBox.ClearItem();
+            foreach (ProductMissionDTO mission in _missions) {
                 _missionNameComboBox.AddItem(mission.name, mission.id);
             }
         }
@@ -268,7 +269,7 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<BarCodeMatchingRuleVO> QueryList() {
-            QueryBarCodeMatchingRuleListRsp rsp = apis.QueryBarCodeMatchingRuleList(new());
+            QueryBarCodeMatchingRuleListRsp rsp = apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id));
             _dataDTOList = rsp.BarCodeMatchingRuleDTOs;
             List<BarCodeMatchingRuleVO> vos = new();
             CommonUtils.ObjectConverter<BarCodeMatchingRuleDTO, BarCodeMatchingRuleVO>(_dataDTOList, vos);

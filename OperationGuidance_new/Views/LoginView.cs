@@ -6,7 +6,6 @@ using CustomLibrary.Forms;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_new.Utils;
-using OperationGuidance_new.Configs;
 
 namespace OperationGuidance_new.Views {
     public class LoginView: CustomContentPanel {
@@ -44,10 +43,11 @@ namespace OperationGuidance_new.Views {
 
         #region Initialization methods
         public async void ShowLoginForm() {
-            WidgetUtils.RefreshMainSize(MainUtils.Settings.Read(IniFileKeys.Resolution));
+            WidgetUtils.RefreshMainSize(MainUtils.GetSettingResolution());
             _isLoggedIn = false;
             await Task.Delay(300);
             _loginForm = new(ClickLogin);
+            WidgetUtils.MakeControlDraggable(_loginForm.ContentPanel, WidgetUtils.MainForm);
             _loginForm.TitlePanel.Hide();
             _loginForm.KeyDown += (s, e) => {
                 if (e.KeyCode == Keys.Enter) {
@@ -83,6 +83,7 @@ namespace OperationGuidance_new.Views {
                     _loginForm.Dispose();
                     // Dispose();
                     Hide();
+                    MainUtils.LoginFlag = true;
                     _afterLogin(_mainFormSize);
                 }
             }

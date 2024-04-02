@@ -212,14 +212,14 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return CommonCondition(new());
         }
         public string CommonCondition(T entity) {
-            return $"{nameof(entity.deleted)} <> {(int) YesOrNo.YES} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
+            return $"{nameof(entity.deleted)} = {(int) YesOrNo.NO} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
         }
 
         public string ConditionWithoutUserId() {
             return ConditionWithoutUserId(new());
         }
         public string ConditionWithoutUserId(T entity) {
-            return $"{nameof(entity.deleted)} <> {(int) YesOrNo.YES}";
+            return $"{nameof(entity.deleted)} = {(int) YesOrNo.NO}";
         }
 
         private List<string> GetFiedsList() {

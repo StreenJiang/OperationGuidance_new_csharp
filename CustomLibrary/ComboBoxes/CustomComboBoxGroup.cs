@@ -75,6 +75,7 @@ namespace CustomLibrary.ComboBoxes {
 
         public int AddItem(string itemName, T? obj) => _comboBox.AddItem(itemName, obj);
         public void RemoveItem(int index) => _comboBox.RemoveItem(index);
+        public void ClearItem() => _comboBox.ClearItem();
         public CustomComboBox<T>.ComboBoxItem<T>? GetChosenItem() => _comboBox.GetChosenItem();
         public void SetCurrent(int index) => _comboBox.SetCurrent(index);
         public int IndexOf(T t) => _comboBox.IndexOf(t);

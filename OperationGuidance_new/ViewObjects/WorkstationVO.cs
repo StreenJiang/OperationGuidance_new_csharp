@@ -98,5 +98,6 @@ namespace OperationGuidance_new.ViewObjects {
         public string? communication_ip { get; set; }
         [GridColumn("通讯设备端口")]
         public int? communication_port { get; set; }
+        public int macs_id { get; set; }
     }
 }

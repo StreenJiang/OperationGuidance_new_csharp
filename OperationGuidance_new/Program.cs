@@ -8,19 +8,26 @@ namespace OperationGuidance_new {
         /// </summary>
         [STAThread]
         static void Main() {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
-            // Initialize dependencies injection 
-            DependencyInjector.Initialize();
+            // Avoid launch multiple times
+            using(Mutex mutex = new Mutex(false, System.AppDomain.CurrentDomain.FriendlyName)) {
+                if(!mutex.WaitOne(0, false)) {
+                    WidgetUtils.ShowWarningPopUp("程序已经在运行中");
+                    return;
+                }
+                // To customize application configuration such as set high DPI settings or default font,
+                // see https://aka.ms/applicationconfiguration.
+                ApplicationConfiguration.Initialize();
+                // Initialize dependencies injection 
+                DependencyInjector.Initialize();
 
-            // Run main form
-            try{
-                Application.Run(new MainForm());
-            } catch (Exception e) {
-                Console.WriteLine(e); 
-                WidgetUtils.ShowNoticePopUp($"程序运行错误，错误信息e: {e}");
-                throw e;
+                // Run main form
+                try{
+                    Application.Run(new MainForm());
+                } catch (Exception e) {
+                    Console.WriteLine(e); 
+                    WidgetUtils.ShowErrorPopUp($"程序运行错误，错误信息e: {e}");
+                    throw e;
+                }
             }
         }
     }

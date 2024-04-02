@@ -235,7 +235,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void SaveSideInfo() {
-            if (_imageFileName == null) {
+            if (_image != null && _imageFileName == null) {
                 _imageFileName = MainUtils.GenerateProductImageName();
             }
             _sideDTO.image = _imageFileName;

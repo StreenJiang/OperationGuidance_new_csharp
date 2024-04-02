@@ -1,9 +1,9 @@
 ﻿using System.Reflection;
 using CustomLibrary.Buttons;
+using CustomLibrary.ComboBoxes;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Utils;
@@ -25,6 +25,8 @@ namespace OperationGuidance_new.Views {
         private DataGridViewGroup<OperationDataVO> _dataGridView;
         // Add new pop up form
         private EditEntityPopUpForm<OperationDataDTO> _editEntityPopUpForm;
+        private List<WorkstationDTO> _workstations;
+        private CustomComboBoxGroup<int?> _workstationNameComboBox;
         #endregion
 
         #region Constructors
@@ -60,7 +62,7 @@ namespace OperationGuidance_new.Views {
                 gridView.Columns[0].Frozen = true;
             }) {
                 Parent = this,
-                FiltersTableColumnNums = 2,
+                FiltersTableColumnNums = 3,
             };
             // 搜索条件
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
@@ -80,6 +82,8 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
                 }
             };
+            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (OperationDataVO vo, int? value) => vo.workstation_id = value, new());
+            RefreshWorkstationOptions();
 
             CommonButton commonButton = _dataGridView.AddExtraButton("导出");
             commonButton.Click += (sender, eventArgs) => {
@@ -95,13 +99,15 @@ namespace OperationGuidance_new.Views {
                 // 检查当前是否存在正在使用的字段配置
                 if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
                     sortConfigCurr = sortConfig;
-                    MainUtils.Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(sortConfigCurr));
+                    MainUtils.SetSortConfigCurr(sortConfigCurr);
                     headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                 }
-                // 组装数据
+                // 组装数据 
                 List<Dictionary<int, object?>> dataWithConfigFields = new();
                 List<OperationDataVO> dataFormatted = new();
                 CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
+                // 根据过滤条件过滤数据
+                dataFormatted = DataFiltering(dataFormatted, _dataGridView.FilterParametersVO);
                 // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
                 dataFormatted.ForEach(dto => {
                     Dictionary<int, object?> record = new();
@@ -125,14 +131,7 @@ namespace OperationGuidance_new.Views {
             };
 
             // 按钮逻辑
-            _dataGridView.QueryData = (vo) => {
-                List<OperationDataVO> vos = QueryList();
-                return vos
-                    .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
-                            || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0 
-                                && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
-                    .ToList();
-            };
+            _dataGridView.QueryData = (vo) => DataFiltering(QueryList(), vo);
             // 隐藏不需要的按钮 
             _dataGridView.AddNewButtonVisible = false;
             _dataGridView.ModifyButtonVisible = false;
@@ -141,6 +140,21 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Reusable methods
+        private void RefreshWorkstationOptions() {
+            _workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
+            _workstationNameComboBox.ClearItem();
+            foreach (WorkstationDTO workstation in _workstations) {
+                _workstationNameComboBox.AddItem(workstation.name, workstation.id);
+            }
+        }
+        // 数据过滤（同时兼顾条件查询和数据导出）
+        private List<OperationDataVO> DataFiltering(List<OperationDataVO> vos, OperationDataVO vo) {
+            return vos
+                .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
+                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0 
+                            && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
+                .ToList();
+        }
         // 选择保存路径
         private string ShowSaveFileDialog() {
             string localFilePath = "";
@@ -178,13 +192,10 @@ namespace OperationGuidance_new.Views {
 
         #region Override methods
         protected override List<OperationDataVO> QueryList() {
-            QueryOperationDataListRsp rsp = apis.QueryOperationDataList(new() {
-                UserId = SystemUtils.LoggedUserId,
-            });
+            QueryOperationDataListRsp rsp = apis.QueryOperationDataList(new());
             _dataDTOList = rsp.OperationDataDTOs;
             List<OperationDataVO> vos = new();
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
-            vos.AddRange(vos);
             // TODO: can use BackgroundWorker to do this
             // 后续再优化数据加载时的延迟、卡顿问题，现在先不管
             // for (int i = 0; i < 5000; i++) {
@@ -199,12 +210,12 @@ namespace OperationGuidance_new.Views {
             _dataGridView.Size = contentSize;
         }
         public override void VisibleToTrue() {
-            System.Console.WriteLine($"========================================== VisibleToTrue");
             List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
             if (!_operationDataFields.SequenceEqual(operationDataFields)) {
                 _operationDataFields = operationDataFields;
                 _dataGridView.ResetColumnHeaders();
             }
+            RefreshWorkstationOptions();
             base.VisibleToTrue();
         }
         #endregion
