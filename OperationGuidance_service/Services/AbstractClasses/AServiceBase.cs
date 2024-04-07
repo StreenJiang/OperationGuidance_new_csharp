@@ -27,7 +27,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             ArgumentValidator.ValidateInt(userId, "UserId should greater than 0. Passing 'userId = " + userId + "' incorrectly.");
 
             // TODO: use cache to prevent fetching data every time
-            return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.CommonCondition()}", new { @user_id = userId });
+            return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.CommonCondition()}", new() { { "@user_id", userId } });
         }
         public List<T> QueryListWithoutUserId() {
             // TODO: use cache to prevent fetching data every time
@@ -77,7 +77,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return QueryListWithoutUserId();
         }
 
-        public List<T> FindBySql(string sql, object? parameterObj) {
+        public List<T> FindBySql(string sql, Dictionary<string, object>? parameterObj) {
             return Wrapper.FindBySql(sql, parameterObj);
         }
     }

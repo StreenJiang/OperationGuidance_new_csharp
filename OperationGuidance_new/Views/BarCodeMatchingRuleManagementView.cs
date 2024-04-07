@@ -101,18 +101,6 @@ namespace OperationGuidance_new.Views {
                 Title = title,
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
-            // 添加字段
-            CustomTextBoxGroup length = _editEntityPopUpForm.AddTextBox("长度", false, 
-                (BarCodeMatchingRuleDTO dto, int value) => dto.length = value);
-            length.PositiveIntOnly = true;
-            if (dto.length != null) {
-                length.SetValue(0, dto.length + "");
-            }
-            CustomTextBoxGroup endChar = _editEntityPopUpForm.AddTextBox("结束符", false, 
-                (BarCodeMatchingRuleDTO dto, string? value) => dto.end_char = value ?? "");
-            if (dto.end_char != null) {
-                endChar.SetValue(0, dto.end_char);
-            }
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("条码类型", 
                 (BarCodeMatchingRuleDTO dto, int value) => dto.type = value, new());
             foreach (BarCodeType t in BarCodeTypes.Elements) {
@@ -139,6 +127,18 @@ namespace OperationGuidance_new.Views {
             missionName.ItemSelected += () => {
                 missionName.SetError(missionName.IsDefaultValue());
             };
+            // 添加字段
+            CustomTextBoxGroup length = _editEntityPopUpForm.AddTextBox("长度", false, 
+                (BarCodeMatchingRuleDTO dto, int value) => dto.length = value);
+            length.PositiveIntOnly = true;
+            if (dto.length != null) {
+                length.SetValue(0, dto.length + "");
+            }
+            CustomTextBoxGroup endChar = _editEntityPopUpForm.AddTextBox("结束符", false, 
+                (BarCodeMatchingRuleDTO dto, string? value) => dto.end_char = value ?? "");
+            if (dto.end_char != null) {
+                endChar.SetValue(0, dto.end_char);
+            }
             CustomTextBoxGroup keyMatchingBox = _editEntityPopUpForm.AddSeparateTextBox("关键位匹配", ">", false, 
                     (BarCodeMatchingRuleDTO dto, string? value) => dto.key_position = value ?? null,
                     (BarCodeMatchingRuleDTO dto, string? value) => dto.key_char = value ?? null);

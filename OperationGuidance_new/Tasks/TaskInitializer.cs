@@ -1,3 +1,4 @@
+using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
@@ -8,6 +9,8 @@ using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Tasks {
     public static class TaskInitializer {
+        private static ILog logger = MainUtils.GetLogger(typeof(TaskInitializer));
+
         private static readonly int LoopingDelay = 5000;
         private static OperationGuidanceApis apis = SystemUtils.GetApis();
 
@@ -29,7 +32,7 @@ namespace OperationGuidance_new.Tasks {
                     toolDTOs.ForEach(dto => {
                         if (MainUtils.ToolTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
                             MainUtils.ToolTasks[dto.id].CloseConnection();
-                            MainUtils.Log($"TOOL[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
+                            MainUtils.Info(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
                             MainUtils.ToolTasks.Remove(dto.id);
                         }
                     });
@@ -42,7 +45,7 @@ namespace OperationGuidance_new.Tasks {
                             DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
                             if (deviceTool != null) {
                                 MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
-                                MainUtils.Log($"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
+                                MainUtils.Info(logger, $"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
                             }
                         } else {
                             if (toolTask.Ip != dto.ip || toolTask.Port != dto.port || toolTask.ToolType.Id != dto.type) {
@@ -51,7 +54,7 @@ namespace OperationGuidance_new.Tasks {
 
                                 DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
                                 if (deviceTool != null) {
-                                    MainUtils.Log($"TOOL info changed, Reconnecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
+                                    MainUtils.Info(logger, $"TOOL info changed, Reconnecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
                                     toolTask.Ip = dto.ip;
                                     toolTask.Port = dto.port;
                                     toolTask.ToolType = deviceTool;
@@ -59,13 +62,13 @@ namespace OperationGuidance_new.Tasks {
                                     toolTask.Connect();
                                 } else {
                                     MainUtils.ToolTasks.Remove(dto.id);
-                                    MainUtils.Log($"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
+                                    MainUtils.Info(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
                                 }
                             } else if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.Log($"Disconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}], trying to reconnect...");
+                                    MainUtils.Info(logger, $"Disconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}], trying to reconnect...");
                                     await toolTask.Connect();
-                                    MainUtils.Log($"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}]");
+                                    MainUtils.Info(logger, $"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}]");
                                 });
                             }
                         }
@@ -77,7 +80,7 @@ namespace OperationGuidance_new.Tasks {
                     armDTOs.ForEach(dto => {
                         if (MainUtils.ArmTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
                             MainUtils.ArmTasks[dto.id].CloseConnection();
-                            MainUtils.Log($"ARM[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
+                            MainUtils.Info(logger, $"ARM[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
                             MainUtils.ArmTasks.Remove(dto.id);
                         }
                     });
@@ -89,7 +92,7 @@ namespace OperationGuidance_new.Tasks {
                             DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
                             if (deviceArm != null) {
                                 MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
-                                MainUtils.Log($"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
+                                MainUtils.Info(logger, $"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
                             }
                         } else {
                             if (armTask.Ip != dto.ip || armTask.Port != dto.port || armTask.ArmType.Id != dto.type) {
@@ -98,7 +101,7 @@ namespace OperationGuidance_new.Tasks {
 
                                 DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
                                 if (deviceArm != null) {
-                                    MainUtils.Log($"ARM info changed, Reconnecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
+                                    MainUtils.Info(logger, $"ARM info changed, Reconnecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
                                     armTask.Ip = dto.ip;
                                     armTask.Port = dto.port;
                                     armTask.ArmType = deviceArm;
@@ -106,13 +109,13 @@ namespace OperationGuidance_new.Tasks {
                                     armTask.Connect();
                                 } else {
                                     MainUtils.ArmTasks.Remove(dto.id);
-                                    MainUtils.Log($"ARM[{dto.name} - {dto.ip}: {dto.port}] removed, can't find arm type [{dto.type}].");
+                                    MainUtils.Info(logger, $"ARM[{dto.name} - {dto.ip}: {dto.port}] removed, can't find arm type [{dto.type}].");
                                 }
                             } else if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.Log($"Disconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}], trying to reconnect...");
+                                    MainUtils.Info(logger, $"Disconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}], trying to reconnect...");
                                     await armTask.Connect();
-                                    MainUtils.Log($"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}]");
+                                    MainUtils.Info(logger, $"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}]");
                                 });
                             }
                         }
@@ -124,7 +127,7 @@ namespace OperationGuidance_new.Tasks {
                     communicationDTOs.ForEach(dto => {
                         if (MainUtils.CommunicationTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
                             MainUtils.CommunicationTasks[dto.id].CloseConnection();
-                            MainUtils.Log($"Communication device[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
+                            MainUtils.Info(logger, $"Communication device[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
                             MainUtils.CommunicationTasks.Remove(dto.id);
                         }
                     });
@@ -136,7 +139,7 @@ namespace OperationGuidance_new.Tasks {
                             DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
                             if (deviceCommunication != null) {
                                 MainUtils.NewCommunicationTask(dto.id, dto.name, dto.ip, dto.port, deviceCommunication);
-                                MainUtils.Log($"Connecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
+                                MainUtils.Info(logger, $"Connecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
                             }
                         } else {
                             if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port || communicationTask.ComminucationType.Id != dto.type) {
@@ -145,7 +148,7 @@ namespace OperationGuidance_new.Tasks {
 
                                 DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
                                 if (deviceCommunication != null) {
-                                    MainUtils.Log($"Communication device info changed, Reconnecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
+                                    MainUtils.Info(logger, $"Communication device info changed, Reconnecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
                                     communicationTask.Ip = dto.ip;
                                     communicationTask.Port = dto.port;
                                     communicationTask.ComminucationType = deviceCommunication;
@@ -153,13 +156,13 @@ namespace OperationGuidance_new.Tasks {
                                     communicationTask.Connect();
                                 } else {
                                     MainUtils.CommunicationTasks.Remove(dto.id);
-                                    MainUtils.Log($"Communication device[{dto.name} - {dto.ip}: {dto.port}] removed, can't find Communication device type [{dto.type}].");
+                                    MainUtils.Info(logger, $"Communication device[{dto.name} - {dto.ip}: {dto.port}] removed, can't find Communication device type [{dto.type}].");
                                 }
                             } else if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.Log($"Disconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}], trying to reconnect...");
+                                    MainUtils.Info(logger, $"Disconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}], trying to reconnect...");
                                     await communicationTask.Connect();
-                                    MainUtils.Log($"Reconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}]");
+                                    MainUtils.Info(logger, $"Reconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}]");
                                 });
                             }
                         }
@@ -171,7 +174,7 @@ namespace OperationGuidance_new.Tasks {
                     serialPortDTOs.ForEach(dto => {
                         if (MainUtils.SerialPortTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
                             MainUtils.SerialPortTasks[dto.id].CloseConnection();
-                            MainUtils.Log($"SerialPort device[{dto.name}] had been deleted, remove it.");
+                            MainUtils.Info(logger, $"SerialPort device[{dto.name}] had been deleted, remove it.");
                             MainUtils.SerialPortTasks.Remove(dto.id);
                         }
                     });
@@ -185,7 +188,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
                                     dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
                                     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
-                                MainUtils.Log($"Connecting to SerialPort device[{dto.name} - {deviceSerialPort.Name}]");
+                                MainUtils.Info(logger, $"Connecting to SerialPort device[{dto.name} - {deviceSerialPort.Name}]");
                             }
                         } else {
                             if(serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
@@ -197,7 +200,7 @@ namespace OperationGuidance_new.Tasks {
 
                                 DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
                                 if (deviceSerialPort != null) {
-                                    MainUtils.Log($"SerialPort device info changed, Reconnecting to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
+                                    MainUtils.Info(logger, $"SerialPort device info changed, Reconnecting to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
                                     serialPortTask.PortName = dto.port_name;
                                     serialPortTask.FullName = dto.port_full_name;
                                     serialPortTask.BaudRate = dto.baud_rate;
@@ -210,7 +213,7 @@ namespace OperationGuidance_new.Tasks {
                                     serialPortTask.Connect();
                                 } else {
                                     MainUtils.SerialPortTasks.Remove(dto.id);
-                                    MainUtils.Log($"SerialPort device[{dto.name}] removed, can't find SerialPort device type [{dto.type}].");
+                                    MainUtils.Info(logger, $"SerialPort device[{dto.name}] removed, can't find SerialPort device type [{dto.type}].");
                                 }
 
                                 //
@@ -220,12 +223,12 @@ namespace OperationGuidance_new.Tasks {
                                 // MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
                                 //     dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
                                 //     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
-                                // MainUtils.Log($"Connecting to SerialPort[{dto.name}]");
+                                // MainUtils.Info(logger, $"Connecting to SerialPort[{dto.name}]");
                             } else if (!serialPortTask.Connected && serialPortTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.Log($"Disconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}], trying to reconnect...");
+                                    MainUtils.Info(logger, $"Disconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}], trying to reconnect...");
                                     await serialPortTask.Connect();
-                                    MainUtils.Log($"Reconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
+                                    MainUtils.Info(logger, $"Reconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
                                 });
                             }
                         }

@@ -235,7 +235,8 @@ namespace CustomLibrary.ComboBoxes {
                     Task.Run(() => {
                         BeginInvoke(async () => {
                             while (!_selectButton.IsCollapsed) {
-                                if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed && !EventFuncs.IsOnTopNow(_itemsOuterForm.Handle)) {
+                                if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed && !EventFuncs.IsOnTopNow(_itemsOuterForm.Handle)
+                                        && !new Rectangle(_selectButton.PointToScreen(Point.Empty), _selectButton.Size).Contains(EventFuncs.RealTimePoint)) {
                                     ItemsPanelClosed();
                                 }
                                 await Task.Delay(250);

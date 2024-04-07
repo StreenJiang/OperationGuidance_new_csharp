@@ -1,4 +1,5 @@
 using System.Text;
+using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
@@ -7,6 +8,8 @@ using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Tasks {
     public class SerialPortTask: ATaskBase {
+        private ILog logger = MainUtils.GetLogger(typeof(SerialPortTask));
+
         #region Fields
         private new readonly int LoopingInterval = 5000;
         private string _portName;
@@ -62,15 +65,15 @@ namespace OperationGuidance_new.Tasks {
                         await Task.Delay(LoopingInterval);
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error: {e}");
+                    logger.Warn($"Error while running task for connection<SerialPort[{_device_name}]>, e: {e}");
                 } finally {
-                    System.Console.WriteLine($"Disconnected to SerialPort[{_device_name}]");
+                    logger.Info($"Disconnected to SerialPort[{_device_name}]");
                     if (serialPortStreamClient != null) {
                         serialPortStreamClient.Close();
                         serialPortStreamClient = null;
                     }
                     if (CloseConnectionManually) {
-                        System.Console.WriteLine($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
+                        logger.Info($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -89,7 +92,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            System.Console.WriteLine($"Close SerialPort[{_device_name}] manually...");
+            logger.Info($"Close SerialPort[{_device_name}] manually...");
             if (Connected) {
                 serialPortStreamClient.Close();
             }
@@ -102,7 +105,7 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToSerialPortDevice() {
             try {
-                System.Console.WriteLine($"Connecting to SerialPort[{_device_name}]");
+                logger.Info($"Connecting to SerialPort[{_device_name}]");
                 Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
                 if (serialPorts.ContainsKey(_portName)) {
                     serialPortStreamClient = new(_portName, _baudRate, _dataBits, _parity, _stopBits);
@@ -143,23 +146,23 @@ namespace OperationGuidance_new.Tasks {
 
                             if (_actionAfterDataReceived != null) {
                                 if (foundInvalidChar) {
-                                    System.Console.WriteLine($"Data received from SerialPort[{_device_name}] found invalid character(s), data: {result}");
+                                    logger.Warn($"Data received from SerialPort[{_device_name}] found invalid character(s), data: {result}");
                                 }
                                 _actionAfterDataReceived(result);
                             }
                         } catch (Exception e) {
-                            System.Console.WriteLine($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
+                            logger.Error($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
                         }
                     };
                     serialPortStreamClient.Open();
-                    MainUtils.Log($"Successfully connect to SerialPort[{_device_name}]");
+                    MainUtils.Info(logger, $"Successfully connect to SerialPort[{_device_name}]");
                     return true;
                 } else {
-                    System.Console.WriteLine($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
+                    logger.Warn($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
                     return false;
                 }
             } catch (Exception e) {
-                System.Console.WriteLine($"Failed to connect to SerialPort[{_device_name}], e: {e}");
+                logger.Warn($"Failed to connect to SerialPort[{_device_name}], e: {e}");
                 return false;
             }
         }

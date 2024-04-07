@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using log4net;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
@@ -12,6 +13,8 @@ using System.Reflection;
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
+        protected ILog logger = SystemUtils.GetLogger(typeof(AWrapperBase<>));
+
         private string _tabelName;
         private DbConnection? _conn;
 
@@ -33,26 +36,24 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
         public T? Add(T entity) {
             string sql = GenerateInsertSql();
-            System.Console.WriteLine("sql: " + sql);
+            logger.Info("sql: " + sql);
             string newEntitySql = GenerateQueryNewestSql(entity);
-            System.Console.WriteLine("newEntitySql: " + newEntitySql);
+            logger.Info("newEntitySql: " + newEntitySql);
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
-                    System.Console.WriteLine($"entity.id: {entity.id}");
                     return conn.QueryFirst<T>(newEntitySql, entity);
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
                 _conn.Execute(sql, entity);
-                System.Console.WriteLine($"entity.id: {entity.id}");
                 return _conn.QueryFirst<T>(newEntitySql, entity);
             }
         }
 
         public int AddBatch(List<T> entities) {
             string sql = GenerateInsertSql();
-            System.Console.WriteLine("sql: " + sql);
+            logger.Info("sql: " + sql);
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
                     return conn.Execute(sql, entities);
@@ -70,7 +71,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public List<T> FindBySql(string sql) {
-            System.Console.WriteLine("sql: " + sql);
+            logger.Info("sql: " + sql);
             IEnumerable<T> enumerable;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
@@ -83,8 +84,9 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return enumerable.ToList();
         }
 
-        public List<T> FindBySql(string sql, object? @params) {
-            System.Console.WriteLine("sql: " + sql);
+        public List<T> FindBySql(string sql, Dictionary<string, object>? @params) {
+            logger.Info("sql: " + sql);
+            logger.Info("@params: " + GetParamsStr(@params));
             IEnumerable<T> enumerable;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
@@ -101,7 +103,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             entity.modifier = SystemUtils.LoggedUserName;
             entity.modify_time = DateTime.Now;
             string sql = GenerateUpdateSql(entity);
-            System.Console.WriteLine("sql: " + sql);
+            logger.Info("sql: " + sql);
             int rows;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
@@ -120,7 +122,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         public int UpdateBatch(List<T> entities) {
             T entity = entities[0];
             string sql = GenerateUpdateSql(entity);
-            System.Console.WriteLine("sql: " + sql);
+            logger.Info("sql: " + sql);
             int rows;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
@@ -246,6 +248,28 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             }
             throw new InvalidDataException("Enetity<" + typeof(T).Name + "> attibute 'Table' not set, please check.");
+        }
+
+        private string? GetParamsStr(Dictionary<string, object>? @params) {
+            if (@params != null) {
+                string paramsStr = "";
+                int index = 0;
+                foreach (KeyValuePair<string, object> pair in @params) {
+                    if (index > 0) {
+                        paramsStr += ", ";
+                    }
+                    if (pair.Value.GetType() == typeof(List<>)) {
+                        List<object> list = (List<object>) pair.Value;
+                        paramsStr += $"{pair.Key} = {string.Join(",", list)}";
+                    } else {
+                        paramsStr += $"{pair.Key} = {pair.Value}";
+                    }
+                    index++;
+                }
+                return paramsStr;
+            }
+
+            return null;
         }
 
     }

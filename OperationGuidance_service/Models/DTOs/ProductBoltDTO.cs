@@ -10,8 +10,8 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? workstation_name { get; set; }
         public string? workstation_description { get; set; }
         public string? position { get; set; }
-        public float? location_x_percent { get; set; }
-        public float? location_y_percent { get; set; }
+        public float location_x_percent { get; set; }
+        public float location_y_percent { get; set; }
         public float? bit_specification { get; set; }
         public int? parameters_set { get; set; }
         public float? torque_min { get; set; }

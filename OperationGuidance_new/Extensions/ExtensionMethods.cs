@@ -1,7 +1,11 @@
 using ClosedXML.Excel;
+using log4net;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Extensions {
     public static class ExtenstionMethods {
+        private static ILog logger = MainUtils.GetLogger(typeof(ExtenstionMethods));
+
         // 将IEnumerable中的数据存入Txt文件
         public static void ExportToTextFile<T>(this IEnumerable<T> data, List<string>? headers, 
                 string filePath, bool fileExists, string columnSeperator = "\t") where T: List<object?> {
@@ -62,7 +66,7 @@ namespace OperationGuidance_new.Extensions {
                         book.SaveAs(path);
                         return true;
                     } catch (Exception e) {
-                        System.Console.WriteLine($"Store data failed, e: {e}");
+                        logger.Debug($"Store data failed, e: {e}");
                         return false;
                     }
                 }

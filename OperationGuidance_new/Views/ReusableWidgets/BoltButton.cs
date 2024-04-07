@@ -1,5 +1,6 @@
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
+using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Drawing.Drawing2D;
@@ -133,7 +134,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         protected override void ResizeTextLabel() {
             if (Label != null) {
-                Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 2.5F + 1.25F, FontStyle.Bold);
+                // Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 2.5F + 1.25F, FontStyle.Bold);
+                Font = WidgetUtils.GetProperFont(Size, Label, .6F);
                 using (Graphics g = CreateGraphics()) {
                     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                 }

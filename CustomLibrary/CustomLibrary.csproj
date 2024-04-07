@@ -35,6 +35,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="log4net" Version="2.0.17" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Update="Resources\CustomResources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>CustomResources.Designer.cs</LastGenOutput>

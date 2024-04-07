@@ -145,7 +145,7 @@ namespace OperationGuidance_service.Controllers {
             string failedReason = string.Empty;
             UserAccountInfoDTO? userDTO = null;
             string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and account = @account limit 1", new { @account = req.Account });
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and account = @account limit 1", new() { { "@account", req.Account } });
             if (users.Count <= 0) {
                 succeed = false;
                 failedReason = "账户名不存在";
@@ -183,7 +183,7 @@ namespace OperationGuidance_service.Controllers {
             bool succeed = true;
             string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
             List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password limit 1", 
-                    new { @operation_password = SystemUtils.ToMD5String(req.AdminPassword) });
+                    new() { { "@operation_password", SystemUtils.ToMD5String(req.AdminPassword) } });
             if (users.Count <= 0) {
                 succeed = false;
             }
@@ -282,7 +282,7 @@ namespace OperationGuidance_service.Controllers {
                     sidesSql += $" and image is not null and image <> '' and exists (select 1 from {_productBoltService.TableName} where side_id = t.id)";
                 }
                 sidesSql += " order by mission_id";
-                List<ProductSide> sides = _productSideService.FindBySql(sidesSql, new { @mission_ids = missions.Select(m => m.id).ToList()}).ToList();
+                List<ProductSide> sides = _productSideService.FindBySql(sidesSql, new() { { "@mission_ids", missions.Select(m => m.id).ToList() } }).ToList();
 
                 // 将 sides 组装到对应的 mission 中
                 foreach (ProductMissionDTO missionDTO in productMissionDTOs.ToList()) {
@@ -308,10 +308,12 @@ namespace OperationGuidance_service.Controllers {
                 ProductMissionDTO productMissionDTO = new();
                 CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(productMission, productMissionDTO);
 
-                List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new { @mission_id = req.MissionId }).ToList();
+                List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new() { { "@mission_id", req.MissionId } }).ToList();
+                sides = sides.Where(s => s.deleted != (int) YesOrNo.YES).ToList();
                 List<ProductBolt> bolts = new();
                 if (sides.Count > 0) {
-                    bolts = _productBoltService.FindBySql($"select * from {_productBoltService.TableName} where side_id in @side_ids", new { @side_ids = sides.Select(s => s.id).ToList() }).ToList();
+                    bolts = _productBoltService.FindBySql($"select * from {_productBoltService.TableName} where side_id in @side_ids", new() { { "@side_ids", sides.Select(s => s.id).ToList() } }).ToList();
+                    bolts = bolts.Where(b => b.deleted != (int) YesOrNo.YES).ToList();
                 }
 
                 // 将 sides, bolts 组装到 mission 中

@@ -8,6 +8,8 @@ using System.Drawing.Drawing2D;
 using System.Reflection;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Panels.BaseClasses;
+using log4net.Config;
+using log4net;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
@@ -15,6 +17,11 @@ namespace CustomLibrary.Utils {
         private static Dictionary<int, CustomMainMenuButton> _mainMenus = new();
         private static Dictionary<int, CustomChildMenuFirstButton> _childMenus = new();
         private static List<CustomContentPanel> _views = new();
+
+        static WidgetUtils() {
+            XmlConfigurator.Configure();
+        }
+        public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
 
         public static Form MainForm { get; set; }
         public static CustomTabPanel? MainPanel { get; set; }
@@ -329,6 +336,13 @@ namespace CustomLibrary.Utils {
         }
 
         // Content configs 
+        public static Font GetProperFont(Size containerSize, string text, float fontRatio) {
+            Font font = new Font(WidgetsConfigs.SystemFontFamily, containerSize.Height * fontRatio, FontStyle.Bold, GraphicsUnit.Pixel);
+            if (TextRenderer.MeasureText(text, font).Width >= containerSize.Width * .95) {
+                font = GetProperFont(containerSize, text, fontRatio -= .005f);
+            }
+            return font;
+        }
         public static int ScrollBarThickness() {
             int thickness = MainSize.Height / 46;
             if (thickness < 12) {
@@ -446,19 +460,10 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static bool ShowConfirmPopUp(string message) {
-            DialogResult result = MessageBox.Show(null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            return result == DialogResult.Yes;
-        }
-        public static DialogResult ShowNoticePopUp(string message) {
-            return MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-        public static DialogResult ShowWarningPopUp(string message) {
-            return MessageBox.Show(null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-        public static DialogResult ShowErrorPopUp(string message) {
-            return MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(MainForm, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(MainForm, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(MainForm, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(MainForm, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         private static Point controlOriginalLocation;
         private static Point mouseDownLocation;

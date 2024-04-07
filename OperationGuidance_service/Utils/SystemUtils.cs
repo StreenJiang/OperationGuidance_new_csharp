@@ -6,12 +6,19 @@ using OperationGuidance_service.Constants;
 using System.Text;
 using System.Security.Cryptography;
 using OperationGuidance_service.Database;
+using log4net.Config;
+using log4net;
 
 namespace OperationGuidance_service.Utils {
     public static class SystemUtils {
         private static UserAccountInfoDTO? _user;
         private static OperationGuidanceApis? apis;
         public static MacAddressesDTO MacAddressesDTO { get; set; }
+
+        static SystemUtils() {
+            XmlConfigurator.Configure();
+        }
+        public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
 
         public static UserAccountInfoDTO UserInfo {
             set {

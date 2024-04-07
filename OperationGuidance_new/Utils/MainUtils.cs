@@ -3,6 +3,8 @@ using System.Net.NetworkInformation;
 using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
+using log4net;
+using log4net.Config;
 using Newtonsoft.Json;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Configs;
@@ -38,6 +40,11 @@ namespace OperationGuidance_new.Utils {
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD = "yyyy-MM-dd_ddd";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
+
+        static MainUtils() {
+            XmlConfigurator.Configure();
+        }
+        public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
 
         private static IniFileUtil Settings { get; } = new();
         public static List<string> InvalidCharacters { get; } = new() {
@@ -142,13 +149,9 @@ namespace OperationGuidance_new.Utils {
             DateTime now = DateTime.Now;
             string nameFormatted = GetStorageFileName();
             if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD_2)) {}
             else if (Replace(DATETIME_FORMAT_YYYY_MM_DD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD_2)) {}
             else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD_2)) {}
             else if (Replace(DATETIME_FORMAT_YYYY_MM)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_2)) {}
             return nameFormatted;
 
             bool Replace(string formatPattern) {
@@ -440,7 +443,6 @@ namespace OperationGuidance_new.Utils {
             } 
         }
         public static void Log(string message, bool printToView = true) {
-            System.Console.WriteLine(message);
             if (printToView) {
                 if (_textArea != null) {
                     _textArea.BeginInvoke(() => {
@@ -450,6 +452,18 @@ namespace OperationGuidance_new.Utils {
                     LogCache.Add(message);
                 }
             }
+        }
+        public static void Info(ILog logger, string message, bool printToView = true) {
+            Log(message, printToView);
+            logger.Info(message);
+        }
+        public static void Warn(ILog logger, string message, bool printToView = true) {
+            Log(message, printToView);
+            logger.Info(message);
+        }
+        public static void Error(ILog logger, string message, bool printToView = true) {
+            Log(message, printToView);
+            logger.Info(message);
         }
 
         /// <summary>

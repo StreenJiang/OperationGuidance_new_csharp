@@ -786,6 +786,7 @@ namespace OperationGuidance_new.Views {
                     Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
                     Size screenSize = WidgetUtils.GetScreenResolution();
                     bool hasFullScreenResolution = false;
+                    _resolutionOptionsBox.ClearItem();
                     while (enumerator.MoveNext()) {
                         KeyValuePair<Size, SizeRatioNRectColor> current = enumerator.Current;
                         if (current.Key.Width > screenSize.Width || current.Key.Height > screenSize.Height) {

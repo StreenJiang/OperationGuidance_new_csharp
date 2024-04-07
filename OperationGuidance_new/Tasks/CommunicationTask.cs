@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
+using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class CommunicationTask: ATaskBase {
+        private ILog logger = MainUtils.GetLogger(typeof(CommunicationTask));
+
         #region Fields
         private readonly int ReceiveTimeout = 500;
         private Socket? socketClient = null;
@@ -63,16 +66,16 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
+                    logger.Warn($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
                 } finally {
-                    System.Console.WriteLine($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    logger.Info($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                         Commands.Clear();
                     }
                     if (CloseConnectionManually) {
-                        System.Console.WriteLine($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                        logger.Info($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                     }
                 }
             });
@@ -91,7 +94,7 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public override void CloseConnection() {
-            System.Console.WriteLine($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
+            logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 socketClient.Close();
             }
@@ -105,11 +108,11 @@ namespace OperationGuidance_new.Tasks {
         #region Methods
         private bool ConnectToServer() {
             if (Connected) {
-                System.Console.WriteLine($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                logger.Warn($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            System.Console.WriteLine($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+            logger.Info($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
@@ -122,12 +125,12 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    MainUtils.Log($"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    MainUtils.Info(logger, $"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                 } catch (Exception e) {
-                    System.Console.WriteLine($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
+                    logger.Warn($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }
             } else {
-                System.Console.WriteLine($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                logger.Warn($"Failed to ping COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
         }
@@ -142,7 +145,7 @@ namespace OperationGuidance_new.Tasks {
             int trialTime = 0;
             while (Connected && result == null) {
                 if (trialTime > ReceiveTimeout) {
-                    System.Console.WriteLine("Can't get any response at all, probably some other connection robbed it...");
+                    logger.Error("Can't get any response at all, probably some other connection robbed it...");
                     break;
                 }
                 result = Result;

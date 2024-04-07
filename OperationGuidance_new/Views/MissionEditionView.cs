@@ -38,8 +38,8 @@ namespace OperationGuidance_new.Views {
         }
 
         public MissionEditionPage OpenEditionPage(int? missionId) {
-            if (missionId == null) {
-                _missionDTO = new() {
+            ProductMissionDTO NewMission() {
+                return new() {
                     name = "新建任务",
                     ProductSides = new() {
                         new() {
@@ -47,17 +47,13 @@ namespace OperationGuidance_new.Views {
                         },
                     },
                 };
+            }
+            if (missionId == null) {
+                _missionDTO = NewMission();
             } else {
                 _missionDTO = apis.QueryProductMissionDetail(new(missionId.Value)).ProductMissionDTO;
                 if (_missionDTO == null) {
-                    _missionDTO = new() {
-                        name = "新建任务",
-                        ProductSides = new() {
-                            new() {
-                                name = "产品面1",
-                            },
-                        },
-                    };
+                    _missionDTO = NewMission();
                 }
             }
             // Clear all child controls
@@ -125,6 +121,7 @@ namespace OperationGuidance_new.Views {
             private SideButton _currentSideButton;
             private AddNewSideButton _addNewSideButton;
             private readonly float _sideButtonWidthRatio = 1.4F;
+            private readonly float _boltButtonRadiusRatio = .05F;
 
             // Bottom left
             private LeftBottomContentPanel _leftBottomContentPanel;
@@ -227,7 +224,7 @@ namespace OperationGuidance_new.Views {
                 };
                 _editDetail = new() {
                     Parent = _buttonsOuter,
-                    Label = "编辑详情",
+                    Label = "任务详情",
                     BlockHoverUp = true,
                 };
                 _editDetail.Click += (s, e) => {
@@ -256,6 +253,13 @@ namespace OperationGuidance_new.Views {
                             check = false;
                             _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
+                        }
+                        int int_maxNGNum = int.Parse(maxNGNum);
+                        int int_passwordNeedTime = int.Parse(passwordNeedTime);
+                        if (int_passwordNeedTime >= int_maxNGNum) {
+                            check = false;
+                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
                         }
 
                         if (!check) {
@@ -290,7 +294,6 @@ namespace OperationGuidance_new.Views {
                         _missionDTO = rsp.ProductMissionDTO;
                         // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                         foreach (SideButton sideBtn in _sideButtons) {
-                            System.Console.WriteLine($"sideBtn.ProductImageFileNew.Image: {sideBtn.ProductImageFileNew.Image}");
                             MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
                         }
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -445,8 +448,8 @@ namespace OperationGuidance_new.Views {
                         };
                         // Calculate the location of new bolt
                         Rectangle maxRect = _leftBottomContentPanel.MaxRect;
-                        boltDTO.location_x_percent = (float) ((decimal) (eventArgs.Location.X - maxRect.X - _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectWidth * 100);
-                        boltDTO.location_y_percent = (float) ((decimal) (eventArgs.Location.Y - maxRect.Y - _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectHeight * 100);
+                        boltDTO.location_x_percent = (float) (eventArgs.Location.X - maxRect.X) / _leftBottomContentPanel.MaxRectWidth * 100;
+                        boltDTO.location_y_percent = (float) (eventArgs.Location.Y - maxRect.Y) / _leftBottomContentPanel.MaxRectHeight * 100;
                         // Set serial number, if deleted serial number(s) exit(s), dequeue a serial number from queue and use it
                         if (_currentSideButton.DeletedSerialNum.Count > 0) {
                             boltDTO.serial_num = _currentSideButton.DeletedSerialNum.Dequeue();
@@ -618,7 +621,7 @@ namespace OperationGuidance_new.Views {
                     BackColor = Color.Transparent,
                     ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
-                    BoltButtonRadius = _leftBottomContentPanel.MaxRectHeight / 24,
+                    BoltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio),
                 };
                 sideButton.Deleted += () => {
                     sideDTO.deleted = (int) YesOrNo.YES;
@@ -711,8 +714,8 @@ namespace OperationGuidance_new.Views {
 
                         // Recalculate bolt location
                         Rectangle maxRect = _leftBottomContentPanel.MaxRect;
-                        boltDTO.location_x_percent = (float) ((decimal) (location.X - maxRect.X) / _leftBottomContentPanel.MaxRectWidth * 100);
-                        boltDTO.location_y_percent = (float) ((decimal) (location.Y - maxRect.Y) / _leftBottomContentPanel.MaxRectHeight * 100);
+                        boltDTO.location_x_percent = (float) (location.X - maxRect.X + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectWidth * 100;
+                        boltDTO.location_y_percent = (float) (location.Y - maxRect.Y + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectHeight * 100;
 
                         boltButton.Moved = true;
                     }
@@ -1118,15 +1121,15 @@ namespace OperationGuidance_new.Views {
                 _leftBottomContentPanel.Size = new(_bottomLeft.Width - 2, _bottomLeft.Height - _littleTitleHeight - 2);
 
                 // Resize bolt buttons
-                int boltButtonRadius = _leftBottomContentPanel.MaxRectHeight / 24;
+                int boltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio);
                 foreach (SideButton sideButton in _sideButtons) {
                     sideButton.BoltButtonRadius = boltButtonRadius;
                     sideButton.ReCalculateProductImageRatio();
                     foreach (BoltButton boltButton in sideButton.BoltButtons.Values) {
                         boltButton.Size = new(boltButtonRadius * 2, boltButtonRadius * 2);
                         // Recalculate bolt button location
-                        int newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100);
-                        int newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100);
+                        int newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                        int newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
                         boltButton.Location = new(newX, newY);
                     }
                 }
