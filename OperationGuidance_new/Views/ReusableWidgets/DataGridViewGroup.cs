@@ -119,10 +119,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Label = "重置",
             };
             _resetButton.Click += (sender, eventArgs) => {
-                PropertyInfo[] propertyInfos = _filterParametersVO.GetType().GetProperties();
-                foreach (PropertyInfo property in propertyInfos) {
-                    property.SetValue(_filterParametersVO, null);
-                }
+                // 先重置所有过滤组件
                 foreach (Control control in _filtersTablePanel.Controls) {
                     if (control is CustomTextBoxGroup textBoxGroup) {
                         foreach (CustomTextBox box in textBoxGroup.TextBoxes) {
@@ -139,6 +136,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             picker.Value = null;
                         }
                     }
+                }
+                // 这个设置 null 的逻辑放到组件重置后面，才可以正确的使所有值回归 null，因为上面的组件有些改了以后会联动修改 vo 的属性
+                PropertyInfo[] propertyInfos = _filterParametersVO.GetType().GetProperties();
+                foreach (PropertyInfo property in propertyInfos) {
+                    property.SetValue(_filterParametersVO, null);
                 }
             };
             _addNewButton = new() {
@@ -193,7 +195,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return extraButton;
         }
         private void QueryAndRefresh() => _voGridView.DataSource = _queryData(_filterParametersVO);
-        private List<int> GetSelectedIds() {
+        public List<int> GetSelectedIds() {
             List<int> ids = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
             foreach (DataGridViewRow row in selectedRows) {
@@ -225,30 +227,52 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _filtersTablePanel.Visible = false;
             }
             // Buttons panel
-            _buttonsPanel.Size = new(contentSize.Width, _buttonHeight);
-            _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);
+            bool hasVisibleBtns = false;
+            foreach (Control c in _buttonsLeftInnerPanel.Controls) {
+                if (c.Visible) {
+                    hasVisibleBtns = true;
+                    break;
+                }
+            }
+            foreach (Control c in _buttonsRightInnerPanel.Controls) {
+                if (c.Visible) {
+                    hasVisibleBtns = true;
+                    break;
+                }
+            }
+            if (hasVisibleBtns) {
+                _buttonsPanel.Size = new(contentSize.Width, _buttonHeight);
+                _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);
+            } else {
+                _buttonsPanel.Visible = false;
+            }
             // Grid panel
-            int gridHeight = contentSize.Height - filtersPanelHeight - _buttonHeight - _contentVerticalGap;
+            int gridHeight = contentSize.Height;
             if (_filtersTablePanel.Visible) {
-                gridHeight -= _contentVerticalGap;
+                gridHeight -= filtersPanelHeight + _contentVerticalGap;
+            }
+            if (_buttonsPanel.Visible) {
+                gridHeight -= _buttonHeight + _contentVerticalGap;
             }
             _voGridView.Size = new(contentSize.Width, gridHeight);
         }
         private void ResizeFiltersPanel(Size contentSize) {
-            // Width of box
-            int boxWidth = (contentSize.Width - _contentHerticalGap * (_filtersTableColumnNums - 1)) / _filtersTableColumnNums;
-            // Resize boxes
-            TableLayoutControlCollection list = _filtersTablePanel.Controls;
-            for (int i = 0 ; i < list.Count ; i++) {
-                Control control = list[i];
-                control.Size = new(boxWidth, _textOrComboHeight);
-                // Calculate margin
-                Padding margin = new(0);
-                if (i >= _filtersTableColumnNums)
-                    margin.Top = _contentVerticalGap;
-                if (i % _filtersTableColumnNums != 0)
-                    margin.Left = _contentHerticalGap;
-                control.Margin = margin;
+            if (_buttonsPanel.Visible) {
+                // Width of box
+                int boxWidth = (contentSize.Width - _contentHerticalGap * (_filtersTableColumnNums - 1)) / _filtersTableColumnNums;
+                // Resize boxes
+                TableLayoutControlCollection list = _filtersTablePanel.Controls;
+                for (int i = 0 ; i < list.Count ; i++) {
+                    Control control = list[i];
+                    control.Size = new(boxWidth, _textOrComboHeight);
+                    // Calculate margin
+                    Padding margin = new(0);
+                    if (i >= _filtersTableColumnNums)
+                        margin.Top = _contentVerticalGap;
+                    if (i % _filtersTableColumnNums != 0)
+                        margin.Left = _contentHerticalGap;
+                    control.Margin = margin;
+                }
             }
         }
         private void ResizeButtonsPanel() {

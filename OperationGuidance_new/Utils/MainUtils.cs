@@ -19,6 +19,8 @@ using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static AppVersion Version { get; set; } = AppVersion.STANDARD;
+
         public static LoginView LoginView { get; set; }
         public static bool LoginFlag { get; set; } = true;
         public static string? LastProductBatch { get; set; }

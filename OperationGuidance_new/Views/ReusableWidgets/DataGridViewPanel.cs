@@ -378,9 +378,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.CellMouseMove += (sender, eventArgs) => {
                 if (eventArgs.RowIndex > -1) {
                     DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
-                    T vo = (T) row.DataBoundItem;
-                    if (vo.id != null) {
-                        row.DefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9);
+                    if (row.DataBoundItem != null) {
+                        T vo = (T) row.DataBoundItem;
+                        if (vo.id != null) {
+                            row.DefaultCellStyle.BackColor = WidgetUtils.LightColor(ColorTranslator.FromHtml("#E86C10"), .9);
+                        }
                     }
                 }
             };

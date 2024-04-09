@@ -1,9 +1,9 @@
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Responses {
     public class CheckIfBarCodeExistsInMissionRecordRsp: HttpResponse {
-        public bool Yes {
-            get; set;
-        }
+        public MissionRecordDTO MissionRecordDTO { get; set; } = new();
+        public bool Yes { get; set; }
     }
 }

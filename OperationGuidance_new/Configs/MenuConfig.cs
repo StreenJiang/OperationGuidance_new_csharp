@@ -1,3 +1,5 @@
+using OperationGuidance_new.Constants;
+
 namespace OperationGuidance_new.Configs {
     public class MenuConfig {
         private int _id;
@@ -5,9 +7,10 @@ namespace OperationGuidance_new.Configs {
         private bool _enabled = false;
         private Image _icon;
         private bool _isToggleButton = true;
-        private Type _viewType;
+        private Type? _viewType = null;
+        private Dictionary<AppVersion, Type>? _viewTypes = null;
         private bool _isUserInfoPanel = false;
-        private List<MenuConfig> _children;
+        private List<MenuConfig>? _children = null;
         private EventHandler? _click;
         private bool _openFirst = false;
 
@@ -16,9 +19,10 @@ namespace OperationGuidance_new.Configs {
         public bool Enabled { get => _enabled; set => _enabled = value; }
         public Image Icon { get => _icon; set => _icon = value; }
         public bool IsToggleButton { get => _isToggleButton; set => _isToggleButton = value; }
-        public Type ViewType { get => _viewType; set => _viewType = value; }
+        public Type? ViewType { get => _viewType; set => _viewType = value; }
+        public Dictionary<AppVersion, Type>? ViewTypes { get => _viewTypes; set => _viewTypes = value; }
         public bool IsUserInfoPanel { get => _isUserInfoPanel; set => _isUserInfoPanel = value; }
-        public List<MenuConfig> Children { get => _children; set => _children = value; }
+        public List<MenuConfig>? Children { get => _children; set => _children = value; }
         public EventHandler? Click { get => _click; set => _click = value; }
         public bool OpenFirst { get => _openFirst; set => _openFirst = value; }
 

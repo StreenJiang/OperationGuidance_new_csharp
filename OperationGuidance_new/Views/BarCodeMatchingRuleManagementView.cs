@@ -90,7 +90,7 @@ namespace OperationGuidance_new.Views {
 
         #region Reusable methods
         private void RefreshMissionOptions() {
-            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id)).ProductMissionsDTOs;
+            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
             _missionNameComboBox.ClearItem();
             foreach (ProductMissionDTO mission in _missions) {
                 _missionNameComboBox.AddItem(mission.name, mission.id);

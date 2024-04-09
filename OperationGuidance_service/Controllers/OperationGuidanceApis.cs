@@ -239,15 +239,16 @@ namespace OperationGuidance_service.Controllers {
         public QueryProductMissionsRsp QueryProductMissions(QueryProductMissionsReq req) {
             List<ProductMission> missions;
 
-            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
-            if (role != null && role != Roles.DEVELOPER) {
-                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
-                Dictionary<string, object> parameters = new();
-                parameters.Add("deleted", (int) YesOrNo.NO);
+            string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("deleted", (int) YesOrNo.NO);
+
+            if (req.Role != null && req.Role != Roles.DEVELOPER) {
+                sql += " and macs_id = @macs_id";
                 parameters.Add("macs_id", req.MacsId);
                 missions = _productMissionService.FindBySql(sql, parameters);
             } else {
-                missions = _productMissionService.QueryListWithoutUserId();
+                missions = _productMissionService.FindBySql(sql, parameters);
             }
 
             List<ProductMissionDTO> productMissionDTOs = new();
@@ -545,6 +546,24 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
+        // 根据任务记录 ids 查询对应的站点id和站点名称
+        public QueryWorkstationInfoByMissionRecordIdsRsp QueryWorkstationInfoByMissionRecordIds(QueryWorkstationInfoByMissionRecordIdsReq req) {
+            // 先查询到每条任务记录对应的 workstation_id
+            Dictionary<int, Dictionary<int, string>> workstationInfos = _operationDataService.GetWorkstationInfoByMissionRecordIds(req.MissionRecordIds);
+            // 根据所有 workstation_ids 查询到每个 id 对应的 name
+            List<int> workstationIds = new();
+            workstationInfos.Values.ToList().ForEach(dict => workstationIds.AddRange(dict.Keys));
+            Dictionary<int, string> workstationInfo = _workstationService.GetWorkstationNamesByIds(workstationIds);
+            foreach (var dict in workstationInfos.Values) {
+                foreach (var pair in dict) {
+                    if (workstationInfo.ContainsKey(pair.Key)) {
+                        dict[pair.Key] = workstationInfo[pair.Key];
+                    }
+                }
+            }
+
+            return new(workstationInfos);
+        }
         #endregion
 
         #region 任务记录相关
@@ -594,8 +613,10 @@ namespace OperationGuidance_service.Controllers {
         }
         // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            string sql = $"select 1 from {_missionRecordService.TableName} where 1 = 1";
+            string sql = $"select 1 from {_missionRecordService.TableName} where mission_id = @mission_id and mission_result = @mission_result";
             Dictionary<string, object> parameters = new();
+            parameters.Add("mission_id", req.MissionId);
+            parameters.Add("mission_result", req.MissionResult);
 
             if (req.ProductBarCode != null) {
                 sql += " and product_bar_code = @product_bar_code";
@@ -607,15 +628,20 @@ namespace OperationGuidance_service.Controllers {
             }
             sql += " limit 1";
 
+
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, parameters);
-            return new() {
+            CheckIfBarCodeExistsInMissionRecordRsp rsp = new() {
                 Yes = missionRecords.Count > 0,
             };
+            if (rsp.Yes) {
+                CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords[0], rsp.MissionRecordDTO);
+            }
+            return rsp;
         }
         // 查询最新一条任务记录，用于获取其产品批次，作回填使用
         public QueryLatestMissionRecordRsp QueryLatestMissionRecord(QueryLatestMissionRecordReq req) {
             string sql = $"select * from {_missionRecordService.TableName} order by id desc limit 1";
-            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, null);
+            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql);
             QueryLatestMissionRecordRsp rsp = new();
             if (missionRecords.Count > 0) {
                 List<MissionRecordDTO>?  missionRecordDTOs = new();
@@ -624,17 +650,20 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
+        // 根据站点 ids 查询对应的任务记录列表
+        public QueryMissionRecordsByWorkstationIdsRsp QueryMissionRecordsByWorkstationIds(QueryMissionRecordsByWorkstationIdsReq req) {
+            return new(_operationDataService.GetMissionRecordIdsByWorkstationIds(req.WorkstationIds));
+        }
         #endregion
 
         #region 拧紧数据相关
         public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
-            List<OperationData> operationDatas = _operationDataService.QueryListWithoutUserId();
+            List<OperationData> operationDatas = _operationDataService.QueryList(req.UserId, req.MissionRecordId);
+
             List<OperationDataDTO> operationDataDTOs = new();
             CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
 
-            return new() {
-                OperationDataDTOs = operationDataDTOs,
-            };
+            return new(operationDataDTOs);
         }
         // 批量数据插入
         public BatchAddOperationDataRsp BatchAddOperationData(BatchAddOperationDataReq req) {

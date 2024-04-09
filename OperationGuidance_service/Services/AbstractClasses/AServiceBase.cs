@@ -77,6 +77,10 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return QueryListWithoutUserId();
         }
 
+        public List<T> FindBySql(string sql) {
+            return Wrapper.FindBySql(sql);
+        }
+
         public List<T> FindBySql(string sql, Dictionary<string, object>? parameterObj) {
             return Wrapper.FindBySql(sql, parameterObj);
         }

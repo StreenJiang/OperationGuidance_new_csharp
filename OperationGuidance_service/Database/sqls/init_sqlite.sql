@@ -319,6 +319,7 @@ CREATE TABLE "product_mission" (
   "password_need_time" integer(4),
   "enabled" integer(1),
   "macs_id" integer,
+  "predecessor_mission_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,

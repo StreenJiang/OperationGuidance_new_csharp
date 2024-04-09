@@ -62,7 +62,6 @@ namespace OperationGuidance_new.Views {
                 gridView.Columns[0].Frozen = true;
             }) {
                 Parent = this,
-                FiltersTableColumnNums = 3,
             };
             // 搜索条件
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
@@ -85,8 +84,8 @@ namespace OperationGuidance_new.Views {
             _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (OperationDataVO vo, int? value) => vo.workstation_id = value, new());
             RefreshWorkstationOptions();
 
-            CommonButton commonButton = _dataGridView.AddExtraButton("导出");
-            commonButton.Click += (sender, eventArgs) => {
+            CommonButton exportBtn = _dataGridView.AddExtraButton("导出");
+            exportBtn.Click += (sender, eventArgs) => {
                 string filePath = ShowSaveFileDialog();
                 List<string>? headers = null;
                 // 检查当前文件是否存在
@@ -216,7 +215,7 @@ namespace OperationGuidance_new.Views {
                 _dataGridView.ResetColumnHeaders();
             }
             RefreshWorkstationOptions();
-            base.VisibleToTrue();
+            // base.VisibleToTrue();
         }
         #endregion
     }

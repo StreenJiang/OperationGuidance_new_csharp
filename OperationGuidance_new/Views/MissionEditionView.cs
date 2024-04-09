@@ -18,6 +18,7 @@ using Timer = System.Windows.Forms.Timer;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Forms;
 using OperationGuidance_new.Constants;
+using CustomLibrary.ComboBoxes;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView: CustomContentPanel {
@@ -229,7 +230,8 @@ namespace OperationGuidance_new.Views {
                 };
                 _editDetail.Click += (s, e) => {
                     List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
-                    _detialPopUpForm = new(_missionDTO, barCodeMatchingRuleDTOs) {
+                    List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+                    _detialPopUpForm = new(_missionDTO, allOtherMissions, barCodeMatchingRuleDTOs) {
                         Title = "编辑任务详情",
                     };
                     _detialPopUpForm.AddButton("确定").Click += (s, e) => {
@@ -269,6 +271,11 @@ namespace OperationGuidance_new.Views {
                             _missionDTO.name = missionName;
                             _missionDTO.max_ng_num = int.Parse(maxNGNum);
                             _missionDTO.password_need_time = int.Parse(passwordNeedTime);
+                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                                _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
+                            } else {
+                                _missionDTO.predecessor_mission_id = null;
+                            }
                             _detialPopUpForm.Hide();
                         }
                     };
@@ -1085,7 +1092,7 @@ namespace OperationGuidance_new.Views {
                     if (c is CommonButton btn) {
                         btn.Height = buttonsHeight;
                         // 先设置高度获得自动调整的字体大小
-                        int width = TextRenderer.MeasureText(btn.Label, btn.Font).Width;
+                        int width = TextRenderer.MeasureText(btn.Label, btn.Font, new(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding).Width;
                         btn.Width = (int) (width * 1.8);
                         btn.Margin = new(buttonGap, 0, 0, 0);
                     }
@@ -1192,6 +1199,7 @@ namespace OperationGuidance_new.Views {
             private ProductMissionDTO _missionDTO;
             private TableLayoutPanel _tablePanel;
             private CustomTextBoxGroup _missionName;
+            private CustomComboBoxGroup<int> _predecessorMission;
             private CustomTextBoxGroup _maxNGNum;
             private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
@@ -1200,12 +1208,14 @@ namespace OperationGuidance_new.Views {
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public CustomTextBoxGroup MissionName { get => _missionName; set => _missionName = value; }
+            public CustomComboBoxGroup<int> PredecessorMission { get => _predecessorMission; set => _predecessorMission = value; }
             public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
             public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
 
-            public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
+            public MissionDetailPopUpForm(ProductMissionDTO missionDTO, 
+                    List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
                 _missionDTO = missionDTO;
                 _tablePanel = new() {
                     Parent = ContentPanel,
@@ -1217,6 +1227,14 @@ namespace OperationGuidance_new.Views {
                     Ratio = 6.75,
                     NameAlignment = HorizontalAlignment.Right,
                 };
+                _predecessorMission = new("前置任务") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                allOtherMissions.ForEach(m => {
+                    _predecessorMission.AddItem(m.name, m.id);
+                });
                 _maxNGNum = new("最大NG数") {
                     Parent = _tablePanel,
                     Ratio = 6.75,
@@ -1246,6 +1264,9 @@ namespace OperationGuidance_new.Views {
                 _missionName.SetValue(0, missionDTO.name);
                 _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, missionDTO.password_need_time + "");
+                if (missionDTO.predecessor_mission_id != null) {
+                    _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
+                }
 
                 int productsBarCodeNum = 0;
                 int partsBarCodeNum = 0;

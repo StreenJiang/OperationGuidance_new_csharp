@@ -19,6 +19,7 @@ using OperationGuidance_service.Database;
 using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
+using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -64,8 +65,7 @@ namespace OperationGuidance_new {
                 throw de;
             }
             
-            this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
-            // Get MAC address
+            // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
             if (!(macs.Contains("002B677C56BC") 
@@ -87,6 +87,8 @@ namespace OperationGuidance_new {
             )) {
                 throw new Exception("当前设备未授权");
             }
+            // TODO: 检查软件版本（这个也是许可证）
+            MainUtils.Version = AppVersion.SCII;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
@@ -99,6 +101,8 @@ namespace OperationGuidance_new {
             }
 
             // MainForm
+            // 设置最大化的范围
+            MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
             WidgetUtils.MainForm = this;
             Name = "MainForm";
             Text = "MainForm";
@@ -262,8 +266,13 @@ namespace OperationGuidance_new {
                     if (mainMenuConfig.Click != null) {
                         mainMenuButton.OnMenuButtonClick += mainMenuConfig.Click;
                     }
-                    if (mainMenuConfig.ViewType != null) {
-                        Type type = mainMenuConfig.ViewType;
+                    if (mainMenuConfig.ViewTypes != null && mainMenuConfig.ViewTypes.Count > 0) {
+                        Type type;
+                        if (mainMenuConfig.ViewTypes.ContainsKey(MainUtils.Version)) {
+                            type = mainMenuConfig.ViewTypes[MainUtils.Version];
+                        } else {
+                            type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
+                        }
                         object instance = type.Assembly.CreateInstance(type.FullName);
                         if (instance is CustomContentPanel) {
                             CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
@@ -295,7 +304,6 @@ namespace OperationGuidance_new {
                             if (mainMenuConfig.IsUserInfoPanel) {
                                 childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName);
                             }
-                            //childMenuPanel.OnlyIconMode = true;
                             // childContentPanel
                             childContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
                             childContentPanel.Margin = new Padding(0);
@@ -311,8 +319,13 @@ namespace OperationGuidance_new {
                                 if (childMenuConfig.Click != null) {
                                     childMenuFirstButton.OnMenuButtonClick += childMenuConfig.Click;
                                 }
-                                if (childMenuConfig.ViewType != null) {
-                                    Type childType = childMenuConfig.ViewType;
+                                if (childMenuConfig.ViewTypes != null && childMenuConfig.ViewTypes.Count > 0) {
+                                    Type childType;
+                                    if (childMenuConfig.ViewTypes.ContainsKey(MainUtils.Version)) {
+                                        childType = childMenuConfig.ViewTypes[MainUtils.Version];
+                                    } else {
+                                        childType = childMenuConfig.ViewTypes[AppVersion.STANDARD];
+                                    }
                                     object childInstance = childType.Assembly.CreateInstance(childType.FullName);
                                     if (childInstance is CustomContentPanel) {
                                         CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;

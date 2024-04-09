@@ -11,6 +11,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public static Color WORKING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WORKING;
         public static Color DONE = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_DONE;
         public static Color ERROR = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_ERROR;
+        public static Color TEXT_WHITE = ColorConfigs.COLOR_WORKPLACE_BOLT_NUMBER_WHIE;
+        public static Color TEXT_BLACK = ColorConfigs.COLOR_WORKPLACE_BOLT_NUMBER;
 
         private readonly int _flikerInterval = 500;
         private int _borderSize;
@@ -38,19 +40,24 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 switch (_boltStatus) {
                     case BoltStatus.WORKING:
                         BackColor = WORKING;
+                        ForeColor = TEXT_BLACK;
                         StartFlickering();
                         break;
                     case BoltStatus.DONE:
                         BackColor = DONE;
+                        ForeColor = TEXT_WHITE;
                         StopFlickering();
                         break;
                     case BoltStatus.ERROR:
                         BackColor = ERROR;
+                        ForeColor = TEXT_WHITE;
                         StartFlickering();
                         break;
                     case BoltStatus.DEFAULT:
                     default:
                         BackColor = WAITING;
+                        ForeColor = TEXT_BLACK;
+                        Label = _boltDTO.serial_num + "";
                         StopFlickering();
                         break;
                 }
@@ -76,7 +83,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             BlockHoverUp = true;
             _boltStatus = BoltStatus.DEFAULT;
             BackColor = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
-            ForeColor = ColorConfigs.COLOR_WORKPLACE_BOLT_NUMBER;
+            ForeColor = TEXT_BLACK;
         }
 
         public void ResetStatusWithoutChangingVisible() {
@@ -126,7 +133,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 using (GraphicsPath path = GetGraphicsPath(new(1, 1, Width - .8F, Height - 1))) {
                     if (_borderSize > 1) {
-                        e.Graphics.DrawPath(new(ForeColor, _borderSize), path);
+                        e.Graphics.DrawPath(new(TEXT_BLACK, _borderSize), path);
                     }
                 }
             }

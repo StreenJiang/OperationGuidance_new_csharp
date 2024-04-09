@@ -11,5 +11,6 @@ namespace OperationGuidance_service.Models {
         public int password_need_time { get; set; } = 0;
         public int enabled { get; set; } = (int) YesOrNo.YES;
         public int macs_id { get; set; }
+        public int? predecessor_mission_id { get; set; }
     }
 }

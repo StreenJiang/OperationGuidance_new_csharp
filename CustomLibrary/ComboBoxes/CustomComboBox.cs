@@ -413,7 +413,7 @@ namespace CustomLibrary.ComboBoxes {
             if (_noItem) {
                 return true;
             } else if (!_noItem && _needDefaultLabel) {
-                return _selectButton.SelectedItem == null || _selectButton.Label == _defaultLabel;
+                return _selectButton.Label == _defaultLabel || _selectButton.SelectedItem == null;
             }
             return false;
         }

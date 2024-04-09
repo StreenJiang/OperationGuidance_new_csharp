@@ -460,10 +460,10 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(MainForm, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
-        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(MainForm, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(MainForm, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(MainForm, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         private static Point controlOriginalLocation;
         private static Point mouseDownLocation;

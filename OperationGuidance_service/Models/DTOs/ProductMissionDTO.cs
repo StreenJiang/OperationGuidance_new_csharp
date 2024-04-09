@@ -10,5 +10,6 @@ namespace OperationGuidance_service.Models.DTOs {
         public int enabled { get; set; }
         public List<ProductSideDTO>? ProductSides { get; set; }
         public int macs_id { get; set; } = SystemUtils.MacAddressesDTO.id;
+        public int? predecessor_mission_id { get; set; }
     }
 }

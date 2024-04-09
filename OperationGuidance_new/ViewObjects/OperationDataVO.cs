@@ -241,6 +241,7 @@ namespace OperationGuidance_new.ViewObjects {
         public new string? creator { get; set; }
         [GridColumn("数据生成时间")]
         public override string? string_create_time { get; set; }
+        // 这些父类定义的会显示，但是这里不显示
         public new string? modifier { get; set; }
         public new string? string_modify_time { get; set; }
     }

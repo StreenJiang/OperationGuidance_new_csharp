@@ -24,6 +24,7 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_service.Constants;
 using Timer = System.Windows.Forms.Timer;
 using log4net;
+using OperationGuidance_service.Models.Responses;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -465,7 +466,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
                 // 检查匹配规则中所对应的任务是否还存在
-                List<int> missionIds = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id)).ProductMissionsDTOs.Select(m => m.id).ToList();
+                List<int> missionIds = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs.Select(m => m.id).ToList();
                 Dictionary<int, List<BarCodeMatchingRuleDTO>>.Enumerator productCodes = _productBarCodeMatchingRules.GetEnumerator();
                 while (productCodes.MoveNext()) {
                     int currId = productCodes.Current.Key;
@@ -1595,25 +1596,6 @@ namespace OperationGuidance_new.Views {
             }
             return mission;
         }
-        private bool CheckRedoConfirmation(string msg) {
-            bool canContinue = true;
-            // 校验成功，再检查下是否存在返工的情况
-            if (_apis.CheckIfBarCodeExistsInMissionRecord(new() { ProductBarCode = msg }).Yes) {
-                if (WidgetUtils.ShowConfirmPopUp($"检测到已对该产品进行过加工，是否需要返工？")) {
-                    // 需要管理员密码弹窗
-                    _adminConfirmed = false;
-                    OpenAdminPasswordPopUpForm("产品返工确认。请输入管理员密码解锁。");
-                    canContinue = _adminConfirmed.Value;
-                    _adminConfirmed = null;
-                } else {
-                    canContinue = false;
-                }
-            }
-            if (canContinue) {
-                _isRedo = (int) YesOrNo.YES;
-            }
-            return canContinue;
-        }
 
         private async void CheckDeviceConnections() {
             await Task.Run(async () => {
@@ -1656,6 +1638,8 @@ namespace OperationGuidance_new.Views {
         // 激活任务
         public void ActivateMission() {
             if (_sides.Count > 0 && _allBolts.Count > 0) {
+                // 将所有点位的序号填好（任务进行过程中会被改成扭矩 - 西艾爱需求）
+                _allBolts.ForEach(b => b.BoltStatus = BoltStatus.DEFAULT);
                 // 再次确认力臂定位是否开启
                 _locating_enabled = MainUtils.IsArmLocatingEnabled();
                 // 1. 将当前任务的所有螺栓点位按顺序排好队，并初始化所有螺栓点位的状态
@@ -2050,6 +2034,7 @@ namespace OperationGuidance_new.Views {
                                 }
                                 // 修改点位状态并切换点位
                                 _currentWorkingBolt.BoltStatus = BoltStatus.DONE;
+                                _currentWorkingBolt.Label = _torque.Text;
                                 int nextIndex = _allBolts.IndexOf(_currentWorkingBolt) + 1;
                                 // 检查是否存在跳点的情况
                                 while (nextIndex < _allBolts.Count && _allBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
@@ -2543,30 +2528,41 @@ namespace OperationGuidance_new.Views {
                 }
             }
             // 条码校验通过，再检查下是否需要返工
-            if (checkPassed && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new() { ProductBarCode = barCode }).Yes) {
-                bool needRedo;
-                if (WidgetUtils.ShowConfirmPopUp($"检测到已对该产品进行过加工，是否需要返工？")) {
-                    // 需要管理员密码弹窗
-                    _workplace.AdminConfirmed = false;
-                    _workplace.OpenAdminPasswordPopUpForm("产品返工确认。请输入管理员密码解锁。");
-                    needRedo = _workplace.AdminConfirmed.Value;
-                } else {
-                    needRedo = false;
+            if (checkPassed) {
+                // 如果存在前置任务，则先查询前置任务是否完成
+                if (_mission.predecessor_mission_id != null) {
+                    bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
+                    if (!yes) {
+                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工记录，请先完成前置任务");
+                        checkPassed = false;
+                    }
                 }
-                // 需要返工，修改是否返工的标识
-                if (needRedo) {
-                    _workplace.IsRedo = (int) YesOrNo.YES;
-                } else {
-                    _workplace.IsRedo = (int) YesOrNo.NO;
-                    // 存在确认返工的情况但取消返工，则将校验结果改为不通过
-                    checkPassed = false;
+                // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
+                if (checkPassed && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes) {
+                    bool needRedo;
+                    if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
+                        // 需要管理员密码弹窗
+                        _workplace.AdminConfirmed = false;
+                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁");
+                        needRedo = _workplace.AdminConfirmed.Value;
+                    } else {
+                        needRedo = false;
+                    }
+                    // 需要返工，修改是否返工的标识
+                    if (needRedo) {
+                        _workplace.IsRedo = (int) YesOrNo.YES;
+                    } else {
+                        _workplace.IsRedo = (int) YesOrNo.NO;
+                        // 存在确认返工的情况但取消返工，则将校验结果改为不通过
+                        checkPassed = false;
+                    }
                 }
             }
             // 所有检查完毕，回填、或切换任务后再回填
             if (checkPassed) {
                 // 存入缓存并回填到主界面
                 _workplace.BarCodeObj.ProductBarCode = barCode;
-                _workplace.BarCodeTextBox.Text = barCode;
+                WriteBackBarCodes();
                 // 禁用产品条码输入框
                 _productBarCodeBox.Enabled = false;
                 // 是否需要切换任务
@@ -2622,7 +2618,7 @@ namespace OperationGuidance_new.Views {
             // 物料条码校验通过
             else {
                 // 物料码返工确认
-                if (_workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new() { PartsBarCode = barCode }).Yes) {
+                if (_workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id, (int) TighteningStatus.OK) { PartsBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                         // 需要管理员密码弹窗
@@ -2641,9 +2637,10 @@ namespace OperationGuidance_new.Views {
                         return;
                     }
                 }
-                // 存入缓存
+                // 存入缓存并回填到主界面
                 _workplace.BarCodeObj.PartsBarCodes.Add(barCode);
                 _workplace.BarCodeObj.PartsMatchingRulesCached.Add(ruleId);
+                WriteBackBarCodes();
                 // 禁用当前输入框
                 box.Enabled = false;
                 // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
@@ -2670,6 +2667,13 @@ namespace OperationGuidance_new.Views {
             _focusedBox.SetValue(0, barCode);
             // 校验条码
             ValidatePartsBarCode(_focusedBox);
+        }
+        private void WriteBackBarCodes() {
+            string barCodes = _workplace.BarCodeObj.ProductBarCode;
+            if (_workplace.BarCodeObj.PartsBarCodes.Count > 0) {
+                barCodes += " | " + string.Join(", ", _workplace.BarCodeObj.PartsBarCodes);
+            }
+            _workplace.BarCodeTextBox.Text = barCodes;
         }
 
         // 检查当前条码是否与当前已选择任务匹配（没有选择任务则不匹配）
