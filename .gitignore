@@ -375,3 +375,6 @@ OperationGuidance_new/OperationDataStorage/
 OperationGuidance_new/ProductImages/
 OperationDataStorage/
 ProductImages/
+
+# Ignore omnisharp.json
+omnisharp.json

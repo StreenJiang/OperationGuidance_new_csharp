@@ -24,7 +24,6 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_service.Constants;
 using Timer = System.Windows.Forms.Timer;
 using log4net;
-using OperationGuidance_service.Models.Responses;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -37,9 +36,7 @@ namespace OperationGuidance_new.Views {
         private TopBar? _topBar;
         private WorkplaceContentPanel? _workplacePanel;
 
-        public WorkplaceMissionView() : base() {
-            OpenMissionListView();
-        }
+        public WorkplaceMissionView() : base() => OpenMissionListView();
         public WorkplaceMissionView(bool operatorOpenning) : base() {
             _operatorOpenning = operatorOpenning;
             // 如果是操作员登录，则直接打开工作台
@@ -59,9 +56,7 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
             };
         }
-        private void OpenWorkplaceViewDirectly() {
-            OpenWorkplaceView(null);
-        }
+        private void OpenWorkplaceViewDirectly() => OpenWorkplaceView(null);
 
         private void CheckAndDisplay() {
             if (_missionListPanel != null) {
@@ -120,8 +115,8 @@ namespace OperationGuidance_new.Views {
                 TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
             };
             _workplacePanel = new(missionId, missionName => {
-                    _topBar.Title = missionName;
-                }) {
+                _topBar.Title = missionName;
+            }) {
                 Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
                 Margin = new Padding(0),
@@ -187,37 +182,37 @@ namespace OperationGuidance_new.Views {
                 _backButton.Label = "退出登录";
             }
             _backButton.Click += (sender, eventArgs) => {
-                    if (_workplace != null && _workplace.Activated && !_workplace.Finished) {
-                        bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务还未完成，返回主界面将终止任务，确认返回？");
-                        if (yes) {
-                            if (!_operatorOpenning) {
-                                _workplace.Activated = false;
-                                if (WidgetUtils.MainPanel != null) {
-                                    WidgetUtils.MainPanel.Visible = true;
-                                }
-                                Parent.Visible = false;
-                                _workplace.Dispose();
-                            } else {
-                                if (WidgetUtils.BackToLoginView != null) {
-                                    WidgetUtils.BackToLoginView(true);
-                                }
-                            }
-                        }
-                    } else {
+                if (_workplace != null && _workplace.Activated && !_workplace.Finished) {
+                    bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务还未完成，返回主界面将终止任务，确认返回？");
+                    if (yes) {
                         if (!_operatorOpenning) {
+                            _workplace.Activated = false;
                             if (WidgetUtils.MainPanel != null) {
                                 WidgetUtils.MainPanel.Visible = true;
                             }
                             Parent.Visible = false;
-                            if (_workplace != null && !_workplace.IsDisposed) {
-                                _workplace.Dispose();
-                            }
+                            _workplace.Dispose();
                         } else {
                             if (WidgetUtils.BackToLoginView != null) {
                                 WidgetUtils.BackToLoginView(true);
                             }
                         }
                     }
+                } else {
+                    if (!_operatorOpenning) {
+                        if (WidgetUtils.MainPanel != null) {
+                            WidgetUtils.MainPanel.Visible = true;
+                        }
+                        Parent.Visible = false;
+                        if (_workplace != null && !_workplace.IsDisposed) {
+                            _workplace.Dispose();
+                        }
+                    } else {
+                        if (WidgetUtils.BackToLoginView != null) {
+                            WidgetUtils.BackToLoginView(true);
+                        }
+                    }
+                }
             };
         }
 
@@ -603,7 +598,7 @@ namespace OperationGuidance_new.Views {
             }
 
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                _barCodePopUpForm = new(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated, 
+                _barCodePopUpForm = new(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
                         _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
@@ -892,7 +887,7 @@ namespace OperationGuidance_new.Views {
                                 } else {
                                     MainUtils.LastProductBatch = null;
                                 }
-                            } 
+                            }
                             // 不需要提示则直接回填
                             else {
                                 MainUtils.LastProductBatch = missionRecordDTO.product_batch;
@@ -968,7 +963,7 @@ namespace OperationGuidance_new.Views {
             };
             popUpForm.PretendToShowToCreateHandlesForChildren();
             popUpForm.SetContentSizeAndSelfSize(contentSize);
-        
+
             Padding contentPadding = popUpForm.ContentPanel.Padding;
             int innerContentWidth = contentSize.Width - contentPadding.Size.Width;
             int innerContentHeight = contentSize.Height - contentPadding.Size.Height;
@@ -992,7 +987,7 @@ namespace OperationGuidance_new.Views {
         // 初始化中间
         private void InitializeMiddle() {
             _tighteningDataPanel = new(gridView => {
-                DataGridViewColumn[] columnRange = {};
+                DataGridViewColumn[] columnRange = { };
                 List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
                 foreach (OperationDataField field in operationDataFields) {
                     if (field.Visible) {
@@ -1002,7 +997,7 @@ namespace OperationGuidance_new.Views {
                             ReadOnly = true,
                         };
                         columnRange = columnRange.Append(column).ToArray();
-                    } 
+                    }
                 }
                 gridView.Columns.Clear();
                 gridView.Columns.AddRange(columnRange);
@@ -1105,7 +1100,7 @@ namespace OperationGuidance_new.Views {
                                         currentWorkstationId = _currentWorkingBolt.BoltDTO.workstation_id;
                                         currentPset = _currentWorkingBolt.BoltDTO.parameters_set;
                                     }
-                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, SetPset, deviceBlock.CategoryName, 
+                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, SetPset, deviceBlock.CategoryName,
                                             _workingProcessPanel, _workstationsDTOs, _toolTasks, currentWorkstationId, currentPset);
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
@@ -1188,15 +1183,15 @@ namespace OperationGuidance_new.Views {
                 int contentHPadding = contentVPadding;
                 Font titleFont = new Font(WidgetsConfigs.SystemFontFamily, titleHeight * .55f, FontStyle.Bold, GraphicsUnit.Pixel);
 
-            	ResizeOuters(boxHeight, titleHeight, contentVPadding);
-            	ResizeTopLeftTop();
-            	ResizeTopLeftBottom();
-            	ResizeTopRightTop(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
-            	ResizeTopRightMiddleLeft();
-            	ResizeTopRightMiddleRight();
-            	ResizeTopRightBottom(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
-            	ResizeMiddle();
-            	ResizeBottom();
+                ResizeOuters(boxHeight, titleHeight, contentVPadding);
+                ResizeTopLeftTop();
+                ResizeTopLeftBottom();
+                ResizeTopRightTop(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
+                ResizeTopRightMiddleLeft();
+                ResizeTopRightMiddleRight();
+                ResizeTopRightBottom(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
+                ResizeMiddle();
+                ResizeBottom();
                 Invalidate();
             }
         }
@@ -1253,7 +1248,7 @@ namespace OperationGuidance_new.Views {
             // 下方
             _bottom.Size = new(workplaceWidth, bottomHeight);
         }
-        
+
         // 计算尺寸： 条码框
         private void ResizeTopLeftTop() {
             // icon的边长
@@ -1317,7 +1312,7 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 员工信息框
-        private void ResizeTopRightTop(int boxHeight, int titleHeight, int contentVPadding, 
+        private void ResizeTopRightTop(int boxHeight, int titleHeight, int contentVPadding,
                 int contentHPadding, Font titleFont) {
             // Resize title and font
             _operatorInfoTitle.Size = new(_operatorInfoTitle.Parent.Width, titleHeight);
@@ -1355,7 +1350,7 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 任务信息框
-        private void ResizeTopRightBottom(int boxHeight, int titleHeight, int contentVPadding, 
+        private void ResizeTopRightBottom(int boxHeight, int titleHeight, int contentVPadding,
                 int contentHPadding, Font titleFont) {
             // Resize title and font
             _missionDetailTitle.Size = new(_operatorInfoTitle.Parent.Width, titleHeight);
@@ -1393,7 +1388,7 @@ namespace OperationGuidance_new.Views {
             }
             int timeDisplayerWidth = _bottom.Width - blocksWidth;
             _timeDisplayerOuter.Size = new(timeDisplayerWidth - 2, _bottom.Height - 2);
-            _timeDisplayer.Font =new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .4f, FontStyle.Regular, GraphicsUnit.Pixel);
+            _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .4f, FontStyle.Regular, GraphicsUnit.Pixel);
             _timeDisplayer.Margin = new(_timeDisplayer.Height / 3, (_timeDisplayerOuter.Height - _timeDisplayer.Height) / 2, 0, 0);
         }
 
@@ -1571,7 +1566,7 @@ namespace OperationGuidance_new.Views {
                             };
                         }
                     } else if (category == DeviceCategories.COMMUNICATION) {
-                        _communicationTask= MainUtils.CommunicationTasks;
+                        _communicationTask = MainUtils.CommunicationTasks;
                     } else {
                         // TODO
                     }
@@ -1708,12 +1703,12 @@ namespace OperationGuidance_new.Views {
             base.OnHandleDestroyed(e);
             foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
                 // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                pair.Value.ActionAfterReceiving = new(c => {});
+                pair.Value.ActionAfterReceiving = new(c => { });
             }
             _serialPortTasks = MainUtils.SerialPortTasks;
             foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
                 // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = new(c => {});
+                pair.Value.ActionAfterDataReceived = new(c => { });
             }
         }
 
@@ -1890,7 +1885,7 @@ namespace OperationGuidance_new.Views {
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                         _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
                                         _adminConfirmed = null;
-                                    } 
+                                    }
                                     // 管理员未确认
                                     else {
                                         toolTask.SendLock();
@@ -1902,7 +1897,7 @@ namespace OperationGuidance_new.Views {
                                             NGConfirmPopUp();
                                         }
                                     }
-                                } 
+                                }
                                 // 当前点位没有设置程序号
                                 else if (_currentWorkingBolt.CurrentParameterSet == null) {
                                     toolTask.SendLock();
@@ -1912,7 +1907,7 @@ namespace OperationGuidance_new.Views {
                                     if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
                                         _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNullError);
                                     }
-                                } 
+                                }
                                 // // 当前下发的程序与点位的不匹配（可能是手动下发）
                                 // else if (_currentWorkingBolt.BoltDTO.parameters_set != _currentWorkingBolt.CurrentParameterSet) {
                                 //     toolTask.SendLock();
@@ -1930,7 +1925,7 @@ namespace OperationGuidance_new.Views {
                                     toolTask.SendUnlock();
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
                                 }
-                            } 
+                            }
                             // 力臂位置不在点位范围内
                             else {
                                 toolTask.SendLock();
@@ -2114,7 +2109,7 @@ namespace OperationGuidance_new.Views {
                                     StoreTighteningData(dataDTO);
                                     // 先记录数据再弹出提示
                                     WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
-                                } else { 
+                                } else {
                                     // 扭矩角度数据颜色改成红色
                                     _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                     _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
@@ -2157,7 +2152,7 @@ namespace OperationGuidance_new.Views {
             OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。");
         }
         public void OpenAdminPasswordPopUpForm(string msg) {
-            _adminPasswordPopUpForm = new() { 
+            _adminPasswordPopUpForm = new() {
                 Title = msg,
             };
             CustomTextBoxGroup _adminPasswordBox = new("管理员密码") {
@@ -2334,7 +2329,7 @@ namespace OperationGuidance_new.Views {
         public CustomContentPanel PartsBarCodeContentPanel { get => _partsBarCodeContentPanel; set => _partsBarCodeContentPanel = value; }
 
         public BarCodeInputPopUpForm(WorkplaceContentPanel workplace, string initStr, ProductMissionDTO mission, bool activated,
-                Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules, 
+                Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode) : base() {
             _workplace = workplace;
             _initStr = initStr;
@@ -2393,7 +2388,7 @@ namespace OperationGuidance_new.Views {
         // 			1.1.3. 与当前任务的“产品码/追溯码”校验通过，则也进入【一 - 1.1.2】的流程
         // 	2. 直接扫码自动打开弹窗：
         // 		2.1. 自动回填扫到的码，并立即校验，然后走【二 - 1.1】的后续流程
-        
+
         // 根据任务ID找到其对应的物料码匹配规则，并根据此规则添加相应的输入框
         private void AddPartsBoxes(int missionId) {
             if (missionId > 0 && _partsBarCodeRules.ContainsKey(missionId)) {
@@ -2510,13 +2505,13 @@ namespace OperationGuidance_new.Views {
                         checkPassed = false;
                         WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与选择的任务不匹配");
                         _productBarCodeBox.GetTextBox(0).IsError = true;
-                    } 
+                    }
                     // 如果匹配到其他任务，则做出特定提示
                     else {
                         checkPassed = WidgetUtils.ShowConfirmPopUp($"检测到当前条码【{barCode}】与另一任务【{mission.name}】匹配，是否切换任务？");
                     }
                 }
-            } 
+            }
             // 没选任务
             else {
                 mission = FindBarCodeMatchedMission(barCode);
@@ -2614,7 +2609,7 @@ namespace OperationGuidance_new.Views {
             if (ruleId < 0) {
                 WidgetUtils.ShowWarningPopUp($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
                 box.GetTextBox(0).IsError = true;
-            } 
+            }
             // 物料条码校验通过
             else {
                 // 物料码返工确认
@@ -2783,7 +2778,7 @@ namespace OperationGuidance_new.Views {
 
             _productBarCodeTitle.Size = titleSize;
             _partsBarCodeTitle.Size = titleSize;
-            _partsBarCodeTitle.Margin = new(0, titleVPadding, 0, 0);;
+            _partsBarCodeTitle.Margin = new(0, titleVPadding, 0, 0);
 
             foreach (Control ctrl in _productBarCodeContentPanel.Controls) {
                 CustomTextBoxButtonGroup box = (CustomTextBoxButtonGroup) ctrl;
@@ -2840,10 +2835,10 @@ namespace OperationGuidance_new.Views {
         private int? _boltSerialNum;
         private TightenOrLoosen _tightenOrLoosen;
 
-        public TightenOrLoosen TightenOrLoosen { 
-            get => _tightenOrLoosen; 
+        public TightenOrLoosen TightenOrLoosen {
+            get => _tightenOrLoosen;
             set {
-                _tightenOrLoosen = value; 
+                _tightenOrLoosen = value;
                 InvokeResizing();
             }
         }
@@ -3073,11 +3068,11 @@ namespace OperationGuidance_new.Views {
                     statusDescPoint = new Point(Width / 2, otherHeihgt + (Height - otherHeihgt) / 2);
                     graphics.DrawString(_statusDesc, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusDescPoint, stringFormat);
                     break;
-                //case WorkplaceProcessStatus.FINISHED_NG:
-                //case WorkplaceProcessStatus.FINISHED_OK:
-                //    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 2);
-                //    graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
-                //    break;
+                    //case WorkplaceProcessStatus.FINISHED_NG:
+                    //case WorkplaceProcessStatus.FINISHED_OK:
+                    //    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 2);
+                    //    graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
+                    //    break;
             }
         }
     }
@@ -3470,7 +3465,7 @@ namespace OperationGuidance_new.Views {
 
             int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
             IList list = _tablePanel.Controls;
-            for (int i = 0 ; i < list.Count ; i++) {
+            for (int i = 0; i < list.Count; i++) {
                 Control? control = (Control?) list[i];
                 if (control != null) {
                     control.Margin = new(_boxMargin);
