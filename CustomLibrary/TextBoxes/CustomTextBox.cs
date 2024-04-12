@@ -97,10 +97,10 @@ namespace CustomLibrary.TextBoxes {
         public bool IntOnly { get => _intOnly; set => _intOnly = value; }
         public bool PositiveIntOnly { get => _positiveIntOnly; set => _positiveIntOnly = value; }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
-        public bool IsError { 
-            get => _isError; 
+        public bool IsError {
+            get => _isError;
             set {
-                _isError = value; 
+                _isError = value;
                 Invalidate();
             }
         }
@@ -249,7 +249,7 @@ namespace CustomLibrary.TextBoxes {
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             int boxWidthTemp = Width - Padding.Size.Width;
             if (!Multiline) {
-                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .54F, 
+                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .54F,
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;
@@ -266,7 +266,7 @@ namespace CustomLibrary.TextBoxes {
                 _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
             } else {
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
-                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .54F, 
+                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .54F,
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;

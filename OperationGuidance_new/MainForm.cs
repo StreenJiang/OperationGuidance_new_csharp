@@ -8,7 +8,6 @@ namespace OperationGuidance_new {
         public MainForm() {
             InitializeComponentManually();
             this.FormBorderStyle = FormBorderStyle.None; // 这一句注释掉之后就不会触发下面的 InvokeResizing了，好奇怪
-            
         }
 
         protected override void OnHandleCreated(EventArgs e) {
@@ -45,10 +44,8 @@ namespace OperationGuidance_new {
 
         const int WS_MINIMIZEBOX = 0x20000;
         const int CS_DBLCLKS = 0x8;
-        protected override CreateParams CreateParams
-        {
-            get
-            {
+        protected override CreateParams CreateParams {
+            get {
                 CreateParams cp = base.CreateParams;
                 cp.Style |= WS_MINIMIZEBOX;
                 cp.ClassStyle |= CS_DBLCLKS;

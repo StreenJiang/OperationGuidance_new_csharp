@@ -33,7 +33,7 @@ namespace OperationGuidance_new.Views {
         public DataQueryView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
-            
+
             // Get Apis
             apis = SystemUtils.GetApis();
 
@@ -65,7 +65,7 @@ namespace OperationGuidance_new.Views {
             };
             // 搜索条件
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
-                    (OperationDataVO vo, DateTime? value) => vo.filter_create_time_min = value, 
+                    (OperationDataVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_max = value);
             CustomDatePicker date_min = dateFitler.GetPicker(0);
             CustomDatePicker date_max = dateFitler.GetPicker(1);
@@ -150,7 +150,7 @@ namespace OperationGuidance_new.Views {
         private List<OperationDataVO> DataFiltering(List<OperationDataVO> vos, OperationDataVO vo) {
             return vos
                 .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
-                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0 
+                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0
                             && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
                 .ToList();
         }

@@ -26,12 +26,12 @@ namespace CustomLibrary.Utils {
         public static Form MainForm { get; set; }
         public static CustomTabPanel? MainPanel { get; set; }
         public static CustomMainMenuPanel MainMenuPanel { get; set; }
-        public static Size MainSize { get; private set;}
+        public static Size MainSize { get; private set; }
         public static Dictionary<int, CustomMainMenuButton> MainMenus { get => _mainMenus; set => _mainMenus = value; }
         public static CustomContentPanelBase CurrentPanel { get; set; }
         public static Func<bool>? CheckSavedFunc = null;
         private static bool _checkSaved = true;
-        public static bool CheckSaved { 
+        public static bool CheckSaved {
             get {
                 _checkSaved = !(CheckSavedFunc != null && !CheckSavedFunc());
                 return _checkSaved;
@@ -119,7 +119,7 @@ namespace CustomLibrary.Utils {
         /// <param name="newHeight">New height of new Image.</param>
         /// <returns>New image witdh new size.</returns>        
         public static Image ResizeImage(Image image, int newWidth, int newHeight) {
-            lock(_imageLocker) {
+            lock (_imageLocker) {
                 if (newWidth <= 0 || newHeight <= 0) {
                     return image;
                 }
@@ -271,8 +271,8 @@ namespace CustomLibrary.Utils {
             // 原图的宽和高
             int w = image.Width;
             int h = image.Height;
-            int W = (int)(Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
-            int H = (int)(Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
+            int W = (int) (Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
+            int H = (int) (Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
             // 目标位图
             Image dsImage = new Bitmap(W, H);
             using (Graphics g = Graphics.FromImage(dsImage)) {
@@ -313,7 +313,7 @@ namespace CustomLibrary.Utils {
                         if (methodItself != null) {
                             methodItself = methodItself.MakeGenericMethod(superGenericTypes[i]);
                             // Call self recursively to check generic types
-                            Object? isSubClassObj = methodItself.Invoke(utilItself, new object[]{ types[i] });
+                            Object? isSubClassObj = methodItself.Invoke(utilItself, new object[] { types[i] });
                             if (isSubClassObj != null) {
                                 bool isSubClass = (bool) isSubClassObj;
                                 if (!isSubClass) {

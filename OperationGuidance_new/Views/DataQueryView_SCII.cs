@@ -33,7 +33,7 @@ namespace OperationGuidance_new.Views {
         public DataQueryView_SCII() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
-            
+
             // Get Apis
             apis = SystemUtils.GetApis();
 
@@ -67,7 +67,7 @@ namespace OperationGuidance_new.Views {
             }, new());
             RefreshWorkstationOptions();
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
-                    (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_min = value, 
+                    (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_max = value);
             CustomDatePicker date_min = dateFitler.GetPicker(0);
             CustomDatePicker date_max = dateFitler.GetPicker(1);
@@ -130,7 +130,7 @@ namespace OperationGuidance_new.Views {
         // 数据过滤（同时兼顾条件查询和数据导出）
         private List<MissionRecordVO> DataFiltering(List<MissionRecordVO> vos, MissionRecordVO vo) {
             vos = vos.Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
-                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0 
+                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0
                         && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
                     .Where(o => vo.product_bar_code == null || o.product_bar_code != null && o.product_bar_code.Contains(vo.product_bar_code))
                     .ToList();
@@ -167,7 +167,7 @@ namespace OperationGuidance_new.Views {
                             ReadOnly = true,
                         };
                         columnRange = columnRange.Append(column).ToArray();
-                    } 
+                    }
                 }
                 gridView.Columns.Clear();
                 gridView.Columns.AddRange(columnRange);

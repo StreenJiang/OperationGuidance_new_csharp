@@ -21,7 +21,7 @@ using Timer = System.Windows.Forms.Timer;
 using OperationGuidance_new.Views.AbstractViews;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView: CustomContentPanel {
+    public class WorkplaceMissionView_YF: CustomContentPanel {
         private MissionListPanel? _missionListPanel;
         private List<ProductMissionDTO>? _productMissionDTOs;
         private OperationGuidanceApis? apis;
@@ -29,10 +29,10 @@ namespace OperationGuidance_new.Views {
 
         private CustomTabPanel? _pagePanel;
         private TopBar? _topBar;
-        private WorkplaceContentPanel? _workplacePanel;
+        private AWorkplaceContentPanel? _workplacePanel;
 
-        public WorkplaceMissionView() : base() => OpenMissionListView();
-        public WorkplaceMissionView(bool operatorOpenning) : base() {
+        public WorkplaceMissionView_YF() : base() => OpenMissionListView();
+        public WorkplaceMissionView_YF(bool operatorOpenning) : base() {
             _operatorOpenning = operatorOpenning;
             // 如果是操作员登录，则直接打开工作台
             if (operatorOpenning) {
@@ -109,7 +109,7 @@ namespace OperationGuidance_new.Views {
                 PanelDirection = MenuPanelDirection.TOP,
                 TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
             };
-            _workplacePanel = new(missionId, missionName => {
+            _workplacePanel = new WorkplaceContentPanel_YF(missionId, missionName => {
                 _topBar.Title = missionName;
             }) {
                 Parent = _pagePanel,
@@ -139,131 +139,7 @@ namespace OperationGuidance_new.Views {
         }
     }
 
-    public class TopBar: CustomMainMenuPanel {
-        private AWorkplaceContentPanel? _workplace;
-        private BackCommonButton _backButton;
-        private string _title;
-        private Color _titleColor;
-        private int _titleX;
-        private int _titleY;
-        private bool _operatorOpenning;
-
-        public BackCommonButton BackButton {
-            get => _backButton;
-            set => _backButton = value;
-        }
-        public string Title {
-            get => _title;
-            set {
-                _title = value;
-                Invalidate();
-            }
-        }
-        public Color TitleColor {
-            get => _titleColor;
-            set => _titleColor = value;
-        }
-        public AWorkplaceContentPanel? Workplace { get => _workplace; set => _workplace = value; }
-
-        public TopBar(bool operatorOpenning) : base() {
-            _title = "";
-            _operatorOpenning = operatorOpenning;
-            _backButton = new() {
-                Parent = this,
-            };
-            if (!_operatorOpenning) {
-                _backButton.Label = "返回";
-            } else {
-                _backButton.Label = "退出登录";
-            }
-            _backButton.Click += (sender, eventArgs) => {
-                if (_workplace != null && _workplace.Activated && !_workplace.Finished) {
-                    bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务还未完成，返回主界面将终止任务，确认返回？");
-                    if (yes) {
-                        if (!_operatorOpenning) {
-                            _workplace.Activated = false;
-                            if (WidgetUtils.MainPanel != null) {
-                                WidgetUtils.MainPanel.Visible = true;
-                            }
-                            Parent.Visible = false;
-                            _workplace.Dispose();
-                        } else {
-                            if (WidgetUtils.BackToLoginView != null) {
-                                WidgetUtils.BackToLoginView(true);
-                            }
-                        }
-                    }
-                } else {
-                    if (!_operatorOpenning) {
-                        if (WidgetUtils.MainPanel != null) {
-                            WidgetUtils.MainPanel.Visible = true;
-                        }
-                        Parent.Visible = false;
-                        if (_workplace != null && !_workplace.IsDisposed) {
-                            _workplace.Dispose();
-                        }
-                    } else {
-                        if (WidgetUtils.BackToLoginView != null) {
-                            WidgetUtils.BackToLoginView(true);
-                        }
-                    }
-                }
-            };
-        }
-
-        protected override void OnPaint(PaintEventArgs e) {
-            base.OnPaint(e);
-            if (_title != null) {
-                _titleX = (int) ((Width - TextRenderer.MeasureText(_title, Font).Width) / 2);
-                e.Graphics.DrawString(_title, Font, new SolidBrush(_titleColor), new Point(_titleX, _titleY));
-            }
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            base.ResizeChildren(sender, eventArgs);
-            // Recalculate the font of title
-            Font = new(WidgetsConfigs.SystemFontFamily, Height * .625f, FontStyle.Bold, GraphicsUnit.Pixel);
-            // Recalculate label location
-            using (Graphics g = CreateGraphics()) {
-                _titleX = (int) ((Width - g.MeasureString(_title, Font).Width) / 2);
-            }
-            _titleY = (int) ((Height - Font.Height * 1.1) / 2);
-        }
-
-        protected override void ResizeButtons() {
-            int newHeight = (int) (Height * .7);
-            // 先设定高度，则font就会重设
-            _backButton.Height = newHeight;
-            int newWidth = (int) (TextRenderer.MeasureText(_backButton.Label, _backButton.Font).Width * 1.5);
-            _backButton.Width = newWidth;
-            _backButton.Margin = new(0, (Height - newHeight) / 2, 0, 0);
-        }
-
-        protected override float GetResizeRatio() => WidgetUtils.WorkplaceTopBarHeightRatio();
-
-        protected override float GetLogoZoomingRatio() => .7F;
-
-        protected override Point GetLogoLocation(Size logoSize) {
-            return new(
-                Width - logoSize.Width - (int) Math.Ceiling(Width / 400D),
-                (int) Math.Ceiling((Height - logoSize.Height) / 2D)
-            );
-        }
-
-        public class BackCommonButton: CommonButton {
-            protected override void ResizeTextLabel() {
-                if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .6), FontStyle.Bold, GraphicsUnit.Pixel);
-                    using (Graphics g = CreateGraphics()) {
-                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                    }
-                    LabelY = (Height - Font.Height) / 2;
-                }
-            }
-        }
-    }
-
-    public class WorkplaceContentPanel: AWorkplaceContentPanel {
+    public class WorkplaceContentPanel_YF: AWorkplaceContentPanel {
         // 上方
         private CustomContentPanel _top;
         // 上方左边
@@ -333,7 +209,8 @@ namespace OperationGuidance_new.Views {
         // private PageSwitchButton _last;
         // private Label _pageInfo;
 
-        public WorkplaceContentPanel(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
+
+        public WorkplaceContentPanel_YF(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             // 初始化所有组件
             InitializeOuters();
             InitializeTopLeftTop();
@@ -449,6 +326,21 @@ namespace OperationGuidance_new.Views {
             void barCodePopUp(object? s, EventArgs e) {
                 OpenBarCodePopUpForm();
             }
+        }
+        protected override void OpenBarCodePopUpForm(string? barCode = null) {
+            if (!_activated) {
+                string batchNum = _productBatch.GetTextBox(0).Box.Text;
+                if (string.IsNullOrEmpty(batchNum)) {
+                    WidgetUtils.ShowErrorPopUp("产品批次还没有填写");
+                    if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
+                        _barCodePopUpForm.Hide();
+                    }
+                    _productBatch.GetTextBox(0).IsError = true;
+                    _productBatch.GetTextBox(0).Box.Focus();
+                    return;
+                }
+            }
+            base.OpenBarCodePopUpForm(barCode);
         }
 
         // 初始化顶部左侧底部
@@ -1597,6 +1489,9 @@ namespace OperationGuidance_new.Views {
                                         if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                             _adminConfirmed = false;
                                             NGConfirmPopUp();
+                                            if (_adminConfirmed.Value) {
+                                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
+                                            }
                                         }
                                     }
                                 }

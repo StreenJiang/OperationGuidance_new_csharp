@@ -45,7 +45,7 @@ namespace OperationGuidance_new {
         private CustomContentPanelBase mainContentPanel;
         private IKeyboardMouseEvents HookEvents;
         private BackgroundWorker backgroundWorker;
-        public bool AllCreated { get; set;} = false;
+        public bool AllCreated { get; set; } = false;
         private OperatorView? _operatorView = null;
 
         //[System.Runtime.InteropServices.DllImport("user32")]
@@ -54,7 +54,6 @@ namespace OperationGuidance_new {
         #region Windows Form manually initialization code
 
         private void InitializeComponentManually() {
-            
             String thisprocessname = Process.GetCurrentProcess().ProcessName;
             // AllocConsole();
 
@@ -64,16 +63,16 @@ namespace OperationGuidance_new {
             } catch (DatabaseException de) {
                 throw de;
             }
-            
+
             // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
-            if (!(macs.Contains("002B677C56BC") 
+            if (!(macs.Contains("002B677C56BC")
                 || macs.Contains("BC542FD57669")
                 || macs.Contains("BE542FD57668")
                 || macs.Contains("BC542FD57668")
                 || macs.Contains("BC542FD5766C")
-                // 客厅电脑
+                // living room
                 || macs.Contains("A4B1C1C841E1")
                 || macs.Contains("A4B1C1C841E5")
                 || macs.Contains("B42E9954DB93")
@@ -82,13 +81,13 @@ namespace OperationGuidance_new {
                 // others
                 || macs.Contains("E43A6E5CBE6A")
                 || macs.Contains("E43A6E4B2F12")
-                // 西艾爱
+                // SCII
                 || macs.Contains("E43A6E7936B1")
             )) {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            MainUtils.Version = AppVersion.SCII;
+            MainUtils.Version = AppVersion.YF;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
@@ -312,7 +311,7 @@ namespace OperationGuidance_new {
                             List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
                             for (int j = 0; j < childMenuConfigs.Count; j++) {
                                 MenuConfig childMenuConfig = childMenuConfigs[j];
-                                CustomChildMenuFirstButton childMenuFirstButton= new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
+                                CustomChildMenuFirstButton childMenuFirstButton = new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
                                 childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
                                 childMenuFirstButton.Icon = childMenuConfig.Icon;
                                 childMenuFirstButton.Label = childMenuConfig.Name;
