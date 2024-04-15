@@ -72,16 +72,16 @@ namespace OperationGuidance_new {
                 || macs.Contains("BE542FD57668")
                 || macs.Contains("BC542FD57668")
                 || macs.Contains("BC542FD5766C")
-                // living room
+                /* living room */
                 || macs.Contains("A4B1C1C841E1")
                 || macs.Contains("A4B1C1C841E5")
                 || macs.Contains("B42E9954DB93")
                 || macs.Contains("A4B1C1C841E2")
                 || macs.Contains("A6B1C1C841E1")
-                // others
+                /* others */
                 || macs.Contains("E43A6E5CBE6A")
                 || macs.Contains("E43A6E4B2F12")
-                // SCII
+                /* SCII */
                 || macs.Contains("E43A6E7936B1")
             )) {
                 throw new Exception("当前设备未授权");

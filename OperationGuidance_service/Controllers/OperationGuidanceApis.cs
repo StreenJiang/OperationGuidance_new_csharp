@@ -9,10 +9,13 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
+using log4net;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
     public sealed class OperationGuidanceApis {
+        private ILog logger = SystemUtils.GetLogger(typeof(OperationGuidanceApis));
+
         [Autowired]
         private UserAccountInfoService _userAccountInfoService;
         [Autowired]
@@ -157,7 +160,7 @@ namespace OperationGuidance_service.Controllers {
                 } else {
                     userDTO = new();
                     CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(user, userDTO);
-                    
+
                     string? password = req.Password;
                     if (user.password != null && password != null) {
                         string md5_password = SystemUtils.ToMD5String(password);
@@ -165,7 +168,7 @@ namespace OperationGuidance_service.Controllers {
                             succeed = false;
                             failedReason = "密码错误";
                         }
-                    } else if (string.IsNullOrEmpty(user.password) && !string.IsNullOrEmpty(password) 
+                    } else if (string.IsNullOrEmpty(user.password) && !string.IsNullOrEmpty(password)
                         || !string.IsNullOrEmpty(user.password) && string.IsNullOrEmpty(password)) {
                         succeed = false;
                         failedReason = "密码错误";
@@ -182,7 +185,7 @@ namespace OperationGuidance_service.Controllers {
         public AdminPasswordValidateRsp AdminPasswordValidate(AdminPasswordValidateReq req) {
             bool succeed = true;
             string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password limit 1", 
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password limit 1",
                     new() { { "@operation_password", SystemUtils.ToMD5String(req.AdminPassword) } });
             if (users.Count <= 0) {
                 succeed = false;
@@ -372,12 +375,12 @@ namespace OperationGuidance_service.Controllers {
                     // 保存数据，结束事务
                     transaction.Commit();
                 } catch (Exception e) {
-                    Console.WriteLine("AddProductMission error: " + e);
+                    logger.Error("AddProductMission error: " + e);
                     rsp.RsponseCode = HttpResponseCode.ERROR;
                     rsp.RsponseMessage = e.Message;
 
                     transaction.Rollback();
-                } finally { 
+                } finally {
                     _productMissionService.ReleaseConnection();
                     _productSideService.ReleaseConnection();
                     _productBoltService.ReleaseConnection();
@@ -466,7 +469,7 @@ namespace OperationGuidance_service.Controllers {
             } else {
                 workstations = _workstationService.QueryListWithoutUserId();
             }
-            
+
             List<WorkstationDTO> workstationDTOs = new();
             CommonUtils.ObjectConverter<Workstation, WorkstationDTO>(workstations, workstationDTOs);
 
@@ -515,7 +518,7 @@ namespace OperationGuidance_service.Controllers {
                         dto.communication_type = communication.type;
                     }
                 }
-            }            
+            }
 
             return new() {
                 WorkstationsDTOs = workstationDTOs,
@@ -588,7 +591,7 @@ namespace OperationGuidance_service.Controllers {
                 condition += " and user_id = @userId";
                 parameters.Add("userId", req.UserId.Value);
             }
-            
+
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();
             CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
@@ -644,7 +647,7 @@ namespace OperationGuidance_service.Controllers {
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql);
             QueryLatestMissionRecordRsp rsp = new();
             if (missionRecords.Count > 0) {
-                List<MissionRecordDTO>?  missionRecordDTOs = new();
+                List<MissionRecordDTO>? missionRecordDTOs = new();
                 CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
                 rsp.MissionRecordDTO = missionRecordDTOs[0];
             }

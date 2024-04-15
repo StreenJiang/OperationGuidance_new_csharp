@@ -21,6 +21,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _boxMargin;
         private int _buttonHeight;
         private TableLayoutPanel _tablePanel;
+
+        private CustomTextBoxGroup _serialNumBox;
         private CustomTextBoxGroup _nameBox;
         private List<WorkstationDTO> _workstationsDTOs;
         private CustomComboBoxGroup<WorkstationDTO> _workstation;
@@ -52,6 +54,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
         public int ButtonHeight { get => _buttonHeight; set => _buttonHeight = value; }
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+
+        public CustomTextBoxGroup SerialNumBox { get => _serialNumBox; set => _serialNumBox = value; }
         public CustomTextBoxGroup NameBox { get => _nameBox; set => _nameBox = value; }
         public List<WorkstationDTO> WorkstationsDTOs { get => _workstationsDTOs; set => _workstationsDTOs = value; }
         public CustomComboBoxGroup<WorkstationDTO> Workstation { get => _workstation; set => _workstation = value; }
@@ -85,6 +89,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Margin = new(0),
                 Padding = new(0),
                 ColumnCount = _columnCount,
+            };
+            _serialNumBox = new("点位编号") {
+                Parent = _tablePanel,
+                Ratio = 8.25,
+                NameAlignment = HorizontalAlignment.Right,
+                PositiveIntOnly = true,
             };
             _nameBox = new("点位名称") {
                 Parent = _tablePanel,
@@ -150,7 +160,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             coordinates = await armTask.GetCurrentCoordinates();
                         }
                     }
-                    
+
                     if (coordinates != null) {
                         _positionBox.SetValue(0, coordinates.X + "");
                         _positionBox.SetValue(1, coordinates.Y + "");
@@ -322,6 +332,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
 
             // 检查是否DTO中已经有值，有的话则回填
+            _serialNumBox.SetValue(0, boltDTO.serial_num + "");
             _nameBox.SetValue(0, boltDTO.name);
             WorkstationDTO? workstationDTO = WorkstationsDTOs.SingleOrDefault(dto => dto.id == boltDTO.workstation_id);
             if (workstationDTO != null) {
@@ -369,10 +380,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _angleSubPanel.TablePanel.Hide();
             }
 
+            // 点位编号
+            TextBox serialNumBox = SerialNumBox.GetTextBox(0).Box;
+            SerialNumBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!SerialNumBox.HasError)
+                    if (!string.IsNullOrEmpty(serialNumBox.Text)) ModifiedBoltDTO.serial_num = int.Parse(serialNumBox.Text);
+                    else ModifiedBoltDTO.serial_num = 0;
+            };
             // 点位名称
             TextBox nameBox = NameBox.GetTextBox(0).Box;
             NameBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!NameBox.HasError) 
+                if (!NameBox.HasError)
                     if (!string.IsNullOrEmpty(nameBox.Text)) ModifiedBoltDTO.name = nameBox.Text;
                     else ModifiedBoltDTO.name = null;
             };
@@ -413,47 +431,47 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // pset 程序号
             TextBox parametersBox = ParameterSetBox.GetTextBox(0).Box;
             ParameterSetBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!ParameterSetBox.HasError) 
+                if (!ParameterSetBox.HasError)
                     if (!string.IsNullOrEmpty(parametersBox.Text)) ModifiedBoltDTO.parameters_set = int.Parse(parametersBox.Text);
                     else ModifiedBoltDTO.parameters_set = null;
             };
             // 螺栓规格
             TextBox specificationBox = SpecificationBox.GetTextBox(0).Box;
             SpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!SpecificationBox.HasError) 
+                if (!SpecificationBox.HasError)
                     if (!string.IsNullOrEmpty(specificationBox.Text)) ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
                     else ModifiedBoltDTO.specification = null;
             };
             // 批头规格
             TextBox bitSpecificationBox = BitSpecificationBox.GetTextBox(0).Box;
             BitSpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!BitSpecificationBox.HasError) 
+                if (!BitSpecificationBox.HasError)
                     if (!string.IsNullOrEmpty(bitSpecificationBox.Text)) ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
                     else ModifiedBoltDTO.bit_specification = null;
             };
             // 扭矩上下限
             TextBox torqueMinBox = TorqueBox.GetTextBox(0).Box;
             TorqueBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!TorqueBox.HasError) 
+                if (!TorqueBox.HasError)
                     if (!string.IsNullOrEmpty(torqueMinBox.Text)) ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
                     else ModifiedBoltDTO.torque_min = null;
             };
             TextBox torqueMaxBox = TorqueBox.GetTextBox(1).Box;
             TorqueBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
-                if (!TorqueBox.HasError) 
+                if (!TorqueBox.HasError)
                     if (!string.IsNullOrEmpty(torqueMaxBox.Text)) ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
                     else ModifiedBoltDTO.torque_max = null;
             };
             // 角度上下限
             TextBox angleMinBox = AngleBox.GetTextBox(0).Box;
             AngleBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!AngleBox.HasError) 
+                if (!AngleBox.HasError)
                     if (!string.IsNullOrEmpty(angleMinBox.Text)) ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
                     else ModifiedBoltDTO.angle_min = null;
             };
             TextBox angleMaxBox = AngleBox.GetTextBox(1).Box;
             AngleBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
-                if (!AngleBox.HasError) 
+                if (!AngleBox.HasError)
                     if (!string.IsNullOrEmpty(angleMaxBox.Text)) ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
                     else ModifiedBoltDTO.angle_max = null;
             };

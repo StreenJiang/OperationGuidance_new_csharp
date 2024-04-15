@@ -13,7 +13,7 @@ using System.Reflection;
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
-        protected ILog logger = SystemUtils.GetLogger(typeof(AWrapperBase<>));
+        protected ILog logger = SystemUtils.GetLogger(typeof(T));
 
         private string _tabelName;
         private DbConnection? _conn;
@@ -28,7 +28,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             _conn = conn;
         }
         public void ReleaseConnection() {
-            if (_conn != null) { 
+            if (_conn != null) {
                 _conn.Dispose();
                 _conn = null;
             }

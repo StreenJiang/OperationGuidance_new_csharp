@@ -12,5 +12,6 @@ namespace OperationGuidance_service.Models {
         public int enabled { get; set; } = (int) YesOrNo.YES;
         public int macs_id { get; set; }
         public int? predecessor_mission_id { get; set; }
+        public int? multi_device_independence { get; set; }
     }
 }

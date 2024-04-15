@@ -24,6 +24,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private bool _showingWhileWorking;
         private int _ngTimes;
         private int? _currentParameterSet;
+        private string? _label;
+        private int? _upperNum;
 
         public ProductBoltDTO BoltDTO {
             get => _boltDTO;
@@ -66,8 +68,22 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool MouseLeftDown { get => _mouseLeftDown; set => _mouseLeftDown = value; }
         public bool Moved { get => _moved; set => _moved = value; }
         public bool ShowingWhileWorking { get => _showingWhileWorking; set => _showingWhileWorking = value; }
-        public int NgTimes { get => _ngTimes; set => _ngTimes=value; }
+        public int NgTimes { get => _ngTimes; set => _ngTimes = value; }
         public int? CurrentParameterSet { get => _currentParameterSet; set => _currentParameterSet = value; }
+        public new string? Label {
+            get => base.Label;
+            set {
+                _label = value;
+                SetLabel();
+            }
+        }
+        public int? UpperNum {
+            get => _upperNum;
+            set {
+                _upperNum = value;
+                SetLabel();
+            }
+        }
 
         public BoltButton(ProductBoltDTO boltDTO) {
             Label = boltDTO.serial_num + "";
@@ -84,6 +100,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _boltStatus = BoltStatus.DEFAULT;
             BackColor = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
             ForeColor = TEXT_BLACK;
+        }
+
+        private void SetLabel() {
+            if (_upperNum != null) {
+                base.Label = $"{_upperNum}-{_label}";
+            } else {
+                base.Label = _label;
+            }
         }
 
         public void ResetStatusWithoutChangingVisible() {

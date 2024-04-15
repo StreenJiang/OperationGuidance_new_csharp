@@ -18,6 +18,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _boxMargin;
         private int _buttonHeight;
         private TableLayoutPanel _tablePanel;
+
+        private CustomTextBoxGroup _serialNumBox;
         private CustomTextBoxGroup _nameBox;
         private List<WorkstationDTO> _workstationsDTOs;
         private CustomComboBoxGroup<WorkstationDTO> _workstation;
@@ -34,6 +36,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
         public int ButtonHeight { get => _buttonHeight; set => _buttonHeight = value; }
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+
+        public CustomTextBoxGroup SerialNumBox { get => _serialNumBox; set => _serialNumBox = value; }
         public CustomTextBoxGroup NameBox { get => _nameBox; set => _nameBox = value; }
         public List<WorkstationDTO> WorkstationsDTOs { get => _workstationsDTOs; set => _workstationsDTOs = value; }
         public CustomComboBoxGroup<WorkstationDTO> Workstation { get => _workstation; set => _workstation = value; }
@@ -54,6 +58,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Margin = new(0),
                 Padding = new(0),
                 ColumnCount = _columnCount,
+            };
+            _serialNumBox = new("点位编号") {
+                Parent = _tablePanel,
+                Ratio = 8,
+                NameAlignment = HorizontalAlignment.Right,
+                PositiveIntOnly = true,
+                Enabled = false,
             };
             _nameBox = new("点位名称") {
                 Parent = _tablePanel,
@@ -115,7 +126,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 8,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
-                Enabled = false, 
+                Enabled = false,
             };
             _torqueBox.Separator = "~";
             _torqueBox.GetTextBox(0);
@@ -132,6 +143,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _angleBox.AddTextBox();
 
             // 检查是否DTO中已经有值，有的话则回填
+            _serialNumBox.SetValue(0, boltDTO.serial_num + "");
             _nameBox.SetValue(0, boltDTO.name);
             WorkstationDTO? workstationDTO = WorkstationsDTOs.SingleOrDefault(dto => dto.id == boltDTO.workstation_id);
             if (workstationDTO != null) {

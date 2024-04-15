@@ -155,6 +155,7 @@ namespace OperationGuidance_new.Views {
         private List<Image?> _missionImages;
         private List<BoltButton> _allBolts;
         private List<BoltButton> _showingBoltButtons;
+        // TODO: Change to List
         private BoltButton? _currentWorkingBolt;
         private BoltPopUpForm _boltPopUpForm; // 如果以后要支持软件尺寸可拖拽改变，则需要在打开时动态改变
         private bool _locating_enabled = MainUtils.IsArmLocatingEnabled();
@@ -185,6 +186,7 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _productSumPerDay;
         private CustomTextBoxGroup _okSumPerDay;
         private CustomTextBoxGroup _ngRatePerDay;
+        // TODO: Change to List as well
         private CustomTextBoxGroup _pset;
 
         // 中间

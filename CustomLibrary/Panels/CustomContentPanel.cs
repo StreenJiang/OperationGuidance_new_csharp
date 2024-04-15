@@ -6,30 +6,32 @@ namespace CustomLibrary.Panels {
         private Rectangle? _innerBorderRect;
         private Color? _penBorderColor;
         private bool _autoPadding;
-        
+        private bool _paddingWithoutBorder;
+
         public Color? PenBorderColor {
             get => _penBorderColor;
             set => _penBorderColor = value;
         }
         public bool AutoPadding { get => _autoPadding; set => _autoPadding = value; }
+        public bool PaddingWithoutBorder { get => _paddingWithoutBorder; set => _paddingWithoutBorder = value; }
 
         public CustomContentPanel() {
             _autoPadding = true;
+            _paddingWithoutBorder = false;
         }
 
         protected override void DoAfterResizing(object? sender, EventArgs eventArgs) {
-            if (_penBorderColor != null) {
-                int padding = 0;
-                if (_autoPadding && this.TopLevelControl != null) {
-                    padding = WidgetUtils.ContentInnerBorderMargin(this.TopLevelControl.Width, this.TopLevelControl.Height);
-                }
+            int padding = WidgetUtils.ContentInnerBorderMargin(WidgetUtils.MainSize);
+            if (_paddingWithoutBorder) {
+                Padding = new(padding * 2 + 1);
+            } else if (_penBorderColor != null) {
                 // Recalcuate rectangle
-                _innerBorderRect = new(padding, padding, this.Width - padding * 2 - 1, this.Height - padding * 2 - 1);
-                if (this.Visible) {
-                    this.Invalidate();
+                _innerBorderRect = new(padding, padding, Width - padding * 2 - 1, Height - padding * 2 - 1);
+                if (Visible) {
+                    Invalidate();
                 }
                 if (_autoPadding) {
-                    this.Padding = new(padding * 2 + 1);
+                    Padding = new(padding * 2 + 1);
                 }
             }
         }
@@ -37,7 +39,7 @@ namespace CustomLibrary.Panels {
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             if (_innerBorderRect != null && _penBorderColor != null) {
-                e.Graphics.Clear(this.BackColor);
+                e.Graphics.Clear(BackColor);
                 e.Graphics.DrawRectangle(new Pen(_penBorderColor.Value, 1), _innerBorderRect.Value);
             }
         }

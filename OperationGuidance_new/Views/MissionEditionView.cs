@@ -19,6 +19,7 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.Forms;
 using OperationGuidance_new.Constants;
 using CustomLibrary.ComboBoxes;
+using log4net;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView: CustomContentPanel {
@@ -75,7 +76,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public override void VisibleToTrue() {
-            if ((_editionPage != null && _editionPage.IsDisposed) 
+            if ((_editionPage != null && _editionPage.IsDisposed)
                 || (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES)) {
                 CreateANewOne();
             }
@@ -83,6 +84,8 @@ namespace OperationGuidance_new.Views {
 
         // Class: inner page panel
         public class MissionEditionPage: CustomContentPanel {
+            protected ILog logger = MainUtils.GetLogger(typeof(MissionEditionPage));
+
             private OperationGuidanceApis _apis;
             private MissionEditionView _parentView;
             private ProductMissionDTO _missionDTO;
@@ -242,7 +245,7 @@ namespace OperationGuidance_new.Views {
                         if (string.IsNullOrEmpty(missionName)) {
                             check = false;
                             _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 站点名称不能为空\r\n";
+                            warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
                         }
                         string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
                         if (string.IsNullOrEmpty(maxNGNum)) {
@@ -276,7 +279,12 @@ namespace OperationGuidance_new.Views {
                             } else {
                                 _missionDTO.predecessor_mission_id = null;
                             }
+                            _missionDTO.multi_device_independence = _detialPopUpForm.MultiDeviceIndependence.Checked ? (int) YesOrNo.YES : (int) YesOrNo.NO;
                             _detialPopUpForm.Hide();
+
+                            // Reset all serial numbers of all bolts
+                            _sideButtons.ForEach(side => side.ResetSerialNumbers());
+                            ForceResizeRight();
                         }
                     };
                     _detialPopUpForm.AddButton("关闭").Click += (s, e) => {
@@ -340,6 +348,7 @@ namespace OperationGuidance_new.Views {
                             if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
+                                Modified = false;
                                 // 删除后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                                 Dispose();
@@ -402,7 +411,7 @@ namespace OperationGuidance_new.Views {
             }
 
             private ImageButton GenerateImageButton(string label, Image icon, EventHandler eventHandler) {
-                ImageButton button =new() {
+                ImageButton button = new() {
                     Parent = _top,
                     Label = label,
                     BlockHoverUp = true,
@@ -436,16 +445,18 @@ namespace OperationGuidance_new.Views {
             }
 
             private void BindEventsForLeftBottomContentPanel() {
+                // Initialize left bottom content panel
                 _leftBottomContentPanel.MouseLeave += (sender, eventArgs) => {
                     Cursor = Cursors.Arrow;
                 };
-                _mouseLeftDown = false;
+                // Click event within left bottom content panel
                 _leftBottomContentPanel.SingleClickDelegate += (eventArgs) => {
                     if (_leftBottomContentPanel.CanTriggerClick()) {
                         _currentProductImageFile.ImageSelect(() => Modified = true);
                         _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
                     }
                 };
+                // Double click event within left bottom content panel
                 _leftBottomContentPanel.DoubleClickDelegate += (eventArgs) => {
                     if (!_leftBottomContentPanel.CanTriggerClick()) {
                         // 检查sideDTO是否为空，如果为空则抛出异常，因为在这里不能为空
@@ -458,30 +469,40 @@ namespace OperationGuidance_new.Views {
                         boltDTO.location_x_percent = (float) (eventArgs.Location.X - maxRect.X) / _leftBottomContentPanel.MaxRectWidth * 100;
                         boltDTO.location_y_percent = (float) (eventArgs.Location.Y - maxRect.Y) / _leftBottomContentPanel.MaxRectHeight * 100;
                         // Set serial number, if deleted serial number(s) exit(s), dequeue a serial number from queue and use it
-                        if (_currentSideButton.DeletedSerialNum.Count > 0) {
-                            boltDTO.serial_num = _currentSideButton.DeletedSerialNum.Dequeue();
+                        int serialNumTemp = 1;
+
+                        if (_missionDTO.multi_device_independence != null && _missionDTO.multi_device_independence == (int) YesOrNo.YES) {
+                            boltDTO.serial_num = 0;
+                            boltDTO.name = "BOLT";
                         } else {
-                            for (int serialNum = 1; serialNum <= _currentSideButton.BoltSerialNums.Count + 1; serialNum++) {
-                                if (!_currentSideButton.BoltSerialNums.Contains(serialNum)) {
-                                    boltDTO.serial_num = serialNum;
-                                    break;
-                                }
+                            foreach (List<BoltButton> btnList in _currentSideButton.BoltButtons.Values) {
+                                serialNumTemp = Math.Max(serialNumTemp, btnList.Select(btn => btn.BoltDTO.serial_num).Max());
                             }
+                            boltDTO.serial_num = serialNumTemp + 1;
+                            boltDTO.name = $"BOLT_" + boltDTO.serial_num;
                         }
-                        
-                        boltDTO.name = $"BOLT" + boltDTO.serial_num;
                         OpenNewBoltPopUpForm(boltDTO, () => {
                             // Add new buttons
-                            BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO);
-                            BoltEditionButton boltEditionButton = AddNewBoltEditionButton(_currentSideButton, boltDTO);
-                            boltButton.Visible = true;
-                            boltEditionButton.Visible = true;
-                            // Add buttons into side button
-                            _currentSideButton.BoltButtons.Add(boltDTO.serial_num, boltButton);
-                            _currentSideButton.BoltEditionButtons.Add(boltDTO.serial_num, boltEditionButton);
+                            BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO, true);
+                            BoltEditionButton boltEditionButton = _rightContentPanel.AddNewBoltEditionButton(_currentSideButton, boltDTO, OpenBoltPopUpForm);
 
-                            // Reorder the edition buttons
-                            boltEditionButton.Parent.Controls.SetChildIndex(boltEditionButton, _currentSideButton.BoltSerialNums.IndexOf(boltDTO.serial_num));
+                            // Save serial num
+                            int workstationId = boltDTO.workstation_id;
+
+                            // Add buttons into side button
+                            if (_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
+                                _currentSideButton.BoltButtons[workstationId].Add(boltButton);
+                                boltButton.UpperNum = _currentSideButton.BoltButtons.IndexOfKey(workstationId) + 1;
+                            } else {
+                                _currentSideButton.BoltButtons.Add(workstationId, new() { { boltButton } });
+                            }
+                            if (_currentSideButton.BoltEditionButtons.ContainsKey(workstationId)) {
+                                _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
+                                boltEditionButton.UpperNum = _currentSideButton.BoltEditionButtons.IndexOfKey(workstationId) + 1;
+                            } else {
+                                _currentSideButton.BoltEditionButtons.Add(workstationId, new() { { boltEditionButton } });
+                            }
+
                             // Do this to force fire SizeChanged event
                             ResizeBottomLeft();
                             ForceResizeRight();
@@ -491,15 +512,19 @@ namespace OperationGuidance_new.Views {
                                 sideDTO.Bolts = new();
                             }
                             sideDTO.Bolts.Add(boltDTO);
-                            // Save serial num
-                            _currentSideButton.BoltSerialNums.Add(boltDTO.serial_num);
-                            _currentSideButton.BoltSerialNums.Sort();
-                        });
+                        }, null);
                     }
                 };
+
+                // Initialize variables
+                _mouseLeftDown = false;
                 _controlDown = false;
                 _needSaveBuffer = false;
+
+                // Make left bottom content panel can be auto focus
                 EventFuncs.AddAutoActivatingControl(_leftBottomContentPanel);
+
+                // Other events
                 _leftBottomContentPanel.KeyDown += (sender, eventArgs) => {
                     if (!_controlDown && eventArgs.Control) {
                         _controlDown = true;
@@ -623,7 +648,11 @@ namespace OperationGuidance_new.Views {
                 ProductImageFile productImageFileNew = new(_leftBottomContentPanel, sideDTO, _imageOperationBufferLength);
 
                 // Initialzie side button
-                SideButton sideButton = new(sideDTO, _leftBottomContentPanel, productImageFile, productImageFileNew) {
+                SideButton sideButton = new(_missionDTO, sideDTO, _leftBottomContentPanel, productImageFile, productImageFileNew, (sideId, visible) => {
+                    if (_rightContentPanel != null && _rightContentPanel.Panels.ContainsKey(sideId)) {
+                        _rightContentPanel.Panels[sideId].Visible = visible;
+                    }
+                }) {
                     Parent = _sideTitlePanel,
                     BackColor = Color.Transparent,
                     ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
@@ -692,17 +721,20 @@ namespace OperationGuidance_new.Views {
                 // Initialize bolts buttons
                 if (sideDTO.Bolts != null && sideDTO.Bolts.Count > 0) {
                     foreach (ProductBoltDTO boltDTO in sideDTO.Bolts) {
-                        sideButton.BoltButtons.Add(boltDTO.serial_num, AddNewBoltButton(sideButton, boltDTO));
-                        sideButton.BoltSerialNums.Add(boltDTO.serial_num);
+                        int workstationId = boltDTO.workstation_id;
+                        if (!sideButton.BoltButtons.ContainsKey(workstationId)) {
+                            sideButton.BoltButtons.Add(workstationId, new());
+                        }
+                        sideButton.BoltButtons[workstationId].Add(AddNewBoltButton(sideButton, boltDTO));
                     }
                 }
                 return sideButton;
             }
 
-            private BoltButton AddNewBoltButton(SideButton sideButton, ProductBoltDTO boltDTO) {
+            private BoltButton AddNewBoltButton(SideButton sideButton, ProductBoltDTO boltDTO, bool visible = false) {
                 BoltButton boltButton = new(boltDTO) {
                     Parent = _leftBottomContentPanel,
-                    Visible = false,
+                    Visible = visible,
                 };
                 boltButton.MouseDown += (sender, eventArgs) => {
                     if (eventArgs.Button == MouseButtons.Left) {
@@ -734,6 +766,7 @@ namespace OperationGuidance_new.Views {
                             boltButton.Moved = false;
                         } else {
                             sideButton.CurrentSerialNum = boltDTO.serial_num;
+                            sideButton.CurrentWorkstationId = boltDTO.workstation_id;
                             OpenBoltPopUpForm(boltDTO);
                         }
                     }
@@ -741,17 +774,27 @@ namespace OperationGuidance_new.Views {
                 };
                 return boltButton;
             }
-            
-            private void OpenNewBoltPopUpForm(ProductBoltDTO boltDTO, Action addNewBoltBtns) {
+
+            private void OpenNewBoltPopUpForm(ProductBoltDTO boltDTO, Action? addNewBoltBtns, Action? cancelToAdd) {
+                bool added = false;
                 _boltPopUpForm = new(boltDTO) {
-                    Title = boltDTO.serial_num + " - " + boltDTO.name,
+                    Title = $"螺栓点位 - {boltDTO.name}",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                };
+                CheckMultiDeviceFlag();
+                _boltPopUpForm.HandleDestroyed += (s, e) => {
+                    if (!added && cancelToAdd != null) {
+                        cancelToAdd();
+                    }
                 };
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
                     if (saveBoltInfo(boltDTO)) {
-                        addNewBoltBtns();
+                        if (addNewBoltBtns != null) {
+                            addNewBoltBtns();
+                        }
+                        added = true;
                     }
                 };
                 CommonButton cancelButton = _boltPopUpForm.AddButton("关闭");
@@ -766,14 +809,44 @@ namespace OperationGuidance_new.Views {
                 _boltPopUpForm.Show();
             }
 
+            private void CheckMultiDeviceFlag() {
+                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                    _boltPopUpForm.Workstation.ItemSelected += () => {
+                        // Set serial num after workstation changed
+                        if (_boltPopUpForm.Workstation.Value != null && _currentSideButton.BoltButtons.ContainsKey(_boltPopUpForm.Workstation.Value.id)) {
+                            int newSerialNum = _currentSideButton.BoltButtons[_boltPopUpForm.Workstation.Value.id].Select(btn => btn.BoltDTO.serial_num).Max() + 1;
+                            _boltPopUpForm.ModifiedBoltDTO.serial_num = newSerialNum;
+                            _boltPopUpForm.SerialNumBox.SetValue(0, newSerialNum + "");
+                        }
+                    };
+                }
+            }
+
             private bool saveBoltInfo(ProductBoltDTO boltDTO) {
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
+                string serialNum = _boltPopUpForm.SerialNumBox.GetTextBox(0).Box.Text;
+                if (string.IsNullOrEmpty(serialNum) || int.Parse(serialNum) <= 0) {
+                    check = false;
+                    _boltPopUpForm.SerialNumBox.GetTextBox(0).IsError = true;
+                    warningMsg += $"{warningIndex++}. 点位编号不能为空\r\n";
+                }
                 if (_boltPopUpForm.Workstation.Value == null) {
                     check = false;
-                    _boltPopUpForm.Workstation.SetError(true); 
+                    _boltPopUpForm.Workstation.SetError(true);
                     warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
+                } else {
+                    foreach (KeyValuePair<int, List<BoltButton>> pair in _currentSideButton.BoltButtons) {
+                        if ((int) YesOrNo.YES == _missionDTO.multi_device_independence && pair.Key != _boltPopUpForm.Workstation.Value.id) {
+                            continue;
+                        }
+                        if (pair.Value.Find(btn => btn.BoltDTO.serial_num == int.Parse(serialNum)) != null) {
+                            check = false;
+                            _boltPopUpForm.SerialNumBox.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 存在重复的点位编号\r\n";
+                        }
+                    }
                 }
                 if (MainUtils.IsArmLocatingEnabled() && !_boltPopUpForm.PositionToggle.Checked) {
                     check = false;
@@ -811,7 +884,7 @@ namespace OperationGuidance_new.Views {
                         warningMsg += $"{warningIndex++}. 螺栓规格字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
-                    boltDTO.specification= null;
+                    boltDTO.specification = null;
                 }
                 if (_boltPopUpForm.BitSpecificationToggle.Checked) {
                     string bitSpecification = _boltPopUpForm.BitSpecificationBox.GetTextBox(0).Box.Text;
@@ -853,7 +926,7 @@ namespace OperationGuidance_new.Views {
                 if (!check) {
                     WidgetUtils.ShowWarningPopUp($"信息暂存失败：\r\n{warningMsg}");
                 } else {
-                    // 根据校验结果判断是否可以保存
+                    // 根据校验结果判断可以保存
                     Modified = true;
                     _boltPopUpForm.SaveTo(boltDTO);
                     WidgetUtils.ShowNoticePopUp("信息暂存成功！");
@@ -868,6 +941,7 @@ namespace OperationGuidance_new.Views {
                     Title = boltDTO.serial_num + " - " + boltDTO.name,
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
+                CheckMultiDeviceFlag();
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
@@ -913,7 +987,7 @@ namespace OperationGuidance_new.Views {
                     Margin = new(1, 1, 0, 0),
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
-                _rightContentPanel = new(_sideButtons) {
+                _rightContentPanel = new() {
                     Padding = new(0),
                 };
                 _autoScrollContentOuterPanel = new(null, _rightContentPanel) {
@@ -932,67 +1006,36 @@ namespace OperationGuidance_new.Views {
 
                 // Create all bolt edition buttons and set them invisible
                 foreach (SideButton sideButton in _sideButtons) {
-                    foreach (BoltButton button in sideButton.BoltButtons.Values) {
-                        sideButton.BoltEditionButtons.Add(button.BoltDTO.serial_num, AddNewBoltEditionButton(sideButton, button.BoltDTO));
+                    foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
+                        List<BoltEditionButton> boltEditionBtns = new();
+                        foreach (BoltButton boltBtns in pair.Value) {
+                            boltEditionBtns.Add(_rightContentPanel.AddNewBoltEditionButton(sideButton, boltBtns.BoltDTO, OpenBoltPopUpForm));
+                        }
+                        sideButton.BoltEditionButtons.Add(pair.Key, boltEditionBtns);
                     }
                 }
 
-                // Show bolt edition buttons of current side
-                foreach (BoltEditionButton boltEdition in _currentSideButton.BoltEditionButtons.Values) {
-                    boltEdition.Visible = true;
-                }
-            }
+                // Two kinds of bolt buttons all set, check if multi_device_independence is on
+                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                    int upperNum = 1;
+                    foreach (SideButton sideButton in _sideButtons) {
+                        foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
+                            for (int i = 0; i < pair.Value.Count; i++) {
+                                // Reset serial num of bolt button
+                                BoltButton btn = pair.Value[i];
+                                btn.UpperNum = upperNum;
+                                btn.Invalidate();
 
-            private BoltEditionButton AddNewBoltEditionButton(SideButton sideButton, ProductBoltDTO boltDTO) {
-                BoltEditionButton boltEditionButton = new(boltDTO) {
-                    Parent = _rightContentPanel,
-                    ForeColor = _bottomRight.ForeColor,
-                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_BUTTON_BACK,
-                    Visible = false,
-                };
-                boltEditionButton.Deleted += () => {
-                    sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
-                    _currentSideButton.DeleteBolt();
-                };
-                boltEditionButton.SingleClickDelegate += (eventArgs) => {
-                    sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
-                    OpenBoltPopUpForm(boltDTO);
-                };
-                boltEditionButton.DoubleClickDelegate += (eventArgs) => {
-                    TextBox box = new() {
-                        Parent = boltEditionButton,
-                        BorderStyle = BorderStyle.None,
-                        Size = (boltEditionButton.Size * .9F).ToSize(),
-                        Text = boltDTO.name,
-                        ImeMode = ImeMode.On,
-                    };
-                    box.Location = new((boltEditionButton.Width - box.Width) / 2, (int) (((boltEditionButton.Height - box.Height) / 2) * .9));
-                    box.KeyUp += (sender, eventArgs) => {
-                        if (eventArgs.KeyCode == Keys.Enter) {
-                            RenameAndResize();
-                            box.Dispose();
-                        } else if (eventArgs.KeyCode == Keys.Escape) {
-                            box.Dispose();
-                        }
-                    };
-                    box.LostFocus += (sender, eventArgs) => {
-                        RenameAndResize();
-                        box.Dispose();
-                    };
-                    box.Focus();
-                    EventFuncs.CurrentActiveControl = box;
+                                // Reset serial num of bolt edition button
+                                BoltEditionButton btn2 = sideButton.BoltEditionButtons[pair.Key][i];
+                                btn2.UpperNum = upperNum;
+                                btn2.Invalidate();
+                            }
 
-                    void RenameAndResize() {
-                        if (box.Text != null && box.Text != string.Empty) {
-                            boltEditionButton.Label = boltDTO.serial_num + ". " + box.Text;
-                            boltDTO.name = box.Text;
-                            // Do this to force fire SizeChange event to relocate the label
-                            boltEditionButton.Width += 1;
-                            boltEditionButton.Width -= 1;
+                            upperNum++;
                         }
                     }
-                };
-                return boltEditionButton;
+                }
             }
 
             protected override void OnHandleCreated(EventArgs e) {
@@ -1031,7 +1074,7 @@ namespace OperationGuidance_new.Views {
 
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 if (Size == new Size(200, 100)) {
-                    // TODO: have to figure out why this happen
+                    // WARN: have to figure out why this happen
                     return;
                 }
                 if (Parent != null && Parent.IsHandleCreated) {
@@ -1132,12 +1175,14 @@ namespace OperationGuidance_new.Views {
                 foreach (SideButton sideButton in _sideButtons) {
                     sideButton.BoltButtonRadius = boltButtonRadius;
                     sideButton.ReCalculateProductImageRatio();
-                    foreach (BoltButton boltButton in sideButton.BoltButtons.Values) {
-                        boltButton.Size = new(boltButtonRadius * 2, boltButtonRadius * 2);
-                        // Recalculate bolt button location
-                        int newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
-                        int newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
-                        boltButton.Location = new(newX, newY);
+                    foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
+                        foreach (BoltButton boltButton in pair.Value) {
+                            boltButton.Size = new(boltButtonRadius * 2, boltButtonRadius * 2);
+                            // Recalculate bolt button location
+                            int newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                            int newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                            boltButton.Location = new(newX, newY);
+                        }
                     }
                 }
                 // Refresh current product image
@@ -1178,13 +1223,15 @@ namespace OperationGuidance_new.Views {
                 _boltTitleLabel.Font = new Font(WidgetsConfigs.SystemFontFamily, _boltTitleLabel.Height * .55F, FontStyle.Bold, GraphicsUnit.Pixel);
 
                 int contentHeight = _bottomRight.Height - _boltTitlePanel.Height - 2;
-                int boltButtonHeight = (int) (contentHeight * .055);
-                int boltButtonMargin = boltButtonHeight / 7;
-                _rightContentPanel.BoltButtonHeight = boltButtonHeight;
-                _rightContentPanel.BoltButtonMargin = boltButtonMargin;
-                _rightContentPanel.BoltButtonWidth = controlWidth - boltButtonMargin * 2;
+                int boltBtnHeight = (int) (contentHeight * .055);
+                int boltBtnMargin = boltBtnHeight / 7;
+                _rightContentPanel.BoltSize = new(controlWidth - boltBtnMargin * 2, boltBtnHeight);
+                _rightContentPanel.BoltMargin = boltBtnMargin;
 
-                _rightContentPanel.NewHeight = (boltButtonHeight + boltButtonMargin) * _currentSideButton.BoltEditionButtons.Count;
+                if (_currentSideButton != null && _currentSideButton.SideDTO != null) {
+                    _rightContentPanel.CalNewHeightAdnResizeChildren(_currentSideButton.SideDTO.id, (int) YesOrNo.YES == _missionDTO.multi_device_independence);
+                }
+
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
             }
 
@@ -1204,6 +1251,7 @@ namespace OperationGuidance_new.Views {
             private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
             private CustomTextBoxGroup _partsBarCodeNum;
+            private ToggleButtonGroup _multiDeviceIndependence;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
@@ -1213,8 +1261,9 @@ namespace OperationGuidance_new.Views {
             public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
+            public ToggleButtonGroup MultiDeviceIndependence { get => _multiDeviceIndependence; set => _multiDeviceIndependence = value; }
 
-            public MissionDetailPopUpForm(ProductMissionDTO missionDTO, 
+            public MissionDetailPopUpForm(ProductMissionDTO missionDTO,
                     List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
                 _missionDTO = missionDTO;
                 _tablePanel = new() {
@@ -1259,6 +1308,12 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
+                _multiDeviceIndependence = new("多设备点位独立") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Checked = false,
+                };
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1267,7 +1322,6 @@ namespace OperationGuidance_new.Views {
                 if (missionDTO.predecessor_mission_id != null) {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
                 }
-
                 int productsBarCodeNum = 0;
                 int partsBarCodeNum = 0;
                 foreach (BarCodeMatchingRuleDTO rule in barCodeMatchingRuleDTOs) {
@@ -1279,6 +1333,9 @@ namespace OperationGuidance_new.Views {
                 }
                 _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
                 _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
+                if (missionDTO.multi_device_independence != null) {
+                    _multiDeviceIndependence.Checked = missionDTO.multi_device_independence.Value == (int) YesOrNo.YES;
+                }
             }
 
             public void ResizeSelf() {
@@ -1392,36 +1449,40 @@ namespace OperationGuidance_new.Views {
             }
         }
         public class SideButton: DeletableButton {
+            private ILog logger = MainUtils.GetLogger(typeof(SideButton));
+
             private Color? _originalBackColor;
             private Color? _triggeredBackColor;
-            private ProductSideDTO? _sideDTO;
+            private ProductMissionDTO _missionDTO;
+            private ProductSideDTO _sideDTO;
             private LeftBottomContentPanel _container;
             private ProductImageFile _productImageFile;
             private ProductImageFile _productImageFileNew;
-            // All rounded bolt buttons above the product image
-            private SortedList<int, BoltButton> _boltButtons;
             // Radius of rounded bolt buttons
             private int _boltButtonRadius;
+            // All rounded bolt buttons above the product image
+            private SortedList<int, List<BoltButton>> _boltButtons;
             // All edition buttons in the right panel
-            private SortedList<int, BoltEditionButton> _boltEditionButtons;
-            // List of serial numbers of all bolts
-            private List<int> _boltSerialNums;
-            // Queue of deleted serial numbers, used for adding new bolt, make sure they have consecutive serial numbers
-            private Queue<int> _deletedSerialNum;
+            private SortedList<int, List<BoltEditionButton>> _boltEditionButtons;
             // Serial number of current chosen bolt
+            private int? _currentWorkstationId;
             private int? _currentSerialNum;
+            // RightContentPanel
+            private Action<int, bool> _changeVisibleOfBoltEditionButtons;
             // Tip of each side button, to tell that it can be double clicked to rename
             private ToolTip? _toolTip;
 
-            public ProductSideDTO? SideDTO { get => _sideDTO; set => _sideDTO = value; }
+            public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
+            public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
             public ProductImageFile ProductImageFile { set => _productImageFile = value; }
             public ProductImageFile ProductImageFileNew { get => _productImageFileNew; }
-            public SortedList<int, BoltButton> BoltButtons { get => _boltButtons; }
+            // Separate by workstation id, key of inner sorted list is serial num of each bolt
+            public SortedList<int, List<BoltButton>> BoltButtons { get => _boltButtons; }
+            public SortedList<int, List<BoltEditionButton>> BoltEditionButtons { get => _boltEditionButtons; }
             public int BoltButtonRadius { get => _boltButtonRadius; set => _boltButtonRadius = value; }
-            public SortedList<int, BoltEditionButton> BoltEditionButtons { get => _boltEditionButtons; }
-            public List<int> BoltSerialNums { get => _boltSerialNums; }
-            public Queue<int> DeletedSerialNum { get => _deletedSerialNum; }
+            public int? CurrentWorkstationId { get => _currentWorkstationId; set => _currentWorkstationId = value; }
             public int? CurrentSerialNum { get => _currentSerialNum; set => _currentSerialNum = value; }
+            public Action<int, bool> ChangeVisibleOfBoltEditionButtons { get => _changeVisibleOfBoltEditionButtons; set => _changeVisibleOfBoltEditionButtons = value; }
 
             // Properties for distinguishing single click and double click
             public int ClickTimes { get; set; }
@@ -1433,25 +1494,18 @@ namespace OperationGuidance_new.Views {
             public Action<EventArgs>? SingleClickDelegate;
             public Action<EventArgs>? DoubleClickDelegate;
 
-            public SideButton(string buttonName) {
-                Label = buttonName;
-                ConerRadius = 0;
-
-                InitializeTimer();
-            }
-
-            public SideButton(ProductSideDTO sideDTO, LeftBottomContentPanel leftBottomContentPanel,
-                    ProductImageFile productImageFile, ProductImageFile productImageFileNew) {
+            public SideButton(ProductMissionDTO missionDTO, ProductSideDTO sideDTO, LeftBottomContentPanel leftBottomContentPanel,
+                    ProductImageFile productImageFile, ProductImageFile productImageFileNew, Action<int, bool> changeVisibleOfBoltEditionButtons) {
+                _missionDTO = missionDTO;
                 _sideDTO = sideDTO;
                 Label = sideDTO.name;
                 _container = leftBottomContentPanel;
                 _productImageFile = productImageFile;
                 _productImageFileNew = productImageFileNew;
+                _changeVisibleOfBoltEditionButtons = changeVisibleOfBoltEditionButtons;
                 _boltButtons = new();
                 _boltButtonRadius = 1;
                 _boltEditionButtons = new();
-                _boltSerialNums = new();
-                _deletedSerialNum = new();
 
                 ConerRadius = 0;
                 GroupMode = true;
@@ -1515,12 +1569,15 @@ namespace OperationGuidance_new.Views {
 
                 _productImageFileNew.RefreshImage();
 
-                foreach (BoltButton button in _boltButtons.Values) {
-                    button.Visible = flag;
+                foreach (List<BoltButton> buttons in _boltButtons.Values) {
+                    foreach (BoltButton button in buttons) {
+                        button.Visible = flag;
+                    }
                 }
-                foreach (BoltEditionButton button in _boltEditionButtons.Values) {
-                    button.Visible = flag;
+                if (SideDTO != null) {
+                    _changeVisibleOfBoltEditionButtons(SideDTO.id, flag);
                 }
+
                 ChangeFontStyle();
             }
 
@@ -1540,22 +1597,86 @@ namespace OperationGuidance_new.Views {
             }
 
             public void DeleteBolt() {
-                if (_currentSerialNum != null && SideDTO != null) {
-                    // Delete bolt buttons (both in pictrue and right panel)
-                    BoltButton boltButton = _boltButtons[_currentSerialNum.Value];
-                    BoltEditionButton boltEditionButton = _boltEditionButtons[_currentSerialNum.Value];
-                    _boltButtons.Remove(_currentSerialNum.Value);
-                    _boltEditionButtons.Remove(_currentSerialNum.Value);
-                    // Enqueue serial number and wait for a new bolt
-                    _deletedSerialNum.Enqueue(_currentSerialNum.Value);
-                    _boltSerialNums.Remove(_currentSerialNum.Value);
-                    // Reset current bolt index
-                    _currentSerialNum = null;
-                    // Delete boltDto from sideDto
-                    boltButton.BoltDTO.deleted = (int) (YesOrNo.YES);
-                    // Dispose deleted buttons
-                    boltButton.Dispose();
-                    boltEditionButton.Dispose();
+                // Check for null variables
+                if (_currentWorkstationId == null || _currentSerialNum == null) {
+                    string errorMsg = $"Workstation id or Current serial Num can not be null, please check.";
+                    logger.Error(errorMsg);
+                    throw new NullReferenceException(errorMsg);
+                }
+
+                // Delete bolt buttons (both in pictrue and right panel)
+                BoltButton boltButton = _boltButtons[_currentWorkstationId.Value].Single(b => b.BoltDTO.serial_num == _currentSerialNum.Value);
+                BoltEditionButton boltEditionButton = _boltEditionButtons[_currentWorkstationId.Value].Single(b => b.BoltDTO.serial_num == _currentSerialNum.Value);
+
+                // Delete boltDto from sideDto
+                boltButton.BoltDTO.deleted = (int) (YesOrNo.YES);
+
+                // Do deletion
+                _boltButtons[_currentWorkstationId.Value].Remove(boltButton);
+                _boltEditionButtons[_currentWorkstationId.Value].Remove(boltEditionButton);
+
+                // Resort and reorder all bolt buttons
+                ResetSerialNumbers();
+
+                // Reset current bolt index
+                _currentWorkstationId = null;
+                _currentSerialNum = null;
+
+                // Dispose deleted button
+                boltButton.Dispose();
+                boltEditionButton.Dispose();
+            }
+
+            public void ResetSerialNumbers() {
+                // Sort by serial numbers
+                foreach (int key in _boltButtons.Keys.ToList()) {
+                    _boltButtons[key] = _boltButtons[key].OrderBy(b => b.BoltDTO.serial_num).ToList();
+                    _boltEditionButtons[key] = _boltEditionButtons[key].OrderBy(b => b.BoltDTO.serial_num).ToList();
+                }
+
+                // Reorder buttons and reset serial numbers
+                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                    int upperNum = 1;
+                    foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
+                        for (int i = 0; i < pair.Value.Count; i++) {
+                            // Reset serial num of bolt button
+                            BoltButton btn = pair.Value[i];
+                            btn.BoltDTO.serial_num = i + 1;
+                            btn.UpperNum = upperNum;
+                            btn.Label = btn.BoltDTO.serial_num + "";
+                            btn.Invalidate();
+
+                            // Reset serial num of bolt edition button
+                            BoltEditionButton btn2 = _boltEditionButtons[pair.Key][i];
+                            btn2.BoltDTO.serial_num = i + 1;
+                            btn2.UpperNum = upperNum;
+                            btn2.Label = btn2.BoltDTO.serial_num + ". " + btn2.BoltDTO.name;
+                            btn2.Invalidate();
+                        }
+
+                        upperNum++;
+                    }
+                } else {
+                    int currentSerialNum = 1;
+                    foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
+                        for (int i = 0; i < pair.Value.Count; i++) {
+                            // Reset serial num of bolt button
+                            BoltButton btn = pair.Value[i];
+                            btn.BoltDTO.serial_num = currentSerialNum;
+                            btn.UpperNum = null;
+                            btn.Label = btn.BoltDTO.serial_num + "";
+                            btn.Invalidate();
+
+                            // Reset serial num of bolt edition button
+                            BoltEditionButton btn2 = _boltEditionButtons[pair.Key][i];
+                            btn2.BoltDTO.serial_num = currentSerialNum;
+                            btn2.UpperNum = null;
+                            btn2.Label = btn2.BoltDTO.serial_num + ". " + btn2.BoltDTO.name;
+                            btn2.Invalidate();
+
+                            currentSerialNum++;
+                        }
+                    }
                 }
             }
 
@@ -1651,7 +1772,7 @@ namespace OperationGuidance_new.Views {
                 int mainFormHeight = WidgetUtils.MainForm.Height;
                 int workPlacePadding = WidgetUtils.ContentInnerBorderMargin(WidgetUtils.MainForm.Size) * 2 + 1;
                 int workPlaceWidth = mainFormWidth - workPlacePadding * 2;
-                int workPlaceHeight =  mainFormHeight - (int) (mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
+                int workPlaceHeight = mainFormHeight - (int) (mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
                 Size workPlaceImageDisplayPanelSize = new((int) (workPlaceWidth * WidgetUtils.WorkplaceLeftWidthRatio()), (int) (workPlaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio()));
 
                 MaxRectSize = MainUtils.GetProperSizeAccordingToSizeRatio((Size * .95F).ToSize(), workPlaceImageDisplayPanelSize);
@@ -1734,7 +1855,7 @@ namespace OperationGuidance_new.Views {
 
                     // 只画最大的范围
                     Pen pen = new Pen(ColorConfigs.COLOR_MISSION_BLOCK_BORDER, 1) {
-                        DashPattern = new float[] {9, 6, 9, 6},
+                        DashPattern = new float[] { 9, 6, 9, 6 },
                     };
                     g.DrawRectangle(pen, MaxRect);
                     Font noticeFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Regular, GraphicsUnit.Pixel);
@@ -1756,39 +1877,190 @@ namespace OperationGuidance_new.Views {
         }
 
         public class RightContentPanel: CustomContentPanel {
-            private List<SideButton> _sideButtons;
-            private int _boltButtonHeight;
-            private int _boltButtonMargin;
-            private int _boltButtonWidth;
+            protected ILog logger = MainUtils.GetLogger(typeof(RightContentPanel));
 
-            public int BoltButtonHeight { get => _boltButtonHeight; set => _boltButtonHeight = value; }
-            public int BoltButtonMargin { get => _boltButtonMargin; set => _boltButtonMargin = value; }
-            public int BoltButtonWidth { get => _boltButtonWidth; set => _boltButtonWidth = value; }
+            private Size _boltSize;
+            private int _boltMargin;
+            private int _workstationMargin;
+            private Dictionary<int, SideButtonsPanel> _panels = new();
 
-            public RightContentPanel(List<SideButton> sideButtons) {
-                _sideButtons = sideButtons;
+            public Size BoltSize { get => _boltSize; set => _boltSize = value; }
+            public int BoltMargin {
+                get => _boltMargin;
+                set {
+                    _boltMargin = value;
+                    _workstationMargin = value * 5;
+                }
+            }
+            public Dictionary<int, SideButtonsPanel> Panels { get => _panels; set => _panels = value; }
+
+            public BoltEditionButton AddNewBoltEditionButton(SideButton sideButton, ProductBoltDTO boltDTO, Action<ProductBoltDTO> openBoltPopUpForm) {
+                if (sideButton.SideDTO != null) {
+                    // Get panel that corresponding to current side button
+                    SideButtonsPanel sidePanel;
+                    if (!_panels.ContainsKey(sideButton.SideDTO.id)) {
+                        sidePanel = new(sideButton) {
+                            Parent = this,
+                        };
+                        _panels.Add(sideButton.SideDTO.id, sidePanel);
+                    } else {
+                        sidePanel = _panels[sideButton.SideDTO.id];
+                    }
+                    WorkstationButtonsPanel btnPanel;
+                    if (!sidePanel.BtnPanels.ContainsKey(boltDTO.workstation_id)) {
+                        btnPanel = new(boltDTO.workstation_id) {
+                            Parent = sidePanel,
+                        };
+                        sidePanel.BtnPanels.Add(boltDTO.workstation_id, btnPanel);
+                    } else {
+                        btnPanel = sidePanel.BtnPanels[boltDTO.workstation_id];
+                    }
+
+                    // Create new bolt edit button
+                    BoltEditionButton boltEditionButton = new(boltDTO) {
+                        Parent = btnPanel,
+                        ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
+                        BackColor = ColorConfigs.COLOR_MISSION_EDITION_BUTTON_BACK,
+                    };
+                    btnPanel.Btns.Add(boltEditionButton);
+                    // Delete button
+                    boltEditionButton.Deleted += () => {
+                        sideButton.CurrentWorkstationId = boltEditionButton.BoltDTO.workstation_id;
+                        sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
+                        sideButton.DeleteBolt();
+                    };
+                    // Click and open bolt info edition pop up form
+                    boltEditionButton.SingleClickDelegate += (eventArgs) => {
+                        sideButton.CurrentSerialNum = boltEditionButton.BoltDTO.serial_num;
+                        sideButton.CurrentWorkstationId = boltEditionButton.BoltDTO.workstation_id;
+                        openBoltPopUpForm(boltDTO);
+                    };
+                    // Double click to rename bolt
+                    boltEditionButton.DoubleClickDelegate += (eventArgs) => {
+                        TextBox box = new() {
+                            Parent = boltEditionButton,
+                            BorderStyle = BorderStyle.None,
+                            Size = (boltEditionButton.Size * .9F).ToSize(),
+                            Text = boltDTO.name,
+                            ImeMode = ImeMode.On,
+                        };
+                        box.Location = new((boltEditionButton.Width - box.Width) / 2, (int) (((boltEditionButton.Height - box.Height) / 2) * .9));
+                        box.KeyUp += (sender, eventArgs) => {
+                            if (eventArgs.KeyCode == Keys.Enter) {
+                                RenameAndResize();
+                                box.Dispose();
+                            } else if (eventArgs.KeyCode == Keys.Escape) {
+                                box.Dispose();
+                            }
+                        };
+                        box.LostFocus += (sender, eventArgs) => {
+                            RenameAndResize();
+                            box.Dispose();
+                        };
+                        box.Focus();
+                        EventFuncs.CurrentActiveControl = box;
+
+                        void RenameAndResize() {
+                            if (box.Text != null && box.Text != string.Empty) {
+                                boltEditionButton.Label = boltDTO.serial_num + ". " + box.Text;
+                                boltDTO.name = box.Text;
+                                // Do this to force fire SizeChange event to relocate the label
+                                boltEditionButton.Width += 1;
+                                boltEditionButton.Width -= 1;
+                            }
+                        }
+                    };
+                    // Reorder buttons in display
+                    btnPanel.ReorderButtons();
+
+                    // Return created bolt edit button
+                    return boltEditionButton;
+                } else {
+                    // Throw exception if side dto is null
+                    string errorMsg = $"SideDTO can not be null, please check for side button = {sideButton.Label}";
+                    logger.Error(errorMsg);
+                    throw new NullReferenceException(errorMsg);
+                }
             }
 
-            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-                if (OuterVScrollPanel != null) {
-                    foreach (SideButton sideButton in _sideButtons) {
-                        foreach (BoltEditionButton boltEditionButton in sideButton.BoltEditionButtons.Values) {
-                            boltEditionButton.Size = new(_boltButtonWidth, _boltButtonHeight);
-                            boltEditionButton.Margin = new(_boltButtonMargin, _boltButtonMargin, _boltButtonMargin, 0);
+            public void CalNewHeightAdnResizeChildren(int sideId, bool multiDeviceIndepedence) {
+                if (!_panels.ContainsKey(sideId)) {
+                    NewHeight = 0;
+                    return;
+                }
+
+                int sideBtnCount = 0;
+                int workstationPanelCount = 0;
+
+                foreach (KeyValuePair<int, WorkstationButtonsPanel> innerPair in _panels[sideId].BtnPanels) {
+                    if (++workstationPanelCount > 1 && multiDeviceIndepedence) {
+                        innerPair.Value.Margin = new(0, _workstationMargin, 0, 0);
+                    } else {
+                        innerPair.Value.Margin = new(0, 0, 0, 0);
+                    }
+
+                    // Resize buttons
+                    foreach (Control control in innerPair.Value.Controls) {
+                        if (control is BoltEditionButton btn) {
+                            btn.Size = _boltSize;
+                            btn.Margin = new(_boltMargin, _boltMargin, _boltMargin, 0);
                         }
                     }
+
+                    // Count buttons
+                    sideBtnCount += innerPair.Value.Controls.Count;
+
+                    // Resize workstation buttons panel
+                    innerPair.Value.Size = new(_boltSize.Width, (_boltSize.Height + _boltMargin) * innerPair.Value.Controls.Count);
                 }
+
+                // Resize side buttons panel
+                int panelNewHeight = (_boltSize.Height + _boltMargin) * sideBtnCount + _boltMargin;
+                if (multiDeviceIndepedence) {
+                    panelNewHeight += _workstationMargin * (workstationPanelCount - 1);
+                }
+                _panels[sideId].Size = new(_boltSize.Width, panelNewHeight);
+
+                // Reset new height of the whole content
+                NewHeight = panelNewHeight;
             }
 
             public override bool CheckNeedsScrollBar(int parentNewHeight) {
                 return NewHeight > parentNewHeight;
             }
+
+            public class SideButtonsPanel: CustomContentPanel {
+                private SideButton _sideBtn;
+                private Dictionary<int, WorkstationButtonsPanel> _btnPanels = new();
+
+                public SideButton SideBtn { get => _sideBtn; set => _sideBtn = value; }
+                public Dictionary<int, WorkstationButtonsPanel> BtnPanels { get => _btnPanels; set => _btnPanels = value; }
+
+                public SideButtonsPanel(SideButton sideBtn) => _sideBtn = sideBtn;
+            }
+
+            public class WorkstationButtonsPanel: CustomContentPanel {
+                private int _workstationId;
+                private List<BoltEditionButton> _btns = new();
+
+                public WorkstationButtonsPanel(int workstationId) => _workstationId = workstationId;
+                public List<BoltEditionButton> Btns { get => _btns; set => _btns = value; }
+
+                internal void ReorderButtons() {
+                    _btns = _btns.Where(b => !b.IsDisposed).OrderBy(b => b.BoltDTO.serial_num).ToList();
+                    for (int i = 0; i < _btns.Count; i++) {
+                        Controls.SetChildIndex(_btns[i], i);
+                    }
+                }
+            }
         }
 
         public class BoltEditionButton: DeletableButton {
             private ProductBoltDTO _boltDTO;
-            public ProductBoltDTO BoltDTO { get => _boltDTO; set => _boltDTO = value; }
+            private string? _label;
+            private int? _upperNum;
 
+            public ProductBoltDTO BoltDTO { get => _boltDTO; set => _boltDTO = value; }
             // Properties for distinguishing single click and double click
             public int ClickTimes { get; set; }
             public int Milliseconds { get; set; }
@@ -1797,10 +2069,25 @@ namespace OperationGuidance_new.Views {
             public MouseEventArgs? EventArgs { get; set; }
             public Action<MouseEventArgs>? SingleClickDelegate;
             public Action<MouseEventArgs>? DoubleClickDelegate;
+            public new string? Label {
+                get => base.Label;
+                set {
+                    _label = value;
+                    SetLabel();
+                }
+            }
+            public int? UpperNum {
+                get => _upperNum;
+                set {
+                    _upperNum = value;
+                    SetLabel();
+                }
+            }
 
             public BoltEditionButton(ProductBoltDTO boltDTO) {
                 _boltDTO = boltDTO;
-                Label = boltDTO.serial_num + ". " + boltDTO.name;
+                _label = _boltDTO.serial_num + ". " + _boltDTO.name;
+                SetLabel();
 
                 ConerRadius = 0;
                 GroupMode = true;
@@ -1836,6 +2123,14 @@ namespace OperationGuidance_new.Views {
                         }
                     }
                 };
+            }
+
+            private void SetLabel() {
+                if (_upperNum != null) {
+                    base.Label = $"{_upperNum}-{_label}";
+                } else {
+                    base.Label = _label;
+                }
             }
 
             protected override void ResizeTextLabel() {

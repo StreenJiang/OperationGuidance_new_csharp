@@ -941,7 +941,7 @@ namespace OperationGuidance_new.Views {
                                     deviceBlock.PopUpForm = new ArmDetailPopUpForm(deviceBlock.CategoryName, _workstationsDTOs, _armTasks, panelHeight);
                                     deviceBlock.PopUpForm.HandleDestroyed += (sender, eventArgs) => {
                                         armTasks.ForEach(t => t.RetrieveResult = false);
-                                        if (_currentWorkingBolt != null && _currentWorkingBolt.BoltDTO.workstation_id != null) {
+                                        if (_currentWorkingBolt != null) {
                                             WorkstationDTO workstationDTO = _workstationsDTOs.Single(w => w.id == _currentWorkingBolt.BoltDTO.workstation_id);
                                             if (_locating_enabled && workstationDTO.arm_id != null) {
                                                 _armTasks[workstationDTO.arm_id.Value].RetrieveResult = true;
