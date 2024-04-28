@@ -10,7 +10,6 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         // Fields
         private int _conerRadius;
-        private GraphicsPath? _pathSurface;
         private bool _toggleButton;
         private bool _up;
         private bool _groupMode;
@@ -35,8 +34,8 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         // Label
         private string? _label;
-        private int _labelX;
-        private int _labelY;
+        private int? _labelX;
+        private int? _labelY;
         private bool _isPressing;
 
         public string? Label {
@@ -46,11 +45,11 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                 ResizeTextLabel();
             }
         }
-        public int LabelX {
+        public int? LabelX {
             get => this._labelX;
             set => this._labelX = value;
         }
-        public int LabelY {
+        public int? LabelY {
             get => this._labelY;
             set => this._labelY = value;
         }
@@ -126,7 +125,6 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             get => this.toggleBarRect;
         }
         public Color? ToggleBarColor { get => _toggleBarColor; set => _toggleBarColor = value; }
-        protected GraphicsPath? PathSurface { get => _pathSurface; set => _pathSurface = value; }
 
         //private const int CS_DropShadow = 0x00020000;
         //protected override CreateParams CreateParams {
@@ -214,36 +212,39 @@ namespace CustomLibrary.Buttons.AbstractClasses {
 
         protected void ChangeRegionByConerRadius() {
             if (_conerRadius > 0) {
-                _pathSurface = GetGraphicsPath(new RectangleF(0, 0, Width, Height));
-                Region = new Region(_pathSurface);
+                using (GraphicsPath path = GetGraphicsPath(new Rectangle(0, 0, Width - 1, Height - 1))) {
+                    Region = new Region(path);
+                }
             }
         }
 
         protected abstract void ResizeTextLabel();
 
-        protected GraphicsPath GetGraphicsPath(RectangleF rect) {
-            GraphicsPath graphicsPath = new GraphicsPath();
-            graphicsPath.StartFigure();
-            // 方向->顺时针：3点钟方向是0，6点钟方向是90，9点钟方向是180，12点钟方向是270
-            graphicsPath.AddArc(rect.X, rect.Y, this._conerRadius, _conerRadius, 180, 90);
-            graphicsPath.AddArc(rect.Width - _conerRadius - 1, rect.Y, _conerRadius, _conerRadius, 270, 90);
-            graphicsPath.AddArc(rect.Width - _conerRadius - 1, rect.Height - _conerRadius - 1, _conerRadius, _conerRadius, 0, 90);
-            graphicsPath.AddArc(rect.X, rect.Height - _conerRadius - 1, _conerRadius, _conerRadius, 90, 90);
-            graphicsPath.CloseFigure();
-            return graphicsPath;
+        protected GraphicsPath GetGraphicsPath(Rectangle rect) {
+            // GraphicsPath graphicsPath = new GraphicsPath();
+            // graphicsPath.StartFigure();
+            // // 方向->顺时针：3点钟方向是0，6点钟方向是90，9点钟方向是180，12点钟方向是270
+            // graphicsPath.AddArc(rect.X, rect.Y, this._conerRadius, _conerRadius, 180, 90);
+            // graphicsPath.AddArc(rect.Width - _conerRadius - 1, rect.Y, _conerRadius, _conerRadius, 270, 90);
+            // graphicsPath.AddArc(rect.Width - _conerRadius - 1, rect.Height - _conerRadius - 1, _conerRadius, _conerRadius, 0, 90);
+            // graphicsPath.AddArc(rect.X, rect.Height - _conerRadius - 1, _conerRadius, _conerRadius, 90, 90);
+            // graphicsPath.CloseFigure();
+
+            return WidgetUtils.RoundedRect(rect, _conerRadius);
         }
 
         protected sealed override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-            e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            // e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            // e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            if (_conerRadius > 0 && _pathSurface != null) { // Rrounded button
-                using Pen penSurface = new Pen(Parent.BackColor, 1);
-                // Draw surface border for HD result
-                e.Graphics.DrawPath(penSurface, _pathSurface);
-                _pathSurface = null;
+            if (_conerRadius > 0) { // Rrounded button
+                using (GraphicsPath path = GetGraphicsPath(new Rectangle(0, 0, Width - 1, Height - 1))) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, path);
+                }
             }
 
             // Check if is toggle button

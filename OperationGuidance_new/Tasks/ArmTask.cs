@@ -17,6 +17,7 @@ namespace OperationGuidance_new.Tasks {
         private int _port;
         private DeviceTypeArm _armType;
         private Coordinates3D? _currentCoordinates;
+        private int? _workstationId;
         private Action<Coordinates3D> _actionAfterReceiving;
         #endregion
 
@@ -30,19 +31,19 @@ namespace OperationGuidance_new.Tasks {
         public Queue<string> Commands { get; set; } = new();
         public string? Result { get; set; }
         public bool RetrieveResult { get; set; } = false;
+        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public Action<Coordinates3D> ActionAfterReceiving { get => _actionAfterReceiving; set => _actionAfterReceiving = value; }
 
         public event Action<Coordinates3D> OnActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
         #endregion
 
         #region Constructors
-        public ArmTask(string? name, string ip, int port, DeviceTypeArm arm) {
+        public ArmTask(int deviceId, string? name, string ip, int port, DeviceTypeArm arm) : base(deviceId) {
             _device_name = name;
             _ip = ip;
             _port = port;
             _armType = arm;
-            DeviceType = arm;
-            _actionAfterReceiving += c => {};
+            _actionAfterReceiving += c => { };
             Status = DISCONNECTED;
         }
         #endregion
@@ -56,13 +57,13 @@ namespace OperationGuidance_new.Tasks {
                         if (Commands.Count > 0) {
                             string command = Commands.Dequeue();
                             // Send command to controller
-                            await socketClient.SendAsync(HexStrToBytes(command), SocketFlags.None);
+                            await socketClient.SendAsync(MainUtils.ToBytes(command), SocketFlags.None);
                             // Check response
                             try {
                                 byte[] msgBytes = new byte[1024 * 1024];
                                 int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                                 if (msgLen >= 5) {
-                                    Result = BytesToHexStr(msgBytes.Take(msgLen).ToArray());
+                                    Result = MainUtils.ToHexString(msgBytes.Take(msgLen).ToArray());
                                 } else {
                                     Result = "";
                                 }
@@ -164,7 +165,7 @@ namespace OperationGuidance_new.Tasks {
             Result = null;
             return result;
         }
-        public async Task<Coordinates3D?> GetCurrentCoordinates() { 
+        public async Task<Coordinates3D?> GetCurrentCoordinates() {
             RetrieveResult = true;
             await Task.Delay(100);
             Coordinates3D? coordinates = _currentCoordinates;
@@ -209,7 +210,7 @@ namespace OperationGuidance_new.Tasks {
                     logger.Error($"Error occurred while looping for coordinates for ARM[{_device_name} - {_ip}: {_port}], e: {e}");
                     throw e;
                 } finally {
-                    logger.Error("Loop stops  for ARM[{_device_name} - {_ip}: {_port}]...");
+                    logger.Info("Loop stops  for ARM[{_device_name} - {_ip}: {_port}]...");
                 }
             });
         }

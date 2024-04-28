@@ -53,15 +53,16 @@ namespace OperationGuidance_new.Tasks {
                                 await Task.Delay(toolTask.AuotReconnectingTrialDelay);
 
                                 DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
+                                MainUtils.ToolTasks.Remove(dto.id);
                                 if (deviceTool != null) {
                                     MainUtils.Info(logger, $"TOOL info changed, Reconnecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
-                                    toolTask.Ip = dto.ip;
-                                    toolTask.Port = dto.port;
-                                    toolTask.ToolType = deviceTool;
-                                    toolTask.CloseConnectionManually = false;
-                                    toolTask.Connect();
+                                    // toolTask.Ip = dto.ip;
+                                    // toolTask.Port = dto.port;
+                                    // toolTask.ToolType = deviceTool;
+                                    // toolTask.CloseConnectionManually = false;
+                                    // toolTask.Connect();
+                                    MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
                                 } else {
-                                    MainUtils.ToolTasks.Remove(dto.id);
                                     MainUtils.Info(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
                                 }
                             } else if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
@@ -120,7 +121,7 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }
                     });
-                    
+
                     // Initialize communication tasks
                     List<DeviceCommunicationDTO> communicationDTOs = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceCommunicationDTOs;
                     // Remove communications which had been deleted
@@ -142,7 +143,7 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.Info(logger, $"Connecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
                             }
                         } else {
-                            if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port || communicationTask.ComminucationType.Id != dto.type) {
+                            if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port || communicationTask.CommunicationType.Id != dto.type) {
                                 communicationTask.CloseConnection();
                                 await Task.Delay(communicationTask.AuotReconnectingTrialDelay);
 
@@ -151,7 +152,7 @@ namespace OperationGuidance_new.Tasks {
                                     MainUtils.Info(logger, $"Communication device info changed, Reconnecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
                                     communicationTask.Ip = dto.ip;
                                     communicationTask.Port = dto.port;
-                                    communicationTask.ComminucationType = deviceCommunication;
+                                    communicationTask.CommunicationType = deviceCommunication;
                                     communicationTask.CloseConnectionManually = false;
                                     communicationTask.Connect();
                                 } else {
@@ -160,9 +161,9 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             } else if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
                                 Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}], trying to reconnect...");
+                                    MainUtils.Info(logger, $"Disconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}], trying to reconnect...");
                                     await communicationTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.ComminucationType.Name}]");
+                                    MainUtils.Info(logger, $"Reconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}]");
                                 });
                             }
                         }
@@ -185,13 +186,13 @@ namespace OperationGuidance_new.Tasks {
                         if (serialPortTask == null) {
                             DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
                             if (deviceSerialPort != null) {
-                                MainUtils.NewSerialPortTask(dto.id, dto.port_full_name, 
-                                    dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit, 
+                                MainUtils.NewSerialPortTask(dto.id, dto.port_full_name,
+                                    dto.port_name, dto.baud_rate, (Parity) dto.parity, dto.data_bit,
                                     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
                                 MainUtils.Info(logger, $"Connecting to SerialPort device[{dto.name} - {deviceSerialPort.Name}]");
                             }
                         } else {
-                            if(serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
+                            if (serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
                                         || (int) serialPortTask.Parity != dto.parity || serialPortTask.DataBits != dto.data_bit
                                         || (int) serialPortTask.StopBits != dto.stop_bit || (int) serialPortTask.DataType != dto.data_type
                                         || serialPortTask.SerialPortType.Id != dto.type) {

@@ -65,6 +65,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _tablePanel.SetColumnSpan(pictureBoxGroup, 2);
             return pictureBoxGroup;
         }
+        public void ShowOrHideControl(Control control, bool showOrHide) {
+            if (showOrHide) {
+                ShowControl(control);
+            } else {
+                HideControl(control);
+            }
+        }
+        public void ShowControl(Control control) {
+            if (!_tablePanel.Controls.Contains(control)) {
+                _tablePanel.Controls.Add(control);
+            }
+        }
+        public void HideControl(Control control) {
+            if (_tablePanel.Controls.Contains(control)) {
+                _tablePanel.Controls.Remove(control);
+            }
+        }
         public void ResizeTablePanelAndItsChildren() {
             CalculateDetailProperties();
 

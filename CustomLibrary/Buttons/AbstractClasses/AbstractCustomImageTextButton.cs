@@ -59,8 +59,8 @@
                 e.Graphics.DrawImage(_imageShowing, new Point(_imageX, _imageY) + ExtraSize);
             }
             // Draw text
-            if (Label != null) {
-                e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point(LabelX, LabelY) + ExtraSize);
+            if (Label != null && LabelX != null && LabelY != null) {
+                e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point(LabelX.Value, LabelY.Value) + ExtraSize);
             }
         }
 

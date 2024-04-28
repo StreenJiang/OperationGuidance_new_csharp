@@ -2,6 +2,7 @@
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using Timer = System.Windows.Forms.Timer;
 
 namespace CustomLibrary.TextBoxes {
@@ -10,6 +11,7 @@ namespace CustomLibrary.TextBoxes {
         #region Fields
         private bool _enabled;
         private TextBox _box;
+        private int _conerRadius;
         private Rectangle _borderRect;
         private Color _originalBackColor;
         private Color _disabledBackColor;
@@ -249,7 +251,7 @@ namespace CustomLibrary.TextBoxes {
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             int boxWidthTemp = Width - Padding.Size.Width;
             if (!Multiline) {
-                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .54F,
+                Font = new(WidgetsConfigs.SystemFontFamily, (Height - _borderThickness * 2) * .4F,
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;
@@ -263,10 +265,10 @@ namespace CustomLibrary.TextBoxes {
                     _box.Width = _boxOriginalWidth;
                 }
                 _box.Padding = new(hPadding, vPadding, hPadding, vPadding);
-                _box.Location = new(hPadding, (int) ((Height - _box.Height) / 1.8));
+                _box.Location = new(hPadding, (int) ((Height - _box.Height) / 2));
             } else {
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
-                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .54F,
+                Font = new(WidgetsConfigs.SystemFontFamily, textBoxHeight * .4F,
                         _boxFontStyle == null ? FontStyle.Regular : _boxFontStyle.Value, GraphicsUnit.Pixel);
                 // Recalculate size and location of box
                 _box.Font = Font;
@@ -276,9 +278,17 @@ namespace CustomLibrary.TextBoxes {
                 _box.Location = new(hPadding, (int) (vPadding * .85));
             }
 
+            // Recal coner radius
+            _conerRadius = WidgetUtils.ControlRadius();
+
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
+                _borderRect = new(1, 1, Width - 2 - _borderThickness, Height - 2 - _borderThickness);
+            }
+
+            // Change region
+            using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                Region = new(path);
             }
         }
         protected override void OnPaint(PaintEventArgs e) {
@@ -292,11 +302,23 @@ namespace CustomLibrary.TextBoxes {
             }
             base.OnPaint(e);
 
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, path);
+                }
+            }
+
             // Draw border if border color is not null
             if (_borderColorError != null && _isError) {
-                e.Graphics.DrawRectangle(new(_borderColorError.Value, _borderThickness), _borderRect);
+                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                    e.Graphics.DrawPath(new(_borderColorError.Value, 1), path);
+                }
             } else if (_borderColor != null) {
-                e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
+                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                    e.Graphics.DrawPath(new(_borderColor.Value, 1), path);
+                }
             }
         }
         protected override void OnForeColorChanged(EventArgs e) {

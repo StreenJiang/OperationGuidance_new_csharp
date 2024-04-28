@@ -141,18 +141,23 @@ namespace OperationGuidance_new.Views {
             ResizeStoragePanel();
             ResizeMissionSettings();
 
-            _buttonsOuterPanel.Size = new(Width, _boxNBtnHeight + _contentVGap * 2);
+            _buttonsOuterPanel.Size = new(Width, _boxNBtnHeight);
             int btnsWidth = 0;
+            int count = 0;
             foreach (Control c in _buttonsPanel.Controls) {
                 CommonButton btn = (CommonButton) c;
                 btn.Height = _boxNBtnHeight;
-                btn.Width = (int) (TextRenderer.MeasureText(btn.Label, btn.Font).Width * 1.8);
-                btn.Margin = new(0, 0, _contentHGap, 0);
+                btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + _boxNBtnHeight * 2;
+                if (count > 0) {
+                    btn.Margin = new(_contentHGap, 0, 0, 0);
+                }
                 btnsWidth += btn.Width;
+
+                count++;
             }
-            _buttonsPanel.Size = new(btnsWidth + _contentHGap * _buttonsPanel.Controls.Count, _buttonsOuterPanel.Height);
-            _buttonsPanel.Location = new((_buttonsOuterPanel.Width - _buttonsPanel.Width) / 2, _contentVGap);
-       }
+            _buttonsPanel.Size = new(btnsWidth + _contentHGap * (_buttonsPanel.Controls.Count - 1), _buttonsOuterPanel.Height);
+            _buttonsPanel.Location = new((_buttonsOuterPanel.Width - _buttonsPanel.Width) / 2, 0);
+        }
         public override void VisibleToTrue() {
             base.VisibleToTrue();
             LoadSettings();
@@ -335,7 +340,7 @@ namespace OperationGuidance_new.Views {
                             btn.SerialNum += movementCount;
                             Controls.SetChildIndex(btn, currentIndex + movementCount);
                         }
-                    };        
+                    };
                     btn.PressUp += () => {
                         int currentIndex = Controls.IndexOf(btn);
                         if (!btn.Checked) {
@@ -346,7 +351,7 @@ namespace OperationGuidance_new.Views {
                             btn.SerialNum -= 1;
                             Controls.SetChildIndex(btn, currentIndex - 1);
                         }
-                    };        
+                    };
                     btn.PressDown += () => {
                         int currentIndex = Controls.IndexOf(btn);
                         if (btn.Checked && currentIndex < Controls.Count - 1) {
@@ -357,7 +362,7 @@ namespace OperationGuidance_new.Views {
                                 Controls.SetChildIndex(btn, currentIndex + 1);
                             }
                         }
-                    };        
+                    };
                 }
                 int VisibleToTrueMovementCount(int previousIndex) {
                     int count = 0;
@@ -425,7 +430,7 @@ namespace OperationGuidance_new.Views {
                 return NewHeight > parentNewHeight;
             }
 
-            private class MovableButton : ToggleButtonGroup {
+            private class MovableButton: ToggleButtonGroup {
                 private int _serialNum;
                 private OperationDataField _field;
                 private Image _upImage = Properties.Resources.direction_up;
@@ -453,10 +458,10 @@ namespace OperationGuidance_new.Views {
                         }
                     }
                 }
-                public int SerialNum { 
-                    get => _serialNum; 
+                public int SerialNum {
+                    get => _serialNum;
                     set {
-                        _serialNum = value; 
+                        _serialNum = value;
                         TextName = $"{_serialNum}. {_field.FieldName}";
                     }
                 }
@@ -465,7 +470,7 @@ namespace OperationGuidance_new.Views {
                 public event Action PressUp { add => _onUp += value; remove => _onUp -= value; }
                 public event Action PressDown { add => _onDown += value; remove => _onDown -= value; }
 
-                public MovableButton(int serialNum, OperationDataField field): base($"{serialNum}. {field.FieldName}") {
+                public MovableButton(int serialNum, OperationDataField field) : base($"{serialNum}. {field.FieldName}") {
                     _serialNum = serialNum;
                     _field = field;
                     ToggleButton.CheckedChanged += (sender, eventArgs) => {
@@ -635,7 +640,7 @@ namespace OperationGuidance_new.Views {
             gridView.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#FEFEFE");
             gridView.ColumnHeadersDefaultCellStyle.Padding = new(padding, 0, padding, 0);
             gridView.ColumnHeadersDefaultCellStyle.SelectionBackColor = gridView.ColumnHeadersDefaultCellStyle.BackColor;
-            DataGridViewColumn[] columnRange = {};
+            DataGridViewColumn[] columnRange = { };
             foreach (OperationDataField field in fields) {
                 if (field.Visible) {
                     DataGridViewTextBoxColumn column = new() {
@@ -643,7 +648,7 @@ namespace OperationGuidance_new.Views {
                         ReadOnly = true,
                     };
                     columnRange = columnRange.Append(column).ToArray();
-                } 
+                }
             }
             gridView.Columns.AddRange(columnRange);
             // Calculate size
@@ -775,6 +780,13 @@ namespace OperationGuidance_new.Views {
             _productBatchNoticeToggle.Margin = new(0, 0, _contentHGap / 2, 0);
             // // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
+        }
+        public override bool CheckNeedsScrollBar(int parentNewHeight) {
+            NewHeight = _buttonsOuterPanel.Height + _buttonsOuterPanel.Margin.Size.Height;
+            NewHeight += _systemSettingsPanel.Height + _systemSettingsPanel.Margin.Size.Height;
+            NewHeight += _storagePanel.Height + _storagePanel.Margin.Size.Height;
+            NewHeight += _workPanel.Height + _workPanel.Margin.Size.Height;
+            return NewHeight > parentNewHeight;
         }
         #endregion
 

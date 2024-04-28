@@ -9,8 +9,8 @@ namespace OperationGuidance_new {
         [STAThread]
         static void Main() {
             // Avoid launch multiple times
-            using(Mutex mutex = new Mutex(false, System.AppDomain.CurrentDomain.FriendlyName)) {
-                if(!mutex.WaitOne(0, false)) {
+            using (Mutex mutex = new Mutex(false, System.AppDomain.CurrentDomain.FriendlyName)) {
+                if (!mutex.WaitOne(0, false)) {
                     WidgetUtils.ShowWarningPopUp("程序已经在运行中");
                     return;
                 }
@@ -21,10 +21,10 @@ namespace OperationGuidance_new {
                 DependencyInjector.Initialize();
 
                 // Run main form
-                try{
+                try {
                     Application.Run(new MainForm());
                 } catch (Exception e) {
-                    Console.WriteLine(e); 
+                    Console.WriteLine(e);
                     WidgetUtils.ShowErrorPopUp($"程序运行错误，错误信息e: {e}");
                     throw e;
                 }

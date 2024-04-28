@@ -1,7 +1,10 @@
-﻿namespace OperationGuidance_new.Constants {
+﻿using log4net;
+using OperationGuidance_new.Utils;
+
+namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
         public static List<DeviceTypeTool> Elements = new();
-        private static T AddNew<T>() where T: DeviceTypeTool, new() {
+        private static T AddNew<T>() where T : DeviceTypeTool, new() {
             T type = new();
             Elements.Add(type);
             return type;
@@ -39,6 +42,8 @@
     }
 
     public abstract class DeviceTypeTool: DeviceTypeBase {
+        protected ILog logger;
+
         public Command? COMMAND_CONNECT_ASCII;
         public Command? COMMAND_DATA_ASCII;
         public Command? COMMAND_HEART_ASCII;
@@ -46,24 +51,26 @@
         public Command? COMMAND_UNLOCK_ASCII;
         public Command? COMMAND_PSET_ASCII;
         public Command? COMMAND_SEND_BARCODE_ASCII;
-        public DeviceTypeTool(int id, string name) : base(id, name) { }
+        public DeviceTypeTool(int id, string name) : base(id, name) {
+            logger = MainUtils.GetLogger(GetType());
+        }
 
-        public abstract string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null);
+        public abstract string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null);
         public abstract string GetMidFromResult(string result);
     }
 
     public class ToolPF4000: DeviceTypeTool {
         public ToolPF4000() : base(1, "PF4000") {
-            COMMAND_CONNECT_ASCII           = new("00200001003         \x00");
-            COMMAND_DATA_ASCII              = new("002000600031        \x00");
-            COMMAND_HEART_ASCII             = new("00209999001         \x00");
-            COMMAND_LOCK_ASCII              = new("00200042001         \x00");
-            COMMAND_UNLOCK_ASCII            = new("00200043001         \x00");
-            COMMAND_PSET_ASCII              = new("00230018001         {0}\x00");
-            COMMAND_SEND_BARCODE_ASCII      = new("002801500010    00  {0}\x00");
+            COMMAND_CONNECT_ASCII = new("00200001003         \x00");
+            COMMAND_DATA_ASCII = new("002000600031        \x00");
+            COMMAND_HEART_ASCII = new("00209999001         \x00");
+            COMMAND_LOCK_ASCII = new("00200042001         \x00");
+            COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
+            COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
+            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
         }
 
-        public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {
+        public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
             string? result = null;
             string mid = GetMidFromResult(dataMessage);
             if (mid == "0061") {
@@ -132,7 +139,12 @@
                     result_type = int.Parse(dataMessage.Substring(417, 2)),
                 };
                 if (actionAfterAnalysis != null) {
-                    actionAfterAnalysis(tighteningData);
+                    if (deviceId == null) {
+                        string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
+                        logger.Error(errorMsg);
+                        throw new NullReferenceException();
+                    }
+                    actionAfterAnalysis(tighteningData, deviceId.Value);
                 }
             } else {
                 result = dataMessage;
@@ -152,16 +164,16 @@
 
     public class ToolPF6000OP: DeviceTypeTool {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
-            COMMAND_CONNECT_ASCII           = new("00200001006         \x00");
-            COMMAND_DATA_ASCII              = new("002000600031        \x00");
-            COMMAND_HEART_ASCII             = new("00209999001         \x00");
-            COMMAND_LOCK_ASCII              = new("00200042001         \x00");
-            COMMAND_UNLOCK_ASCII            = new("00200043001         \x00");
-            COMMAND_PSET_ASCII              = new("00230018001         {0}\x00");
-            COMMAND_SEND_BARCODE_ASCII      = new("002801500010    00  {0}\x00");
+            COMMAND_CONNECT_ASCII = new("00200001006         \x00");
+            COMMAND_DATA_ASCII = new("002000600031        \x00");
+            COMMAND_HEART_ASCII = new("00209999001         \x00");
+            COMMAND_LOCK_ASCII = new("00200042001         \x00");
+            COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
+            COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
+            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
         }
 
-        public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {
+        public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
             string? result = null;
             string mid = GetMidFromResult(dataMessage);
             if (mid == "0061") {
@@ -230,7 +242,12 @@
                     result_type = int.Parse(dataMessage.Substring(417, 2)),
                 };
                 if (actionAfterAnalysis != null) {
-                    actionAfterAnalysis(tighteningData);
+                    if (deviceId == null) {
+                        string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
+                        logger.Error(errorMsg);
+                        throw new NullReferenceException();
+                    }
+                    actionAfterAnalysis(tighteningData, deviceId.Value);
                 }
             } else {
                 result = dataMessage;
@@ -251,7 +268,7 @@
     public class ToolSudongX7: DeviceTypeTool {
         public ToolSudongX7() : base(3, "SudongX7") { }
 
-        public override string? AnalyzeData(string dataMessage, Action<TighteningData>? actionAfterAnalysis = null) {
+        public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
             string? result = null;
             return result;
         }

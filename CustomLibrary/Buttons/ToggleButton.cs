@@ -103,7 +103,7 @@ namespace CustomLibrary.Buttons {
                     } else {
                         x = (int) ((textRangeWidth - g.MeasureString(_onText, Font).Width) / 2 + _toggleBorderThickness + _toggleRectSize.Width);
                     }
-                            g.DrawString(_onText, Font, new SolidBrush(_onBackColor), _textLocation);
+                    g.DrawString(_onText, Font, new SolidBrush(_onBackColor), _textLocation);
                     _textLocation = new(x, 0);
                 }
                 _textLocation.Y = (int) ((Height - Font.Height - _toggleBorderThickness) / 1.5);

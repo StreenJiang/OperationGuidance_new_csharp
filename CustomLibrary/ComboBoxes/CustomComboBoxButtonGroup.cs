@@ -7,7 +7,7 @@ namespace CustomLibrary.ComboBoxes {
     public class CustomComboBoxButtonGroup<T>: CustomComboBoxGroup<T> {
         private List<CommonButton> _buttons;
 
-        public new bool Enabled { 
+        public new bool Enabled {
             get => base.Enabled;
             set {
                 base.Enabled = value;
@@ -54,7 +54,7 @@ namespace CustomLibrary.ComboBoxes {
                 foreach (CommonButton button in _buttons) {
                     // Change height first then Font will change to a new size
                     button.Height = buttonHeight;
-                    int buttonWidth = (int) (g.MeasureString(button.Label, button.Font).Width + buttonHeight * 1.2);
+                    int buttonWidth = WidgetUtils.MeasureString(button.Label, button.Font).Width + buttonHeight * 2;
                     button.Width = buttonWidth;
                     button.Margin = new(GapNameAndBox, 0, 0, 0);
                     buttonWidthSum += buttonWidth;

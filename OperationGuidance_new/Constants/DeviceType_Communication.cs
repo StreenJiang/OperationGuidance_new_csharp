@@ -1,7 +1,7 @@
 ﻿namespace OperationGuidance_new.Constants {
     public class DeviceType_Communication {
         public static List<DeviceTypeBase> Elements = new();
-        private static T AddNew<T>() where T: DeviceTypeBase, new() {
+        private static T AddNew<T>() where T : DeviceTypeBase, new() {
             T type = new();
             Elements.Add(type);
             return type;
@@ -46,6 +46,13 @@
     }
 
     public class CommunicationModBus: DeviceTypeCommunication {
-        public CommunicationModBus() : base(2, "ModBus") { }
+        public Command COMMAND_CHECK_STATUS = new("");
+
+        public CommunicationModBus() : base(2, "ModBus") {
+        }
+
+        public string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null) {
+            return null;
+        }
     }
 }

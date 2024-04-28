@@ -8,7 +8,7 @@ namespace CustomLibrary.TextBoxes {
         private int _gapButtons;
         private List<CommonButton> _buttons;
 
-        public new bool Enabled { 
+        public new bool Enabled {
             get => base.Enabled;
             set {
                 base.Enabled = value;
@@ -58,14 +58,14 @@ namespace CustomLibrary.TextBoxes {
         protected override int GetBoxesRange() {
             int boxesRangeTemp = base.GetBoxesRange();
             // New range for just boxes
-            int buttonHeight = WidgetUtils.CommonButtonHeight();
+            int buttonHeight = Height;
             int buttonWidthSum = 0;
             using (Graphics g = CreateGraphics()) {
                 // Resize button label
                 foreach (CommonButton button in _buttons) {
                     // Change height first then Font will change to a new size
                     button.Height = buttonHeight;
-                    int buttonWidth = (int) (g.MeasureString(button.Label, button.Font).Width + buttonHeight * 1.2);
+                    int buttonWidth = WidgetUtils.MeasureString(button.Label, button.Font).Width + buttonHeight * 2;
                     button.Width = buttonWidth;
                     button.Margin = new(GapNameAndBox, 0, 0, 0);
                     buttonWidthSum += buttonWidth;

@@ -1,4 +1,5 @@
 using CustomLibrary.Configs;
+using CustomLibrary.Utils;
 using System.ComponentModel;
 
 namespace CustomLibrary.Buttons {
@@ -17,7 +18,7 @@ namespace CustomLibrary.Buttons {
         private FlowLayoutPanel _buttonsPanel;
         private List<CommonButton> _buttons;
 
-        public new bool Enabled { 
+        public new bool Enabled {
             get => _enabled;
             set {
                 _enabled = value;
@@ -31,12 +32,12 @@ namespace CustomLibrary.Buttons {
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
         public new Color ForeColor { get => _textColor; set => _textColor = value; }
-        public new Control Parent { 
-            get => base.Parent; 
+        public new Control Parent {
+            get => base.Parent;
             set {
                 base.Parent = value;
                 BackColor = value.BackColor;
-            } 
+            }
         }
         public int GapNameAndButton { get => this._gapNameAndButton; set => this._gapNameAndButton = value; }
         public HorizontalAlignment NameAlignment {
@@ -98,7 +99,7 @@ namespace CustomLibrary.Buttons {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
-            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .425f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and button
             _gapNameAndButton = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text
@@ -119,7 +120,7 @@ namespace CustomLibrary.Buttons {
             SetButtonsProperties((button) => {
                 // Change height first then Font will change to a new size
                 button.Height = _buttonsPanel.Height;
-                button.Width = (int) (TextRenderer.MeasureText(button.Label, button.Font).Width + button.Height * 1.2);
+                button.Width = WidgetUtils.MeasureString(button.Label, button.Font).Width + button.Height * 2;
                 if (_buttons.IndexOf(button) != _buttons.Count - 1) {
                     button.Margin = new(0, 0, _gapButtons, 0);
                 }

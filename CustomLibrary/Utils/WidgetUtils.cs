@@ -111,6 +111,36 @@ namespace CustomLibrary.Utils {
             return GetScreenWorkingArea().Size;
         }
 
+        public static GraphicsPath RoundedRect(Rectangle bounds, int radius) {
+            int diameter = radius * 2;
+            Size size = new Size(diameter, diameter);
+            Rectangle arc = new Rectangle(bounds.Location, size);
+            GraphicsPath path = new GraphicsPath();
+
+            if (radius == 0) {
+                path.AddRectangle(bounds);
+                return path;
+            }
+
+            // top left arc  
+            path.AddArc(arc, 180, 90);
+
+            // top right arc  
+            arc.X = bounds.Right - diameter;
+            path.AddArc(arc, 270, 90);
+
+            // bottom right arc  
+            arc.Y = bounds.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+
+            // bottom left arc 
+            arc.X = bounds.Left;
+            path.AddArc(arc, 90, 90);
+
+            path.CloseFigure();
+            return path;
+        }
+
         /// <summary>
         /// Rescale image without losing quality
         /// </summary>
@@ -335,10 +365,17 @@ namespace CustomLibrary.Utils {
             return IsSubClass<T>(type.BaseType);
         }
 
+        // Measure size of string
+        public static Size MeasureString(string? text, Font font) {
+            if (string.IsNullOrEmpty(text)) {
+                return new(0, font.Height);
+            }
+            return TextRenderer.MeasureText(text, font, new(), TextFormatFlags.NoPadding);
+        }
         // Content configs 
         public static Font GetProperFont(Size containerSize, string text, float fontRatio) {
             Font font = new Font(WidgetsConfigs.SystemFontFamily, containerSize.Height * fontRatio, FontStyle.Bold, GraphicsUnit.Pixel);
-            if (TextRenderer.MeasureText(text, font).Width >= containerSize.Width * .95) {
+            if (MeasureString(text, font).Width >= containerSize.Width * .9) {
                 font = GetProperFont(containerSize, text, fontRatio -= .005f);
             }
             return font;
@@ -350,7 +387,7 @@ namespace CustomLibrary.Utils {
             }
             return thickness;
         }
-        public static int ContentTitleHeight() => (int) (MainSize.Height * .052);
+        public static int ContentTitleHeight() => (int) (MainSize.Height * .06);
         public static int ContentInnerBorderMargin(Size size) => (size.Width + size.Height) / 350;
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
         public static Padding ContentPadding() {
@@ -358,8 +395,10 @@ namespace CustomLibrary.Utils {
             int vPadding = (int) (MainSize.Height * .03);
             return new(hPadding, vPadding, hPadding, vPadding);
         }
-        public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .036);
-        public static int CommonButtonHeight() => (int) (MainSize.Height * .036);
+        public static int ContainerRadius() => (int) (MainSize.Height * .03);
+        public static int ControlRadius() => (int) (MainSize.Height * .0085);
+        public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .0425);
+        public static int CommonButtonHeight() => (int) (MainSize.Height * .0425);
         public static int PictureBoxGroupBaseHeight() => (int) (MainSize.Height * .125);
         public static int BorderThickness() {
             int thickness = (MainSize.Width + MainSize.Height) / 1200;
@@ -379,13 +418,13 @@ namespace CustomLibrary.Utils {
             return new(hPadding, 0, hPadding, vPadding);
         }
         // Grid view configs
-        public static int GridViewHeaderHeight() => (int) (MainSize.Height * .04);
-        public static int GridViewContentRowHeight() => (int) (MainSize.Height * .0375);
+        public static int GridViewHeaderHeight() => (int) (MainSize.Height * .0425);
+        public static int GridViewContentRowHeight() => (int) (MainSize.Height * .0385);
         public static int GridViewContentColumnMaxWidth() => (int) (MainSize.Width * .2);
         public static int GridViewPageInfoHeight() => (int) (MainSize.Height * .03);
         public static float GridViewColumnsPaddingRatio() => .5F;
         // Workplace configs
-        public static float WorkplaceTopBarHeightRatio() => .05F;
+        public static float WorkplaceTopBarHeightRatio() => .07F;
         public static float WorkplaceBarCodeHeightRatio() => .05F;
         public static float WorkplaceLeftWidthRatio() => .575F;
         public static float WorkplaceMiddleWidthRatio() => .2F;
@@ -460,10 +499,10 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
-        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(!MainForm.IsDisposed ? MainForm : null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         private static Point controlOriginalLocation;
         private static Point mouseDownLocation;

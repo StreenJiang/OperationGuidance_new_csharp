@@ -4,8 +4,7 @@ using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 
-namespace CustomLibrary.Forms
-{
+namespace CustomLibrary.Forms {
 
     [System.ComponentModel.DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomPopUpForm: Form {
@@ -21,7 +20,7 @@ namespace CustomLibrary.Forms
         private CustomContentPanel _contentPanel;
         private Panel _buttonsPanel;
         private CustomContentPanel _buttonsInnerPanel;
-        
+
         // Outer panel
         // Title panel
         private string _title;
@@ -35,10 +34,10 @@ namespace CustomLibrary.Forms
         // -- Properties --
         // Used in EventFuncs
         public Form BackForm { get => _popUpFormBackboard; set => _popUpFormBackboard = value; }
-        public Color? BorderColor { 
-            get => _borderColor; 
+        public Color? BorderColor {
+            get => _borderColor;
             set {
-                _borderColor = value; 
+                _borderColor = value;
                 if (value != null) {
                     _outerPanel.Location = new(_borderThickness, _borderThickness);
                 } else {
@@ -81,7 +80,7 @@ namespace CustomLibrary.Forms
             };
             _popUpFormBackboard.Owner.LocationChanged += (sender, eventArgs) => AfterSizeChanged(this, EventArgs.Empty);
             _popUpFormBackboard.Hide();
-             // Initialize self
+            // Initialize self
             Owner = _popUpFormBackboard;
             StartPosition = FormStartPosition.Manual;
             FormBorderStyle = FormBorderStyle.None;
@@ -114,7 +113,7 @@ namespace CustomLibrary.Forms
             };
             // Content panel
             _contentPanel = new() {
-                Margin = new(0), 
+                Margin = new(0),
                 Padding = GetContentPadding(),
             };
             // Buttons panel
@@ -125,7 +124,7 @@ namespace CustomLibrary.Forms
                 Visible = false,
             };
             _buttonsInnerPanel = new() {
-                Parent =_buttonsPanel, 
+                Parent = _buttonsPanel,
             };
             _buttons = new();
             _buttonAlignment = HorizontalAlignment.Right;
@@ -138,7 +137,7 @@ namespace CustomLibrary.Forms
                     FunctionButton button = _buttons[i];
                     // Height must be set first then ResizeTextLabel can be invoked, then the Font can be set
                     button.Height = buttonHeight;
-                    button.Width = TextRenderer.MeasureText(button.Label, button.Font).Width + button.Height;
+                    button.Width = WidgetUtils.MeasureString(button.Label, button.Font).Width + button.Height * 2;
                     innerPanelWidth += button.Width;
                     if (i != 0) {
                         button.Margin = new(buttonGap, 0, 0, 0);
@@ -305,11 +304,11 @@ namespace CustomLibrary.Forms
         protected override void ResizeTextLabel() {
             if (!IsDisposed) {
                 if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .55), FontStyle.Bold, GraphicsUnit.Pixel);
-                    using (Graphics g = CreateGraphics()) {
-                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                    }
-                    LabelY = (Height - Font.Height) / 2;
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
+                    // using (Graphics g = CreateGraphics()) {
+                    //     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                    // }
+                    // LabelY = (Height - Font.Height) / 2;
                 }
             }
         }

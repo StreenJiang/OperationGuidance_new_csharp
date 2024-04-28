@@ -16,16 +16,16 @@ namespace CustomLibrary.Buttons {
         public string TextName { get => this._textName; set => this._textName = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
-        public new Control Parent { 
-            get => base.Parent; 
+        public new Control Parent {
+            get => base.Parent;
             set {
                 base.Parent = value;
                 BackColor = value.BackColor;
-            } 
+            }
         }
-        public Color ButtonBackColor { 
-            get => _toggleButton.BackColor; 
-            set => _toggleButton.BackColor = value; 
+        public Color ButtonBackColor {
+            get => _toggleButton.BackColor;
+            set => _toggleButton.BackColor = value;
         }
         public int GapBetweenNameNBoxes { get => this._gapNameAndButton; set => this._gapNameAndButton = value; }
         public HorizontalAlignment NameAlignment {
@@ -62,7 +62,7 @@ namespace CustomLibrary.Buttons {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
-            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .425f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
             _gapNameAndButton = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text

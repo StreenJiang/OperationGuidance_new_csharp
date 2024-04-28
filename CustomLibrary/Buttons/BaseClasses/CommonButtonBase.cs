@@ -8,12 +8,20 @@ namespace CustomLibrary.Buttons.BaseClasses {
             ForeColor = ColorTranslator.FromHtml("#FEFEFE");
         }
 
-        protected override void ResizeTextLabel() {}
+        protected override void ResizeTextLabel() { }
 
         protected override void PaintAfter(PaintEventArgs e) {
             // Draw text
             if (Label != null) {
-                e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point(LabelX, LabelY) + ExtraSize);
+                if (LabelX != null && LabelY != null) {
+                    e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point(LabelX.Value, LabelY.Value) + ExtraSize);
+                } else {
+                    StringFormat format = new() {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center,
+                    };
+                    e.Graphics.DrawString(Label, Font, new SolidBrush(ForeColor), new Point((int) Math.Round(Width / 2.01F), (int) Math.Round(Height / 1.925F)) + ExtraSize, format);
+                }
             }
         }
     }

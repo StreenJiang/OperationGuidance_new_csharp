@@ -46,10 +46,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int RowsHeight { get => _rowsHeight; set => _rowsHeight = value; }
         public int PageHeight { get => _pageHeight; set => _pageHeight = value; }
         public float ColumnsPaddingRatio { get => _columnsPaddingRatio; set => _columnsPaddingRatio = value; }
-        public int CurrentPage { 
-            get => _currentPage; 
+        public int CurrentPage {
+            get => _currentPage;
             set {
-                _currentPage = value; 
+                _currentPage = value;
                 Paging(_currentPage, _pageSize);
             }
         }
@@ -133,7 +133,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 InitializeColumnHeaders();
             }
-            
+
             _gridView.MouseWheel += (sender, e) => {
                 if (_vScrollBar != null && !_vScrollBar.IsDisposed && _vScrollBar.Visible) {
                     int realMaximum = this._vScrollBar.Maximum - this._vScrollBar.LargeChange + 1;
@@ -152,10 +152,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             };
             InitializeEventBindings();
-            InitializeOthers();    
+            InitializeOthers();
         }
         private void InitializeColumnHeaders() {
-            DataGridViewColumn[] columnRange = {};
+            DataGridViewColumn[] columnRange = { };
             List<PropertyInfo> props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
             foreach (PropertyInfo property in props) {
                 IEnumerable<Attribute> enumerable = property.GetCustomAttributes();
@@ -556,7 +556,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";
         }
         private void ResizePageInfoContent(Label label, int newPageInfoHeight) {
-            label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
+            label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .475F, FontStyle.Regular, GraphicsUnit.Pixel);
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
         private void Paging(int currentPage, int pageSize) {
@@ -594,7 +594,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int newHeaderHeight = _headerHeight;
             if (newHeaderHeight >= 4) {
                 _gridView.ColumnHeadersHeight = newHeaderHeight;
-                _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
+                _gridView.ColumnHeadersDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newHeaderHeight * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
                 // Check if any image column exists
                 foreach (DataGridViewColumn column in _gridView.Columns) {
                     if (column is DataGridViewImageColumn imageColumn) {
@@ -611,7 +611,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int newContentHeight = _rowsHeight;
             if (newContentHeight >= 4) {
                 _gridView.RowTemplate.Height = newContentHeight;
-                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
+                _gridView.RowsDefaultCellStyle.Font = new(WidgetsConfigs.SystemFontFamily, newContentHeight * .385F, FontStyle.Regular, GraphicsUnit.Pixel);
             }
             // Page info panel height
             int newPageInfoHeight = _pageHeight;
@@ -711,7 +711,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 gridSize.Height -= _hScrollBar.Height;
             }
             _gridView.Size = gridSize;
-            if (_vScrollBar != null && _vScrollBar.Visible && _hScrollBar != null && _hScrollBar.Visible){
+            if (_vScrollBar != null && _vScrollBar.Visible && _hScrollBar != null && _hScrollBar.Visible) {
                 _hScrollBar.Width -= scrollBarThickness;
                 _vScrollBar.Height -= scrollBarThickness;
                 WidgetUtils.CalculateScrollBar(_hScrollBar, _gridView.Width, columnsWidth);

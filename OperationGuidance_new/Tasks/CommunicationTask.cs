@@ -9,11 +9,19 @@ namespace OperationGuidance_new.Tasks {
         private ILog logger = MainUtils.GetLogger(typeof(CommunicationTask));
 
         #region Fields
+        private readonly object SendSyncRoot = new();
+        private readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 500;
+        private readonly int KeepAliveDelay = 200;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
-        private DeviceTypeCommunication _comminucationType;
+        private DeviceTypeCommunication _communicationType;
+        private int? _workstationId;
+        private Action? _actionAfterAnalysis;
+        private ReadRequestMessage ReadRequest = new();
+        private ReadResponseMessage ReadResponse = new();
+        private ModBusServerBase? _modBusServer;
         #endregion
 
         #region Properties
@@ -22,20 +30,21 @@ namespace OperationGuidance_new.Tasks {
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
-        public DeviceTypeCommunication ComminucationType { get => _comminucationType; set => _comminucationType = value; }
-        public Queue<string> Commands { get; set; }
-        public string? Result { get; set; }
+        public DeviceTypeCommunication CommunicationType { get => _communicationType; set => _communicationType = value; }
+        public Queue<ACommunicationMessage> Command { get; } = new();
+        public Queue<byte[]> Result { get; } = new();
         public bool Locked { get; set; }
+        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
+        public Action? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
+        public ModBusServerBase? ModBusServer { get => _modBusServer; set => _modBusServer = value; }
         #endregion
 
         #region Constructors
-        public CommunicationTask(string? name, string ip, int port, DeviceTypeCommunication communication) {
+        public CommunicationTask(int deviceId, string? name, string ip, int port, DeviceTypeCommunication deviceType) : base(deviceId) {
             _device_name = name;
             _ip = ip;
             _port = port;
-            _comminucationType = communication;
-            DeviceType = communication;
-            Commands = new();
+            _communicationType = deviceType;
             Locked = false;
             Status = DISCONNECTED;
         }
@@ -47,23 +56,19 @@ namespace OperationGuidance_new.Tasks {
                 try {
                     while (Connected) {
                         // Check if any command
-                        if (Commands.Count > 0) {
-                            string command = Commands.Dequeue();
-                            // Send command to controller
-                            await socketClient.SendAsync(HexStrToBytes(command), SocketFlags.None);
-                            // Check response
-                            try {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen >= 5) {
-                                    Result = BytesToHexStr(msgBytes.Take(msgLen).ToArray());
-                                } else {
-                                    Result = "";
-                                }
-                            } catch (Exception e) {
-                                System.Console.WriteLine($"No data received...");
+                        if (Command.Count <= 0) {
+                            ReadResponse.SourceData = SendCommand(ReadRequest);
+
+                            byte[] bytes = ReadResponse.MessageData.Skip(ReadResponse.LengthOfSymbols).ToArray();
+                            if (_modBusServer != null) {
+                                _modBusServer.LoadData(bytes);
                             }
+                        } else {
+                            ACommunicationMessage req = Command.Dequeue();
+                            Result.Enqueue(SendCommand(req));
                         }
+
+                        await Task.Delay(KeepAliveDelay);
                     }
                 } catch (Exception e) {
                     logger.Warn($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
@@ -72,7 +77,6 @@ namespace OperationGuidance_new.Tasks {
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
-                        Commands.Clear();
                     }
                     if (CloseConnectionManually) {
                         logger.Info($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
@@ -99,8 +103,8 @@ namespace OperationGuidance_new.Tasks {
                 socketClient.Close();
             }
             CloseConnectionManually = true;
-            Result = null;
-            Commands.Clear();
+            Command.Clear();
+            Result.Clear();
         }
         public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         #endregion
@@ -125,7 +129,7 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.ReceiveTimeout = ReceiveTimeout;
                     socketClient.Connect(IPAddress.Parse(_ip), _port);
                     connectSuccess = true;
-                    MainUtils.Info(logger, $"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    logger.Info($"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                 } catch (Exception e) {
                     logger.Warn($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }
@@ -134,29 +138,44 @@ namespace OperationGuidance_new.Tasks {
             }
             return pingSuccess && connectSuccess;
         }
-        public void SendCommand(string command) {
-            Commands.Enqueue(command);
-        }
-        public async Task<string?> SendCommandAsync(string command) {
-            Result = null;
-            SendCommand(command);
+        public byte[] SendCommand(ACommunicationMessage command) {
+            if (Connected) {
+                try {
+                    lock (SendSyncRoot) {
+                        // Send command to controller
+                        socketClient.Send(command.MessageData);
 
-            string? result = null;
-            int trialTime = 0;
-            while (Connected && result == null) {
-                if (trialTime > ReceiveTimeout) {
-                    logger.Error("Can't get any response at all, probably some other connection robbed it...");
-                    break;
-                }
-                result = Result;
-                if (result == null) {
-                    await Task.Delay(LoopingInterval);
-                    trialTime += LoopingInterval;
+                        // Receive data
+                        lock (ReceiveSyncRoot) {
+                            byte[] msgBytes = new byte[1024 * 1024];
+                            int length = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            return msgBytes.Take(length).ToArray();
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.Error($"Error while sending command to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
+                    throw e;
                 }
             }
-            Result = null;
-            return result;
+            return new byte[0];
         }
+        public async Task<byte[]> SendCommandAsync(ACommunicationMessage command) {
+            return await Task.Run(() => SendCommand(command));
+        }
+        public async Task<byte[]> WriteToServer(ACommunicationMessage req) {
+            Command.Enqueue(req);
+            int waitCount = 0;
+            while (Result.Count <= 0) {
+                waitCount += 100;
+                await Task.Delay(100);
+
+                if (waitCount > ReceiveTimeout) {
+                    return new byte[0];
+                }
+            }
+            return Result.Dequeue();
+        }
+
         #endregion
     }
 }

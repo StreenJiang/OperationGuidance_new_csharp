@@ -143,8 +143,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         private void InvokeResizing() {
-            ConerRadius = Width;
-            BorderSize = Width / 10;
+            ConerRadius = Width / 2;
+            BorderSize = Width / 12;
             ChangeRegionByConerRadius();
         }
 
@@ -153,10 +153,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 绘制边框
             if (ConerRadius > 0) {
                 e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-                e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                using (GraphicsPath path = GetGraphicsPath(new(1, 1, Width - .8F, Height - 1))) {
-                    if (_borderSize > 1) {
+                if (_borderSize > 1) {
+                    using (GraphicsPath path = GetGraphicsPath(new(0, 0, Width - 1, Height - 1))) {
                         e.Graphics.DrawPath(new(TEXT_BLACK, _borderSize), path);
                     }
                 }
@@ -167,10 +165,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (Label != null) {
                 // Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 2.5F + 1.25F, FontStyle.Bold);
                 Font = WidgetUtils.GetProperFont(Size, Label, .6F);
-                using (Graphics g = CreateGraphics()) {
-                    LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                }
-                LabelY = (int) ((Height - Font.Height * 1.05) / 2);
+                // using (Graphics g = CreateGraphics()) {
+                //     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                // }
+                // LabelY = (int) ((Height - Font.Height * 1.05) / 2);
             }
         }
     }

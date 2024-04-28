@@ -20,7 +20,8 @@ namespace OperationGuidance_new.Tasks {
         private int _port;
         private DeviceTypeTool _toolType;
         private int HeartBeatCounter;
-        private Action<TighteningData>? _actionAfterAnalysis;
+        private int? _workstationId;
+        private Action<TighteningData, int>? _actionAfterAnalysis;
         #endregion
 
         #region Properties
@@ -32,16 +33,16 @@ namespace OperationGuidance_new.Tasks {
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public string? Result { get; set; }
         public bool Locked { get; set; }
-        public Action<TighteningData>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
+        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
+        public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         #endregion
 
         #region Constructors
-        public ToolTask(string? name, string ip, int port, DeviceTypeTool tool) {
+        public ToolTask(int deviceId, string? name, string ip, int port, DeviceTypeTool tool) : base(deviceId) {
             _device_name = name;
             _ip = ip;
             _port = port;
             _toolType = tool;
-            DeviceType = tool;
             Locked = false;
             Status = DISCONNECTED;
         }
@@ -100,7 +101,7 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } finally {
-                    logger.Warn($"Disconnected while waiting responses...");
+                    logger.Warn($"Disconnected while waiting responses for connection<TOOL[{_device_name} - {_ip}: {_port}]>...");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
@@ -210,7 +211,7 @@ namespace OperationGuidance_new.Tasks {
                         HeartBeatCounter = 0; // Reset heart beat counter to prevent multiple response
                         // Send command to controller
                         socketClient.Send(Encoding.ASCII.GetBytes(command));
-                        
+
                         // Receive data
                         lock (ReceiveSyncRoot) {
                             byte[] msgBytes = new byte[1024 * 1024];

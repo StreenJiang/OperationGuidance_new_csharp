@@ -150,10 +150,7 @@ namespace OperationGuidance_new.Utils {
         public static string GetStorageFormattedName() {
             DateTime now = DateTime.Now;
             string nameFormatted = GetStorageFileName();
-            if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_DD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD)) {}
-            else if (Replace(DATETIME_FORMAT_YYYY_MM)) {}
+            if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM_DD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM)) { }
             return nameFormatted;
 
             bool Replace(string formatPattern) {
@@ -319,16 +316,16 @@ namespace OperationGuidance_new.Utils {
             }
             return false;
         }
-        
+
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
         public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
-            ArmTask task = new(armName, ip, port, arm);
+            ArmTask task = new(armId, armName, ip, port, arm);
             task.Connect();
             _armTasks.Add(armId, task);
         }
         public static async Task<ArmTask> NewArmTaskAsync(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
-            ArmTask task = new(armName, ip, port, arm);
+            ArmTask task = new(armId, armName, ip, port, arm);
             await task.ConnectAsync();
             _armTasks.Add(armId, task);
             return task;
@@ -349,12 +346,12 @@ namespace OperationGuidance_new.Utils {
         private static Dictionary<int, ToolTask> _toolTasks = new();
         public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
         public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
-            ToolTask task = new(toolName, ip, port, tool);
+            ToolTask task = new(toolId, toolName, ip, port, tool);
             task.Connect();
             _toolTasks.Add(toolId, task);
         }
         public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
-            ToolTask task = new(toolName, ip, port, tool);
+            ToolTask task = new(toolId, toolName, ip, port, tool);
             await task.ConnectAsync();
             _toolTasks.Add(toolId, task);
             return task;
@@ -371,20 +368,20 @@ namespace OperationGuidance_new.Utils {
             }
             return null;
         }
-        
+
         private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
         public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
-        public static void NewSerialPortTask(int serialPortId, string fullName, 
-                string portName, int baudRate, Parity parity, int dataBits, 
+        public static void NewSerialPortTask(int serialPortId, string fullName,
+                string portName, int baudRate, Parity parity, int dataBits,
                 StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
-            SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
+            SerialPortTask task = new(serialPortId, fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             task.Connect();
             _serialPortTasks.Add(serialPortId, task);
         }
-        public static async Task<SerialPortTask> NewSerialPortTaskAsync(int serialPortId, string fullName, 
-                string portName, int baudRate, Parity parity, int dataBits, 
+        public static async Task<SerialPortTask> NewSerialPortTaskAsync(int serialPortId, string fullName,
+                string portName, int baudRate, Parity parity, int dataBits,
                 StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
-            SerialPortTask task = new(fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
+            SerialPortTask task = new(serialPortId, fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             await task.ConnectAsync();
             _serialPortTasks.Add(serialPortId, task);
             return task;
@@ -405,12 +402,12 @@ namespace OperationGuidance_new.Utils {
         private static Dictionary<int, CommunicationTask> _communicationTasks = new();
         public static Dictionary<int, CommunicationTask> CommunicationTasks => _communicationTasks;
         public static void NewCommunicationTask(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
-            CommunicationTask task = new(communicationName, ip, port, communication);
+            CommunicationTask task = new(communicationId, communicationName, ip, port, communication);
             task.Connect();
             _communicationTasks.Add(communicationId, task);
         }
         public static async Task<CommunicationTask> NewCommunicationTaskAsync(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
-            CommunicationTask task = new(communicationName, ip, port, communication);
+            CommunicationTask task = new(communicationId, communicationName, ip, port, communication);
             await task.ConnectAsync();
             _communicationTasks.Add(communicationId, task);
             return task;
@@ -430,7 +427,7 @@ namespace OperationGuidance_new.Utils {
 
         public static List<string> LogCache { get; } = new();
         private static TextBox? _textArea = null;
-        public static TextBox? EventLogTextArea { 
+        public static TextBox? EventLogTextArea {
             get => _textArea;
             set {
                 _textArea = value;
@@ -442,7 +439,7 @@ namespace OperationGuidance_new.Utils {
                         LogCache.Clear();
                     });
                 }
-            } 
+            }
         }
         public static void Log(string message, bool printToView = true) {
             if (printToView) {
@@ -576,7 +573,7 @@ namespace OperationGuidance_new.Utils {
             int maxWidth = (int) (contentHeight / (decimal) maxHeightRatio * maxWidthRatio);
             return new(maxWidth, contentHeight);
         }
-        public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, Size size) 
+        public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, Size size)
             => GetProperSizeAccordingToSizeRatio(contentSize, size.Width, size.Height);
         public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, int width, int height) {
             int newWidth = contentSize.Width;
@@ -716,6 +713,93 @@ namespace OperationGuidance_new.Utils {
                 }
             }
             return true;
+        }
+
+        public static byte[] ToBytes(string hexString) {
+            if (hexString.Length % 2 != 0) {
+                string errorMsg = $"Value[{hexString}] can not convert to bytes because its length is not an even number.";
+                throw new InvalidCastException(errorMsg);
+            }
+            return Enumerable.Range(0, hexString.Length)
+                             .Where(x => x % 2 == 0)
+                             .Select(x => Convert.ToByte(hexString.Substring(x, 2), 16))
+                             .ToArray();
+        }
+
+        public static byte[] ToBytes(int intValue) {
+            int maxToByte = 256 * 256 - 1;
+            if (intValue > maxToByte) {
+                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not larger than {maxToByte}.";
+                throw new InvalidCastException(errorMsg);
+            }
+            return ToBytes(ToHexString(intValue));
+        }
+        public static byte[] ToSingleBytes(int intValue) {
+            int maxToByte = 256 - 1;
+            if (intValue > maxToByte) {
+                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not larger than {maxToByte}.";
+                throw new InvalidCastException(errorMsg);
+            }
+            return ToBytes(ToSingleHexString(intValue));
+        }
+
+        public static byte[] ToBytesByBinaryString(string binaryString) {
+            if (binaryString.Length % 8 != 0) {
+                string errorMsg = $"Value[{binaryString}] can not convert to bytes because its length is not an even number.";
+                throw new InvalidCastException(errorMsg);
+            }
+            int byteNum = binaryString.Length / 8;
+            byte[] bytes = new byte[byteNum];
+            for (int i = 0; i < byteNum; i++) {
+                bytes[i] = Convert.ToByte(binaryString.Substring(i * 8, 8), 2);
+            }
+            return bytes;
+        }
+
+        public static string ToHexString(int intValue) {
+            int maxToByte = 256 * 256 - 1;
+            if (intValue > maxToByte) {
+                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not larger than {maxToByte}.";
+                throw new InvalidCastException(errorMsg);
+            }
+            return Convert.ToString(intValue, 16).PadLeft(4, '0');
+        }
+        public static string ToSingleHexString(int intValue) {
+            int maxToByte = 256 - 1;
+            if (intValue > maxToByte) {
+                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not larger than {maxToByte}.";
+                throw new InvalidCastException(errorMsg);
+            }
+            return Convert.ToString(intValue, 16).PadLeft(2, '0');
+        }
+
+        public static string ToHexString(byte[] hexBytes) {
+            return BitConverter.ToString(hexBytes).Replace("-", "");
+        }
+
+        public static string ToHexString(string binaryString) {
+            return ToHexString(ToBytesByBinaryString(binaryString));
+        }
+
+        public static string ToBinaryString(byte[] hexBytes) {
+            return String.Join(String.Empty, ToHexString(hexBytes).Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0')));
+        }
+
+        public static string ToBinaryString(string hexString) {
+            return String.Join(String.Empty, hexString.Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0')));
+        }
+
+        public static int[] ToIntsByHexString(string hexString) {
+            return ToIntsByBinaryString(ToBinaryString(hexString));
+        }
+
+        public static int[] ToIntsByBinaryString(string binaryString) {
+            int[] intValues = new int[binaryString.Length];
+            for (int i = 0; i < binaryString.Length; i++) {
+                char c = binaryString[i];
+                intValues[i] = int.Parse(c.ToString());
+            }
+            return intValues;
         }
     }
 }

@@ -22,6 +22,7 @@ namespace OperationGuidance_new.Configs {
                         Icon = Properties.Resources.mission_list,
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(MissionManagementView)},
+                            {AppVersion.SCII, typeof(MissionManagementView_SCII)},
                         }, 
                     },
                     new() {
@@ -30,6 +31,7 @@ namespace OperationGuidance_new.Configs {
                         Icon = Properties.Resources.mission_edition,
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(MissionEditionView)},
+                            {AppVersion.SCII, typeof(MissionEditionView_SCII)},
                         }, 
                     },
                 },

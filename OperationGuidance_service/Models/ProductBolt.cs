@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace OperationGuidance_service.Models {
     [Table("product_bolt")]
     public class ProductBolt: AEntityBase {
-        public int side_id { get; set;}
-        public int serial_num { get; set;}
+        public int side_id { get; set; }
+        public int serial_num { get; set; }
         public string? name { get; set; }
         public float? specification { get; set; }
         public int? workstation_id { get; set; }

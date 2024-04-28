@@ -21,16 +21,16 @@ namespace CustomLibrary.ComboBoxes {
         public FlowLayoutPanel ElementsPanel { get => _elementsPanel; set => _elementsPanel = value; }
         protected CustomComboBox<T> ComboBox { get => _comboBox; set => _comboBox = value; }
         public new Color BackColor { get; private set; }
-        public new Control Parent { 
-            get => base.Parent; 
+        public new Control Parent {
+            get => base.Parent;
             set {
                 base.Parent = value;
                 BackColor = value.BackColor;
-            } 
+            }
         }
-        public Color BoxBackColor { 
-            get => _comboBox.BackColor; 
-            set => _comboBox.BackColor = value; 
+        public Color BoxBackColor {
+            get => _comboBox.BackColor;
+            set => _comboBox.BackColor = value;
         }
         public Color? DisabledBackColor { get => _comboBox.DisabledBackColor; set => _comboBox.DisabledBackColor = value; }
         public Color? BorderColor { get => _comboBox.BorderColor; set => _comboBox.BorderColor = value; }
@@ -94,7 +94,7 @@ namespace CustomLibrary.ComboBoxes {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
-            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .425f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
             _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text

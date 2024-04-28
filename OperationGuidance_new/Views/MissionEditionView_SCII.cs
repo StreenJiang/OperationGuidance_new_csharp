@@ -22,24 +22,24 @@ using CustomLibrary.ComboBoxes;
 using log4net;
 
 namespace OperationGuidance_new.Views {
-    public partial class MissionEditionView: CustomContentPanel {
+    public partial class MissionEditionView_SCII: CustomContentPanel {
         private readonly OperationGuidanceApis apis;
         private ProductMissionDTO? _missionDTO;
-        private MissionEditionPage? _editionPage;
+        private MissionEditionPage_SCII? _editionPage;
 
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
-        public MissionEditionPage? EditionPage { get => _editionPage; set => _editionPage = value; }
+        public MissionEditionPage_SCII? EditionPage { get => _editionPage; set => _editionPage = value; }
 
-        public MissionEditionView() {
+        public MissionEditionView_SCII() {
             apis = SystemUtils.GetApis();
             CreateANewOne();
         }
 
-        public MissionEditionPage CreateANewOne() {
+        public MissionEditionPage_SCII CreateANewOne() {
             return OpenEditionPage(null);
         }
 
-        public MissionEditionPage OpenEditionPage(int? missionId) {
+        public MissionEditionPage_SCII OpenEditionPage(int? missionId) {
             ProductMissionDTO NewMission() {
                 return new() {
                     name = "新建任务",
@@ -83,11 +83,11 @@ namespace OperationGuidance_new.Views {
         }
 
         // Class: inner page panel
-        public class MissionEditionPage: CustomContentPanel {
-            protected ILog logger = MainUtils.GetLogger(typeof(MissionEditionPage));
+        public class MissionEditionPage_SCII: CustomContentPanel {
+            protected ILog logger = MainUtils.GetLogger(typeof(MissionEditionPage_SCII));
 
             private OperationGuidanceApis _apis;
-            private MissionEditionView _parentView;
+            private MissionEditionView_SCII _parentView;
             private ProductMissionDTO _missionDTO;
 
             // Contents
@@ -145,7 +145,7 @@ namespace OperationGuidance_new.Views {
 
             public bool Modified { get; set; } = false;
 
-            public MissionEditionPage(MissionEditionView parent, ProductMissionDTO missionDTO) : base() {
+            public MissionEditionPage_SCII(MissionEditionView_SCII parent, ProductMissionDTO missionDTO) : base() {
                 _apis = SystemUtils.GetApis();
                 _parentView = parent;
                 Parent = parent;
@@ -279,7 +279,6 @@ namespace OperationGuidance_new.Views {
                             } else {
                                 _missionDTO.predecessor_mission_id = null;
                             }
-                            _missionDTO.multi_device_independence = _detialPopUpForm.MultiDeviceIndependence.Checked ? (int) YesOrNo.YES : (int) YesOrNo.NO;
                             _detialPopUpForm.Hide();
 
                             // Reset all serial numbers of all bolts
@@ -471,18 +470,13 @@ namespace OperationGuidance_new.Views {
                         // Set serial number, if deleted serial number(s) exit(s), dequeue a serial number from queue and use it
                         int serialNumTemp = 0;
 
-                        if (_missionDTO.multi_device_independence != null && _missionDTO.multi_device_independence == (int) YesOrNo.YES) {
-                            boltDTO.serial_num = 0;
-                            boltDTO.name = "BOLT";
-                        } else {
-                            foreach (List<BoltButton> btnList in _currentSideButton.BoltButtons.Values) {
-                                if (btnList.Count > 0) {
-                                    serialNumTemp = Math.Max(serialNumTemp, btnList.Select(btn => btn.BoltDTO.serial_num).Max());
-                                }
+                        foreach (List<BoltButton> btnList in _currentSideButton.BoltButtons.Values) {
+                            if (btnList.Count > 0) {
+                                serialNumTemp = Math.Max(serialNumTemp, btnList.Select(btn => btn.BoltDTO.serial_num).Max());
                             }
-                            boltDTO.serial_num = serialNumTemp + 1;
-                            boltDTO.name = $"BOLT_" + boltDTO.serial_num;
                         }
+                        boltDTO.serial_num = serialNumTemp + 1;
+                        boltDTO.name = $"BOLT_" + boltDTO.serial_num;
                         OpenNewBoltPopUpForm(boltDTO, () => {
                             // Add new buttons
                             BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO, true);
@@ -494,13 +488,11 @@ namespace OperationGuidance_new.Views {
                             // Add buttons into side button
                             if (_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
                                 _currentSideButton.BoltButtons[workstationId].Add(boltButton);
-                                boltButton.UpperNum = _currentSideButton.BoltButtons.IndexOfKey(workstationId) + 1;
                             } else {
                                 _currentSideButton.BoltButtons.Add(workstationId, new() { { boltButton } });
                             }
                             if (_currentSideButton.BoltEditionButtons.ContainsKey(workstationId)) {
                                 _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
-                                boltEditionButton.UpperNum = _currentSideButton.BoltEditionButtons.IndexOfKey(workstationId) + 1;
                             } else {
                                 _currentSideButton.BoltEditionButtons.Add(workstationId, new() { { boltEditionButton } });
                             }
@@ -783,7 +775,6 @@ namespace OperationGuidance_new.Views {
                     Title = $"螺栓点位 - {boltDTO.name}",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
-                CheckMultiDeviceFlag();
                 _boltPopUpForm.HandleDestroyed += (s, e) => {
                     if (!added && cancelToAdd != null) {
                         cancelToAdd();
@@ -811,19 +802,6 @@ namespace OperationGuidance_new.Views {
                 _boltPopUpForm.Show();
             }
 
-            private void CheckMultiDeviceFlag() {
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
-                    _boltPopUpForm.Workstation.ItemSelected += () => {
-                        // Set serial num after workstation changed
-                        if (_boltPopUpForm.Workstation.Value != null && _currentSideButton.BoltButtons.ContainsKey(_boltPopUpForm.Workstation.Value.id)) {
-                            int newSerialNum = _currentSideButton.BoltButtons[_boltPopUpForm.Workstation.Value.id].Select(btn => btn.BoltDTO.serial_num).Max() + 1;
-                            _boltPopUpForm.ModifiedBoltDTO.serial_num = newSerialNum;
-                            _boltPopUpForm.SerialNumBox.SetValue(0, newSerialNum + "");
-                        }
-                    };
-                }
-            }
-
             private bool saveBoltInfo(ProductBoltDTO boltDTO) {
                 bool check = true;
                 string warningMsg = "";
@@ -840,9 +818,6 @@ namespace OperationGuidance_new.Views {
                     warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
                 } else {
                     foreach (KeyValuePair<int, List<BoltButton>> pair in _currentSideButton.BoltButtons) {
-                        if ((int) YesOrNo.YES == _missionDTO.multi_device_independence && pair.Key != _boltPopUpForm.Workstation.Value.id) {
-                            continue;
-                        }
                         BoltButton? boltButton = pair.Value.Find(btn => btn.BoltDTO.serial_num == int.Parse(serialNum));
                         if (boltButton != null && boltButton.BoltDTO.id != boltDTO.id) {
                             check = false;
@@ -945,7 +920,6 @@ namespace OperationGuidance_new.Views {
                     Title = boltDTO.serial_num + " - " + boltDTO.name,
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
-                CheckMultiDeviceFlag();
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");
                 confirmButton.Click += (s, e) => {
@@ -1018,28 +992,6 @@ namespace OperationGuidance_new.Views {
                         sideButton.BoltEditionButtons.Add(pair.Key, boltEditionBtns);
                     }
                 }
-
-                // Two kinds of bolt buttons all set, check if multi_device_independence is on
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
-                    int upperNum = 1;
-                    foreach (SideButton sideButton in _sideButtons) {
-                        foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
-                            for (int i = 0; i < pair.Value.Count; i++) {
-                                // Reset serial num of bolt button
-                                BoltButton btn = pair.Value[i];
-                                btn.UpperNum = upperNum;
-                                btn.Invalidate();
-
-                                // Reset serial num of bolt edition button
-                                BoltEditionButton btn2 = sideButton.BoltEditionButtons[pair.Key][i];
-                                btn2.UpperNum = upperNum;
-                                btn2.Invalidate();
-                            }
-
-                            upperNum++;
-                        }
-                    }
-                }
             }
 
             protected override void OnHandleCreated(EventArgs e) {
@@ -1082,7 +1034,7 @@ namespace OperationGuidance_new.Views {
                     return;
                 }
                 if (Parent != null && Parent.IsHandleCreated) {
-                    CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView) Parent).OuterVScrollPanel;
+                    CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView_SCII) Parent).OuterVScrollPanel;
                     if (outerVScrollPanel != null) {
                         ResizeContent(outerVScrollPanel.OuterPanel.Padding);
                         ResizeSideButtons();
@@ -1233,7 +1185,7 @@ namespace OperationGuidance_new.Views {
                 _rightContentPanel.BoltMargin = boltBtnMargin;
 
                 if (_currentSideButton != null && _currentSideButton.SideDTO != null) {
-                    _rightContentPanel.CalNewHeightAdnResizeChildren(_currentSideButton.SideDTO.id, (int) YesOrNo.YES == _missionDTO.multi_device_independence, contentHeight);
+                    _rightContentPanel.CalNewHeightAdnResizeChildren(_currentSideButton.SideDTO.id, contentHeight);
                 }
 
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
@@ -1255,7 +1207,6 @@ namespace OperationGuidance_new.Views {
             private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
             private CustomTextBoxGroup _partsBarCodeNum;
-            private ToggleButtonGroup _multiDeviceIndependence;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
@@ -1265,7 +1216,6 @@ namespace OperationGuidance_new.Views {
             public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
-            public ToggleButtonGroup MultiDeviceIndependence { get => _multiDeviceIndependence; set => _multiDeviceIndependence = value; }
 
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO,
                     List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
@@ -1312,12 +1262,6 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
-                _multiDeviceIndependence = new("多设备点位独立") {
-                    Parent = _tablePanel,
-                    Ratio = 6.75,
-                    NameAlignment = HorizontalAlignment.Right,
-                    Checked = false,
-                };
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1337,9 +1281,6 @@ namespace OperationGuidance_new.Views {
                 }
                 _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
                 _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
-                if (missionDTO.multi_device_independence != null) {
-                    _multiDeviceIndependence.Checked = missionDTO.multi_device_independence.Value == (int) YesOrNo.YES;
-                }
             }
 
             public void ResizeSelf() {
@@ -1639,47 +1580,24 @@ namespace OperationGuidance_new.Views {
                 }
 
                 // Reorder buttons and reset serial numbers
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
-                    int upperNum = 1;
-                    foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
-                        for (int i = 0; i < pair.Value.Count; i++) {
-                            // Reset serial num of bolt button
-                            BoltButton btn = pair.Value[i];
-                            btn.BoltDTO.serial_num = i + 1;
-                            btn.UpperNum = upperNum;
-                            btn.Label = btn.BoltDTO.serial_num + "";
-                            btn.Invalidate();
+                int currentSerialNum = 1;
+                foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
+                    for (int i = 0; i < pair.Value.Count; i++) {
+                        // Reset serial num of bolt button
+                        BoltButton btn = pair.Value[i];
+                        btn.BoltDTO.serial_num = currentSerialNum;
+                        btn.UpperNum = null;
+                        btn.Label = btn.BoltDTO.serial_num + "";
+                        btn.Invalidate();
 
-                            // Reset serial num of bolt edition button
-                            BoltEditionButton btn2 = _boltEditionButtons[pair.Key][i];
-                            btn2.BoltDTO.serial_num = i + 1;
-                            btn2.UpperNum = upperNum;
-                            btn2.Label = btn2.BoltDTO.serial_num + ". " + btn2.BoltDTO.name;
-                            btn2.Invalidate();
-                        }
+                        // Reset serial num of bolt edition button
+                        BoltEditionButton btn2 = _boltEditionButtons[pair.Key][i];
+                        btn2.BoltDTO.serial_num = currentSerialNum;
+                        btn2.UpperNum = null;
+                        btn2.Label = btn2.BoltDTO.serial_num + ". " + btn2.BoltDTO.name;
+                        btn2.Invalidate();
 
-                        upperNum++;
-                    }
-                } else {
-                    int currentSerialNum = 1;
-                    foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
-                        for (int i = 0; i < pair.Value.Count; i++) {
-                            // Reset serial num of bolt button
-                            BoltButton btn = pair.Value[i];
-                            btn.BoltDTO.serial_num = currentSerialNum;
-                            btn.UpperNum = null;
-                            btn.Label = btn.BoltDTO.serial_num + "";
-                            btn.Invalidate();
-
-                            // Reset serial num of bolt edition button
-                            BoltEditionButton btn2 = _boltEditionButtons[pair.Key][i];
-                            btn2.BoltDTO.serial_num = currentSerialNum;
-                            btn2.UpperNum = null;
-                            btn2.Label = btn2.BoltDTO.serial_num + ". " + btn2.BoltDTO.name;
-                            btn2.Invalidate();
-
-                            currentSerialNum++;
-                        }
+                        currentSerialNum++;
                     }
                 }
             }
@@ -1987,22 +1905,15 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            public void CalNewHeightAdnResizeChildren(int sideId, bool multiDeviceIndepedence, int parentNewHeight) {
+            public void CalNewHeightAdnResizeChildren(int sideId, int parentNewHeight) {
                 if (!_panels.ContainsKey(sideId)) {
                     NewHeight = 0;
                     return;
                 }
 
                 int sideBtnCount = 0;
-                int workstationPanelCount = 0;
 
                 foreach (KeyValuePair<int, WorkstationButtonsPanel> innerPair in _panels[sideId].BtnPanels) {
-                    if (++workstationPanelCount > 1 && multiDeviceIndepedence) {
-                        innerPair.Value.Margin = new(0, _workstationMargin, 0, 0);
-                    } else {
-                        innerPair.Value.Margin = new(0, 0, 0, 0);
-                    }
-
                     // Resize buttons
                     foreach (Control control in innerPair.Value.Controls) {
                         if (control is BoltEditionButton btn) {
@@ -2020,9 +1931,6 @@ namespace OperationGuidance_new.Views {
 
                 // Resize side buttons panel
                 int panelNewHeight = (_boltSize.Height + _boltMargin) * sideBtnCount + _boltMargin;
-                if (multiDeviceIndepedence) {
-                    panelNewHeight += _workstationMargin * (workstationPanelCount - 1);
-                }
                 _panels[sideId].Size = new(_boltSize.Width + _boltMargin * 2, panelNewHeight);
 
                 // Reset new height of the whole content

@@ -26,7 +26,7 @@ namespace CustomLibrary.TextBoxes {
         private Color? _borderColor;
         private Color? _borderColorError;
 
-        public new bool Enabled { 
+        public new bool Enabled {
             get => _enabled;
             set {
                 _enabled = value;
@@ -43,11 +43,11 @@ namespace CustomLibrary.TextBoxes {
         public string TextName { get => this._textName; set => this._textName = value; }
         protected int NameWidth { get => _nameWidth; set => _nameWidth = value; }
         public Point BoxBeginLocation { get => _boxBeginLocation; set => _boxBeginLocation = value; }
-        public string Separator { 
-            get => _separator; 
+        public string Separator {
+            get => _separator;
             set {
-                _separator = value; 
-                SetSeparatorsProperties((separator) => separator.Text = value );
+                _separator = value;
+                SetSeparatorsProperties((separator) => separator.Text = value);
             }
         }
         protected FlowLayoutPanel TextBoxesPanel { get => _textBoxesPanel; set => _textBoxesPanel = value; }
@@ -56,29 +56,29 @@ namespace CustomLibrary.TextBoxes {
         protected List<SeparatorControl> Separators { get => _separators; set => _separators = value; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public new Color BackColor { get; private set; }
-        public new Control Parent { 
-            get => base.Parent; 
+        public new Control Parent {
+            get => base.Parent;
             set {
                 base.Parent = value;
                 BackColor = value.BackColor;
-            } 
+            }
         }
-        public Color BoxBackColor { 
+        public Color BoxBackColor {
             get => _boxBackColor;
             set {
                 _boxBackColor = value;
                 SetTextBoxesProperties((textBox) => textBox.BackColor = value);
             }
         }
-        public Color? BorderColor { 
+        public Color? BorderColor {
             get => _borderColor;
             set {
                 _borderColor = value;
                 SetTextBoxesProperties((textBox) => textBox.BorderColor = value);
             }
         }
-        public Color? BorderColorError { 
-            get => _borderColorError; 
+        public Color? BorderColorError {
+            get => _borderColorError;
             set {
                 _borderColorError = value;
                 SetTextBoxesProperties((textBox) => textBox.BorderColorError = value);
@@ -104,29 +104,29 @@ namespace CustomLibrary.TextBoxes {
                 return false;
             }
         }
-        public bool NumberValidate { 
-            get => _numberValidate; 
+        public bool NumberValidate {
+            get => _numberValidate;
             set {
                 _numberValidate = value;
                 SetTextBoxesProperties((textBox) => textBox.NumberValidate = value);
             }
         }
-        public bool NumberOnly { 
-            get => _numberOnly; 
+        public bool NumberOnly {
+            get => _numberOnly;
             set {
                 _numberOnly = value;
                 SetTextBoxesProperties((textBox) => textBox.NumberOnly = value);
             }
         }
-        public bool IntOnly { 
-            get => _intOnly; 
+        public bool IntOnly {
+            get => _intOnly;
             set {
                 _intOnly = value;
                 SetTextBoxesProperties((textBox) => textBox.IntOnly = value);
             }
         }
-        public bool PositiveIntOnly { 
-            get => _positiveIntOnly; 
+        public bool PositiveIntOnly {
+            get => _positiveIntOnly;
             set {
                 _positiveIntOnly = value;
                 SetTextBoxesProperties((textBox) => textBox.PositiveIntOnly = value);
@@ -211,7 +211,7 @@ namespace CustomLibrary.TextBoxes {
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Set Font
-            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .55f, FontStyle.Regular, GraphicsUnit.Pixel);
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (Height - Padding.Size.Height) * .425f, FontStyle.Regular, GraphicsUnit.Pixel);
             // Calculate gap between name and box
             _gapNameAndBox = Padding.Size.Width > 0 ? Padding.Size.Width / 2 : (int) (Height / 3.5);
             // Get width of name text

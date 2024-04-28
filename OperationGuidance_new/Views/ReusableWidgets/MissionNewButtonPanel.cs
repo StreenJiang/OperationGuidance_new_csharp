@@ -1,5 +1,7 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
@@ -13,17 +15,32 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _addNewButton.Click += (sender, eventArgs) => {
                 // 点击按钮后跳转至任务编辑界面并新增一个任务
-                MissionEditionView editionView = WidgetUtils.GetView<MissionEditionView>();
-                CustomMainMenuButton missionManagementButton = WidgetUtils.GetMainMenu(100);
-                if (editionView.EditionPage == null || !editionView.EditionPage.Modified || WidgetUtils.ShowConfirmPopUp("编辑界面存在未保存内容，是否打开新的界面？")) {
-                    editionView.OpenEditionPage(null);
-                    CommonUtils.CannotBeNull(editionView.CorrespondingMenuButton).TriggerClick(EventArgs.Empty);
-                    missionManagementButton.TriggerClick(EventArgs.Empty);
+                switch (MainUtils.Version) {
+                    default:
+                    case AppVersion.STANDARD:
+                        MissionEditionView editionView = WidgetUtils.GetView<MissionEditionView>();
+                        CustomMainMenuButton missionManagementButton = WidgetUtils.GetMainMenu(100);
+                        if (editionView.EditionPage == null || !editionView.EditionPage.Modified || WidgetUtils.ShowConfirmPopUp("编辑界面存在未保存内容，是否打开新的界面？")) {
+                            editionView.OpenEditionPage(null);
+                            CommonUtils.CannotBeNull(editionView.CorrespondingMenuButton).TriggerClick(EventArgs.Empty);
+                            missionManagementButton.TriggerClick(EventArgs.Empty);
+                        }
+                        break;
+                    case AppVersion.SCII:
+                        MissionEditionView_SCII editionView_scii = WidgetUtils.GetView<MissionEditionView_SCII>();
+                        CustomMainMenuButton missionManagementButton_scii = WidgetUtils.GetMainMenu(100);
+                        if (editionView_scii.EditionPage == null || !editionView_scii.EditionPage.Modified || WidgetUtils.ShowConfirmPopUp("编辑界面存在未保存内容，是否打开新的界面？")) {
+                            editionView_scii.OpenEditionPage(null);
+                            CommonUtils.CannotBeNull(editionView_scii.CorrespondingMenuButton).TriggerClick(EventArgs.Empty);
+                            missionManagementButton_scii.TriggerClick(EventArgs.Empty);
+                        }
+                        break;
                 }
             };
         }
 
         protected override void OnSizeChanged(EventArgs e) {
+            _addNewButton.ConerRadius = WidgetUtils.ControlRadius();
             _addNewButton.Size = new((int) (Width * 0.2), (int) (Height * 0.13));
             _addNewButton.Location = new((Width - _addNewButton.Width) / 2, (Height - _addNewButton.Height) / 2);
         }

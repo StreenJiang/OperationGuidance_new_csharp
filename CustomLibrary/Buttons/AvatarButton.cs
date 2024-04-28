@@ -20,8 +20,7 @@ namespace CustomLibrary.Buttons.BaseClasses {
         #region Override methods
         protected override void OnSizeChanged(EventArgs e) {
             base.OnSizeChanged(e);
-            ConerRadius = Width;
-            ChangeRegionByConerRadius();
+            ConerRadius = Width / 2;
         }
         protected override void ResizeIconImage() {
             if (Icon != null) {
@@ -32,13 +31,13 @@ namespace CustomLibrary.Buttons.BaseClasses {
             ImageX = 0;
             ImageY = 0;
         }
-        protected override void ResizeTextLabel() {}
-        protected override void OnMouseHover(EventArgs e) {}
-        protected override void OnMouseEnter(EventArgs e) {}
-        protected override void OnMouseLeave(EventArgs e) {}
-        protected override void OnMouseClick(MouseEventArgs e) {}
-        protected override void OnMouseDown(MouseEventArgs mevent) {}
-        protected override void OnMouseUp(MouseEventArgs mevent) {}
+        protected override void ResizeTextLabel() { }
+        protected override void OnMouseHover(EventArgs e) { }
+        protected override void OnMouseEnter(EventArgs e) { }
+        protected override void OnMouseLeave(EventArgs e) { }
+        protected override void OnMouseClick(MouseEventArgs e) { }
+        protected override void OnMouseDown(MouseEventArgs mevent) { }
+        protected override void OnMouseUp(MouseEventArgs mevent) { }
         #endregion
     }
 }

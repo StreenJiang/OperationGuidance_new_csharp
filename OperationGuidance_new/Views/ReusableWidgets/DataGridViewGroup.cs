@@ -8,7 +8,7 @@ using OperationGuidance_new.ViewObjects.AbstractClasses;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewGroup<T>: CustomContentPanel where T: AVOBase, new() {
+    public class DataGridViewGroup<T>: CustomContentPanel where T : AVOBase, new() {
         #region Fields
         // Common fields
         private T _filterParametersVO;
@@ -262,7 +262,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 int boxWidth = (contentSize.Width - _contentHerticalGap * (_filtersTableColumnNums - 1)) / _filtersTableColumnNums;
                 // Resize boxes
                 TableLayoutControlCollection list = _filtersTablePanel.Controls;
-                for (int i = 0 ; i < list.Count ; i++) {
+                for (int i = 0; i < list.Count; i++) {
                     Control control = list[i];
                     control.Size = new(boxWidth, _textOrComboHeight);
                     // Calculate margin
@@ -276,19 +276,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
         private void ResizeButtonsPanel() {
-            // Width of button 
-            int buttonWidth = (int)(_buttonHeight * 2.5);
             // Resize buttons
             // Left panel width
             int leftPanelWidht = 0;
             ControlCollection listLeft = _buttonsLeftInnerPanel.Controls;
-            for (int i = 0 ; i < listLeft.Count ; i++) {
-                Control control = listLeft[i];
-                control.Size = new(buttonWidth, _buttonHeight);
-                leftPanelWidht += buttonWidth;
+            for (int i = 0; i < listLeft.Count; i++) {
+                CommonButton btn = (CommonButton) listLeft[i];
+                btn.Height = _buttonHeight;
+                btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + _buttonHeight * 2;
+                leftPanelWidht += btn.Width;
                 // Calculate margin
                 if (i != 0) {
-                    control.Margin = new(_contentHerticalGap, 0, 0, 0);
+                    btn.Margin = new(_contentHerticalGap, 0, 0, 0);
                     leftPanelWidht += _contentHerticalGap;
                 }
             }
@@ -296,9 +295,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int rightPanelWidht = 0;
             int count = 0;
             foreach (Control control in _buttonsRightInnerPanel.Controls) {
-                if (control.Visible) {
-                    control.Size = new(buttonWidth, _buttonHeight);
-                    rightPanelWidht += buttonWidth;
+                if (control.Visible && control is CommonButton btn) {
+                    btn.Height = _buttonHeight;
+                    btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + _buttonHeight * 2;
+                    rightPanelWidht += btn.Width;
                     // Calculate margin
                     if (count != 0) {
                         control.Margin = new(_contentHerticalGap, 0, 0, 0);

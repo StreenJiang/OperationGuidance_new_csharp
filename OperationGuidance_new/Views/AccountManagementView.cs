@@ -146,7 +146,7 @@ namespace OperationGuidance_new.Views {
             };
             CustomTextBoxGroup operation_password = _editEntityPopUpForm.AddTextBox("操作密码", false, 
                 (UserAccountInfoDTO dto, string? value) => dto.operation_password = value ?? null);
-            operation_password.Visible = roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN;
+            _editEntityPopUpForm.ShowOrHideControl(operation_password, roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN);
             operation_password.VisibleChanged += (s, e) => {
                 if (operation_password.Visible) {
                     operation_password.ResizeChildren();
@@ -161,7 +161,7 @@ namespace OperationGuidance_new.Views {
                 operation_password.GetTextBox(0).IsError = string.IsNullOrEmpty(operation_password.GetTextBox(0).Box.Text);
             };
             roleType.ItemSelected += () => {
-                operation_password.Visible = roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN;
+                _editEntityPopUpForm.ShowOrHideControl(operation_password, roleType.Value == (int) Roles.DEVELOPER || roleType.Value == (int) Roles.ADMIN);
                 _editEntityPopUpForm.ResizeTablePanelAndItsChildren();
                 operation_password.ResizeChildren();
             };

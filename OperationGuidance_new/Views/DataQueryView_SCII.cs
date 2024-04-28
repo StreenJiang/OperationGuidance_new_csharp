@@ -116,16 +116,19 @@ namespace OperationGuidance_new.Views {
         #region Reusable methods
         private void RefreshWorkstationOptions() {
             _workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-            Dictionary<int, List<int>> missionRecordIds = apis.QueryMissionRecordsByWorkstationIds(new(_workstations.Select(w => w.id).ToList())).MissionRecordsDict;
-            _workstationNameComboBox.ClearItem();
-            foreach (WorkstationDTO workstation in _workstations) {
-                if (missionRecordIds.ContainsKey(workstation.id)) {
-                    List<int?> ids = new();
-                    missionRecordIds[workstation.id].ForEach(id => ids.Add(id));
-                    _workstationNameComboBox.AddItem(workstation.name, ids);
+            Dictionary<int, List<int>> missionRecordIds = new();
+            if (_workstations.Count > 0) {
+                missionRecordIds = apis.QueryMissionRecordsByWorkstationIds(new(_workstations.Select(w => w.id).ToList())).MissionRecordsDict;
+                _workstationNameComboBox.ClearItem();
+                foreach (WorkstationDTO workstation in _workstations) {
+                    if (missionRecordIds.ContainsKey(workstation.id)) {
+                        List<int?> ids = new();
+                        missionRecordIds[workstation.id].ForEach(id => ids.Add(id));
+                        _workstationNameComboBox.AddItem(workstation.name, ids);
+                    }
                 }
+                _workstationNameComboBox.AddItem("无", null);
             }
-            _workstationNameComboBox.AddItem("无", null);
         }
         // 数据过滤（同时兼顾条件查询和数据导出）
         private List<MissionRecordVO> DataFiltering(List<MissionRecordVO> vos, MissionRecordVO vo) {
@@ -158,7 +161,7 @@ namespace OperationGuidance_new.Views {
             form.PretendToShowToCreateHandlesForChildren();
 
             DataGridViewGroup<OperationDataVO> gridViewGroup = new(gridView => {
-                DataGridViewColumn[] columnRange = {};
+                DataGridViewColumn[] columnRange = { };
                 foreach (OperationDataField field in _operationDataFields) {
                     if (field.Visible) {
                         DataGridViewTextBoxColumn column = new() {
@@ -223,8 +226,8 @@ namespace OperationGuidance_new.Views {
             // }
             return vos;
         }
-        protected override void AddOrUpdate(MissionRecordDTO dto, Action action) {}
-        protected override void Delete(List<int> ids) {}
+        protected override void AddOrUpdate(MissionRecordDTO dto, Action action) { }
+        protected override void Delete(List<int> ids) { }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _dataGridView.Size = contentSize;

@@ -17,8 +17,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
         public ProductMissionBlock<ProductMissionDTO>? CurrentToggledMission { get => _currentToggledMission; set => _currentToggledMission = value; }
 
-        public MissionListPanel() : this(null, null, null) {}
-        public MissionListPanel(string title) : this(title, null, null) {}
+        public MissionListPanel() : this(null, null, null) { }
+        public MissionListPanel(string title) : this(title, null, null) { }
         public MissionListPanel(string? title, string? buttonLabel, EventHandler? rightButtonClick) {
             FlowDirection = FlowDirection.TopDown;
             if (title != null) {
@@ -26,7 +26,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     Parent = this,
                 };
                 if (buttonLabel != null) {
-                    TitlePanel.RightButton rightButton =  _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
+                    TitlePanel.RightButton rightButton = _titlePanel.AddRightButton<TitlePanel.RightButton>(buttonLabel);
                     rightButton.Click += rightButtonClick;
                 }
             }

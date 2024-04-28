@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
@@ -25,6 +26,7 @@ namespace CustomLibrary.ComboBoxes {
         private List<ComboBoxItem<T>> _itemButtons;
         private int _itemHeight;
         private Timer _collapseTimer;
+        private int _conerRadius;
         private Rectangle _borderRect;
         private Color _backColorSaved;
         private Color _independentBackColor;
@@ -50,10 +52,10 @@ namespace CustomLibrary.ComboBoxes {
                 _selectButton.Enabled = value;
             }
         }
-        public bool NeedDefaultLabel { 
-            get => _needDefaultLabel; 
+        public bool NeedDefaultLabel {
+            get => _needDefaultLabel;
             set {
-                _needDefaultLabel = value; 
+                _needDefaultLabel = value;
                 if (value) {
                     AddDefault();
                 } else {
@@ -73,7 +75,7 @@ namespace CustomLibrary.ComboBoxes {
                 _backColorSaved = value;
                 _disabledBackColor = WidgetUtils.DarkenColor(value, .05);
                 _selectButton.DisabledBackColor = _disabledBackColor;
-                }
+            }
         }
         public new Color ForeColor {
             get => base.ForeColor;
@@ -84,9 +86,9 @@ namespace CustomLibrary.ComboBoxes {
         }
         public Color? DisabledBackColor { get => _disabledBackColor; set => _disabledBackColor = value; }
         public Color? BorderColor {
-            get => this._borderColor;
+            get => _borderColor;
             set {
-                this._borderColor = value;
+                _borderColor = value;
                 if (value != null) {
                     Padding newP = Padding;
                     newP.Left += _borderThickness;
@@ -106,15 +108,15 @@ namespace CustomLibrary.ComboBoxes {
             }
         }
         public Color? BorderColorError { get => _borderColorError; set => _borderColorError = value; }
-        public bool IsError { 
-            get => _isError; 
+        public bool IsError {
+            get => _isError;
             set {
-                _isError = value; 
+                _isError = value;
                 Invalidate();
             }
         }
         public bool ShowRealValue { get => _selectButton.ShowRealValue; set => _selectButton.ShowRealValue = value; }
-        public List<T?> Items { 
+        public List<T?> Items {
             get {
                 List<T?> items = new();
                 foreach (ComboBoxItem<T> item in _itemButtons) {
@@ -122,7 +124,7 @@ namespace CustomLibrary.ComboBoxes {
                         continue;
                     }
                     items.Add(item.Object);
-                } 
+                }
                 return items;
             }
         }
@@ -134,7 +136,7 @@ namespace CustomLibrary.ComboBoxes {
                         continue;
                     }
                     names.Add(item.Label);
-                } 
+                }
                 return names;
             }
         }
@@ -146,7 +148,7 @@ namespace CustomLibrary.ComboBoxes {
                         continue;
                     }
                     namesAndItems.Add(item.Label, item.Object);
-                } 
+                }
                 return namesAndItems;
             }
         }
@@ -155,11 +157,11 @@ namespace CustomLibrary.ComboBoxes {
         #endregion
 
         #region Events
-        public event Action ItemSelected { 
-            add => _itemSelected += value; 
+        public event Action ItemSelected {
+            add => _itemSelected += value;
             remove {
                 if (_itemSelected.GetInvocationList().Contains(value)) {
-                    _itemSelected -= value; 
+                    _itemSelected -= value;
                 }
             }
         }
@@ -199,9 +201,9 @@ namespace CustomLibrary.ComboBoxes {
                         };
                         _itemsOuterForm.HandleDestroyed += (s, e) => ItemsPanelClosed();
                         _itemsInnerPanel = new() {
-                            Margin = new(0), 
+                            Margin = new(0),
                             FlowDirection = FlowDirection.TopDown,
-                            BackColor = this.BackColor,
+                            BackColor = BackColor,
                         };
                         _itemsInnerPanel.NewHeight = _itemHeight * _itemButtons.Count;
                         _itemsInnerPanel.SizeChanged += (sender, eventArgs) => {
@@ -213,9 +215,9 @@ namespace CustomLibrary.ComboBoxes {
                         };
                         _itemsScrollPanel = new(_itemsInnerPanel) {
                             Parent = _itemsOuterForm,
-                            Margin = new(0), 
+                            Margin = new(0),
                             Size = new(Width, 0),
-                            BorderColor = this.BorderColor,
+                            BorderColor = BorderColor,
                             NeedsPadding = false,
                         };
 
@@ -255,7 +257,7 @@ namespace CustomLibrary.ComboBoxes {
                 if (_itemsInnerPanel != null) {
                     _itemsInnerPanel.Visible = false;
                 }
-                
+
                 _collapseTimer.Start();
             };
             EventFuncs.AddMouseDownAction(ItemsPanelAutoClose);
@@ -294,8 +296,8 @@ namespace CustomLibrary.ComboBoxes {
             }
             // Add new option button according to item
             _itemButtons.Add(new(itemName, obj, _selectButton) {
-                ForeColor = this.ForeColor,
-                BackColor = this.BackColor,
+                ForeColor = ForeColor,
+                BackColor = BackColor,
                 ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
             });
             // Reset timer interval
@@ -308,8 +310,8 @@ namespace CustomLibrary.ComboBoxes {
         public void AddDefault() {
             if (_itemButtons.Count == 0 || _itemButtons[0].Label != _defaultLabel) {
                 _itemButtons.Insert(0, new(_defaultLabel, default(T?), _selectButton) {
-                    ForeColor = this.ForeColor,
-                    BackColor = this.BackColor,
+                    ForeColor = ForeColor,
+                    BackColor = BackColor,
                     ToggledColor = WidgetUtils.DarkenColor(BackColor, .075),
                 });
                 // Reset timer interval
@@ -342,7 +344,7 @@ namespace CustomLibrary.ComboBoxes {
             }
             _selectButton.Invalidate();
         }
-        
+
         public void Reset() {
             if (!_noItem) {
                 if (_selectButton.SelectedItem != null) {
@@ -429,7 +431,7 @@ namespace CustomLibrary.ComboBoxes {
                 _timerCount = 0;
                 _errorBorderTimer.Start();
             }
-        }        
+        }
 
         private void TimerTick(object? sender, EventArgs eventArgs) {
             if (_itemsOuterForm == null || _itemsScrollPanel == null) {
@@ -488,7 +490,7 @@ namespace CustomLibrary.ComboBoxes {
         private void ItemsPanelAutoClose() {
             if (_itemsOuterForm != null && !_itemsOuterForm.IsDisposed && _itemsScrollPanel != null && !_itemsScrollPanel.IsDisposed) {
                 Point realTimePoint = EventFuncs.RealTimePoint;
-                if (!new Rectangle(_itemsOuterForm.PointToScreen(Point.Empty), _itemsOuterForm.Size).Contains(realTimePoint) 
+                if (!new Rectangle(_itemsOuterForm.PointToScreen(Point.Empty), _itemsOuterForm.Size).Contains(realTimePoint)
                         && !new Rectangle(_selectButton.PointToScreen(Point.Empty), _selectButton.Size).Contains(realTimePoint)) {
                     ItemsPanelClosed();
                 }
@@ -532,12 +534,20 @@ namespace CustomLibrary.ComboBoxes {
             ReSizeItemsPanelHeight();
             ResetCollapseStep();
 
-            _selectButton.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
-            _selectButton.Location = new(Padding.Left, Padding.Top);
+            _selectButton.Size = new(Width - Padding.Size.Width - 2, Height - Padding.Size.Height - 2);
+            _selectButton.Location = new(Padding.Left + 1, Padding.Top + 1);
+
+            // Recal coner radius
+            _conerRadius = WidgetUtils.ControlRadius();
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
+                _borderRect = new(1, 1, Width - 2 - _borderThickness, Height - 2 - _borderThickness);
+            }
+
+            // Change region
+            using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                Region = new(path);
             }
         }
         private void ReSizeItemsPanelHeight() {
@@ -553,11 +563,23 @@ namespace CustomLibrary.ComboBoxes {
             base.OnPaint(e);
             Graphics g = e.Graphics;
 
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, path);
+                }
+            }
+
             // Draw border if border color is not null
             if (_borderColorError != null && _isError) {
-                g.DrawRectangle(new(_borderColorError.Value, 1), _borderRect);
+                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                    e.Graphics.DrawPath(new(_borderColorError.Value, 1), path);
+                }
             } else if (_borderColor != null) {
-                g.DrawRectangle(new(_borderColor.Value, 1), _borderRect);
+                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                    e.Graphics.DrawPath(new(_borderColor.Value, 1), path);
+                }
             }
         }
 
@@ -569,7 +591,7 @@ namespace CustomLibrary.ComboBoxes {
             }
         }
 
-        protected virtual void OnItemSelected() {}
+        protected virtual void OnItemSelected() { }
 
         // Select button
         public class ComboBoxSelectButton<I>: CommonButton {
@@ -585,25 +607,25 @@ namespace CustomLibrary.ComboBoxes {
             private bool _showRealValue;
             private Color? _disabledBackColor;
 
-            public bool IsCollapsed { 
-                get => _isCollapsed; 
+            public bool IsCollapsed {
+                get => _isCollapsed;
                 set {
-                    _isCollapsed = value; 
+                    _isCollapsed = value;
                     SetIcon();
                     Invalidate();
                 }
             }
-            public ComboBoxItem<I>? SelectedItem { 
-                get => _selectedItem; 
+            public ComboBoxItem<I>? SelectedItem {
+                get => _selectedItem;
                 set {
-                    _selectedItem = value; 
+                    _selectedItem = value;
                     RefreshLabel();
                 }
             }
-            public bool ShowRealValue { 
-                get => _showRealValue; 
+            public bool ShowRealValue {
+                get => _showRealValue;
                 set {
-                    _showRealValue = value; 
+                    _showRealValue = value;
                     RefreshLabel();
                 }
             }
@@ -671,10 +693,10 @@ namespace CustomLibrary.ComboBoxes {
             }
 
             protected override void ResizeTextLabel() {
-                if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .53F, FontStyle.Regular, GraphicsUnit.Pixel);
-                    this.LabelX = (int) (Height / 3.5);
-                    this.LabelY = (this.Height - this.Font.Height) / 2;
+                if (Label != null) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
+                    LabelX = (int) (Height / 3.5);
+                    LabelY = (Height - Font.Height) / 2 + Height / 20;
                 }
             }
 
@@ -703,6 +725,13 @@ namespace CustomLibrary.ComboBoxes {
                     return cp;
                 }
             }
+            //
+            // protected override void OnSizeChanged(EventArgs e) {
+            //     base.OnSizeChanged(e);
+            //     using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), WidgetUtils.ControlRadius())) {
+            //         Region = new Region(path);
+            //     }
+            // }
         }
 
         // Items panel
@@ -713,7 +742,7 @@ namespace CustomLibrary.ComboBoxes {
                 if (!Visible) {
                     return false;
                 }
-                return this.NewHeight > parentNewHeight;
+                return NewHeight > parentNewHeight;
             }
         }
 
@@ -723,9 +752,9 @@ namespace CustomLibrary.ComboBoxes {
             private Rectangle _borderRect;
 
             public Color? BorderColor {
-                get => this._borderColor;
+                get => _borderColor;
                 set {
-                    this._borderColor = value;
+                    _borderColor = value;
                     if (value != null) {
                         Padding newP = Padding;
                         newP.Left += 1;
@@ -756,7 +785,7 @@ namespace CustomLibrary.ComboBoxes {
                     if (_borderColor != null) {
                         _borderRect = new(0, 0, Width - 1, Height - 1);
                     }
-                    // Resize item buttons if width of item label grater than this.Width
+                    // Resize item buttons if width of item label grater than Width
                     foreach (Control control in Controls) {
                         if (control is ComboBoxItem<T>) {
                             control.Width = Width;
@@ -813,8 +842,8 @@ namespace CustomLibrary.ComboBoxes {
             }
 
             protected override void ResizeTextLabel() {
-                if (this.Label != null) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .53F, FontStyle.Regular, GraphicsUnit.Pixel);
+                if (Label != null) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
                     int hPadding = (int) (Height / 3.5);
                     _properWidth = 0; // This one has to be set to 0 manually, don't know where and why it's been set to a non-zero value, it's really weird
                     using (Graphics g = CreateGraphics()) {
@@ -823,8 +852,8 @@ namespace CustomLibrary.ComboBoxes {
                             _properWidth = (int) (labelWidth * .975 + hPadding * 2);
                         }
                     }
-                    this.LabelX = hPadding;
-                    this.LabelY = (this.Height - this.Font.Height) / 2;
+                    LabelX = hPadding;
+                    LabelY = (Height - Font.Height) / 2;
                 }
             }
         }

@@ -1,10 +1,12 @@
-﻿using CustomLibrary.Configs;
+﻿using System.Drawing.Drawing2D;
+using CustomLibrary.Configs;
 using CustomLibrary.Utils;
 
 namespace CustomLibrary.DateTimePickers {
     public class CustomDatePicker: DateTimePicker {
         #region Fields
         private bool _enabled;
+        private int _conerRadius;
         private Rectangle _borderRect;
         private Rectangle _textAreaRect;
         private Rectangle _iconAreaRect;
@@ -110,19 +112,32 @@ namespace CustomLibrary.DateTimePickers {
         }
         public void ResizeChildren() => ResizeChildren(this, EventArgs.Empty);
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
-            _font = new(WidgetsConfigs.SystemFontFamily, Height * .54F, FontStyle.Regular, GraphicsUnit.Pixel);
+            _font = new(WidgetsConfigs.SystemFontFamily, Height * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
             // Recalculate size
             _hPadding = (int) (Height / 3);
-            _vPadding = (int) (Height / 6);
+            _vPadding = (int) (Height / 3.85F);
+
+            // Recal coner radius
+            _conerRadius = WidgetUtils.ControlRadius();
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
+                _borderRect = new(1, 1, Width - 2 - _borderThickness, Height - 2 - _borderThickness);
             }
+
+            // Change region
+            using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                Region = new(path);
+            }
+            // // Create border rectangle if border color is not null
+            // if (_borderColor != null) {
+            //     _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
+            // }
+
             // Text and icon area rectangle
             int iconSide = Height - _vPadding * 2;
-            _textAreaRect = new(_hPadding, _vPadding, Width - _hPadding *2 - _borderThickness * 2 - iconSide * 2, Height - _vPadding *2 - _borderThickness * 2);
-            _iconAreaRect = new(Width - Height, 0, Height, Height);
+            _textAreaRect = new(_hPadding, _vPadding, Width - _hPadding * 2 - _borderThickness * 2 - iconSide * 2, Height - _vPadding * 2 - _borderThickness * 2);
+            _iconAreaRect = new((int) (Width - (Height / 1.25)), 0, Height, Height);
             _iconShowing = WidgetUtils.ResizeImage(_icon, iconSide, iconSide);
             Invalidate();
         }
@@ -143,9 +158,19 @@ namespace CustomLibrary.DateTimePickers {
                 g.Clear(_disabledBackColor);
             }
 
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, path);
+                }
+            }
+
             // Draw border if border color is not null
             if (_borderColor != null) {
-                g.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
+                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                    e.Graphics.DrawPath(new(_borderColor.Value, 1), path);
+                }
             }
 
             // Draw text
