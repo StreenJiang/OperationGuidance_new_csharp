@@ -1031,7 +1031,10 @@ namespace OperationGuidance_new.Views {
                 _tighteningDataVOs.Clear();
                 RefreshTighteningDataPanel();
 
-                _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
+                if (_missionRecord != null) {
+                    _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
+                    _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+                }
             }
         }
 
@@ -1093,20 +1096,15 @@ namespace OperationGuidance_new.Views {
             await Task.Run(() => {
                 BeginInvoke(() => {
                     ToolTask toolTask = _toolTasks[deviceId];
-                    if (toolTask.WorkstationId != null) {
+                    if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
                         int workstationId = toolTask.WorkstationId.Value;
 
-                        List<WorkstationDTO> workstationDTOs;
-                        if (CheckIfIsMultiDeviceIndependenceMode()) {
-                            workstationDTOs = _workstationsDTOs.Where(dto => _currentWorkingBoltIndependence.Keys.Contains(dto.id)).ToList();
-                        } else {
-                            List<int> workstationIds = new();
-                            foreach (List<BoltButton> bolts in _allBolts.Values) {
-                                workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
-                            }
-                            workstationIds = workstationIds.Distinct().ToList();
-                            workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
+                        List<int> workstationIds = new();
+                        foreach (List<BoltButton> bolts in _allBolts.Values) {
+                            workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
                         }
+                        workstationIds = workstationIds.Distinct().ToList();
+                        List<WorkstationDTO> workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
                         List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
 
                         // Main display
@@ -1114,13 +1112,7 @@ namespace OperationGuidance_new.Views {
                         _angle.Text = data.angle + "";
 
                         // Get current bolt
-                        BoltButton currentBolt;
-                        if (CheckIfIsMultiDeviceIndependenceMode()) {
-                            currentBolt = _currentWorkingBoltIndependence[workstationId];
-                        } else {
-                            currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
-                        }
-
+                        BoltButton currentBolt = _currentWorkingBolt;
                         ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                         OperationDataDTO dataDTO = new();
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
@@ -1191,6 +1183,7 @@ namespace OperationGuidance_new.Views {
                                 // Reset tightening type to tightening in case somewhere did some changes
                                 _needLoosening = false;
                                 _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.CustomError);
 
                                 // Tightening ok, data color change to green
                                 _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
@@ -1201,83 +1194,66 @@ namespace OperationGuidance_new.Views {
                                     toolTask.SendLock();
                                 }
 
-                                // Check next index
                                 currentBolt.BoltStatus = BoltStatus.DONE;
                                 currentBolt.Label = _torque.Text;
-                                int nextIndex;
-                                if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                    nextIndex = _allBoltsIndependence[_currentSideIndex][workstationId].IndexOf(currentBolt) + 1;
-                                    // 检查是否存在跳点的情况
-                                    while (nextIndex < _allBoltsIndependence[_currentSideIndex][workstationId].Count
-                                            && _allBoltsIndependence[_currentSideIndex][workstationId][nextIndex].BoltStatus == BoltStatus.DONE) {
-                                        nextIndex++;
-                                    }
-                                } else {
-                                    nextIndex = _allBolts[_currentSideIndex].IndexOf(currentBolt) + 1;
-                                    // 检查是否存在跳点的情况
-                                    while (nextIndex < _allBolts[_currentSideIndex].Count && _allBolts[_currentSideIndex][nextIndex].BoltStatus == BoltStatus.DONE) {
-                                        nextIndex++;
-                                    }
+
+                                // Check next index
+                                List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
+                                int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
+                                // 检查是否存在跳点的情况
+                                while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    nextIndex++;
+
+                                    logger.Debug($"***************************************************************");
+                                    logger.Debug($"Checking in looping");
+                                    logger.Debug($"***************************************************************");
                                 }
 
-                                if (nextIndex < _allBolts.Count) {
-                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                        _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
-                                    } else {
-                                        _currentWorkingBolt = SwitchBolt(nextIndex);
-                                    }
+                                if (nextIndex < currentSideBolts.Count) {
+                                    _currentWorkingBolt = SwitchBolt(nextIndex);
+                                    ChangeBoltStatusToWorking(_currentWorkingBolt);
                                 } else {
-                                    bool allDone = true;
-                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                        foreach (int id in _allBoltsIndependence[_currentSideIndex].Keys) {
-                                            if (id != workstationId) {
-                                                BoltButton? boltButton = _allBoltsIndependence[_currentSideIndex][id].Find(b => b.BoltStatus != BoltStatus.DONE);
-                                                if (boltButton != null) {
-                                                    allDone = false;
-                                                    break;
-                                                }
+                                    // All ok
+                                    _activated = false;
+                                    _finished = true;
+
+                                    logger.Debug($"***************************************************************");
+                                    logger.Debug($"Work is done!!!!!!!!!!!!!!!");
+                                    logger.Debug($"***************************************************************");
+
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_OK;
+                                    _workingProcessPanel.CustomError = null;
+                                    _workingProcessPanel.BoltSerialNum = null;
+
+                                    // Change color back to black
+                                    _torque.ForeColor = Color.Black;
+                                    _angle.ForeColor = Color.Black;
+
+                                    // Stop retrieve coordinates data
+                                    if (_locating_enabled) {
+                                        // Lock again in case _locating disabled
+                                        _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
+
+                                        // Stop listening coordinates
+                                        workstationDTOs.ForEach(dto => {
+                                            int? armId = dto.arm_id;
+                                            if (armId != null) {
+                                                ArmTask armTask = _armTasks[armId.Value];
+                                                armTask.RetrieveResult = false;
+                                                armTask.OnActionAfterReceiving -= ActionAfterArmDataReceived;
                                             }
-                                        }
+                                        });
                                     }
 
-                                    if (allDone) {
-                                        // All ok
-                                        _activated = false;
-                                        _finished = true;
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_OK;
-                                        _workingProcessPanel.CustomError = null;
-                                        _workingProcessPanel.BoltSerialNum = null;
+                                    // Update mission result to ok
+                                    _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                    _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
-                                        // Change color back to black
-                                        _torque.ForeColor = Color.Black;
-                                        _angle.ForeColor = Color.Black;
+                                    // Clear all cached bar codes
+                                    _barCodeObj.Reset();
 
-                                        // Stop retrieve coordinates data
-                                        if (_locating_enabled) {
-                                            // Lock again in case _locating disabled
-                                            _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
-
-                                            // Stop listening coordinates
-                                            workstationDTOs.ForEach(dto => {
-                                                int? armId = dto.arm_id;
-                                                if (armId != null) {
-                                                    ArmTask armTask = _armTasks[armId.Value];
-                                                    armTask.RetrieveResult = false;
-                                                    armTask.OnActionAfterReceiving -= ActionAfterArmDataReceived;
-                                                }
-                                            });
-                                        }
-
-                                        // Update mission result to ok
-                                        _missionRecord.mission_result = (int) TighteningStatus.OK;
-                                        _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-
-                                        // Clear all cached bar codes
-                                        _barCodeObj.Reset();
-
-                                        // // 重置任务信息
-                                        // ResetMissionDetails();
-                                    }
+                                    // 重置任务信息
+                                    ResetMissionDetails();
                                 }
 
                                 // Store data
@@ -1305,15 +1281,8 @@ namespace OperationGuidance_new.Views {
                                     _activated = false;
                                     _finished = true;
 
-                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                        foreach (BoltButton bolt in _currentWorkingBoltIndependence.Values) {
-                                            bolt.StopFlickering();
-                                        }
-                                        _currentWorkingBoltIndependence.Clear();
-                                    } else {
-                                        currentBolt.StopFlickering();
-                                        _currentWorkingBolt = null;
-                                    }
+                                    currentBolt.StopFlickering();
+                                    _currentWorkingBolt = null;
 
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_NG;
                                     _workingProcessPanel.CustomError = errorMsg;

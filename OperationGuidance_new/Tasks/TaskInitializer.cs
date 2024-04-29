@@ -26,6 +26,27 @@ namespace OperationGuidance_new.Tasks {
         private static void TaskCheckingLoop() {
             Task.Run(async () => {
                 while (true) {
+                    // Query all workstations for devices configuration
+                    Dictionary<int, int> toolMaps = new();
+                    Dictionary<int, int> armMaps = new();
+                    Dictionary<int, int> communicationMaps = new();
+                    Dictionary<int, int> serialPortMaps = new();
+                    List<WorkstationDTO> workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
+                    foreach (WorkstationDTO workstation in workstations) {
+                        if (workstation.tool_id != null) {
+                            toolMaps.Add(workstation.tool_id.Value, workstation.id);
+                        }
+                        if (workstation.arm_id != null) {
+                            armMaps.Add(workstation.arm_id.Value, workstation.id);
+                        }
+                        if (workstation.communication_id != null) {
+                            communicationMaps.Add(workstation.communication_id.Value, workstation.id);
+                        }
+                        if (workstation.serial_port_id != null) {
+                            serialPortMaps.Add(workstation.serial_port_id.Value, workstation.id);
+                        }
+                    }
+
                     // Initialize tool tasks
                     List<DeviceToolDTO> toolDTOs = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceToolDTOs;
                     // Remove tools which had been deleted
@@ -48,6 +69,12 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.Info(logger, $"Connecting to TOOL[{dto.name} - {dto.ip}: {dto.port} - {deviceTool.Name}]...");
                             }
                         } else {
+                            if (toolMaps.ContainsKey(toolTask.DeviceId)) {
+                                toolTask.WorkstationId = toolMaps[toolTask.DeviceId];
+                            } else {
+                                toolTask.WorkstationId = null;
+                            }
+
                             if (toolTask.Ip != dto.ip || toolTask.Port != dto.port || toolTask.ToolType.Id != dto.type) {
                                 toolTask.CloseConnection();
                                 await Task.Delay(toolTask.AuotReconnectingTrialDelay);
@@ -96,6 +123,12 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.Info(logger, $"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
                             }
                         } else {
+                            if (armMaps.ContainsKey(armTask.DeviceId)) {
+                                armTask.WorkstationId = armMaps[armTask.DeviceId];
+                            } else {
+                                armTask.WorkstationId = null;
+                            }
+
                             if (armTask.Ip != dto.ip || armTask.Port != dto.port || armTask.ArmType.Id != dto.type) {
                                 armTask.CloseConnection();
                                 await Task.Delay(armTask.AuotReconnectingTrialDelay);
@@ -143,6 +176,12 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.Info(logger, $"Connecting to Communication device[{dto.name} - {dto.ip}: {dto.port} - {deviceCommunication.Name}]...");
                             }
                         } else {
+                            if (communicationMaps.ContainsKey(communicationTask.DeviceId)) {
+                                communicationTask.WorkstationId = communicationMaps[communicationTask.DeviceId];
+                            } else {
+                                communicationTask.WorkstationId = null;
+                            }
+
                             if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port || communicationTask.CommunicationType.Id != dto.type) {
                                 communicationTask.CloseConnection();
                                 await Task.Delay(communicationTask.AuotReconnectingTrialDelay);
@@ -192,6 +231,12 @@ namespace OperationGuidance_new.Tasks {
                                 MainUtils.Info(logger, $"Connecting to SerialPort device[{dto.name} - {deviceSerialPort.Name}]");
                             }
                         } else {
+                            if (serialPortMaps.ContainsKey(serialPortTask.DeviceId)) {
+                                serialPortTask.WorkstationId = serialPortMaps[serialPortTask.DeviceId];
+                            } else {
+                                serialPortTask.WorkstationId = null;
+                            }
+
                             if (serialPortTask.PortName != dto.port_name || serialPortTask.BaudRate != dto.baud_rate
                                         || (int) serialPortTask.Parity != dto.parity || serialPortTask.DataBits != dto.data_bit
                                         || (int) serialPortTask.StopBits != dto.stop_bit || (int) serialPortTask.DataType != dto.data_type

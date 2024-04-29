@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Drawing.Drawing2D;
 using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.ComboBoxes;
@@ -19,6 +17,8 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using System.Collections;
+using System.Drawing.Drawing2D;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AWorkplaceContentPanel: CustomContentPanel {
@@ -302,6 +302,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                             WorkstationDTO workstationDTO = _workstationsDTOs.Single(w => w.id == _currentWorkingBolt.BoltDTO.workstation_id);
                                             if (_locating_enabled && workstationDTO.arm_id != null) {
                                                 _armTasks[workstationDTO.arm_id.Value].RetrieveResult = true;
+                                            }
+                                        }
+                                        if (_currentWorkingBoltIndependence.Count > 0) {
+                                            foreach (int id in _currentWorkingBoltIndependence.Keys) {
+                                                WorkstationDTO workstationDTO = _workstationsDTOs.Single(w => w.id == id);
+                                                if (_locating_enabled && workstationDTO.arm_id != null) {
+                                                    _armTasks[workstationDTO.arm_id.Value].RetrieveResult = true;
+                                                }
                                             }
                                         }
                                     };
@@ -910,8 +918,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             else {
                                 toolTask.SendLock();
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                // Remove '*ing' desc
                                 _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.LooseningDesc);
+                                // Append position error desc
                                 _workingProcessPanel.AppendDesc(_workingProcessPanel.ArmPositionError);
+
+                                // Remove admin confirmation message if _adminConfirmed is null or is true
+                                if (_adminConfirmed == null || _adminConfirmed.Value) {
+                                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
+                                }
                             }
                         }
                     }
@@ -1072,15 +1088,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (CheckIfIsMultiDeviceIndependenceMode()) {
                 foreach (int sideId in _allBoltsIndependence.Keys) {
                     foreach (int workstationId in _allBoltsIndependence[sideId].Keys) {
-                        _allBoltsIndependence[sideId][workstationId].ForEach(b => logger.Debug($"bolt - {b.BoltDTO.serial_num} ShowingWhileWorking: {b.ShowingWhileWorking}")); ;
-                        _allBoltsIndependence[sideId][workstationId].ForEach(b => b.BoltStatus = BoltStatus.DEFAULT); ;
+                        _allBoltsIndependence[sideId][workstationId].ForEach(b => logger.Debug($"bolt - {b.BoltDTO.serial_num} ShowingWhileWorking: {b.ShowingWhileWorking}"));
+                        _allBoltsIndependence[sideId][workstationId].ForEach(b => b.BoltStatus = BoltStatus.DEFAULT);
                     }
                 }
                 _currentWorkingBoltIndependence.Clear();
             } else {
                 foreach (int sideId in _allBolts.Keys) {
-                    _allBolts[sideId].ForEach(b => logger.Debug($"bolt - {b.BoltDTO.serial_num} ShowingWhileWorking: {b.ShowingWhileWorking}")); ;
-                    _allBolts[sideId].ForEach(b => b.BoltStatus = BoltStatus.DEFAULT); ;
+                    _allBolts[sideId].ForEach(b => logger.Debug($"bolt - {b.BoltDTO.serial_num} ShowingWhileWorking: {b.ShowingWhileWorking}"));
+                    _allBolts[sideId].ForEach(b => b.BoltStatus = BoltStatus.DEFAULT);
                 }
                 _currentWorkingBolt = null;
             }
@@ -1347,6 +1363,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             ProductMissionDTO? mission = null;
             // 已选任务
             if (_mission.id > 0) {
+                mission = _mission;
+
                 // 校验不通过，检查是否匹配其他任务
                 if (!CheckBarCodeMatchedMission(barCode)) {
                     mission = FindBarCodeMatchedMission(barCode);
@@ -1374,16 +1392,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             // 条码校验通过，再检查下是否需要返工
             if (checkPassed) {
+                mission = CommonUtils.CannotBeNull(mission);
+
                 // 如果存在前置任务，则先查询前置任务是否完成
-                if (_mission.predecessor_mission_id != null) {
-                    bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
+                if (mission.predecessor_mission_id != null) {
+                    bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
                     if (!yes) {
                         WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工记录，请先完成前置任务");
                         checkPassed = false;
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
                         // 需要管理员密码弹窗
@@ -1411,10 +1431,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 禁用产品条码输入框
                 _productBarCodeBox.Enabled = false;
                 // 是否需要切换任务
-                if (mission != null) {
-                    SwitchToMission(mission);
-                }
-                // 如果有物料码，则聚焦于第一个物料码输入框
+                mission = CommonUtils.CannotBeNull(mission);
+                SwitchToMission(mission);
                 if (_partsBarCodeRules.ContainsKey(_mission.id)) {
                     _workplace.BarCodeObj.PartsRulesCount = _partsBarCodeRules[_mission.id].Count;
                 }
@@ -1756,7 +1774,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             }
         }
-        public void RemoveDesc(string desc) {
+        public void RemoveDesc(string? desc) {
             if (!string.IsNullOrEmpty(desc)) {
                 if (_descList.Contains(desc)) {
                     _descList.Remove(desc);
@@ -1880,8 +1898,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             Graphics graphics = e.Graphics;
+            graphics.SmoothingMode = SmoothingMode.HighQuality;
             graphics.Clear(BackColor);
-            _statusFont = WidgetUtils.GetProperFont(Size, _statusTxt, .325f);
+            _statusFont = WidgetUtils.GetProperFont(Size, _statusTxt, .375f);
             _statusDescFont = WidgetUtils.GetProperFont(Size, _statusDesc, .1f - _descList.Count * .005F);
             int statusWidth = (int) (graphics.MeasureString(_statusTxt, _statusFont).Width);
             int statusDescWidth = (int) (graphics.MeasureString(_statusDesc, _statusDescFont).Width);

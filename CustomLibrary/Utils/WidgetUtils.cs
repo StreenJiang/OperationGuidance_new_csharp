@@ -373,10 +373,13 @@ namespace CustomLibrary.Utils {
             return TextRenderer.MeasureText(text, font, new(), TextFormatFlags.NoPadding);
         }
         // Content configs 
-        public static Font GetProperFont(Size containerSize, string text, float fontRatio) {
-            Font font = new Font(WidgetsConfigs.SystemFontFamily, containerSize.Height * fontRatio, FontStyle.Bold, GraphicsUnit.Pixel);
-            if (MeasureString(text, font).Width >= containerSize.Width * .9) {
-                font = GetProperFont(containerSize, text, fontRatio -= .005f);
+        public static Font GetProperFont(Size containerSize, string text, float fontInitRatio) {
+            return GetProperFont(containerSize, text, fontInitRatio, .95F);
+        }
+        public static Font GetProperFont(Size containerSize, string text, float fontInitRatio, float maxRatio) {
+            Font font = new Font(WidgetsConfigs.SystemFontFamily, containerSize.Height * fontInitRatio, FontStyle.Bold, GraphicsUnit.Pixel);
+            if (MeasureString(text, font).Width >= containerSize.Width * maxRatio) {
+                font = GetProperFont(containerSize, text, fontInitRatio -= .005f, maxRatio);
             }
             return font;
         }
@@ -405,8 +408,10 @@ namespace CustomLibrary.Utils {
             return thickness > 0 ? thickness : 1;
         }
         // Pop up / floating form configs 
-        public static int PopUpOrFloatingFormTitle() => (int) (MainSize.Height * .04);
+        public static int PopUpOrFloatingFormTitle() => (int) (MainSize.Height * .0475);
         public static int PopUpOrFloatingFormSubTitle() => (int) (MainSize.Height * .0475);
+        public static int PopUpOrFloatingFormTextOrComboBoxHeight() => (int) (MainSize.Height * .035);
+        public static int PopUpOrFloatingFormCommonButtonHeight() => (int) (MainSize.Height * .035);
         public static Padding PopUpOrFloatingFormContentPadding() {
             int hPadding = (int) (MainSize.Width * .015);
             int vPadding = (int) (MainSize.Height * .03);

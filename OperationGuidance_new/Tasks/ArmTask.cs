@@ -17,7 +17,6 @@ namespace OperationGuidance_new.Tasks {
         private int _port;
         private DeviceTypeArm _armType;
         private Coordinates3D? _currentCoordinates;
-        private int? _workstationId;
         private Action<Coordinates3D> _actionAfterReceiving;
         #endregion
 
@@ -31,14 +30,13 @@ namespace OperationGuidance_new.Tasks {
         public Queue<string> Commands { get; set; } = new();
         public string? Result { get; set; }
         public bool RetrieveResult { get; set; } = false;
-        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public Action<Coordinates3D> ActionAfterReceiving { get => _actionAfterReceiving; set => _actionAfterReceiving = value; }
 
         public event Action<Coordinates3D> OnActionAfterReceiving { add => _actionAfterReceiving += value; remove => _actionAfterReceiving -= value; }
         #endregion
 
         #region Constructors
-        public ArmTask(int deviceId, string? name, string ip, int port, DeviceTypeArm arm) : base(deviceId) {
+        public ArmTask(int deviceId, string? name, string ip, int port, DeviceTypeArm arm, int? workstationId = null) : base(deviceId, workstationId) {
             _device_name = name;
             _ip = ip;
             _port = port;

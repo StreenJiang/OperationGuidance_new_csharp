@@ -2,6 +2,7 @@ namespace OperationGuidance_new.Tasks {
     public abstract class ATaskBase {
         #region Readonly fields
         private int _deviceId;
+        private int? _workstationId;
         protected string? _device_name = "";
         protected readonly int LoopingInterval = 25;
         public readonly int AuotReconnectingTrialDelay = 1000; // 断线重连尝试间隔
@@ -11,15 +12,17 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Properties
+        public int DeviceId => _deviceId;
+        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public string Name => _device_name ?? "";
         public abstract bool Connected { get; }
         public int Status { get; set; }
         public bool CloseConnectionManually { get; set; } = false;
-        public int DeviceId { get => _deviceId; set => _deviceId = value; }
         #endregion
 
-        public ATaskBase(int deviceId) {
+        public ATaskBase(int deviceId, int? workstationId = null) {
             _deviceId = deviceId;
+            _workstationId = workstationId;
         }
 
         #region Main methods

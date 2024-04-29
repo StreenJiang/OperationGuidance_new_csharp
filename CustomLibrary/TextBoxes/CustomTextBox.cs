@@ -283,12 +283,18 @@ namespace CustomLibrary.TextBoxes {
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
-                _borderRect = new(1, 1, Width - 2 - _borderThickness, Height - 2 - _borderThickness);
+                if (_conerRadius > 0) {
+                    _borderRect = new(1, 1, Width - 2 - _borderThickness, Height - 2 - _borderThickness);
+                } else {
+                    _borderRect = new(0, 0, Width - _borderThickness, Height - _borderThickness);
+                }
             }
 
             // Change region
-            using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
-                Region = new(path);
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    Region = new(path);
+                }
             }
         }
         protected override void OnPaint(PaintEventArgs e) {
@@ -312,12 +318,20 @@ namespace CustomLibrary.TextBoxes {
 
             // Draw border if border color is not null
             if (_borderColorError != null && _isError) {
-                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
-                    e.Graphics.DrawPath(new(_borderColorError.Value, 1), path);
+                if (_conerRadius > 0) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                        e.Graphics.DrawPath(new(_borderColorError.Value, _borderThickness), path);
+                    }
+                } else {
+                    e.Graphics.DrawRectangle(new(_borderColorError.Value, _borderThickness), _borderRect);
                 }
             } else if (_borderColor != null) {
-                using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
-                    e.Graphics.DrawPath(new(_borderColor.Value, 1), path);
+                if (_conerRadius > 0) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
+                        e.Graphics.DrawPath(new(_borderColor.Value, _borderThickness), path);
+                    }
+                } else {
+                    e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
                 }
             }
         }

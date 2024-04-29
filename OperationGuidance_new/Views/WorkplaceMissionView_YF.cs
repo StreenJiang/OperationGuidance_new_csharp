@@ -1206,16 +1206,16 @@ namespace OperationGuidance_new.Views {
                                 currentBolt.Label = _torque.Text;
                                 int nextIndex;
                                 if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                    nextIndex = _allBoltsIndependence[_currentSideIndex][workstationId].IndexOf(currentBolt) + 1;
+                                    nextIndex = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId].IndexOf(currentBolt) + 1;
                                     // 检查是否存在跳点的情况
-                                    while (nextIndex < _allBoltsIndependence[_currentSideIndex][workstationId].Count
-                                            && _allBoltsIndependence[_currentSideIndex][workstationId][nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    while (nextIndex < _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId].Count
+                                            && _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId][nextIndex].BoltStatus == BoltStatus.DONE) {
                                         nextIndex++;
                                     }
                                 } else {
-                                    nextIndex = _allBolts[_currentSideIndex].IndexOf(currentBolt) + 1;
+                                    nextIndex = _allBolts[_sides[_currentSideIndex].id].IndexOf(currentBolt) + 1;
                                     // 检查是否存在跳点的情况
-                                    while (nextIndex < _allBolts[_currentSideIndex].Count && _allBolts[_currentSideIndex][nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    while (nextIndex < _allBolts[_sides[_currentSideIndex].id].Count && _allBolts[_sides[_currentSideIndex].id][nextIndex].BoltStatus == BoltStatus.DONE) {
                                         nextIndex++;
                                     }
                                 }
@@ -1229,9 +1229,9 @@ namespace OperationGuidance_new.Views {
                                 } else {
                                     bool allDone = true;
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                        foreach (int id in _allBoltsIndependence[_currentSideIndex].Keys) {
+                                        foreach (int id in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
                                             if (id != workstationId) {
-                                                BoltButton? boltButton = _allBoltsIndependence[_currentSideIndex][id].Find(b => b.BoltStatus != BoltStatus.DONE);
+                                                BoltButton? boltButton = _allBoltsIndependence[_sides[_currentSideIndex].id][id].Find(b => b.BoltStatus != BoltStatus.DONE);
                                                 if (boltButton != null) {
                                                     allDone = false;
                                                     break;

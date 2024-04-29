@@ -95,6 +95,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             } else {
                 _vScrollBar.Visible = false;
                 needsScrollBar = false;
+                _contentPanel.Location = new Point(0, 0);
             }
 
             // Check if scrollbar is shown

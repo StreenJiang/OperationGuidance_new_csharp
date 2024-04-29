@@ -96,7 +96,7 @@ namespace CustomLibrary.Forms {
             _closeButton = new() { Parent = _titlePanel };
             _closeButton.Click += (sender, eventArgs) => Hide();
             _titlePanel.SizeChanged += (sender, eventArgs) => {
-                _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular);
+                _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
                 _closeButton.Size = new((int) (_titlePanel.Height * 1.25), _titlePanel.Height - _borderThickness);
                 _closeButton.Location = new(_titlePanel.Width - _closeButton.Width, 0);
             };
@@ -234,7 +234,7 @@ namespace CustomLibrary.Forms {
             _contentPanel.Padding = GetContentPadding();
         }
         private int GetTitlePanelHeight() => WidgetUtils.PopUpOrFloatingFormTitle();
-        private int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.CommonButtonHeight();
+        private int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.PopUpOrFloatingFormCommonButtonHeight();
         private Padding GetContentPadding() => WidgetUtils.PopUpOrFloatingFormContentPadding();
         private Padding GetButtonsPanelPadding() => WidgetUtils.PopUpOrFloatingFormButtonsPadding();
 

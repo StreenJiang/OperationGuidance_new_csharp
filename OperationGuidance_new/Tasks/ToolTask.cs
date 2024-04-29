@@ -20,7 +20,6 @@ namespace OperationGuidance_new.Tasks {
         private int _port;
         private DeviceTypeTool _toolType;
         private int HeartBeatCounter;
-        private int? _workstationId;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         #endregion
 
@@ -33,12 +32,11 @@ namespace OperationGuidance_new.Tasks {
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public string? Result { get; set; }
         public bool Locked { get; set; }
-        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         #endregion
 
         #region Constructors
-        public ToolTask(int deviceId, string? name, string ip, int port, DeviceTypeTool tool) : base(deviceId) {
+        public ToolTask(int deviceId, string? name, string ip, int port, DeviceTypeTool tool, int? workstationId = null) : base(deviceId, workstationId) {
             _device_name = name;
             _ip = ip;
             _port = port;
@@ -88,7 +86,7 @@ namespace OperationGuidance_new.Tasks {
                                 byte[] msgBytes = new byte[1024 * 1024];
                                 int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.Peek);
                                 string resultTemp = Encoding.ASCII.GetString(msgBytes);
-                                Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis);
+                                Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
                                 if (Result == null) {
                                     msgBytes = new byte[1024 * 1024];
                                     msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
@@ -215,14 +213,14 @@ namespace OperationGuidance_new.Tasks {
                         // Receive data
                         lock (ReceiveSyncRoot) {
                             byte[] msgBytes = new byte[1024 * 1024];
-                            socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            string resultTemp = Encoding.ASCII.GetString(msgBytes);
-                            Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis);
+                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            string resultTemp = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                            Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
                             return Result;
                         }
                     }
                 } catch (Exception e) {
-                    logger.Error($"Error while sending command to Tool[{_device_name} - {_ip}: {_port}], e: {e}");
+                    logger.Error($"Error while sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}], e: {e}");
                     throw e;
                 }
             }

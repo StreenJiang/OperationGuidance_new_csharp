@@ -201,7 +201,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             CalculateDetailProperties();
 
             Padding contentPadding = ContentPanel.Padding;
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxHeight = WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
             int subTitleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
             int subTitleMargin = subTitleHeight / 5;

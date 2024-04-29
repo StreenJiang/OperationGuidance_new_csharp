@@ -487,6 +487,7 @@ namespace OperationGuidance_new.Views {
                             // Add new buttons
                             BoltButton boltButton = AddNewBoltButton(_currentSideButton, boltDTO, true);
                             BoltEditionButton boltEditionButton = _rightContentPanel.AddNewBoltEditionButton(_currentSideButton, boltDTO, OpenBoltPopUpForm);
+                            boltEditionButton.Deleted += () => ForceResizeRight();
 
                             // Save serial num
                             int workstationId = boltDTO.workstation_id;
@@ -1013,7 +1014,9 @@ namespace OperationGuidance_new.Views {
                     foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
                         List<BoltEditionButton> boltEditionBtns = new();
                         foreach (BoltButton boltBtns in pair.Value) {
-                            boltEditionBtns.Add(_rightContentPanel.AddNewBoltEditionButton(sideButton, boltBtns.BoltDTO, OpenBoltPopUpForm));
+                            BoltEditionButton boltEditionButton = _rightContentPanel.AddNewBoltEditionButton(sideButton, boltBtns.BoltDTO, OpenBoltPopUpForm);
+                            boltEditionButton.Deleted += () => ForceResizeRight();
+                            boltEditionBtns.Add(boltEditionButton);
                         }
                         sideButton.BoltEditionButtons.Add(pair.Key, boltEditionBtns);
                     }

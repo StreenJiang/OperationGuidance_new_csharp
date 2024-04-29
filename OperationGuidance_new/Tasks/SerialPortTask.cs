@@ -20,7 +20,6 @@ namespace OperationGuidance_new.Tasks {
         private DataTypes _dataType;
         private SerialPortStream? serialPortStreamClient;
         private DeviceTypeSerialPort _serialPortType;
-        private int? _workstationId;
         private Action<string>? _actionAfterDataReceived;
         #endregion
 
@@ -38,13 +37,12 @@ namespace OperationGuidance_new.Tasks {
         public DeviceTypeSerialPort SerialPortType { get => _serialPortType; set => _serialPortType = value; }
         public string? Result { get; set; }
         public SerialPortStream? SerialPortStreamClient { get => serialPortStreamClient; }
-        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public Action<string>? ActionAfterDataReceived { get => _actionAfterDataReceived; set => _actionAfterDataReceived = value; }
         #endregion
 
         #region Constructors
         public SerialPortTask(int deviceId, string fullName, string portName, int baudRate, Parity parity, int dataBits,
-                StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) : base(deviceId) {
+                StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort, int? workstationId = null) : base(deviceId, workstationId) {
             _device_name = fullName;
             _portName = portName;
             _baudRate = baudRate;

@@ -17,7 +17,6 @@ namespace OperationGuidance_new.Tasks {
         private string _ip;
         private int _port;
         private DeviceTypeCommunication _communicationType;
-        private int? _workstationId;
         private Action? _actionAfterAnalysis;
         private ReadRequestMessage ReadRequest = new();
         private ReadResponseMessage ReadResponse = new();
@@ -34,13 +33,12 @@ namespace OperationGuidance_new.Tasks {
         public Queue<ACommunicationMessage> Command { get; } = new();
         public Queue<byte[]> Result { get; } = new();
         public bool Locked { get; set; }
-        public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public Action? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public ModBusServerBase? ModBusServer { get => _modBusServer; set => _modBusServer = value; }
         #endregion
 
         #region Constructors
-        public CommunicationTask(int deviceId, string? name, string ip, int port, DeviceTypeCommunication deviceType) : base(deviceId) {
+        public CommunicationTask(int deviceId, string? name, string ip, int port, DeviceTypeCommunication deviceType, int? workstationId = null) : base(deviceId, workstationId) {
             _device_name = name;
             _ip = ip;
             _port = port;
@@ -148,8 +146,8 @@ namespace OperationGuidance_new.Tasks {
                         // Receive data
                         lock (ReceiveSyncRoot) {
                             byte[] msgBytes = new byte[1024 * 1024];
-                            int length = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            return msgBytes.Take(length).ToArray();
+                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            return msgBytes.Take(msgLen).ToArray();
                         }
                     }
                 } catch (Exception e) {

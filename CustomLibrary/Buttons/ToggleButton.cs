@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using CustomLibrary.Configs;
 using CustomLibrary.Utils;
 using Timer = System.Windows.Forms.Timer;
@@ -8,6 +9,7 @@ namespace CustomLibrary.Buttons {
         private string _onText;
         private string _offText;
         private bool _showText;
+        private int _conerRadius;
         private Point _textLocation;
         private Color _onBackColor;
         private Color _onToggleColor;
@@ -27,6 +29,7 @@ namespace CustomLibrary.Buttons {
 
         #region Properteis
         public bool ShowText { get => _showText; set => _showText = value; }
+        public int ConerRadius { get => _conerRadius; set => _conerRadius = value; }
         public Color OnBackColor { get => _onBackColor; set => _onBackColor = value; }
         public Color OnToggleColor { get => _onToggleColor; set => _onToggleColor = value; }
         public Color OffBackColor { get => _offBackColor; set => _offBackColor = value; }
@@ -78,8 +81,14 @@ namespace CustomLibrary.Buttons {
 
         #region Reusable methods
         private void CalcToggleSize() {
-            _toggleBorderThickness = (int) (Math.Ceiling(Height / 15F));
-            _toggleRectSize = new((int) ((Width - _toggleBorderThickness * 2) / 2.15), Height - _toggleBorderThickness * 2);
+            if (_conerRadius > 0) {
+                _toggleBorderThickness = (int) (Math.Ceiling((Height - 2) / 7.5F));
+                _toggleRectSize = new((int) ((Width - 2 - _toggleBorderThickness * 2) / 2.25), Height - 2 - _toggleBorderThickness * 2);
+            } else {
+                _toggleBorderThickness = (int) (Math.Ceiling(Height / 7.5F));
+                _toggleRectSize = new((int) ((Width - _toggleBorderThickness * 2) / 2.25), Height - _toggleBorderThickness * 2);
+            }
+
             _slideStep = _toggleRectSize.Width / 5;
             if (_slideStep <= 0) {
                 _slideStep = 5;
@@ -87,26 +96,32 @@ namespace CustomLibrary.Buttons {
         }
         private void CalcToggleLocation() {
             if (Checked) {
-                _toggleRectLocation = new(Width - _toggleBorderThickness - _toggleRectSize.Width, _toggleBorderThickness);
+                if (_conerRadius > 0) {
+                    _toggleRectLocation = new(Width - 2 - _toggleBorderThickness - _toggleRectSize.Width, _toggleBorderThickness + 1);
+                } else {
+                    _toggleRectLocation = new(Width - 1 - _toggleBorderThickness - _toggleRectSize.Width, _toggleBorderThickness);
+                }
             } else {
-                _toggleRectLocation = new(_toggleBorderThickness, _toggleBorderThickness);
+                if (_conerRadius > 0) {
+                    _toggleRectLocation = new(_toggleBorderThickness + 1, _toggleBorderThickness + 1);
+                } else {
+                    _toggleRectLocation = new(_toggleBorderThickness, _toggleBorderThickness);
+                }
             }
+
         }
         private void CalcFontAndTextLocation() {
             if (_showText) {
-                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .5F, FontStyle.Regular, GraphicsUnit.Pixel);
-                using (Graphics g = CreateGraphics()) {
-                    int textRangeWidth = Width - _toggleRectSize.Width - _toggleBorderThickness;
-                    int x;
-                    if (Checked) {
-                        x = (int) ((textRangeWidth - g.MeasureString(_onText, Font).Width) / 2 + _toggleBorderThickness);
-                    } else {
-                        x = (int) ((textRangeWidth - g.MeasureString(_onText, Font).Width) / 2 + _toggleBorderThickness + _toggleRectSize.Width);
-                    }
-                    g.DrawString(_onText, Font, new SolidBrush(_onBackColor), _textLocation);
-                    _textLocation = new(x, 0);
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
+                int textRangeWidth = Width - _toggleRectSize.Width - _toggleBorderThickness;
+                Size textSize = WidgetUtils.MeasureString(_onText, Font);
+                int x;
+                if (Checked) {
+                    x = (int) ((textRangeWidth - textSize.Width) / 2);
+                } else {
+                    x = (int) ((textRangeWidth - textSize.Width) / 2 + _toggleRectSize.Width);
                 }
-                _textLocation.Y = (int) ((Height - Font.Height - _toggleBorderThickness) / 1.5);
+                _textLocation = new(x, (Height - textSize.Height) / 2);
             }
         }
         private void CalcInterval() {
@@ -156,55 +171,126 @@ namespace CustomLibrary.Buttons {
             SizeChanged += ResizeChildren;
         }
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
+            // Recal coner radius
+            _conerRadius = WidgetUtils.ControlRadius();
+            // Change region
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    Region = new(path);
+                }
+            }
+
             CalcToggleSize();
             CalcToggleLocation();
             CalcFontAndTextLocation();
             CalcInterval();
+            Invalidate();
         }
         protected override void OnPaint(PaintEventArgs pevent) {
             Graphics g = pevent.Graphics;
+            g.SmoothingMode = SmoothingMode.HighQuality;
+
+            g.Clear(Parent.BackColor);
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    g.DrawPath(penSurface, path);
+                }
+            }
+
             Color onBackColor = _onBackColor;
             Color onToggleColor = _onToggleColor;
             Color offBackColor = _offBackColor;
             Color offToggleColor = _offToggleColor;
+
             if (!Enabled) {
                 onBackColor = WidgetUtils.LightColor(_onBackColor, _disabledDilutionRatio);
                 onToggleColor = WidgetUtils.LightColor(_onToggleColor, _disabledDilutionRatio);
                 offBackColor = WidgetUtils.LightColor(_offBackColor, _disabledDilutionRatio);
                 offToggleColor = WidgetUtils.LightColor(_offToggleColor, _disabledDilutionRatio);
             }
+
             if (Checked) {
                 if (_isSolid) {
-                    g.Clear(onBackColor);
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(1, 1, Width - 3, Height - 3), _conerRadius)) {
+                            g.FillPath(new SolidBrush(onBackColor), path);
+                        }
+                    } else {
+                        g.Clear(onBackColor);
+                    }
                     if (_showText) {
                         g.DrawString(_onText, Font, new SolidBrush(onToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(1, 1, Width - 3, Height - 3), _conerRadius)) {
+                            g.FillPath(new SolidBrush(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio)), path);
+                        }
+                    } else {
+                        g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
+                    }
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
-                    g.DrawRectangle(new(onBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new(borderLocation, borderSize), _conerRadius)) {
+                            g.DrawPath(new(onBackColor, _toggleBorderThickness), path);
+                        }
+                    } else {
+                        g.DrawRectangle(new(onBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+                    }
                     if (_showText) {
                         g.DrawString(_onText, Font, new SolidBrush(onBackColor), _textLocation);
                     }
                 }
-                g.FillRectangle(new SolidBrush(onToggleColor), new(_toggleRectLocation, _toggleRectSize));
+                if (_conerRadius > 0) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _conerRadius)) {
+                        g.FillPath(new SolidBrush(onToggleColor), path);
+                    }
+                } else {
+                    g.FillRectangle(new SolidBrush(onToggleColor), new(_toggleRectLocation, _toggleRectSize));
+                }
             } else {
                 if (_isSolid) {
-                    g.Clear(offBackColor);
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(1, 1, Width - 3, Height - 3), _conerRadius)) {
+                            g.FillPath(new SolidBrush(offBackColor), path);
+                        }
+                    } else {
+                        g.Clear(offBackColor);
+                    }
                     if (_showText) {
                         g.DrawString(_offText, Font, new SolidBrush(offToggleColor), _textLocation);
                     }
                 } else {
-                    g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(1, 1, Width - 3, Height - 3), _conerRadius)) {
+                            g.FillPath(new SolidBrush(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio)), path);
+                        }
+                    } else {
+                        g.Clear(Enabled ? Parent.BackColor : WidgetUtils.LightColor(Parent.BackColor, _disabledDilutionRatio));
+                    }
                     Size borderSize = new(Width - _toggleBorderThickness, Height - _toggleBorderThickness);
                     Point borderLocation = new(_toggleBorderThickness - 1, _toggleBorderThickness - 1);
-                    g.DrawRectangle(new(offBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+                    if (_conerRadius > 0) {
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new(borderLocation, borderSize), _conerRadius)) {
+                            g.DrawPath(new(offBackColor, _toggleBorderThickness), path);
+                        }
+                    } else {
+                        g.DrawRectangle(new(offBackColor, _toggleBorderThickness), new(borderLocation, borderSize));
+                    }
                     if (_showText) {
                         g.DrawString(_offText, Font, new SolidBrush(offBackColor), _textLocation);
                     }
                 }
-                g.FillRectangle(new SolidBrush(offToggleColor), new(_toggleRectLocation, _toggleRectSize));
+                if (_conerRadius > 0) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _conerRadius)) {
+                        g.FillPath(new SolidBrush(offToggleColor), path);
+                    }
+                } else {
+                    g.FillRectangle(new SolidBrush(offToggleColor), new(_toggleRectLocation, _toggleRectSize));
+                }
             }
         }
         #endregion

@@ -87,7 +87,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             Control mainForm = WidgetUtils.MainForm;
             Padding contentPadding = ContentPanel.Padding;
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxHeight = WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
             int subTitleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
             int subTitleMargin = subTitleHeight / 5;

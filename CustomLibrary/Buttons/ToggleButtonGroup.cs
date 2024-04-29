@@ -77,8 +77,8 @@ namespace CustomLibrary.Buttons {
                 buttonX = _nameWidth + Padding.Size.Width + _gapNameAndButton;
             }
             // Resize combo box first to get font of it
-            int buttonH = (int) ((Height - Padding.Size.Height) * .65);
-            _toggleButton.Size = new(buttonH * 3, buttonH);
+            int buttonH = (int) ((Height - Padding.Size.Height) * .875);
+            _toggleButton.Size = new((int) (buttonH * 2.5F), buttonH);
             // Relocate combo box (height plus extra 1 makes better display)
             _toggleButton.Location = new(buttonX, (Height - _toggleButton.Height) / 2 + 1);
         }

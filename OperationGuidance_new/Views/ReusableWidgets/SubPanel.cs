@@ -74,10 +74,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return boxGroup;
         }
         public void ResizeSelf(int width) {
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxHeight = WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
             int titleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
-            int titleMargin = titleHeight / 5;
+            int titleMargin = titleHeight / 10;
             int tableHeight = 0;
             int previousRowIndex = -1;
             foreach (Control control in _tablePanel.Controls) {

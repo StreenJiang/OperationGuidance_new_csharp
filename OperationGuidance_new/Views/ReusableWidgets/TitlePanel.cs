@@ -64,7 +64,7 @@ public class TitlePanel: Panel {
         using (Graphics g = CreateGraphics()) {
             // Resize title label
             _title.Height = (int) (Height * .7);
-            _title.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (_title.Height * .5), FontStyle.Regular, GraphicsUnit.Pixel);
+            _title.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (_title.Height * .55), FontStyle.Regular, GraphicsUnit.Pixel);
             int labelWidth = (int) (g.MeasureString(_title.Text, _title.Font).Width * 1.2);
             _title.Width = labelWidth;
             _title.Location = new(0, (int) ((Height - _title.Height) / 1.25));
@@ -73,8 +73,8 @@ public class TitlePanel: Panel {
             // Resize and right buttons
             if (_rightButtons.Count > 0) {
                 _buttonsPanel.Height = Height - _underlineThickness;
-                int rightButtonHeight = (int) (Height * .65);
-                int toggleButtonHeight = (int) (rightButtonHeight * .7);
+                int rightButtonHeight = (int) (Height * .725);
+                int toggleButtonHeight = (int) (rightButtonHeight * .875);
                 int buttonGap = rightButtonHeight / 3;
                 int buttonsPanelWidth = 0;
                 // Set height first to get new Font
@@ -90,7 +90,7 @@ public class TitlePanel: Panel {
                         button.Width = WidgetUtils.MeasureString(button.Label, button.Font).Width + button.Height * 2;
                     } else if (controlType == typeof(ToggleButton)) {
                         ToggleButton button = CommonUtils.CannotBeNull(control as ToggleButton);
-                        button.Size = new(toggleButtonHeight * 3, toggleButtonHeight);
+                        button.Size = new((int) (toggleButtonHeight * 2.5), toggleButtonHeight);
                     }
                     // Add the width of all buttons to get the width of panel
                     buttonsPanelWidth += control.Width;

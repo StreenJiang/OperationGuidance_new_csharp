@@ -164,7 +164,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void ResizeTextLabel() {
             if (Label != null) {
                 // Font = new Font(WidgetsConfigs.SystemFontFamily, Height / 2.5F + 1.25F, FontStyle.Bold);
-                Font = WidgetUtils.GetProperFont(Size, Label, .6F);
+                Font = WidgetUtils.GetProperFont(Size, Label, .6F, .85F);
                 // using (Graphics g = CreateGraphics()) {
                 //     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                 // }
