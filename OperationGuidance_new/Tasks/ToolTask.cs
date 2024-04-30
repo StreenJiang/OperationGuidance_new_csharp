@@ -221,21 +221,13 @@ namespace OperationGuidance_new.Tasks {
                     }
                 } catch (Exception e) {
                     logger.Error($"Error while sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}], e: {e}");
-                    throw e;
+                    // throw e;
                 }
             }
             return null;
         }
         public async Task<string?> SendCommandAsync(string command) {
             return await Task<string?>.Run(() => SendCommand(command));
-        }
-        public void SendPSet(int pSetNumber) {
-            if (pSetNumber <= 0 || pSetNumber >= 999) {
-                WidgetUtils.ShowErrorPopUp("程序号范围必须在 0 ~ 999 以内！");
-            } else if (_toolType.COMMAND_PSET_ASCII != null) {
-                string command = _toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
-                SendCommand(command);
-            }
         }
         public async Task<bool> SendPSetAsync(int pSetNumber) {
             return await Task<bool>.Run(async () => {

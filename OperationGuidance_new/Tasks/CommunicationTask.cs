@@ -152,7 +152,7 @@ namespace OperationGuidance_new.Tasks {
                     }
                 } catch (Exception e) {
                     logger.Error($"Error while sending command to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
-                    throw e;
+                    // throw e;
                 }
             }
             return new byte[0];
