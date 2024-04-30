@@ -1191,6 +1191,7 @@ namespace OperationGuidance_new.Views {
                                 // Reset tightening type to tightening in case somewhere did some changes
                                 _needLoosening = false;
                                 _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.CustomError);
 
                                 // Tightening ok, data color change to green
                                 _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
@@ -1201,15 +1202,17 @@ namespace OperationGuidance_new.Views {
                                     toolTask.SendLock();
                                 }
 
-                                // Check next index
                                 currentBolt.BoltStatus = BoltStatus.DONE;
                                 currentBolt.Label = _torque.Text;
+
+                                // Check next index
+                                List<BoltButton> currentSideBolts;
                                 int nextIndex;
                                 if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                    nextIndex = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId].IndexOf(currentBolt) + 1;
+                                    currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
+                                    nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
                                     // 检查是否存在跳点的情况
-                                    while (nextIndex < _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId].Count
-                                            && _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId][nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
                                         nextIndex++;
                                     }
                                 } else {
@@ -1223,8 +1226,10 @@ namespace OperationGuidance_new.Views {
                                 if (nextIndex < _allBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
                                         _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
                                     } else {
                                         _currentWorkingBolt = SwitchBolt(nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBolt);
                                     }
                                 } else {
                                     bool allDone = true;

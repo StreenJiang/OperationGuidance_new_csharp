@@ -1195,7 +1195,7 @@ namespace OperationGuidance_new.Views {
                                 }
 
                                 currentBolt.BoltStatus = BoltStatus.DONE;
-                                currentBolt.Label = _torque.Text;
+                                currentBolt.Label = data.torque.ToString("0.00");
 
                                 // Check next index
                                 List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];

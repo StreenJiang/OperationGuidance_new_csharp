@@ -209,7 +209,7 @@ namespace OperationGuidance_service.Controllers {
 
             return new();
         }
-        public FindMacAddressesByMacsRsp FindMacAddressesByMacs(FindMacAddressesByMacsReq req) {
+        public FindMacAddressesRsp FindMacAddressesByMacs(FindMacAddressesByMacsReq req) {
             List<string> macs = req.Macs;
             if (macs.Count > 0) {
                 string sql = $"select * from {_macAddressesService.TableName} where 1 = 1";
@@ -231,6 +231,20 @@ namespace OperationGuidance_service.Controllers {
                     CommonUtils.ObjectConverter<MacAddresses, MacAddressesDTO>(macAddresses[0], macAddressesDTO);
                     return new() { MacAddressesDTO = macAddressesDTO };
                 }
+            }
+
+            return new();
+        }
+        public FindMacAddressesRsp FindMacAddressesById(FindMacAddressesByIdReq req) {
+            string sql = $"select * from {_macAddressesService.TableName} where id = @id";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("id", $"{req.Id}");
+
+            List<MacAddresses> macAddresses = _macAddressesService.FindBySql(sql, parameters);
+            if (macAddresses.Count > 0) {
+                MacAddressesDTO macAddressesDTO = new();
+                CommonUtils.ObjectConverter<MacAddresses, MacAddressesDTO>(macAddresses[0], macAddressesDTO);
+                return new() { MacAddressesDTO = macAddressesDTO };
             }
 
             return new();

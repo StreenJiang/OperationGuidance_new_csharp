@@ -19,8 +19,8 @@ namespace OperationGuidance_new.Views {
     public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
         #region Fields
         // Apis
-        private OperationGuidanceApis apis;
-        private List<WorkstationDTO> _dataDTOList;
+        protected OperationGuidanceApis apis;
+        protected List<WorkstationDTO> _dataDTOList;
         // DataGridView panel
         private DataGridViewGroup<WorkstationVO> _dataGridView;
         // Add new pop up form
@@ -43,6 +43,8 @@ namespace OperationGuidance_new.Views {
         Dictionary<string, int> _serialPortIdOptions;
         Dictionary<string, int?> _serialPortTypeOptions;
         #endregion
+
+        protected DataGridViewGroup<WorkstationVO> DataGridView => _dataGridView;
 
         #region Constructors
         public WorkStationView() {
@@ -643,9 +645,6 @@ namespace OperationGuidance_new.Views {
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _dataGridView.Size = contentSize;
-        }
-        public override void VisibleToTrue() {
-            base.VisibleToTrue();
         }
         #endregion
     }

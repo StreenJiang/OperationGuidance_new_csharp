@@ -86,6 +86,7 @@ namespace OperationGuidance_new.Configs {
                         Icon = Properties.Resources.workstation,
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(WorkStationView)},
+                            {AppVersion.SCII, typeof(WorkStationView_SCII)},
                         }, 
                     },
                     new() {
