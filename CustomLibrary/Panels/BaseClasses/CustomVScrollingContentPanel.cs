@@ -28,11 +28,11 @@ namespace CustomLibrary.Panels.BaseClasses {
         public CustomVScrollingContentPanel(CustomContentPanelBase contentPanel, bool paddingWithoutBorder = false) : this(null, contentPanel, false) {
             _outerPanel.PaddingWithoutBorder = paddingWithoutBorder;
         }
-        public CustomVScrollingContentPanel(Color? borderColor, CustomContentPanelBase contentPanel, bool alwaysShowScrollBar = false) : base() {
+        public CustomVScrollingContentPanel(Color? innerBorderColor, CustomContentPanelBase contentPanel, bool alwaysShowScrollBar = false) : base() {
             _outerPanel = new() {
                 Margin = new(0),
                 Parent = this,
-                PenBorderColor = borderColor,
+                PenBorderColor = innerBorderColor,
             };
             _innerPanel = new() {
                 Margin = new(0),

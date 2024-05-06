@@ -171,6 +171,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _allBoltsIndependence = new();
 
             InitializeBarCodePanel();
+            InitializeDataGridPanel();
             InitializeDeviceBlocks();
             InitializeTimeDisplayer();
         }
@@ -195,6 +196,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
         protected void barCodePopUp(object? s, EventArgs e) {
             OpenBarCodePopUpForm();
+        }
+
+        private void InitializeDataGridPanel() {
+            _tighteningDataPanel = new(gridView => {
+                DataGridViewColumn[] columnRange = { };
+                List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
+                foreach (OperationDataField field in operationDataFields) {
+                    if (field.Visible) {
+                        DataGridViewTextBoxColumn column = new() {
+                            DataPropertyName = field.PropertyName,
+                            HeaderText = field.FieldName,
+                            ReadOnly = true,
+                        };
+                        columnRange = columnRange.Append(column).ToArray();
+                    }
+                }
+                gridView.Columns.Clear();
+                gridView.Columns.AddRange(columnRange);
+                gridView.Columns[0].Frozen = true;
+            }) {
+                HeaderHeight = WidgetUtils.WorkplaceGridViewHeaderHeight(),
+                RowsHeight = WidgetUtils.WorkplaceGridViewContentRowHeight(),
+                PageHeight = WidgetUtils.WorkplaceGridViewPageInfoHeight(),
+                ColumnsPaddingRatio = WidgetUtils.WorkplaceGridViewColumnsPaddingRatio(),
+                AutoDown = true,
+            };
+            _tighteningDataPanel.HandleCreated += (s, e) => {
+                _tighteningDataPanel.DataSource = _tighteningDataVOs;
+            };
         }
 
         private void InitializeDeviceBlocks() {

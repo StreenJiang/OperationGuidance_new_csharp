@@ -110,9 +110,8 @@ namespace OperationGuidance_new.Views {
                 _topBar.Title = missionName;
             }) {
                 Parent = _pagePanel,
-                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND_2,
                 Margin = new Padding(0),
-                // PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             _topBar.Workplace = _workplacePanel;
             _pagePanel.ResizeChildren();
@@ -269,14 +268,11 @@ namespace OperationGuidance_new.Views {
         // 上方右边的中间
         private CustomContentPanel _topRightMiddle;
         // 上方右边的中间的左边
-        private WorkplacePiece _topRightMiddleLeft;
+        private WorkplacePiece _topRightMiddleTop;
         // 上方右边的中间的右边
-        private WorkplacePiece _topRightMiddleRight;
+        private WorkplacePiece _topRightMiddleBottom;
         // 上方右边的下面
         private WorkplacePiece _topRightBottom;
-
-        // 中间
-        private WorkplacePiece _middle;
 
         // 下方
         private WorkplacePiece _bottom;
@@ -301,7 +297,6 @@ namespace OperationGuidance_new.Views {
             InitializeTopRightMiddleLeft();
             InitializeTopRightMiddleRight();
             InitializeTopRightBottom();
-            InitializeMiddle();
             InitializeBottom();
         }
 
@@ -322,13 +317,13 @@ namespace OperationGuidance_new.Views {
             _barCodeOuter = new() {
                 Parent = _topLeft,
                 Margin = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                ConerRadius = WidgetUtils.ContainerRadius(),
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
             };
             // 上方左边下面
             _imageDisplayOuter = new() {
                 Parent = _topLeft,
                 Margin = new(0),
-                // OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
                 ConerRadius = WidgetUtils.ContainerRadius(),
             };
             // 上方右边
@@ -341,6 +336,7 @@ namespace OperationGuidance_new.Views {
             _topRightTop = new() {
                 Parent = _topRight,
                 Padding = new(0),
+                FlowDirection = FlowDirection.TopDown,
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             // 上方右边的中间
@@ -349,16 +345,15 @@ namespace OperationGuidance_new.Views {
                 Padding = new(0),
             };
             // 上方右边的中间的左边
-            _topRightMiddleLeft = new() {
+            _topRightMiddleTop = new() {
                 Parent = _topRightMiddle,
                 Padding = new(0),
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             // 上方右边的中间的右边
-            _topRightMiddleRight = new() {
+            _topRightMiddleBottom = new() {
                 Parent = _topRightMiddle,
                 Padding = new(0),
-                FlowDirection = FlowDirection.TopDown,
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
             // 上方右边的下面
@@ -368,19 +363,12 @@ namespace OperationGuidance_new.Views {
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
 
-            // 中间
-            _middle = new() {
-                Parent = this,
-                Padding = new(0),
-                FlowDirection = FlowDirection.TopDown,
-            };
-
             // 下方
             _bottom = new() {
                 Parent = this,
                 Padding = new(0),
                 FlowDirection = FlowDirection.RightToLeft,
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
             };
         }
 
@@ -437,7 +425,7 @@ namespace OperationGuidance_new.Views {
         private void InitializeTopRightMiddleLeft() {
             // 初始化实时状态显示框
             _workingProcessPanel = new() {
-                Parent = _topRightMiddleLeft,
+                Parent = _topRightMiddleTop,
                 Margin = new(0),
                 Padding = new(0),
             };
@@ -447,7 +435,7 @@ namespace OperationGuidance_new.Views {
         private void InitializeTopRightMiddleRight() {
             // 初始化实时螺钉拧紧数据框
             _torqueTitle = new() {
-                Parent = _topRightMiddleRight,
+                Parent = _topRightMiddleBottom,
                 Margin = new(1),
                 Padding = new(0),
                 Text = "扭矩（N*m）",
@@ -455,14 +443,14 @@ namespace OperationGuidance_new.Views {
                 BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
             };
             _torque = new() {
-                Parent = _topRightMiddleRight,
+                Parent = _topRightMiddleBottom,
                 Margin = new(1),
                 Padding = new(0),
                 Text = "0.0",
                 TextAlign = ContentAlignment.MiddleRight,
             };
             _angleTitle = new() {
-                Parent = _topRightMiddleRight,
+                Parent = _topRightMiddleBottom,
                 Margin = new(1),
                 Padding = new(0),
                 Text = "角度（°）",
@@ -470,7 +458,7 @@ namespace OperationGuidance_new.Views {
                 BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
             };
             _angle = new() {
-                Parent = _topRightMiddleRight,
+                Parent = _topRightMiddleBottom,
                 Margin = new(1),
                 Padding = new(0),
                 Text = "0",
@@ -626,36 +614,6 @@ namespace OperationGuidance_new.Views {
             ResizeTopLeftBottom();
         }
 
-        // 初始化中间
-        private void InitializeMiddle() {
-            _tighteningDataPanel = new(gridView => {
-                DataGridViewColumn[] columnRange = { };
-                List<OperationDataField> operationDataFields = MainUtils.GetOperationDataFields();
-                foreach (OperationDataField field in operationDataFields) {
-                    if (field.Visible) {
-                        DataGridViewTextBoxColumn column = new() {
-                            DataPropertyName = field.PropertyName,
-                            HeaderText = field.FieldName,
-                            ReadOnly = true,
-                        };
-                        columnRange = columnRange.Append(column).ToArray();
-                    }
-                }
-                gridView.Columns.Clear();
-                gridView.Columns.AddRange(columnRange);
-                gridView.Columns[0].Frozen = true;
-            }) {
-                Parent = _middle,
-                HeaderHeight = WidgetUtils.WorkplaceGridViewHeaderHeight(),
-                RowsHeight = WidgetUtils.WorkplaceGridViewContentRowHeight(),
-                PageHeight = WidgetUtils.WorkplaceGridViewPageInfoHeight(),
-                ColumnsPaddingRatio = WidgetUtils.WorkplaceGridViewColumnsPaddingRatio(),
-                AutoDown = true,
-            };
-            _tighteningDataPanel.HandleCreated += (s, e) => {
-                _tighteningDataPanel.DataSource = _tighteningDataVOs;
-            };
-        }
 
         // 初始化底部
         private void InitializeBottom() {
@@ -684,7 +642,6 @@ namespace OperationGuidance_new.Views {
                 ResizeTopRightMiddleLeft();
                 ResizeTopRightMiddleRight();
                 ResizeTopRightBottom(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
-                ResizeMiddle();
                 ResizeBottom();
                 Invalidate();
             }
@@ -692,16 +649,17 @@ namespace OperationGuidance_new.Views {
 
         // 计算尺寸： 外框
         private void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
-            int padding = Padding.Left / 2;
-            int workplaceWidth = Width - Padding.Left * 2;
-            int workplaceHeight = Height - Padding.Top * 2;
-            int barCodeHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
-            int imagePanelHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
-            int topHeight = barCodeHeight + imagePanelHeight + padding;
-            int bottomHeight = (int) (workplaceHeight * .045);
-            int middleHeight = workplaceHeight - topHeight - bottomHeight - padding * 2; // 为了取整
-            int topLeftWidth = (int) (workplaceWidth * WidgetUtils.WorkplaceLeftWidthRatio());
+            int padding = WidgetUtils.ContentInnerBorderMargin() * 2;
+
+            int workplaceWidth = Width - padding * 2;
+            int workplaceHeight = Height - padding; // Bottom panel has to dock at bottom
+            int bottomHeight = (int) (workplaceHeight * .055);
+            int topHeight = workplaceHeight - bottomHeight - padding;
+            int barCodeHeight = (int) (workplaceHeight * .06);
+            int imagePanelHeight = topHeight - barCodeHeight - padding;
+            int topLeftWidth = (int) (workplaceWidth * .75);
             int topRightWidth = workplaceWidth - topLeftWidth - padding;
+
             int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
             int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
@@ -710,10 +668,9 @@ namespace OperationGuidance_new.Views {
 
             // 上方
             _top.Size = new(workplaceWidth, topHeight);
-            _top.Margin = new(0, 0, 0, padding);
+            _top.Margin = new(padding);
             // 上方左边
             _topLeft.Size = new(topLeftWidth, topHeight);
-            _topLeft.Margin = new(0, 0, padding, 0);
             // 上方左边上面
             _barCodeOuter.Size = new(topLeftWidth, barCodeHeight);
             _barCodeOuter.Margin = new(0, 0, 0, padding);
@@ -721,6 +678,7 @@ namespace OperationGuidance_new.Views {
             _imageDisplayOuter.Size = new(topLeftWidth, imagePanelHeight);
             // 上方右边
             _topRight.Size = new(topRightWidth, topHeight);
+            _topRight.Margin = new(padding, 0, 0, 0);
             // 上方右边的上面
             _topRightTop.Size = new(topRightWidth, topRightTopHeight);
             _topRightTop.Margin = new(0, 0, 0, padding);
@@ -728,40 +686,51 @@ namespace OperationGuidance_new.Views {
             _topRightMiddle.Size = new(topRightWidth, topRightMiddleHeight);
             _topRightMiddle.Margin = new(0, 0, 0, padding);
             // 上方右边的中间的左边
-            _topRightMiddleLeft.Size = new(topRightMiddleLeftWidth, topRightMiddleHeight);
-            _topRightMiddleLeft.Margin = new(0, 0, padding, 0);
+            _topRightMiddleTop.Size = new(topRightMiddleLeftWidth, topRightMiddleHeight);
+            _topRightMiddleTop.Margin = new(0, 0, 0, padding);
             // 上方右边的中间的右边
-            _topRightMiddleRight.Size = new(topRightMiddleRightWidth, topRightMiddleHeight);
+            _topRightMiddleBottom.Size = new(topRightMiddleRightWidth, topRightMiddleHeight);
+            _topRightMiddleBottom.Margin = new(0, 0, 0, padding);
             // 上方右边的下面
             _topRightBottom.Size = new(topRightWidth, topRightBottomHeight);
 
-            // 中间
-            _middle.Size = new(workplaceWidth, middleHeight);
-            _middle.Margin = new(0, 0, 0, padding);
-
             // 下方
-            _bottom.Size = new(workplaceWidth, bottomHeight);
+            _bottom.Size = new(Width, bottomHeight);
         }
 
         // 计算尺寸： 条码框
         private void ResizeTopLeftTop() {
             // icon的边长
-            int side = (int) (_barCodePictureBox.Parent.Height * .675);
+            int side = (int) (_barCodePictureBox.Parent.Height * .5);
+            Padding iconMargin = new(side, (_barCodePictureBox.Parent.Height - side) / 2, 0, 0);
+            // Size of text box
+            int newH = (int) (_barCodePictureBox.Parent.Height * .875);
+            Size textBoxSize = new(_barCodePictureBox.Parent.Width - side * 2 - iconMargin.Left, newH);
+            Padding textBoxMargin = new(0, (_barCodePictureBox.Parent.Height - newH) / 2, 0, 0);
+
+            if (_barCodePictureBox.Parent is CustomContentPanel parent) {
+                if (parent.ConerRadius > 0) {
+                    iconMargin.Left += 1;
+
+                    textBoxSize.Width -= 1;
+                    textBoxSize.Height -= 1;
+                }
+            }
+
             // 重设icon
             _barCodePictureBox.Image = WidgetUtils.ResizeImage(_barCodeImage, side, side);
-            _barCodePictureBox.Margin = new((_barCodePictureBox.Parent.Height - side) / 2);
+            _barCodePictureBox.Margin = iconMargin;
             _barCodePictureBox.Size = new(side, side);
 
             // 重设输入框
-            int newH = (int) (_barCodePictureBox.Parent.Height * .875);
-            _barCodeTextBox.Size = new(_barCodePictureBox.Parent.Width - side * 2, newH);
-            _barCodeTextBox.Margin = new(0, (_barCodePictureBox.Parent.Height - newH) / 2, 0, 0);
+            _barCodeTextBox.Size = textBoxSize;
+            _barCodeTextBox.Margin = textBoxMargin;
 
             // 重新计算弹框的大小
             ResizeBarCodePopUpForm();
         }
         private void ResizeBarCodePopUpForm() {
-            if (_barCodePopUpForm != null) {
+            if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                 _barCodePopUpForm.CalculateDetailProperties();
 
                 Control mainForm = WidgetUtils.MainForm;
@@ -863,11 +832,6 @@ namespace OperationGuidance_new.Views {
             _pset.Margin = new(contentHPadding, contentVPadding, 0, 0);
         }
 
-        // 计算尺寸： 数据展示列表区域
-        private void ResizeMiddle() {
-            _tighteningDataPanel.Size = _tighteningDataPanel.Parent.Size;
-        }
-
         // 计算尺寸： 底部横框
         private void ResizeBottom() {
             int blocksWidth = 0;
@@ -879,7 +843,7 @@ namespace OperationGuidance_new.Views {
             }
             int timeDisplayerWidth = _bottom.Width - blocksWidth;
             _timeDisplayerOuter.Size = new(timeDisplayerWidth - 2, _bottom.Height - 2);
-            _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .4f, FontStyle.Regular, GraphicsUnit.Pixel);
+            _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .35f, FontStyle.Regular, GraphicsUnit.Pixel);
             _timeDisplayer.Margin = new(_timeDisplayer.Height / 3, (_timeDisplayerOuter.Height - _timeDisplayer.Height) / 2, 0, 0);
         }
 

@@ -395,14 +395,14 @@ namespace CustomLibrary.Utils {
             return thickness;
         }
         public static int ContentTitleHeight() => (int) (MainSize.Height * .06);
-        public static int ContentInnerBorderMargin(Size size) => (size.Width + size.Height) / 350;
+        public static int ContentInnerBorderMargin() => (MainSize.Width + MainSize.Height) / 350;
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
         public static Padding ContentPadding() {
             int hPadding = (int) (MainSize.Width * .015);
             int vPadding = (int) (MainSize.Height * .03);
             return new(hPadding, vPadding, hPadding, vPadding);
         }
-        public static int ContainerRadius() => (int) (MainSize.Height * .03);
+        public static int ContainerRadius() => (int) (MainSize.Height * .015);
         public static int ControlRadius() => (int) (MainSize.Height * .0085);
         public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .0425);
         public static int CommonButtonHeight() => (int) (MainSize.Height * .0425);

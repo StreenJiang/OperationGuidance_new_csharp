@@ -2,6 +2,7 @@
     public static class ColorConfigs {
         // Colors for specific places
         public static Color COLOR_MAIN_FORM_BACKGROUND => COLOR_FEFEFE;
+        public static Color COLOR_MAIN_FORM_BACKGROUND_2 => COLOR_DBDEEF;
         public static Color COLOR_MAIN_MENU_BACKGROUND => COLOR_3F3F3F;
         public static Color COLOR_MAIN_MENU_BACKGROUND_TOGGLED_UP => COLOR_CCCCCC;
         public static Color COLOR_MAIN_MENU_BACKGROUND_TOGGLED_DOWN => COLOR_FEFEFE;
@@ -68,5 +69,6 @@
         private static Color COLOR_EEEEEE => ColorTranslator.FromHtml("#EEEEEE");
         private static Color COLOR_BBBBBB => ColorTranslator.FromHtml("#BBBBBB");
         private static Color COLOR_5089F6 => ColorTranslator.FromHtml("#5089F6");
+        private static Color COLOR_DBDEEF => ColorTranslator.FromHtml("#DBDEEF");
     }
 }

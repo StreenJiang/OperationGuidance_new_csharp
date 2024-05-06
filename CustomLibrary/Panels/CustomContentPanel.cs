@@ -8,10 +8,7 @@ namespace CustomLibrary.Panels {
         private bool _autoPadding;
         private bool _paddingWithoutBorder;
 
-        public Color? PenBorderColor {
-            get => _penBorderColor;
-            set => _penBorderColor = value;
-        }
+        public Color? PenBorderColor { get => _penBorderColor; set => _penBorderColor = value; }
         public bool AutoPadding { get => _autoPadding; set => _autoPadding = value; }
         public bool PaddingWithoutBorder { get => _paddingWithoutBorder; set => _paddingWithoutBorder = value; }
 
@@ -21,11 +18,11 @@ namespace CustomLibrary.Panels {
         }
 
         protected override void DoAfterResizing(object? sender, EventArgs eventArgs) {
-            int padding = WidgetUtils.ContentInnerBorderMargin(WidgetUtils.MainSize);
+            int padding = WidgetUtils.ContentInnerBorderMargin();
             if (_paddingWithoutBorder) {
-                Padding = new(padding * 2 + 1);
+                Padding = new(padding * 2);
             } else if (_penBorderColor != null) {
-                // Recalcuate rectangle
+                // Recalcuate rectangle (1 more pixel for border thickness
                 _innerBorderRect = new(padding, padding, Width - padding * 2 - 1, Height - padding * 2 - 1);
                 if (Visible) {
                     Invalidate();

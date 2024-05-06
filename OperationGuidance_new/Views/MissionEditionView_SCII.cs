@@ -1695,7 +1695,7 @@ namespace OperationGuidance_new.Views {
 
                 int mainFormWidth = WidgetUtils.MainForm.Width;
                 int mainFormHeight = WidgetUtils.MainForm.Height;
-                int workPlacePadding = WidgetUtils.ContentInnerBorderMargin(WidgetUtils.MainForm.Size) * 2 + 1;
+                int workPlacePadding = WidgetUtils.ContentInnerBorderMargin() * 2 + 1;
                 int workPlaceWidth = mainFormWidth - workPlacePadding * 2;
                 int workPlaceHeight = mainFormHeight - (int) (mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
                 Size workPlaceImageDisplayPanelSize = new((int) (workPlaceWidth * WidgetUtils.WorkplaceLeftWidthRatio()), (int) (workPlaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio()));

@@ -50,5 +50,18 @@ namespace CustomLibrary.Panels.AbstractClasses {
         }
 
         protected GraphicsPath GetGraphicsPath(Rectangle rect) => WidgetUtils.RoundedRect(rect, _conerRadius);
+
+        protected override void OnPaint(PaintEventArgs e) {
+            base.OnPaint(e);
+            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+
+            if (_conerRadius > 0) {
+                using (GraphicsPath path = GetGraphicsPath(new Rectangle(0, 0, Width - 1, Height - 1))) {
+                    using Pen penSurface = new Pen(Parent.BackColor, 1);
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, path);
+                }
+            }
+        }
     }
 }
