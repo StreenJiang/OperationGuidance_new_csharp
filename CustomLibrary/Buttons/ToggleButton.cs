@@ -114,14 +114,16 @@ namespace CustomLibrary.Buttons {
             if (_showText) {
                 Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .4F, FontStyle.Regular, GraphicsUnit.Pixel);
                 int textRangeWidth = Width - _toggleRectSize.Width - _toggleBorderThickness;
-                Size textSize = WidgetUtils.MeasureString(_onText, Font);
+                Size textSize;
                 int x;
                 if (Checked) {
+                    textSize = WidgetUtils.MeasureString(_onText, Font);
                     x = (int) ((textRangeWidth - textSize.Width) / 2);
                 } else {
+                    textSize = WidgetUtils.MeasureString(_offText, Font);
                     x = (int) ((textRangeWidth - textSize.Width) / 2 + _toggleRectSize.Width);
                 }
-                _textLocation = new(x, (Height - textSize.Height) / 2);
+                _textLocation = new(x, (int) ((Height - textSize.Height) / 1.7));
             }
         }
         private void CalcInterval() {
@@ -188,7 +190,7 @@ namespace CustomLibrary.Buttons {
         }
         protected override void OnPaint(PaintEventArgs pevent) {
             Graphics g = pevent.Graphics;
-            g.SmoothingMode = SmoothingMode.HighQuality;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
 
             g.Clear(Parent.BackColor);
             if (_conerRadius > 0) {
@@ -245,7 +247,7 @@ namespace CustomLibrary.Buttons {
                     }
                 }
                 if (_conerRadius > 0) {
-                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _conerRadius)) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), (int) Math.Round(_conerRadius * .9))) {
                         g.FillPath(new SolidBrush(onToggleColor), path);
                     }
                 } else {
@@ -285,7 +287,7 @@ namespace CustomLibrary.Buttons {
                     }
                 }
                 if (_conerRadius > 0) {
-                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _conerRadius)) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), (int) Math.Round(_conerRadius * .9))) {
                         g.FillPath(new SolidBrush(offToggleColor), path);
                     }
                 } else {

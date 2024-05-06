@@ -272,5 +272,11 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return null;
         }
 
+        public int ExecuteSql(string sql) {
+            using (DbConnection conn = DbConnector.GetConnection()) {
+                return conn.Execute(sql);
+            }
+        }
+
     }
 }

@@ -26,13 +26,8 @@ namespace OperationGuidance_new.Views {
                                 // 先查询选中站点对应的 mac 记录
                                 MacAddressesDTO? macAddressesDTO = apis.FindMacAddressesById(new(_dataDTOList.Single(dto => dto.id == ids[0]).macs_id)).MacAddressesDTO;
                                 if (macAddressesDTO != null) {
-                                    // 删除当前 mac 记录 mac 记录
-                                    SystemUtils.MacAddressesDTO.deleted = (int) YesOrNo.YES;
-                                    apis.AddOrUpdateMacAddresses(new(SystemUtils.MacAddressesDTO));
-
-                                    // 将当前 mac 信息存入查到的站带你对应的 mac 记录中
-                                    macAddressesDTO.macs = SystemUtils.MacAddressesDTO.macs;
-                                    SystemUtils.MacAddressesDTO = CommonUtils.CannotBeNull(apis.AddOrUpdateMacAddresses(new(macAddressesDTO)).MacAddressesDTO);
+                                    // 根据选中的macid查询相关联的所有数据，改为当前正在登录的电脑的macid
+                                    apis.UpdateMacsIds(new(macAddressesDTO.id, SystemUtils.MacAddressesDTO.id));
                                 }
 
                                 WidgetUtils.ShowNoticePopUp("操作成功");

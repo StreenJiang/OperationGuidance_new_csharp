@@ -1094,7 +1094,7 @@ namespace OperationGuidance_new.Views {
 
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
-                BeginInvoke(() => {
+                BeginInvoke(async () => {
                     ToolTask toolTask = _toolTasks[deviceId];
                     if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
                         int workstationId = toolTask.WorkstationId.Value;
@@ -1283,6 +1283,9 @@ namespace OperationGuidance_new.Views {
 
                                     currentBolt.StopFlickering();
                                     _currentWorkingBolt = null;
+
+                                    // Delay a bit to make sure [WorkplaceProcessStatus] won't be changed by arm device incorrectly
+                                    await Task.Delay(500);
 
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_NG;
                                     _workingProcessPanel.CustomError = errorMsg;

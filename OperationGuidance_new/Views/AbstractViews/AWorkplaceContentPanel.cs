@@ -851,7 +851,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             Task.Run(() => {
                 BeginInvoke(() => {
                     // FIXME: Should use id to handle separately
-                    if (_currentWorkingBolt != null) {
+                    if (_activated && !_finished && _currentWorkingBolt != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
                         if (toolId != null) {
@@ -1898,7 +1898,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             Graphics graphics = e.Graphics;
-            graphics.SmoothingMode = SmoothingMode.HighQuality;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.Clear(BackColor);
             _statusFont = WidgetUtils.GetProperFont(Size, _statusTxt, .375f);
             _statusDescFont = WidgetUtils.GetProperFont(Size, _statusDesc, .1f - _descList.Count * .005F);

@@ -1091,7 +1091,7 @@ namespace OperationGuidance_new.Views {
         // 读取到控制器传回的数据后进行处理
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
-                BeginInvoke(() => {
+                BeginInvoke(async () => {
                     ToolTask toolTask = _toolTasks[deviceId];
                     if (toolTask.WorkstationId != null) {
                         int workstationId = toolTask.WorkstationId.Value;
@@ -1249,6 +1249,10 @@ namespace OperationGuidance_new.Views {
                                         // All ok
                                         _activated = false;
                                         _finished = true;
+
+                                        // Delay a bit to make sure [WorkplaceProcessStatus] won't be changed by arm device incorrectly
+                                        await Task.Delay(500);
+
                                         _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_OK;
                                         _workingProcessPanel.CustomError = null;
                                         _workingProcessPanel.BoltSerialNum = null;

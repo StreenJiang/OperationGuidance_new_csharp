@@ -249,6 +249,29 @@ namespace OperationGuidance_service.Controllers {
 
             return new();
         }
+        public UpdateMacsIdsRsp UpdateMacsIds(UpdateMacsIdsReq req) {
+            string sqlTemp = "Update {0} set macs_id = {1} where macs_id = {2}";
+
+            int count = 0;
+            // 条码规则
+            count += _barCodeMatchingRuleService.ExecuteSql(string.Format(sqlTemp, _barCodeMatchingRuleService.TableName, req.IdTo, req.IdFrom));
+            // 力臂
+            count += _deviceArmService.ExecuteSql(string.Format(sqlTemp, _deviceArmService.TableName, req.IdTo, req.IdFrom));
+            // 工具
+            count += _deviceToolService.ExecuteSql(string.Format(sqlTemp, _deviceToolService.TableName, req.IdTo, req.IdFrom));
+            // 通讯设备
+            count += _deviceCommunicationService.ExecuteSql(string.Format(sqlTemp, _deviceCommunicationService.TableName, req.IdTo, req.IdFrom));
+            // 串口设备
+            count += _deviceSerialPortService.ExecuteSql(string.Format(sqlTemp, _deviceSerialPortService.TableName, req.IdTo, req.IdFrom));
+            // 产品任务
+            count += _productMissionService.ExecuteSql(string.Format(sqlTemp, _productMissionService.TableName, req.IdTo, req.IdFrom));
+            // 站点
+            count += _workstationService.ExecuteSql(string.Format(sqlTemp, _workstationService.TableName, req.IdTo, req.IdFrom));
+
+            return new() {
+                UpdateRows = count,
+            };
+        }
         #endregion
 
         #region 产品任务相关

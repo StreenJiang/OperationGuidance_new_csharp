@@ -370,7 +370,11 @@ namespace CustomLibrary.Utils {
             if (string.IsNullOrEmpty(text)) {
                 return new(0, font.Height);
             }
-            return TextRenderer.MeasureText(text, font, new(), TextFormatFlags.NoPadding);
+            return TextRenderer.MeasureText(text, font, new(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+            //
+            // GraphicsPath path = new();
+            // path.AddString(text, font.FontFamily, (int) font.Style, font.SizeInPoints, new Point(0, 0), StringFormat.GenericDefault);
+            // return path.GetBounds().Size.ToSize();
         }
         // Content configs 
         public static Font GetProperFont(Size containerSize, string text, float fontInitRatio) {

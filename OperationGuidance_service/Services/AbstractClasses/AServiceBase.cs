@@ -18,7 +18,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         public void UseConnection(DbConnection conn) {
             Wrapper.UseConnection(conn);
         }
-        public void ReleaseConnection() { 
+        public void ReleaseConnection() {
             Wrapper.ReleaseConnection();
         }
 
@@ -84,5 +84,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         public List<T> FindBySql(string sql, Dictionary<string, object>? parameterObj) {
             return Wrapper.FindBySql(sql, parameterObj);
         }
+
+        public int ExecuteSql(string sql) => Wrapper.ExecuteSql(sql);
     }
 }
