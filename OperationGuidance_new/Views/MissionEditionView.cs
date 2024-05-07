@@ -1176,6 +1176,8 @@ namespace OperationGuidance_new.Views {
                 _littleTitleHeight = (int) (WidgetUtils.TextOrComboBoxHeight() * 1.1);
                 _sideTitlePanel.Size = new(_bottomLeft.Width - 2, _littleTitleHeight);
                 _leftBottomContentPanel.Size = new(_bottomLeft.Width - 2, _bottomLeft.Height - _littleTitleHeight - 2);
+                Image? productImage = _leftBottomContentPanel.ProductImage;
+                Point? imageLocation = _leftBottomContentPanel.ImageLocation;
 
                 // Resize bolt buttons
                 int boltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio);
@@ -1186,8 +1188,15 @@ namespace OperationGuidance_new.Views {
                         foreach (BoltButton boltButton in pair.Value) {
                             boltButton.Size = new(boltButtonRadius * 2, boltButtonRadius * 2);
                             // Recalculate bolt button location
-                            int newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
-                            int newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                            int newX;
+                            int newY;
+                            if (productImage != null && imageLocation != null) {
+                                newX = imageLocation.Value.X + (int) (productImage.Width * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                                newY = imageLocation.Value.Y + (int) (productImage.Height * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                            } else {
+                                newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                                newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                            }
                             boltButton.Location = new(newX, newY);
                         }
                     }

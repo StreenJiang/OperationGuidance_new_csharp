@@ -165,6 +165,12 @@ namespace CustomLibrary.TextBoxes {
             BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
             BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR;
             ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND;
+
+            ParentChanged += (s, e) => {
+                if (Parent != null && !Parent.IsDisposed) {
+                    BackColor = Parent.BackColor;
+                }
+            };
         }
 
         public CustomTextBox AddTextBox() {

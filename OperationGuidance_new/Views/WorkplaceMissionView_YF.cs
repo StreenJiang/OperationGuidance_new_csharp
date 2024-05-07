@@ -535,35 +535,8 @@ namespace OperationGuidance_new.Views {
 
         // 初始化顶部右侧的底部
         private void InitializeTopRightBottom() {
-            _missionDetailTitle = new() {
-                Parent = _topRightBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "任务信息",
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
-            };
-            _missionSelectedName = new("任务名称") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-                NameAlignment = HorizontalAlignment.Right,
-                Ratio = 8.165,
-            };
-            CommonButton missionSelectBtn = _missionSelectedName.AddButton("切换");
-            missionSelectBtn.Enabled = true;
-            missionSelectBtn.Click += (s, e) => {
-                if (_activated) {
-                    WidgetUtils.ShowWarningPopUp("任务已激活，无法切换任务");
-                } else {
-                    List<ProductMissionDTO> missions = _apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
-                    if (missions.Count > 0) {
-                        PopUpMissionListForm(missions);
-                    } else {
-                        WidgetUtils.ShowWarningPopUp("没有可选任务，请前往任务管理添加");
-                    }
-                }
-            };
+            _topRightBottom.Controls.Add(_missionDetailTitle);
+            _topRightBottom.Controls.Add(_missionSelectedName);
 
             _counterBox1 = new("计数1") {
                 Parent = _topRightBottom,
@@ -583,49 +556,6 @@ namespace OperationGuidance_new.Views {
             _counterBox2.SetValue(0, "0");
 
             _missionSelectedName.SetValue(0, _mission.name);
-        }
-        private void PopUpMissionListForm(List<ProductMissionDTO> missions) {
-            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .7), (int) (WidgetUtils.MainSize.Height * .7));
-            CustomPopUpForm popUpForm = new() {
-                Title = "选择任务",
-                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
-            };
-            MissionListPanel? missionListPanel = null;
-            popUpForm.AddButton("确定").Click += (s, e) => {
-                if (missionListPanel == null || missionListPanel.CurrentToggledMission == null) {
-                    WidgetUtils.ShowErrorPopUp("请选择一个任务");
-                } else {
-                    // 手动切换任务需要清空一下条码缓存
-                    _barCodeObj.Reset();
-                    _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
-                    SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
-                    popUpForm.Hide();
-                }
-            };
-            popUpForm.AddButton("关闭").Click += (s, e) => {
-                popUpForm.Hide();
-            };
-            popUpForm.PretendToShowToCreateHandlesForChildren();
-            popUpForm.SetContentSizeAndSelfSize(contentSize);
-
-            Padding contentPadding = popUpForm.ContentPanel.Padding;
-            int innerContentWidth = contentSize.Width - contentPadding.Size.Width;
-            int innerContentHeight = contentSize.Height - contentPadding.Size.Height;
-            missionListPanel = new() {
-                Parent = popUpForm.ContentPanel,
-                Margin = new Padding(0),
-                Size = new(innerContentWidth, innerContentHeight),
-            };
-            missionListPanel.RefreshMissionBlocks(missions, null, true);
-
-            popUpForm.Show();
-        }
-        public override void SwitchToMission(ProductMissionDTO mission) {
-            _mission = mission;
-            _resetMissionName(_mission.name);
-            _missionSelectedName.SetValue(0, _mission.name);
-            SetProductImagePanel();
-            ResizeTopLeftBottom();
         }
 
         // 初始化中间
@@ -658,6 +588,7 @@ namespace OperationGuidance_new.Views {
                 _tighteningDataPanel.DataSource = _tighteningDataVOs;
             };
         }
+        protected override void RefreshImageDisplayPanel() => ResizeTopLeftBottom();
 
         // 初始化底部
         private void InitializeBottom() {

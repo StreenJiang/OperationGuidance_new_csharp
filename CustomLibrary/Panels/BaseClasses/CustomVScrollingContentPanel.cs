@@ -106,6 +106,9 @@ namespace CustomLibrary.Panels.BaseClasses {
             }
 
             int innerWidth = _outerPanel.Width - _outerPanel.Padding.Size.Width;
+            if (ConerRadius > 0) {
+                innerWidth -= 2;
+            }
             _innerPanel.Size = new(innerWidth, innerHeight);
 
             if (_contentPanel.NewHeight > 0) {

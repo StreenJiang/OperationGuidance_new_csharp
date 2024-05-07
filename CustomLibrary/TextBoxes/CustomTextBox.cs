@@ -14,8 +14,10 @@ namespace CustomLibrary.TextBoxes {
         private int _conerRadius;
         private Rectangle _borderRect;
         private Color _originalBackColor;
+        private Color _hoverBackColor;
         private Color _disabledBackColor;
         private Color? _borderColor;
+        private Color? _focusBorderColor;
         private Color? _borderColorError;
         private FontStyle? _boxFontStyle;
         private readonly int _borderThickness = 1;
@@ -202,6 +204,18 @@ namespace CustomLibrary.TextBoxes {
                     }
                 }
             };
+
+            _focusBorderColor = ColorConfigs.COLOR_TEXT_BOX_FOCUS_BORDER;
+            _hoverBackColor = WidgetUtils.LightColor(ColorConfigs.COLOR_TEXT_BOX_FOCUS_BORDER, .925);
+
+            MouseEnter += (s, e) => OnMouseEnter();
+            MouseLeave += (s, e) => OnMouseLeave();
+            GotFocus += (s, e) => ResetBack();
+            LostFocus += (s, e) => ResetBack();
+            _box.MouseEnter += (s, e) => OnMouseEnter();
+            _box.MouseLeave += (s, e) => OnMouseLeave();
+            _box.GotFocus += (s, e) => ResetBack();
+            _box.LostFocus += (s, e) => ResetBack();
         }
         #endregion
 
@@ -297,6 +311,25 @@ namespace CustomLibrary.TextBoxes {
                 }
             }
         }
+        private void ResetBack() {
+            if (_enabled) {
+                _box.BackColor = _originalBackColor;
+                base.BackColor = _originalBackColor;
+                Invalidate();
+            }
+        }
+        private void OnMouseEnter() {
+            if (_enabled && !_box.Focused) {
+                _box.BackColor = _hoverBackColor;
+                base.BackColor = _hoverBackColor;
+            }
+        }
+        private void OnMouseLeave() {
+            if (_enabled && !_box.Focused) {
+                _box.BackColor = _originalBackColor;
+                base.BackColor = _originalBackColor;
+            }
+        }
         protected override void OnPaint(PaintEventArgs e) {
             // Change back color if disabled
             if (!_enabled) {
@@ -328,10 +361,18 @@ namespace CustomLibrary.TextBoxes {
             } else if (_borderColor != null) {
                 if (_conerRadius > 0) {
                     using (GraphicsPath path = WidgetUtils.RoundedRect(_borderRect, _conerRadius)) {
-                        e.Graphics.DrawPath(new(_borderColor.Value, _borderThickness), path);
+                        if (_focusBorderColor != null && _box.Focused) {
+                            e.Graphics.DrawPath(new(_focusBorderColor.Value, _borderThickness), path);
+                        } else {
+                            e.Graphics.DrawPath(new(_borderColor.Value, _borderThickness), path);
+                        }
                     }
                 } else {
-                    e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
+                    if (_focusBorderColor != null && _box.Focused) {
+                        e.Graphics.DrawRectangle(new(_focusBorderColor.Value, _borderThickness), _borderRect);
+                    } else {
+                        e.Graphics.DrawRectangle(new(_borderColor.Value, _borderThickness), _borderRect);
+                    }
                 }
             }
         }

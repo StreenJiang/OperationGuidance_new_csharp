@@ -15,6 +15,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public static Color TEXT_BLACK = ColorConfigs.COLOR_WORKPLACE_BOLT_NUMBER;
 
         private readonly int _flikerInterval = 500;
+        private readonly float _opacity = .75F;
         private int _borderSize;
         private ProductBoltDTO _boltDTO;
         private BoltStatus _boltStatus;
@@ -41,23 +42,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _boltStatus = value;
                 switch (_boltStatus) {
                     case BoltStatus.WORKING:
-                        BackColor = WORKING;
+                        BackColor = Color.FromArgb((int) (255 * _opacity), WORKING);
                         ForeColor = TEXT_BLACK;
                         StartFlickering();
                         break;
                     case BoltStatus.DONE:
-                        BackColor = DONE;
+                        BackColor = Color.FromArgb((int) (255 * _opacity), DONE);
                         ForeColor = TEXT_WHITE;
                         StopFlickering();
                         break;
                     case BoltStatus.ERROR:
-                        BackColor = ERROR;
+                        BackColor = Color.FromArgb((int) (255 * _opacity), ERROR);
                         ForeColor = TEXT_WHITE;
                         StartFlickering();
                         break;
                     case BoltStatus.DEFAULT:
                     default:
-                        BackColor = WAITING;
+                        BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
                         ForeColor = TEXT_BLACK;
                         Label = _boltDTO.serial_num + "";
                         StopFlickering();
@@ -84,6 +85,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 SetLabel();
             }
         }
+        private new Color BackColor {
+            get => base.BackColor;
+            set => base.BackColor = value;
+        }
 
         public BoltButton(ProductBoltDTO boltDTO) {
             Label = boltDTO.serial_num + "";
@@ -98,7 +103,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             BlockHoverUp = true;
             _boltStatus = BoltStatus.DEFAULT;
-            BackColor = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
+            FlatStyle = FlatStyle.Popup;
+            BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
             ForeColor = TEXT_BLACK;
         }
 
@@ -113,7 +119,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ResetStatusWithoutChangingVisible() {
             _showingWhileWorking = true;
             _boltStatus = BoltStatus.DEFAULT;
-            BackColor = WAITING;
+            BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
         }
 
         public void StartFlickering() {

@@ -1,7 +1,6 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Constants;
-using CustomLibrary.Forms;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
@@ -290,29 +289,19 @@ namespace OperationGuidance_new.Views {
 
         public WorkplaceContentPanel(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             // 初始化所有组件
-            InitializeOuters();
-            InitializeTopLeftTop();
-            InitializeTopLeftBottom();
-            InitializeTopRightTop();
-            InitializeTopRightMiddleLeft();
-            InitializeTopRightMiddleRight();
-            InitializeTopRightBottom();
-            InitializeBottom();
-        }
-
-        // 初始化所有外框
-        private void InitializeOuters() {
             // 上方
             _top = new() {
                 Parent = this,
                 Padding = new(0),
             };
+
             // 上方左边
             _topLeft = new() {
                 Parent = _top,
                 Padding = new(0),
                 FlowDirection = FlowDirection.TopDown,
             };
+
             // 上方左边上面
             _barCodeOuter = new() {
                 Parent = _topLeft,
@@ -320,12 +309,18 @@ namespace OperationGuidance_new.Views {
                 ConerRadius = WidgetUtils.ContainerRadius(),
                 BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
             };
+            _barCodeOuter.Controls.Add(_barCodePictureBox);
+            _barCodeOuter.Controls.Add(_barCodeTextBox);
+            _barCodeOuter.Click += barCodePopUp;
+
             // 上方左边下面
             _imageDisplayOuter = new() {
                 Parent = _topLeft,
                 Margin = new(0),
                 ConerRadius = WidgetUtils.ContainerRadius(),
             };
+            _imageDisplayOuter.Controls.Add(_productImageDisplayPanel);
+
             // 上方右边
             _topRight = new() {
                 Parent = _top,
@@ -337,310 +332,82 @@ namespace OperationGuidance_new.Views {
                 Parent = _topRight,
                 Padding = new(0),
                 FlowDirection = FlowDirection.TopDown,
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                ConerRadius = WidgetUtils.ContainerRadius(),
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
             };
+            _topRightTop.Controls.Add(_operatorInfoTitle);
+            _topRightTop.Controls.Add(_operatorName);
+            _topRightTop.Controls.Add(_operatorId);
+
             // 上方右边的中间
             _topRightMiddle = new() {
                 Parent = _topRight,
                 Padding = new(0),
             };
-            // 上方右边的中间的左边
+            // 上方右边的中间的上面
             _topRightMiddleTop = new() {
                 Parent = _topRightMiddle,
                 Padding = new(0),
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
-            // 上方右边的中间的右边
+            _topRightMiddleTop.Controls.Add(_workingProcessPanel);
+
+            // 上方右边的中间的下面
             _topRightMiddleBottom = new() {
                 Parent = _topRightMiddle,
                 Padding = new(0),
                 OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
+            _topRightMiddleBottom.Controls.Add(_torquePanel);
+            _topRightMiddleBottom.Controls.Add(_anglePanel);
+
             // 上方右边的下面
             _topRightBottom = new() {
                 Parent = _topRight,
                 Padding = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                ConerRadius = WidgetUtils.ContainerRadius(),
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
             };
+            _missionSelectedName.Ratio = 7.5;
+            _pset.Ratio = 7.5;
+            _topRightBottom.Controls.Add(_missionDetailTitle);
+            _topRightBottom.Controls.Add(_missionSelectedName);
+            _topRightBottom.Controls.Add(_pset);
 
             // 下方
             _bottom = new() {
                 Parent = this,
                 Padding = new(0),
                 FlowDirection = FlowDirection.RightToLeft,
-                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_WORKPLACE_BOTTOM_BAR_BACKGROUND,
             };
-        }
-
-        // 初始化顶部左侧顶部
-        private void InitializeTopLeftTop() {
-            _barCodeOuter.Controls.Add(_barCodePictureBox);
-            _barCodeOuter.Controls.Add(_barCodeTextBox);
-            _barCodeOuter.Click += barCodePopUp;
-        }
-
-        // 初始化顶部左侧底部
-        private void InitializeTopLeftBottom() {
-            _productImageDisplayPanel = new(_defaultImage) {
-                Parent = _imageDisplayOuter,
-                Margin = new(1, 1, 0, 0),
-                Padding = new(0),
-                BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
-            };
-            _missionImages = new();
-            _productImageFiles = new();
-            _allBolts = new();
-
-            SetProductImagePanel();
-        }
-
-        // 初始化顶部右侧的顶部
-        private void InitializeTopRightTop() {
-            _operatorInfoTitle = new() {
-                Parent = _topRightTop,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "操作员信息",
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
-            };
-            _operatorName = new("操作员") {
-                Parent = _topRightTop,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            _operatorId = new("员工号") {
-                Parent = _topRightTop,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            SetOperatorInfo();
-        }
-        private void SetOperatorInfo() {
-            _operatorName.SetValue(0, SystemUtils.LoggedUserName);
-            _operatorId.SetValue(0, SystemUtils.LoggedUserId + "");
-        }
-
-        // 初始化顶部中间的左侧
-        private void InitializeTopRightMiddleLeft() {
-            // 初始化实时状态显示框
-            _workingProcessPanel = new() {
-                Parent = _topRightMiddleTop,
-                Margin = new(0),
-                Padding = new(0),
-            };
-        }
-
-        // 初始化顶部中间的右侧
-        private void InitializeTopRightMiddleRight() {
-            // 初始化实时螺钉拧紧数据框
-            _torqueTitle = new() {
-                Parent = _topRightMiddleBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "扭矩（N*m）",
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
-            };
-            _torque = new() {
-                Parent = _topRightMiddleBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "0.0",
-                TextAlign = ContentAlignment.MiddleRight,
-            };
-            _angleTitle = new() {
-                Parent = _topRightMiddleBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "角度（°）",
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
-            };
-            _angle = new() {
-                Parent = _topRightMiddleBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "0",
-                TextAlign = ContentAlignment.MiddleRight,
-            };
-        }
-
-        // 初始化顶部右侧的底部
-        private void InitializeTopRightBottom() {
-            _missionDetailTitle = new() {
-                Parent = _topRightBottom,
-                Margin = new(1),
-                Padding = new(0),
-                Text = "任务信息",
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SUB_TITLE,
-            };
-            _productBatch = new("产品批次") {
-                Parent = _topRightBottom,
-            };
-            _productBatch.GetTextBox(0).Box.TextChanged += (s, e) => {
-                _productBatch.GetTextBox(0).IsError = false;
-                if (_activated && _missionRecord != null && _productBatch.GetTextBox(0).Box.Text != _missionRecord.product_batch) {
-                    WidgetUtils.ShowErrorPopUp("任务已激活，无法修改产品批次");
-                    _productBatch.GetTextBox(0).Box.Text = _missionRecord.product_batch;
-                }
-            };
-            _missionSelectedName = new("任务名称") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            CommonButton missionSelectBtn = _missionSelectedName.AddButton("切换");
-            missionSelectBtn.Enabled = true;
-            missionSelectBtn.Click += (s, e) => {
-                if (_activated) {
-                    WidgetUtils.ShowWarningPopUp("任务已激活，无法切换任务");
-                } else {
-                    List<ProductMissionDTO> missions = _apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
-                    if (missions.Count > 0) {
-                        PopUpMissionListForm(missions);
-                    } else {
-                        WidgetUtils.ShowWarningPopUp("没有可选任务，请前往任务管理添加");
-                    }
-                }
-            };
-            _productSumPerDay = new("今日生产") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            _okSumPerDay = new("合格数") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            _ngRatePerDay = new("不良品率") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-            };
-            _pset = new("程序号") {
-                Parent = _topRightBottom,
-                ReadOnly = true,
-                Enabled = false,
-            };
-
-            SetMissionDetails();
-        }
-        private async void SetMissionDetails() {
-            _missionSelectedName.SetValue(0, _mission.name);
-
-            await Task.Run(async () => {
-                while (!IsHandleCreated) {
-                    await Task.Delay(200);
-                }
-                BeginInvoke(() => {
-                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-                    // 存在可以回填的数据
-                    if (missionRecordDTO != null) {
-                        // 刚登录
-                        if (MainUtils.LoginFlag) {
-                            // 需要回填确认
-                            if (MainUtils.IsProductBatchNoticeEnabled()) {
-                                // 弹出提示确认是否回填
-                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                                } else {
-                                    MainUtils.LastProductBatch = null;
-                                }
-                            }
-                            // 不需要提示则直接回填
-                            else {
-                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                            }
-                        }
-                        // 最新查到的批次信息与缓存的不一致，则换掉
-                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                        }
-                        // 不管是否回填，登录标识都要改
-                        MainUtils.LoginFlag = false;
-                        // 不为空就回填
-                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
-                        }
-                    }
-                });
-            });
-        }
-
-        private void PopUpMissionListForm(List<ProductMissionDTO> missions) {
-            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .7), (int) (WidgetUtils.MainSize.Height * .7));
-            CustomPopUpForm popUpForm = new() {
-                Title = "选择任务",
-                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
-            };
-            MissionListPanel? missionListPanel = null;
-            popUpForm.AddButton("确定").Click += (s, e) => {
-                if (missionListPanel == null || missionListPanel.CurrentToggledMission == null) {
-                    WidgetUtils.ShowErrorPopUp("请选择一个任务");
-                } else {
-                    // 手动切换任务需要清空一下条码缓存
-                    _barCodeObj.Reset();
-                    _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
-                    SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
-                    popUpForm.Hide();
-                }
-            };
-            popUpForm.AddButton("关闭").Click += (s, e) => {
-                popUpForm.Hide();
-            };
-            popUpForm.PretendToShowToCreateHandlesForChildren();
-            popUpForm.SetContentSizeAndSelfSize(contentSize);
-
-            Padding contentPadding = popUpForm.ContentPanel.Padding;
-            int innerContentWidth = contentSize.Width - contentPadding.Size.Width;
-            int innerContentHeight = contentSize.Height - contentPadding.Size.Height;
-            missionListPanel = new() {
-                Parent = popUpForm.ContentPanel,
-                Margin = new Padding(0),
-                Size = new(innerContentWidth, innerContentHeight),
-            };
-            missionListPanel.RefreshMissionBlocks(missions, null, true);
-
-            popUpForm.Show();
-        }
-        public override void SwitchToMission(ProductMissionDTO mission) {
-            _mission = mission;
-            _resetMissionName(_mission.name);
-            _missionSelectedName.SetValue(0, _mission.name);
-            SetProductImagePanel();
-            ResizeTopLeftBottom();
-        }
-
-
-        // 初始化底部
-        private void InitializeBottom() {
             foreach (DeviceBlock block in _deviceBlocks) {
+                block.ConerRadius = WidgetUtils.ControlRadius();
                 _bottom.Controls.Add(block);
             }
             _bottom.Controls.Add(_timeDisplayerOuter);
         }
 
+        protected override void RefreshImageDisplayPanel() => ResizeTopLeftBottom();
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
             if (IsHandleCreated && !IsDisposed) {
                 Padding contentPadding = WidgetUtils.ContentPadding();
+                int panelPadding = WidgetUtils.ContentInnerBorderMargin() * 2;
 
-                int boxHeight = WidgetUtils.WorkplaceBoxOrButtonHeightRatio();
-                int titleHeight = (int) (boxHeight * 1.1);
-                int contentVPadding = (int) (boxHeight * .35);
+                int boxHeight = (int) (WidgetUtils.MainSize.Height * .038);
+                int titleHeight = (int) (boxHeight * 1.2);
+                int contentVPadding = (int) (boxHeight * .4);
                 int contentHPadding = contentVPadding;
-                Font titleFont = new Font(WidgetsConfigs.SystemFontFamily, titleHeight * .55f, FontStyle.Bold, GraphicsUnit.Pixel);
+                Font titleFont = new Font(WidgetsConfigs.SystemFontFamily, titleHeight * .45f, FontStyle.Bold, GraphicsUnit.Pixel);
 
-                ResizeOuters(boxHeight, titleHeight, contentVPadding);
+                ResizeOuters(panelPadding, boxHeight, titleHeight, contentVPadding);
                 ResizeTopLeftTop();
                 ResizeTopLeftBottom();
                 ResizeTopRightTop(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
                 ResizeTopRightMiddleLeft();
-                ResizeTopRightMiddleRight();
+                ResizeTopRightMiddleRight(panelPadding);
                 ResizeTopRightBottom(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
                 ResizeBottom();
                 Invalidate();
@@ -648,49 +415,47 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 外框
-        private void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
-            int padding = WidgetUtils.ContentInnerBorderMargin() * 2;
-
-            int workplaceWidth = Width - padding * 2;
-            int workplaceHeight = Height - padding; // Bottom panel has to dock at bottom
+        private void ResizeOuters(int panelPadding, int boxHeight, int titleHeight, int contentVPadding) {
+            int workplaceWidth = Width - panelPadding * 2;
+            int workplaceHeight = Height - panelPadding; // Bottom panel has to dock at bottom
             int bottomHeight = (int) (workplaceHeight * .055);
-            int topHeight = workplaceHeight - bottomHeight - padding;
+            int topHeight = workplaceHeight - bottomHeight - panelPadding;
             int barCodeHeight = (int) (workplaceHeight * .06);
-            int imagePanelHeight = topHeight - barCodeHeight - padding;
-            int topLeftWidth = (int) (workplaceWidth * .75);
-            int topRightWidth = workplaceWidth - topLeftWidth - padding;
+            int imagePanelHeight = topHeight - barCodeHeight - panelPadding;
+            int topLeftWidth = (int) (workplaceWidth * .65) + (int) (Math.Abs(workplaceWidth - workplaceHeight) * .25);
+            int topRightWidth = workplaceWidth - topLeftWidth - panelPadding;
 
-            int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
-            int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
-            int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
-            int topRightMiddleLeftWidth = (int) (topRightWidth * .55);
-            int topRightMiddleRightWidth = topRightWidth - topRightMiddleLeftWidth - padding;
+            int topRightTopHeight = titleHeight + boxHeight * 2 + contentVPadding * 4;
+            int topRightBottomHeight = titleHeight + boxHeight * 3 + contentVPadding * 4;
+            int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - panelPadding * 2;
+            int topRightMiddleTopHeight = (int) (topRightMiddleHeight * .7);
+            int topRightMiddleBottomHeight = topRightMiddleHeight - topRightMiddleTopHeight - panelPadding;
 
             // 上方
             _top.Size = new(workplaceWidth, topHeight);
-            _top.Margin = new(padding);
+            _top.Margin = new(panelPadding);
             // 上方左边
             _topLeft.Size = new(topLeftWidth, topHeight);
             // 上方左边上面
             _barCodeOuter.Size = new(topLeftWidth, barCodeHeight);
-            _barCodeOuter.Margin = new(0, 0, 0, padding);
+            _barCodeOuter.Margin = new(0, 0, 0, panelPadding);
             // 上方左边下面
             _imageDisplayOuter.Size = new(topLeftWidth, imagePanelHeight);
             // 上方右边
             _topRight.Size = new(topRightWidth, topHeight);
-            _topRight.Margin = new(padding, 0, 0, 0);
+            _topRight.Margin = new(panelPadding, 0, 0, 0);
             // 上方右边的上面
             _topRightTop.Size = new(topRightWidth, topRightTopHeight);
-            _topRightTop.Margin = new(0, 0, 0, padding);
+            _topRightTop.Margin = new(0, 0, 0, panelPadding);
             // 上方右边的中间
             _topRightMiddle.Size = new(topRightWidth, topRightMiddleHeight);
-            _topRightMiddle.Margin = new(0, 0, 0, padding);
-            // 上方右边的中间的左边
-            _topRightMiddleTop.Size = new(topRightMiddleLeftWidth, topRightMiddleHeight);
-            _topRightMiddleTop.Margin = new(0, 0, 0, padding);
-            // 上方右边的中间的右边
-            _topRightMiddleBottom.Size = new(topRightMiddleRightWidth, topRightMiddleHeight);
-            _topRightMiddleBottom.Margin = new(0, 0, 0, padding);
+            _topRightMiddle.Margin = new(0, 0, 0, panelPadding);
+            // 上方右边的中间的上面
+            _topRightMiddleTop.Size = new(topRightWidth, topRightMiddleTopHeight);
+            _topRightMiddleTop.Margin = new(0, 0, 0, panelPadding);
+            // 上方右边的中间的下面
+            _topRightMiddleBottom.Size = new(topRightWidth, topRightMiddleBottomHeight);
+            _topRightMiddleBottom.Margin = new(0, 0, 0, panelPadding);
             // 上方右边的下面
             _topRightBottom.Size = new(topRightWidth, topRightBottomHeight);
 
@@ -755,14 +520,22 @@ namespace OperationGuidance_new.Views {
                 productImageFile.RecalculateZoomingRatio();
             }
             _productImageFiles[_currentSideIndex].RefreshImage();
+            Rectangle? imageRange = _productImageFiles[_currentSideIndex].ImageRange;
 
             // 重新计算螺栓点位按钮的大小和位置
-            int btnSide = (int) (newPanelSize.Height * .125);
+            int btnSide = (int) (newPanelSize.Height * .085) + (int) (Math.Abs(newPanelSize.Width - newPanelSize.Height) * .02);
             foreach (KeyValuePair<int, List<BoltButton>> pair in _allBolts) {
                 foreach (BoltButton boltButton in pair.Value) {
                     boltButton.Size = new(btnSide, btnSide);
-                    int newX = _productImageDisplayPanel.MaxRectLocation.X + (int) (_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
-                    int newY = _productImageDisplayPanel.MaxRectLocation.Y + (int) (_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                    int newX;
+                    int newY;
+                    if (imageRange != null) {
+                        newX = imageRange.Value.Location.X + (int) (imageRange.Value.Width * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = imageRange.Value.Y + (int) (imageRange.Value.Height * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                    } else {
+                        newX = _productImageDisplayPanel.MaxRectLocation.X + (int) (_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = _productImageDisplayPanel.MaxRectLocation.Y + (int) (_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                    }
                     boltButton.Location = new(newX, newY);
                 }
             }
@@ -776,9 +549,10 @@ namespace OperationGuidance_new.Views {
                 int contentHPadding, Font titleFont) {
             // Resize title and font
             _operatorInfoTitle.Size = new(_operatorInfoTitle.Parent.Width, titleHeight);
+            _operatorInfoTitle.Margin = new(contentHPadding, contentVPadding, 0, 0);
             _operatorInfoTitle.Font = titleFont;
             // Resize content size and font
-            int boxWidth = (_operatorInfoTitle.Parent.Width - contentHPadding * 3) / 2;
+            int boxWidth = _operatorInfoTitle.Width - contentHPadding * 2;
             _operatorName.Size = new(boxWidth, boxHeight);
             _operatorName.Margin = new(contentHPadding, contentVPadding, 0, 0);
             _operatorId.Size = new(boxWidth, boxHeight);
@@ -791,22 +565,11 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 实时扭矩、角度框
-        private void ResizeTopRightMiddleRight() {
-            // Resize titles
-            _torqueTitle.Size = new(_torqueTitle.Parent.Width - 2, (int) (_torqueTitle.Parent.Height * .225));
-            _angleTitle.Size = _torqueTitle.Size;
-            // Reset font size
-            _torqueTitle.Font = new Font(WidgetsConfigs.SystemFontFamily, _torqueTitle.Height * .55f, FontStyle.Bold, GraphicsUnit.Pixel);
-            _angleTitle.Font = _torqueTitle.Font;
-            // Resize data text
-            int heightRemain = _torqueTitle.Parent.Height - _torqueTitle.Height - _angleTitle.Height - 6; // 2 vertical border, 2 vertical margin of each title
-            if (heightRemain > 0) {
-                _torque.Size = new(_torqueTitle.Parent.Width - 2, (int) (heightRemain * .6) - 2);
-                _angle.Size = new(_torqueTitle.Parent.Width - 2, heightRemain - _torque.Height - 2);
-                // Reset font size depends on theirs height
-                _torque.Font = new(WidgetsConfigs.SystemFontFamily, _torque.Height * .8F, FontStyle.Bold, GraphicsUnit.Pixel);
-                _angle.Font = new(WidgetsConfigs.SystemFontFamily, _angle.Height * .8F, FontStyle.Bold, GraphicsUnit.Pixel);
-            }
+        private void ResizeTopRightMiddleRight(int panelPadding) {
+            Size panelSize = new((_topRightMiddleBottom.Width - panelPadding) / 2, _topRightMiddleBottom.Height);
+            _torquePanel.Size = panelSize;
+            _torquePanel.Margin = new(0, 0, panelPadding, 0);
+            _anglePanel.Size = panelSize;
         }
 
         // 计算尺寸： 任务信息框
@@ -814,20 +577,14 @@ namespace OperationGuidance_new.Views {
                 int contentHPadding, Font titleFont) {
             // Resize title and font
             _missionDetailTitle.Size = new(_operatorInfoTitle.Parent.Width, titleHeight);
+            _missionDetailTitle.Margin = new(contentHPadding, contentVPadding, 0, 0);
             _missionDetailTitle.Font = titleFont;
             // Resize content size and font
-            int boxWidth = (_operatorInfoTitle.Parent.Width - contentHPadding * 3) / 2;
-            int boxWidth2 = _operatorInfoTitle.Parent.Width - contentHPadding * 2;
-            _productBatch.Size = new(boxWidth2, boxHeight);
+            int boxWidth = _operatorInfoTitle.Parent.Width - contentHPadding * 2;
+            _productBatch.Size = new(boxWidth, boxHeight);
             _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _missionSelectedName.Size = new(boxWidth2, boxHeight);
+            _missionSelectedName.Size = new(boxWidth, boxHeight);
             _missionSelectedName.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _productSumPerDay.Size = new(boxWidth, boxHeight);
-            _productSumPerDay.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _okSumPerDay.Size = new(boxWidth, boxHeight);
-            _okSumPerDay.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _ngRatePerDay.Size = new(boxWidth, boxHeight);
-            _ngRatePerDay.Margin = new(contentHPadding, contentVPadding, 0, 0);
             _pset.Size = new(boxWidth, boxHeight);
             _pset.Margin = new(contentHPadding, contentVPadding, 0, 0);
         }
@@ -835,15 +592,21 @@ namespace OperationGuidance_new.Views {
         // 计算尺寸： 底部横框
         private void ResizeBottom() {
             int blocksWidth = 0;
+            int blockSide = (int) (_bottom.Height * .85);
+            int padding = (_bottom.Height - blockSide) / 2;
+            int blockCount = 0;
             foreach (Control control in _bottom.Controls) {
                 if (control is DeviceBlock) {
-                    control.Size = new(_bottom.Height, _bottom.Height);
-                    blocksWidth += _bottom.Height;
+                    control.Size = new(blockSide, blockSide);
+                    control.Margin = new(0, padding, padding, 0);
+                    blocksWidth += blockSide;
+                    blockCount++;
                 }
             }
+            blocksWidth += padding * blockCount;
             int timeDisplayerWidth = _bottom.Width - blocksWidth;
             _timeDisplayerOuter.Size = new(timeDisplayerWidth - 2, _bottom.Height - 2);
-            _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .35f, FontStyle.Regular, GraphicsUnit.Pixel);
+            _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .325f, FontStyle.Regular, GraphicsUnit.Pixel);
             _timeDisplayer.Margin = new(_timeDisplayer.Height / 3, (_timeDisplayerOuter.Height - _timeDisplayer.Height) / 2, 0, 0);
         }
 
@@ -1074,8 +837,10 @@ namespace OperationGuidance_new.Views {
                         List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
 
                         // Main display
-                        _torque.Text = data.torque + "";
-                        _angle.Text = data.angle + "";
+                        // _torque.Text = data.torque + "";
+                        // _angle.Text = data.angle + "";
+                        _torquePanel.Data = data.torque + "";
+                        _anglePanel.Data = data.angle + "";
 
                         // Get current bolt
                         BoltButton currentBolt;
@@ -1115,14 +880,14 @@ namespace OperationGuidance_new.Views {
                             if (data.tightening_status != (int) TighteningStatus.OK) {
                                 tighteningOK = false;
                                 if (data.torque_status != (int) TighteningCommonStatus.OK) {
-                                    _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
                                     errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
                                 }
                                 if (data.angle_status != (int) TighteningCommonStatus.OK) {
-                                    _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
@@ -1133,7 +898,7 @@ namespace OperationGuidance_new.Views {
                             // Check torque
                             if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
                                 tighteningOK = false;
-                                _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                 if (!string.IsNullOrEmpty(errorMsg)) {
                                     errorMsg += "\r\n";
                                 }
@@ -1143,7 +908,7 @@ namespace OperationGuidance_new.Views {
                             // Check angle
                             if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
                                 tighteningOK = false;
-                                _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                 if (!string.IsNullOrEmpty(errorMsg)) {
                                     errorMsg += "\r\n";
                                 }
@@ -1158,8 +923,8 @@ namespace OperationGuidance_new.Views {
                                 _workingProcessPanel.RemoveDesc(_workingProcessPanel.CustomError);
 
                                 // Tightening ok, data color change to green
-                                _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
-                                _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
+                                _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+                                _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
 
                                 // Lock the device
                                 if (_locating_enabled) {
@@ -1167,7 +932,6 @@ namespace OperationGuidance_new.Views {
                                 }
 
                                 currentBolt.BoltStatus = BoltStatus.DONE;
-                                currentBolt.Label = _torque.Text;
 
                                 // Check next index
                                 List<BoltButton> currentSideBolts;
@@ -1294,8 +1058,8 @@ namespace OperationGuidance_new.Views {
                                     _workingProcessPanel.BoltSerialNum = null;
 
                                     // Change color back to black
-                                    _torque.ForeColor = Color.Black;
-                                    _angle.ForeColor = Color.Black;
+                                    _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+                                    _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
 
                                     // Stop retrieve coordinates data
                                     if (_locating_enabled) {
@@ -1323,8 +1087,8 @@ namespace OperationGuidance_new.Views {
                                     WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                 } else {
                                     // 扭矩角度数据颜色改成红色
-                                    _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                    _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                    _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     _needLoosening = true;
                                     _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
                                     // 记录数据
@@ -1337,8 +1101,8 @@ namespace OperationGuidance_new.Views {
                             }
                         } else {
                             // 反松时把扭矩角度改回黑色
-                            _torque.ForeColor = Color.Black;
-                            _angle.ForeColor = Color.Black;
+                            _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+                            _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
                             _needLoosening = false;
                             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                             _workingProcessPanel.CustomError = null;

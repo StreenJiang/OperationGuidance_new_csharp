@@ -20,8 +20,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         protected Image ProductDefaultImage { get => _productDefaultImage; set => _productDefaultImage = value; }
         protected Image? ProductDefaultImageShowing { get => _productDefaultImageShowing; set => _productDefaultImageShowing = value; }
-        protected Image? ProductImage { get => _productImage; set => _productImage = value; }
-        protected Point? ImageLocation { get => _imageLocation; set => _imageLocation = value; }
+        public Image? ProductImage { get => _productImage; set => _productImage = value; }
+        public Point? ImageLocation { get => _imageLocation; set => _imageLocation = value; }
         // protected List<Rectangle> DifferentRects { get => _differentRects; set => _differentRects = value; }
         public Size MaxRectSize { get => _maxRectSize; protected set => _maxRectSize = value; }
         public int MaxRectWidth { get => _maxRectWidth; protected set => _maxRectWidth = value; }

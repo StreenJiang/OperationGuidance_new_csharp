@@ -159,8 +159,8 @@ namespace CustomLibrary.Utils {
                     g.CompositingQuality = CompositingQuality.HighQuality;
                     g.SmoothingMode = SmoothingMode.HighQuality;
                     // g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    // g.InterpolationMode = InterpolationMode.Bilinear; // 用这个效率高很多，并且图片质量也不错
-                    g.InterpolationMode = InterpolationMode.NearestNeighbor; // 用这个效率更高，只是质量差些
+                    g.InterpolationMode = InterpolationMode.Bilinear; // 用这个效率高很多，并且图片质量也不错
+                    // g.InterpolationMode = InterpolationMode.NearestNeighbor; // 用这个效率更高，只是质量差些
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
                 }

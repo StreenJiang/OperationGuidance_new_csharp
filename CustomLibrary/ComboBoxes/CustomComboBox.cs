@@ -193,6 +193,7 @@ namespace CustomLibrary.ComboBoxes {
                             ShowInTaskbar = false,
                             Size = new(Width, 1),
                             TopMost = true,
+                            ConerRadius = _conerRadius,
                         };
                         _itemsOuterForm.SizeChanged += (sender, eventArgs) => {
                             if (_itemsScrollPanel != null) {
@@ -217,9 +218,16 @@ namespace CustomLibrary.ComboBoxes {
                             Parent = _itemsOuterForm,
                             Margin = new(0),
                             Size = new(Width, 0),
-                            BorderColor = BorderColor,
                             NeedsPadding = false,
                         };
+                        if (_conerRadius == 0) {
+                            _itemsScrollPanel.BorderColor = BorderColor;
+                        } else {
+                            _itemsInnerPanel.BackColor = WidgetUtils.DarkenColor(_itemsInnerPanel.BackColor, .15);
+                            foreach (ComboBoxItem<T> item in _itemButtons) {
+                                item.BackColor = _itemsInnerPanel.BackColor;
+                            }
+                        }
 
                         Point point = PointToScreen(Point.Empty);
                         _itemsOuterForm.Location = _itemsOuterForm.PointToClient(new(point.X, point.Y + Height));
@@ -733,6 +741,9 @@ namespace CustomLibrary.ComboBoxes {
 
         // Outer form
         public class OuterForm: Form {
+            private int _conerRadius;
+
+            public int ConerRadius { get => _conerRadius; set => _conerRadius = value; }
             protected override CreateParams CreateParams {
                 get {
                     CreateParams cp = base.CreateParams;
@@ -740,13 +751,15 @@ namespace CustomLibrary.ComboBoxes {
                     return cp;
                 }
             }
-            //
-            // protected override void OnSizeChanged(EventArgs e) {
-            //     base.OnSizeChanged(e);
-            //     using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), WidgetUtils.ControlRadius())) {
-            //         Region = new Region(path);
-            //     }
-            // }
+
+            protected override void OnSizeChanged(EventArgs e) {
+                base.OnSizeChanged(e);
+                if (_conerRadius > 0) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
+                        Region = new Region(path);
+                    }
+                }
+            }
         }
 
         // Items panel
