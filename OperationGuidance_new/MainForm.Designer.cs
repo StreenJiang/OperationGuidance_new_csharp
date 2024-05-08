@@ -15,8 +15,6 @@ using System.Net.NetworkInformation;
 using System.ComponentModel;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
-using OperationGuidance_service.Database;
-using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
@@ -58,11 +56,7 @@ namespace OperationGuidance_new {
             // AllocConsole();
 
             // 先连接一下数据库，看看数据库是否正常
-            try {
-                DbConnector.GetConnection();
-            } catch (DatabaseException de) {
-                throw de;
-            }
+            MainUtils.CheckDBConnection();
 
             // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
@@ -127,6 +121,11 @@ namespace OperationGuidance_new {
                     result = DialogResult.Yes;
                 }
                 if (result == DialogResult.Yes) {
+                    if (MainUtils.ActionAfterLogout != null) {
+                        MainUtils.ActionAfterLogout();
+                        MainUtils.ActionAfterLogout = null;
+                    }
+
                     Form mainForm = WidgetUtils.MainForm;
                     CustomTabPanel? mainPanel = WidgetUtils.MainPanel;
                     LoginView loginView = MainUtils.LoginView;

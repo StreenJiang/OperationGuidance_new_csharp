@@ -177,35 +177,37 @@ namespace OperationGuidance_new.Views {
                 if (_workplace != null && _workplace.Activated && !_workplace.Finished) {
                     bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务还未完成，返回主界面将终止任务，确认返回？");
                     if (yes) {
-                        if (!_operatorOpenning) {
-                            _workplace.Activated = false;
-                            if (WidgetUtils.MainPanel != null) {
-                                WidgetUtils.MainPanel.Visible = true;
-                            }
-                            Parent.Visible = false;
-                            _workplace.Dispose();
-                        } else {
+                        if (_operatorOpenning) {
                             if (WidgetUtils.BackToLoginView != null) {
+                                MainUtils.ActionAfterLogout = CloseWorkplace;
                                 WidgetUtils.BackToLoginView(true);
                             }
+                        } else {
+                            CloseWorkplace();
                         }
                     }
                 } else {
-                    if (!_operatorOpenning) {
-                        if (WidgetUtils.MainPanel != null) {
-                            WidgetUtils.MainPanel.Visible = true;
-                        }
-                        Parent.Visible = false;
-                        if (_workplace != null && !_workplace.IsDisposed) {
-                            _workplace.Dispose();
-                        }
-                    } else {
+                    if (_operatorOpenning) {
                         if (WidgetUtils.BackToLoginView != null) {
+                            MainUtils.ActionAfterLogout = CloseWorkplace;
                             WidgetUtils.BackToLoginView(true);
                         }
+                    } else {
+                        CloseWorkplace();
                     }
                 }
             };
+
+            void CloseWorkplace() {
+                if (_workplace != null) {
+                    _workplace.Activated = false;
+                    if (WidgetUtils.MainPanel != null) {
+                        WidgetUtils.MainPanel.Visible = true;
+                    }
+                    Parent.Visible = false;
+                    _workplace.Dispose();
+                }
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -1004,19 +1006,6 @@ namespace OperationGuidance_new.Views {
         //         ResetRightBottomTitleFont();
         //     }
         // }
-
-        protected override void OnHandleDestroyed(EventArgs e) {
-            base.OnHandleDestroyed(e);
-            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                pair.Value.ActionAfterReceiving = new(c => { });
-            }
-            _serialPortTasks = MainUtils.SerialPortTasks;
-            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = new(c => { });
-            }
-        }
 
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {

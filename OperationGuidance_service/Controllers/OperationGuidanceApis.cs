@@ -653,10 +653,13 @@ namespace OperationGuidance_service.Controllers {
         }
         // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            string sql = $"select 1 from {_missionRecordService.TableName} where mission_id = @mission_id and mission_result = @mission_result";
+            string sql = $"select 1 from {_missionRecordService.TableName} where mission_id = @mission_id";
             Dictionary<string, object> parameters = new();
             parameters.Add("mission_id", req.MissionId);
-            parameters.Add("mission_result", req.MissionResult);
+            if (req.MissionResult != null) {
+                sql += " and mission_result = @mission_result";
+                parameters.Add("mission_result", req.MissionResult);
+            }
 
             if (req.ProductBarCode != null) {
                 sql += " and product_bar_code = @product_bar_code";

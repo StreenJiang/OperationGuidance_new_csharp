@@ -803,6 +803,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void ActionAfterActivatingMission() {
+            // Add a new record into: mission_record
+            _missionRecord = new() {
+                mission_id = _mission.id,
+                product_bar_code = _barCodeObj.ProductBarCode,
+                parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
+                mission_result = (int) TighteningStatus.NG,
+                is_redo = _isRedo,
+            };
+
+            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             // If locating enabled
             if (_locating_enabled) {
                 List<WorkstationDTO> workstationDTOs;
@@ -834,16 +844,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } else {
                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.ACTIVATED;
             }
-
-            // Add a new record into: mission_record
-            _missionRecord = new() {
-                mission_id = _mission.id,
-                product_bar_code = _barCodeObj.ProductBarCode,
-                parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
-                mission_result = (int) TighteningStatus.NG,
-                is_redo = _isRedo,
-            };
-            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
         }
 
         // 读取力臂数据并根据当前螺栓点位配置信息进行解锁、锁枪
@@ -894,6 +894,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     // 如果是没有配置就显示对应错误信息，否则可能是下发失败
                                     if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
                                         _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNullError);
+                                    } else {
+                                        // 如果下发失败则尝试重新下发
+
                                     }
                                 }
                                 // // 当前下发的程序与点位的不匹配（可能是手动下发）
@@ -1141,6 +1144,25 @@ namespace OperationGuidance_new.Views.AbstractViews {
             LoadDevicesAsync();
             // Initialize others
             InitializeAfterHandelCreated();
+        }
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+
+            foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                tool.Value.ActionAfterAnalysis = null;
+                // Lock all tools
+                tool.Value.SendLock();
+            }
+            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                pair.Value.ActionAfterReceiving = new(c => { });
+            }
+            _serialPortTasks = MainUtils.SerialPortTasks;
+            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
+                pair.Value.ActionAfterDataReceived = null;
+            }
         }
         #endregion
     }
@@ -1398,12 +1420,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 if (mission.predecessor_mission_id != null) {
                     bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
                     if (!yes) {
-                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工记录，请先完成前置任务");
+                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
                         // 需要管理员密码弹窗
@@ -1481,7 +1503,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 物料条码校验通过
             else {
                 // 物料码返工确认
-                if (_workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id, (int) TighteningStatus.OK) { PartsBarCode = barCode }).Yes) {
+                if (_workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                         // 需要管理员密码弹窗

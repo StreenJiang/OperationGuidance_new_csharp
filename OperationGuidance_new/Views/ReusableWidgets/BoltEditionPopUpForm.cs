@@ -9,6 +9,7 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using CustomLibrary.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: CustomPopUpForm {
@@ -131,7 +132,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             retrieveCoordinatesBtn.Click += async (sender, eventArgs) => {
                 bool labelChanging = true;
                 string dotStr = "";
-                using System.Windows.Forms.Timer timer = new();
+                Timer timer = new();
                 timer.Interval = 350;
                 timer.Tick += (s, e) => {
                     if (labelChanging) {
