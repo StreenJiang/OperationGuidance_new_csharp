@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
 
@@ -13,8 +12,8 @@ namespace OperationGuidance_service.Models.AbstractClasses {
         public DateTime create_time { get; set; } = DateTime.Now;
         public DateTime modify_time { get; set; } = DateTime.Now;
 
-        public static string TableName() {
-            Type type = CommonUtils.CannotBeNull(MethodBase.GetCurrentMethod()?.DeclaringType);
+        public string TableName() {
+            Type type = this.GetType();
             foreach (object attribute in type.GetCustomAttributes(false)) {
                 if (attribute is TableAttribute) {
                     return ((TableAttribute) attribute).Name;

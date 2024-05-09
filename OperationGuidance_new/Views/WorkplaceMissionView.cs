@@ -15,6 +15,7 @@ using OperationGuidance_new.Extensions;
 using System.Reflection;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
+using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: CustomContentPanel {
@@ -175,35 +176,37 @@ namespace OperationGuidance_new.Views {
                 if (_workplace != null && _workplace.Activated && !_workplace.Finished) {
                     bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务还未完成，返回主界面将终止任务，确认返回？");
                     if (yes) {
-                        if (!_operatorOpenning) {
-                            _workplace.Activated = false;
-                            if (WidgetUtils.MainPanel != null) {
-                                WidgetUtils.MainPanel.Visible = true;
-                            }
-                            Parent.Visible = false;
-                            _workplace.Dispose();
-                        } else {
+                        if (_operatorOpenning) {
                             if (WidgetUtils.BackToLoginView != null) {
+                                MainUtils.ActionAfterLogout = CloseWorkplace;
                                 WidgetUtils.BackToLoginView(true);
                             }
+                        } else {
+                            CloseWorkplace();
                         }
                     }
                 } else {
-                    if (!_operatorOpenning) {
-                        if (WidgetUtils.MainPanel != null) {
-                            WidgetUtils.MainPanel.Visible = true;
-                        }
-                        Parent.Visible = false;
-                        if (_workplace != null && !_workplace.IsDisposed) {
-                            _workplace.Dispose();
-                        }
-                    } else {
+                    if (_operatorOpenning) {
                         if (WidgetUtils.BackToLoginView != null) {
+                            MainUtils.ActionAfterLogout = CloseWorkplace;
                             WidgetUtils.BackToLoginView(true);
                         }
+                    } else {
+                        CloseWorkplace();
                     }
                 }
             };
+
+            void CloseWorkplace() {
+                if (_workplace != null) {
+                    _workplace.Activated = false;
+                    if (WidgetUtils.MainPanel != null) {
+                        WidgetUtils.MainPanel.Visible = true;
+                    }
+                    Parent.Visible = false;
+                    _workplace.Dispose();
+                }
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -370,9 +373,11 @@ namespace OperationGuidance_new.Views {
             };
             _missionSelectedName.Ratio = 7.5;
             _pset.Ratio = 7.5;
+            _currentSideName.Ratio = 7.5;
             _topRightBottom.Controls.Add(_missionDetailTitle);
             _topRightBottom.Controls.Add(_missionSelectedName);
             _topRightBottom.Controls.Add(_pset);
+            _topRightBottom.Controls.Add(_currentSideName);
 
             // 下方
             _bottom = new() {
@@ -389,6 +394,10 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void RefreshImageDisplayPanel() => ResizeTopLeftBottom();
+
+        protected override void SetMissionDetails() {
+            _missionSelectedName.SetValue(0, _mission.name);
+        }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
@@ -425,8 +434,8 @@ namespace OperationGuidance_new.Views {
             int topLeftWidth = (int) (workplaceWidth * .65) + (int) (Math.Abs(workplaceWidth - workplaceHeight) * .25);
             int topRightWidth = workplaceWidth - topLeftWidth - panelPadding;
 
-            int topRightTopHeight = titleHeight + boxHeight * 2 + contentVPadding * 4;
-            int topRightBottomHeight = titleHeight + boxHeight * 3 + contentVPadding * 4;
+            int topRightTopHeight = titleHeight + boxHeight * (_topRightTop.Controls.Count - 1) + contentVPadding * (_topRightTop.Controls.Count + 1);
+            int topRightBottomHeight = titleHeight + boxHeight * (_topRightBottom.Controls.Count - 1) + contentVPadding * (_topRightBottom.Controls.Count + 1);
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - panelPadding * 2;
             int topRightMiddleTopHeight = (int) (topRightMiddleHeight * .7);
             int topRightMiddleBottomHeight = topRightMiddleHeight - topRightMiddleTopHeight - panelPadding;
@@ -581,12 +590,12 @@ namespace OperationGuidance_new.Views {
             _missionDetailTitle.Font = titleFont;
             // Resize content size and font
             int boxWidth = _operatorInfoTitle.Parent.Width - contentHPadding * 2;
-            _productBatch.Size = new(boxWidth, boxHeight);
-            _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _missionSelectedName.Size = new(boxWidth, boxHeight);
-            _missionSelectedName.Margin = new(contentHPadding, contentVPadding, 0, 0);
-            _pset.Size = new(boxWidth, boxHeight);
-            _pset.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            foreach (Control ctrl in _topRightBottom.Controls) {
+                if (ctrl is CustomTextBoxGroup box) {
+                    box.Size = new(boxWidth, boxHeight);
+                    box.Margin = new(contentHPadding, contentVPadding, 0, 0);
+                }
+            }
         }
 
         // 计算尺寸： 底部横框
@@ -731,19 +740,6 @@ namespace OperationGuidance_new.Views {
         //         ResetRightBottomTitleFont();
         //     }
         // }
-
-        protected override void OnHandleDestroyed(EventArgs e) {
-            base.OnHandleDestroyed(e);
-            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                pair.Value.ActionAfterReceiving = new(c => { });
-            }
-            _serialPortTasks = MainUtils.SerialPortTasks;
-            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = new(c => { });
-            }
-        }
 
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {

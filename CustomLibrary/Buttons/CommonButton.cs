@@ -15,7 +15,7 @@ namespace CustomLibrary.Buttons {
         }
 
         protected override void ResizeTextLabel() {
-            if (Label != null && IsHandleCreated) {
+            if (Label != null && Height > 0) {
                 Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
             }
         }

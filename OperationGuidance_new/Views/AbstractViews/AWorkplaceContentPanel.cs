@@ -351,7 +351,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            CommonButton sidesDetials = _currentSideName.AddButton("详情");
+            CommonButton sidesDetials = _currentSideName.AddButton("更多");
             sidesDetials.Enabled = true;
             sidesDetials.Click += (s, e) => {
                 PopUpSideListForm();
@@ -423,47 +423,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             RefreshImageDisplayPanel();
         }
         protected abstract void RefreshImageDisplayPanel();
-        private async void SetMissionDetails() {
-            _missionSelectedName.SetValue(0, _mission.name);
-
-            await Task.Run(async () => {
-                while (!IsHandleCreated) {
-                    await Task.Delay(200);
-                }
-                BeginInvoke(() => {
-                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-                    // 存在可以回填的数据
-                    if (missionRecordDTO != null) {
-                        // 刚登录
-                        if (MainUtils.LoginFlag) {
-                            // 需要回填确认
-                            if (MainUtils.IsProductBatchNoticeEnabled()) {
-                                // 弹出提示确认是否回填
-                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                                } else {
-                                    MainUtils.LastProductBatch = null;
-                                }
-                            }
-                            // 不需要提示则直接回填
-                            else {
-                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                            }
-                        }
-                        // 最新查到的批次信息与缓存的不一致，则换掉
-                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                        }
-                        // 不管是否回填，登录标识都要改
-                        MainUtils.LoginFlag = false;
-                        // 不为空就回填
-                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
-                        }
-                    }
-                });
-            });
-        }
+        protected abstract void SetMissionDetails();
 
         private void InitializeDataGridPanel() {
             _tighteningDataPanel = new(gridView => {
@@ -1099,6 +1059,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void ActionAfterActivatingMission() {
+            // Add a new record into: mission_record
+            _missionRecord = new() {
+                mission_id = _mission.id,
+                product_bar_code = _barCodeObj.ProductBarCode,
+                parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
+                mission_result = (int) TighteningStatus.NG,
+                is_redo = _isRedo,
+            };
+
+            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             // If locating enabled
             if (_locating_enabled) {
                 List<WorkstationDTO> workstationDTOs;
@@ -1130,16 +1100,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } else {
                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.ACTIVATED;
             }
-
-            // Add a new record into: mission_record
-            _missionRecord = new() {
-                mission_id = _mission.id,
-                product_bar_code = _barCodeObj.ProductBarCode,
-                parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
-                mission_result = (int) TighteningStatus.NG,
-                is_redo = _isRedo,
-            };
-            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
         }
 
         // 读取力臂数据并根据当前螺栓点位配置信息进行解锁、锁枪
@@ -1154,12 +1114,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             ToolTask toolTask = _toolTasks[toolId.Value];
                             Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
                             _realTimeArmCoordinates = armCoordinates;
-                            int x = armCoordinates.X;
-                            int y = armCoordinates.Y;
-                            int z = armCoordinates.Z;
-                            // 力臂位置在点位范围内
-                            if (Math.Abs(x - boltCoordinates.X) < _armLocatingAccuracy && Math.Abs(y - boltCoordinates.Y) < _armLocatingAccuracy
-                                    && (boltCoordinates.Z == 0 || Math.Abs(z - boltCoordinates.Z) < _armLocatingAccuracy)) {
+
+                            bool xOk = Math.Abs(armCoordinates.X - boltCoordinates.X) < _armLocatingAccuracy;
+                            bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
+                            bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
+                            if (xOk && yOk && zOk) {
                                 _workingProcessPanel.RemoveDesc(_workingProcessPanel.ArmPositionError);
                                 // 需要管理员输入密码并确认
                                 if (_adminConfirmed != null) {
@@ -1190,6 +1149,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     // 如果是没有配置就显示对应错误信息，否则可能是下发失败
                                     if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
                                         _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNullError);
+                                    } else {
+                                        // 如果下发失败则尝试重新下发
+
                                     }
                                 }
                                 // // 当前下发的程序与点位的不匹配（可能是手动下发）
@@ -1437,6 +1399,25 @@ namespace OperationGuidance_new.Views.AbstractViews {
             LoadDevicesAsync();
             // Initialize others
             InitializeAfterHandelCreated();
+        }
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+
+            foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                tool.Value.ActionAfterAnalysis = null;
+                // Lock all tools
+                tool.Value.SendLock();
+            }
+            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                pair.Value.ActionAfterReceiving = new(c => { });
+            }
+            _serialPortTasks = MainUtils.SerialPortTasks;
+            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
+                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
+                pair.Value.ActionAfterDataReceived = null;
+            }
         }
         #endregion
     }
@@ -1694,12 +1675,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 if (mission.predecessor_mission_id != null) {
                     bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
                     if (!yes) {
-                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工记录，请先完成前置任务");
+                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
                         // 需要管理员密码弹窗
@@ -1777,7 +1758,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 物料条码校验通过
             else {
                 // 物料码返工确认
-                if (_workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id, (int) TighteningStatus.OK) { PartsBarCode = barCode }).Yes) {
+                if (_workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                         // 需要管理员密码弹窗

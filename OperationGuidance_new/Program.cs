@@ -1,4 +1,5 @@
 using CustomLibrary.Utils;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Configurations;
 
 namespace OperationGuidance_new {
@@ -22,7 +23,9 @@ namespace OperationGuidance_new {
 
                 // Run main form
                 try {
-                    Application.Run(new MainForm());
+                    MainForm mainForm = new MainForm();
+                    mainForm.HandleDestroyed += (s, e) => MainUtils.AppRunning = false;
+                    Application.Run(mainForm);
                 } catch (Exception e) {
                     Console.WriteLine(e);
                     WidgetUtils.ShowErrorPopUp($"程序运行错误，错误信息e: {e}");

@@ -6,7 +6,7 @@ using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
     public static class DbConnector {
-        private readonly static int _retryTimes = 5;
+        private readonly static int _retryTimes = 2;
         private readonly static int _retryDelay = 500;
         private static readonly ADbConnector connector;
 
@@ -42,5 +42,7 @@ namespace OperationGuidance_service.Database {
             }
             return dbConnection;
         }
+
+        public static bool CheckConnection() => GetConnection() == null;
     }
 }

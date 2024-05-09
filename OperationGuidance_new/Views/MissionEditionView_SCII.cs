@@ -487,16 +487,12 @@ namespace OperationGuidance_new.Views {
                             int workstationId = boltDTO.workstation_id;
 
                             // Add buttons into side button
-                            if (_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
-                                _currentSideButton.BoltButtons[workstationId].Add(boltButton);
-                            } else {
-                                _currentSideButton.BoltButtons.Add(workstationId, new() { { boltButton } });
+                            if (!_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
+                                _currentSideButton.BoltButtons.Add(workstationId, new());
+                                _currentSideButton.BoltEditionButtons.Add(workstationId, new());
                             }
-                            if (_currentSideButton.BoltEditionButtons.ContainsKey(workstationId)) {
-                                _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
-                            } else {
-                                _currentSideButton.BoltEditionButtons.Add(workstationId, new() { { boltEditionButton } });
-                            }
+                            _currentSideButton.BoltButtons[workstationId].Add(boltButton);
+                            _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
 
                             // Do this to force fire SizeChanged event
                             ResizeBottomLeft();
@@ -1393,6 +1389,10 @@ namespace OperationGuidance_new.Views {
         public class AddNewSideButton: CommonButton {
             public AddNewSideButton(string buttonName) {
                 Label = buttonName;
+                ConerRadius = 0;
+            }
+            protected override void OnSizeChanged(EventArgs e) {
+                base.OnSizeChanged(e);
                 ConerRadius = 0;
             }
             protected override void ResizeTextLabel() {

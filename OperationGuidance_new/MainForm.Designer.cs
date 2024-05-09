@@ -15,8 +15,6 @@ using System.Net.NetworkInformation;
 using System.ComponentModel;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
-using OperationGuidance_service.Database;
-using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
@@ -58,11 +56,7 @@ namespace OperationGuidance_new {
             // AllocConsole();
 
             // 先连接一下数据库，看看数据库是否正常
-            try {
-                DbConnector.GetConnection();
-            } catch (DatabaseException de) {
-                throw de;
-            }
+            MainUtils.CheckDBConnection();
 
             // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
@@ -78,6 +72,8 @@ namespace OperationGuidance_new {
                 || macs.Contains("B42E9954DB93")
                 || macs.Contains("A4B1C1C841E2")
                 || macs.Contains("A6B1C1C841E1")
+                /* TPX */
+                || macs.Contains("086AC57C79DD")
                 /* others */
                 || macs.Contains("E43A6E5CBE6A")
                 || macs.Contains("E43A6E4B2F12")
@@ -127,6 +123,11 @@ namespace OperationGuidance_new {
                     result = DialogResult.Yes;
                 }
                 if (result == DialogResult.Yes) {
+                    if (MainUtils.ActionAfterLogout != null) {
+                        MainUtils.ActionAfterLogout();
+                        MainUtils.ActionAfterLogout = null;
+                    }
+
                     Form mainForm = WidgetUtils.MainForm;
                     CustomTabPanel? mainPanel = WidgetUtils.MainPanel;
                     LoginView loginView = MainUtils.LoginView;

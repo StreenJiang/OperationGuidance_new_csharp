@@ -13,6 +13,8 @@ using OperationGuidance_new.Tasks;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Database;
+using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
@@ -23,6 +25,7 @@ namespace OperationGuidance_new.Utils {
 
         public static LoginView LoginView { get; set; }
         public static bool LoginFlag { get; set; } = true;
+        public static Action? ActionAfterLogout { get; set; }
         public static string? LastProductBatch { get; set; }
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
@@ -46,7 +49,18 @@ namespace OperationGuidance_new.Utils {
         static MainUtils() {
             XmlConfigurator.Configure();
         }
+        public static bool AppRunning { get; internal set; } = true;
         public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
+
+        public static async void CheckDBConnection() {
+            await Task.Run(() => {
+                try {
+                    DbConnector.CheckConnection();
+                } catch (DatabaseException de) {
+                    throw de;
+                }
+            });
+        }
 
         private static IniFileUtil Settings { get; } = new();
         public static List<string> InvalidCharacters { get; } = new() {
@@ -441,6 +455,7 @@ namespace OperationGuidance_new.Utils {
                 }
             }
         }
+
         public static void Log(string message, bool printToView = true) {
             if (printToView) {
                 if (_textArea != null) {

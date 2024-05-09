@@ -1,5 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using OperationGuidance_service.Database.AbstractClasses;
+using OperationGuidance_service.Models;
+using OperationGuidance_service.Utils;
 using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
@@ -12,8 +14,16 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetDbConnection() {
             try {
-                MySqlConnection conn = new($"server={Server}; port={Port}; database={Database}; user={User}; password={Password}; charset=UTF8");
+                MySqlConnection conn = new($"server={Server}; port={Port}; database={Database}; user={User}; password={Password}; charset=UTF8; Connection Timeout=2;");
                 conn.Open();
+
+                if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
+                    using (MySqlCommand command = conn.CreateCommand()) {
+                        command.CommandText = ConnectionUtils.GetInitializationSql("init_mysql", "modify_mysql");
+                        command.ExecuteNonQuery();
+                    }
+                }
+
                 return conn;
             } catch (Exception e) {
                 System.Console.WriteLine($"Connect to mysql failed, e: {e}");

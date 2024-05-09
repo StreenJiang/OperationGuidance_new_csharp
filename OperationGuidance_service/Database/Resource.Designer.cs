@@ -120,5 +120,75 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("init_sqlite", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `predecessor_mission_id` int NULL AFTER `macs_id`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240407 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240407", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `multi_device_independence` int(1) NULL AFTER `predecessor_mission_id`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240413 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240413", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
+        ///
+        ///CREATE TABLE &quot;main&quot;.&quot;product_mission&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;pn_code&quot; text(64),
+        ///  &quot;max_ng_num&quot; integer(4),
+        ///  &quot;password_need_time&quot; integer(4),
+        ///  &quot;enabled&quot; integer(1),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;predecessor_mission_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        ///  &quot;create_ti [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240407 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240407", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240413&quot;;
+        ///
+        ///CREATE TABLE &quot;main&quot;.&quot;product_mission&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;pn_code&quot; text(64),
+        ///  &quot;max_ng_num&quot; integer(4),
+        ///  &quot;password_need_time&quot; integer(4),
+        ///  &quot;enabled&quot; integer(1),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;predecessor_mission_id&quot; integer,
+        ///  &quot;multi_device_independence&quot; integer(1),
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot; [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240413 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240413", resourceCulture);
+            }
+        }
     }
 }

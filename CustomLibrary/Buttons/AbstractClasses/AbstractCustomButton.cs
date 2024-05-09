@@ -61,6 +61,10 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             get => _conerRadius;
             set {
                 _conerRadius = value;
+                int maxRadius = (int) (Height * .485);
+                if (_conerRadius > maxRadius) {
+                    _conerRadius = maxRadius;
+                }
                 Invalidate();
             }
         }

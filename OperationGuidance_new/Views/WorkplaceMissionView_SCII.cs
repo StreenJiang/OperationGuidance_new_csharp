@@ -1,7 +1,5 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Configs;
+﻿using CustomLibrary.Configs;
 using CustomLibrary.Constants;
-using CustomLibrary.Forms;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
@@ -343,48 +341,6 @@ namespace OperationGuidance_new.Views {
             _topRightBottom.Controls.Add(_ngRatePerDay);
             _topRightBottom.Controls.Add(_pset);
         }
-        private async void SetMissionDetails() {
-            _missionSelectedName.SetValue(0, _mission.name);
-            ResetMissionDetails();
-
-            await Task.Run(async () => {
-                while (!IsHandleCreated) {
-                    await Task.Delay(200);
-                }
-                BeginInvoke(() => {
-                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-                    // 存在可以回填的数据
-                    if (missionRecordDTO != null) {
-                        // 刚登录
-                        if (MainUtils.LoginFlag) {
-                            // 需要回填确认
-                            if (MainUtils.IsProductBatchNoticeEnabled()) {
-                                // 弹出提示确认是否回填
-                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                                } else {
-                                    MainUtils.LastProductBatch = null;
-                                }
-                            }
-                            // 不需要提示则直接回填
-                            else {
-                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                            }
-                        }
-                        // 最新查到的批次信息与缓存的不一致，则换掉
-                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                        }
-                        // 不管是否回填，登录标识都要改
-                        MainUtils.LoginFlag = false;
-                        // 不为空就回填
-                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
-                        }
-                    }
-                });
-            });
-        }
         private void ResetMissionDetails() {
             SetTodayData();
             SetPset();
@@ -460,6 +416,137 @@ namespace OperationGuidance_new.Views {
             _bottom.Controls.Add(_timeDisplayerOuter);
         }
 
+        protected override async void SetMissionDetails() {
+            _missionSelectedName.SetValue(0, _mission.name);
+            ResetMissionDetails();
+
+            await Task.Run(async () => {
+                while (!IsHandleCreated) {
+                    await Task.Delay(200);
+                }
+                BeginInvoke(() => {
+                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
+                    // 存在可以回填的数据
+                    if (missionRecordDTO != null) {
+                        // 刚登录
+                        if (MainUtils.LoginFlag) {
+                            // 需要回填确认
+                            if (MainUtils.IsProductBatchNoticeEnabled()) {
+                                // 弹出提示确认是否回填
+                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
+                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                                } else {
+                                    MainUtils.LastProductBatch = null;
+                                }
+                            }
+                            // 不需要提示则直接回填
+                            else {
+                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                            }
+                        }
+                        // 最新查到的批次信息与缓存的不一致，则换掉
+                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
+                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+                        }
+                        // 不管是否回填，登录标识都要改
+                        MainUtils.LoginFlag = false;
+                        // 不为空就回填
+                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
+                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
+                        }
+                    }
+                });
+            });
+        }
+
+        protected override void ActionAfterArmDataReceived(Coordinates3D armCoordinates) {
+            Task.Run(() => {
+                BeginInvoke(() => {
+                    if (_activated && !_finished && _currentWorkingBolt != null) {
+                        ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                        int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
+                        if (toolId != null) {
+                            ToolTask toolTask = _toolTasks[toolId.Value];
+                            Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
+                            _realTimeArmCoordinates = armCoordinates;
+
+                            bool xOk = Math.Abs(armCoordinates.X - boltCoordinates.X) < _armLocatingAccuracy;
+                            bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
+                            bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
+                            if (xOk && yOk && zOk) {
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.ArmPositionError);
+                                // 需要管理员输入密码并确认
+                                if (_adminConfirmed != null) {
+                                    // 管理员已确认
+                                    if (_adminConfirmed.Value) {
+                                        toolTask.SendUnlock();
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                        _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
+                                        _adminConfirmed = null;
+                                    }
+                                    // 管理员未确认
+                                    else {
+                                        toolTask.SendLock();
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                        _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                        _workingProcessPanel.AppendDesc(_workingProcessPanel.AdminConfirmation);
+                                        if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
+                                            _adminConfirmed = false;
+                                            NGConfirmPopUp();
+                                        }
+                                    }
+                                }
+                                // 当前点位没有设置程序号
+                                else if (_currentWorkingBolt.CurrentParameterSet == null) {
+                                    toolTask.SendLock();
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                    // 如果是没有配置就显示对应错误信息，否则可能是下发失败
+                                    if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
+                                        _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNullError);
+                                    } else {
+                                        // 如果下发失败则尝试重新下发
+
+                                    }
+                                }
+                                // // 当前下发的程序与点位的不匹配（可能是手动下发）
+                                // else if (_currentWorkingBolt.BoltDTO.parameters_set != _currentWorkingBolt.CurrentParameterSet) {
+                                //     toolTask.SendLock();
+                                //     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                //     _workingProcessPanel.SetDesc(_workingProcessPanel.PsetNotMatchedError);
+                                // } 
+                                // 检查是否是需要反松，“需要反松”这个字段用于判断当前点位是否有ng的情况，有时候有ng但不需要输入密码，因此需要保留错误信息
+                                else if (_needLoosening) {
+                                    toolTask.SendUnlock();
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                    _workingProcessPanel.AppendDesc(_workingProcessPanel.CustomError);
+                                }
+                                // 所有检查正常
+                                else {
+                                    toolTask.SendUnlock();
+                                    _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                }
+                            }
+                            // 力臂位置不在点位范围内
+                            else {
+                                toolTask.SendLock();
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                // Remove '*ing' desc
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.TighteningDesc);
+                                _workingProcessPanel.RemoveDesc(_workingProcessPanel.LooseningDesc);
+                                // Append position error desc
+                                _workingProcessPanel.AppendDesc(_workingProcessPanel.ArmPositionError);
+
+                                // Remove admin confirmation message if _adminConfirmed is null or is true
+                                if (_adminConfirmed == null || _adminConfirmed.Value) {
+                                    _workingProcessPanel.RemoveDesc(_workingProcessPanel.AdminConfirmation);
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
@@ -807,19 +894,6 @@ namespace OperationGuidance_new.Views {
         //     }
         // }
 
-        protected override void OnHandleDestroyed(EventArgs e) {
-            base.OnHandleDestroyed(e);
-            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                pair.Value.ActionAfterReceiving = new(c => { });
-            }
-            _serialPortTasks = MainUtils.SerialPortTasks;
-            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = new(c => { });
-            }
-        }
-
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
                 lock (DataStorageLockObj) {
@@ -1070,10 +1144,6 @@ namespace OperationGuidance_new.Views {
                                 // 检查是否存在跳点的情况
                                 while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
                                     nextIndex++;
-
-                                    logger.Debug($"***************************************************************");
-                                    logger.Debug($"Checking in looping");
-                                    logger.Debug($"***************************************************************");
                                 }
 
                                 if (nextIndex < currentSideBolts.Count) {
@@ -1083,10 +1153,6 @@ namespace OperationGuidance_new.Views {
                                     // All ok
                                     _activated = false;
                                     _finished = true;
-
-                                    logger.Debug($"***************************************************************");
-                                    logger.Debug($"Work is done!!!!!!!!!!!!!!!");
-                                    logger.Debug($"***************************************************************");
 
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_OK;
                                     _workingProcessPanel.CustomError = null;

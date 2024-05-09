@@ -472,7 +472,7 @@ namespace OperationGuidance_new.Views {
                         int serialNumTemp = 0;
 
                         if (_missionDTO.multi_device_independence != null && _missionDTO.multi_device_independence == (int) YesOrNo.YES) {
-                            boltDTO.serial_num = 0;
+                            boltDTO.serial_num = 1;
                             boltDTO.name = "BOLT";
                         } else {
                             foreach (List<BoltButton> btnList in _currentSideButton.BoltButtons.Values) {
@@ -493,17 +493,17 @@ namespace OperationGuidance_new.Views {
                             int workstationId = boltDTO.workstation_id;
 
                             // Add buttons into side button
-                            if (_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
-                                _currentSideButton.BoltButtons[workstationId].Add(boltButton);
-                                boltButton.UpperNum = _currentSideButton.BoltButtons.IndexOfKey(workstationId) + 1;
-                            } else {
-                                _currentSideButton.BoltButtons.Add(workstationId, new() { { boltButton } });
+                            if (!_currentSideButton.BoltButtons.ContainsKey(workstationId)) {
+                                _currentSideButton.BoltButtons.Add(workstationId, new());
+                                _currentSideButton.BoltEditionButtons.Add(workstationId, new());
                             }
-                            if (_currentSideButton.BoltEditionButtons.ContainsKey(workstationId)) {
-                                _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
-                                boltEditionButton.UpperNum = _currentSideButton.BoltEditionButtons.IndexOfKey(workstationId) + 1;
-                            } else {
-                                _currentSideButton.BoltEditionButtons.Add(workstationId, new() { { boltEditionButton } });
+                            _currentSideButton.BoltButtons[workstationId].Add(boltButton);
+                            _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
+
+                            if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                                int upperNum = _currentSideButton.BoltButtons.IndexOfKey(workstationId) + 1;
+                                boltButton.UpperNum = upperNum;
+                                boltEditionButton.UpperNum = upperNum;
                             }
 
                             // Do this to force fire SizeChanged event
@@ -1452,6 +1452,10 @@ namespace OperationGuidance_new.Views {
         public class AddNewSideButton: CommonButton {
             public AddNewSideButton(string buttonName) {
                 Label = buttonName;
+                ConerRadius = 0;
+            }
+            protected override void OnSizeChanged(EventArgs e) {
+                base.OnSizeChanged(e);
                 ConerRadius = 0;
             }
             protected override void ResizeTextLabel() {

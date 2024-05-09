@@ -598,6 +598,10 @@ namespace OperationGuidance_new.Views {
             _bottom.Controls.Add(_timeDisplayerOuter);
         }
 
+        protected override void SetMissionDetails() {
+            _missionSelectedName.SetValue(0, _mission.name);
+        }
+
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
             if (IsHandleCreated && !IsDisposed) {
@@ -934,19 +938,6 @@ namespace OperationGuidance_new.Views {
         //         ResetRightBottomTitleFont();
         //     }
         // }
-
-        protected override void OnHandleDestroyed(EventArgs e) {
-            base.OnHandleDestroyed(e);
-            foreach (KeyValuePair<int, ArmTask> pair in _armTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                pair.Value.ActionAfterReceiving = new(c => { });
-            }
-            _serialPortTasks = MainUtils.SerialPortTasks;
-            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = new(c => { });
-            }
-        }
 
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {

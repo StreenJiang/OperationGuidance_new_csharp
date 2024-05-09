@@ -294,6 +294,10 @@ namespace CustomLibrary.TextBoxes {
 
             // Recal coner radius
             _conerRadius = WidgetUtils.ControlRadius();
+            int maxRadius = (int) (Height * .485);
+            if (_conerRadius > maxRadius) {
+                _conerRadius = maxRadius;
+            }
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {
@@ -319,13 +323,13 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         private void OnMouseEnter() {
-            if (_enabled && !_box.Focused) {
+            if (!_box.ReadOnly && !_box.Focused) {
                 _box.BackColor = _hoverBackColor;
                 base.BackColor = _hoverBackColor;
             }
         }
         private void OnMouseLeave() {
-            if (_enabled && !_box.Focused) {
+            if (!_box.ReadOnly && !_box.Focused) {
                 _box.BackColor = _originalBackColor;
                 base.BackColor = _originalBackColor;
             }

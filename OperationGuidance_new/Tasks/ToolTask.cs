@@ -15,6 +15,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 2000;
         private readonly int HeartBeatDelay = 5000;
+        private readonly int LockDelay = 1000;
+        private bool? Locked = null;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -31,7 +33,6 @@ namespace OperationGuidance_new.Tasks {
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public string? Result { get; set; }
-        public bool Locked { get; set; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         #endregion
 
@@ -41,7 +42,6 @@ namespace OperationGuidance_new.Tasks {
             _ip = ip;
             _port = port;
             _toolType = tool;
-            Locked = false;
             Status = DISCONNECTED;
         }
         #endregion
@@ -104,6 +104,14 @@ namespace OperationGuidance_new.Tasks {
                         socketClient.Close();
                         socketClient = null;
                     }
+                }
+            });
+
+            // Looping for checking lock status
+            Task.Run(async () => {
+                while (true) {
+                    Locked = null;
+                    await Task.Delay(LockDelay);
                 }
             });
         }
@@ -242,10 +250,11 @@ namespace OperationGuidance_new.Tasks {
             });
         }
         public async void SendLock() {
-            if (_toolType.COMMAND_LOCK_ASCII != null && !Locked) {
+            if (_toolType.COMMAND_LOCK_ASCII != null && (Locked == null || !Locked.Value)) {
                 string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
                 if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+                    logger.Info($"Send lock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = true;
                     return;
                 }
@@ -253,10 +262,11 @@ namespace OperationGuidance_new.Tasks {
             }
         }
         public async Task<bool> SendLockAsync() {
-            if (_toolType.COMMAND_LOCK_ASCII != null && !Locked) {
+            if (_toolType.COMMAND_LOCK_ASCII != null && (Locked == null || !Locked.Value)) {
                 string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
                 if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+                    logger.Info($"Send lock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = true;
                     return true;
                 }
@@ -265,10 +275,11 @@ namespace OperationGuidance_new.Tasks {
             return false;
         }
         public async void SendUnlock() {
-            if (_toolType.COMMAND_UNLOCK_ASCII != null && Locked) {
+            if (_toolType.COMMAND_UNLOCK_ASCII != null && (Locked == null || Locked.Value)) {
                 string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
                 if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+                    logger.Info($"Send unlock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = false;
                     return;
                 }
@@ -276,10 +287,11 @@ namespace OperationGuidance_new.Tasks {
             }
         }
         public async Task<bool> SendUnlockAsync() {
-            if (_toolType.COMMAND_UNLOCK_ASCII != null && Locked) {
+            if (_toolType.COMMAND_UNLOCK_ASCII != null && (Locked == null || Locked.Value)) {
                 string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
                 if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+                    logger.Info($"Send unlock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = false;
                     return true;
                 }

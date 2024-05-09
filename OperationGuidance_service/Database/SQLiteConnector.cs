@@ -16,7 +16,7 @@ namespace OperationGuidance_service.Database {
                     return null;
                 }
             }
-            SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True;");
+            SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
             conn.Open();
             return conn;
         }
@@ -28,17 +28,16 @@ namespace OperationGuidance_service.Database {
                 Directory.CreateDirectory(dataSourcePath);
             }
             string dataSource = dataSourcePath + Database;
-            string commandText = Resource.init_sqlite;
-            using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True;"))
+            using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;"))
             using (SQLiteCommand command = conn.CreateCommand()) {
                 try {
                     conn.Open();
-                    command.CommandText = commandText;
+                    command.CommandText = ConnectionUtils.GetInitializationSql("init_sqlite", "modify_sqlite");
                     command.ExecuteNonQuery();
                     return true;
                 } catch (Exception e) {
                     System.Console.WriteLine($"e: {e}, Data source = {GetCurrentDataSourcePath()}");
-                } finally { 
+                } finally {
                     conn.Close();
                 }
                 return false;

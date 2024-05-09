@@ -1,2 +1,2 @@
-ALTER TABLE `aneng`.`product_mission` 
+ALTER TABLE `product_mission` 
   ADD COLUMN `multi_device_independence` int(1) NULL AFTER `predecessor_mission_id`;

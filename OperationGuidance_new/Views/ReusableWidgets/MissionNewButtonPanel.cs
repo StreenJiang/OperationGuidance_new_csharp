@@ -12,6 +12,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _addNewButton = new() {
                 Label = "点击添加任务",
                 Parent = this,
+                Size = new(100, 50),
             };
             _addNewButton.Click += (sender, eventArgs) => {
                 // 点击按钮后跳转至任务编辑界面并新增一个任务
@@ -40,9 +41,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         protected override void OnSizeChanged(EventArgs e) {
-            _addNewButton.ConerRadius = WidgetUtils.ControlRadius();
-            _addNewButton.Size = new((int) (Width * 0.2), (int) (Height * 0.13));
+            _addNewButton.Height = (int) (Height * 0.14);
+            int newWidth = WidgetUtils.MeasureString(_addNewButton.Label, _addNewButton.Font).Width + _addNewButton.Height * 2;
+            _addNewButton.Width = newWidth;
             _addNewButton.Location = new((Width - _addNewButton.Width) / 2, (Height - _addNewButton.Height) / 2);
+        }
+
+        protected override void OnVisibleChanged(EventArgs e) {
+            base.OnVisibleChanged(e);
         }
     }
 }

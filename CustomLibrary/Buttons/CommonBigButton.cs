@@ -1,15 +1,13 @@
-﻿using CustomLibrary.Buttons.BaseClasses;
-using CustomLibrary.Configs;
+﻿using CustomLibrary.Configs;
 
 namespace CustomLibrary.Buttons {
-    public class CommonBigButton: CommonButtonBase {
+    public class CommonBigButton: CommonButton {
         protected override void ResizeTextLabel() {
-            if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Width / 30 + this.Height / 9 + 1.25F, FontStyle.Bold);
-                using (Graphics g = CreateGraphics()) {
-                    this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
+            if (this.Label != null && Height > 0) {
+                int size = (int) (Height * .275);
+                if (size > 0) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, size, FontStyle.Bold, GraphicsUnit.Pixel);
                 }
-                this.LabelY = (this.Height - this.Font.Height) / 2;
             }
         }
 

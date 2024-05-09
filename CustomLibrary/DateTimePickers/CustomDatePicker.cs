@@ -119,6 +119,10 @@ namespace CustomLibrary.DateTimePickers {
 
             // Recal coner radius
             _conerRadius = WidgetUtils.ControlRadius();
+            int maxRadius = (int) (Height * .485);
+            if (_conerRadius > maxRadius) {
+                _conerRadius = maxRadius;
+            }
 
             // Create border rectangle if border color is not null
             if (_borderColor != null) {

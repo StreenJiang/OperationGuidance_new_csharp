@@ -10,6 +10,7 @@ namespace CustomLibrary.Buttons {
         private string _offText;
         private bool _showText;
         private int _conerRadius;
+        private int _toggleConerRadius;
         private Point _textLocation;
         private Color _onBackColor;
         private Color _onToggleColor;
@@ -84,6 +85,11 @@ namespace CustomLibrary.Buttons {
             if (_conerRadius > 0) {
                 _toggleBorderThickness = (int) (Math.Ceiling((Height - 2) / 7.5F));
                 _toggleRectSize = new((int) ((Width - 2 - _toggleBorderThickness * 2) / 2.25), Height - 2 - _toggleBorderThickness * 2);
+                _toggleConerRadius = (int) (_conerRadius * .9F);
+                int maxRadius = (int) (_toggleRectSize.Height * .485);
+                if (_toggleConerRadius > maxRadius) {
+                    _toggleConerRadius = maxRadius;
+                }
             } else {
                 _toggleBorderThickness = (int) (Math.Ceiling(Height / 7.5F));
                 _toggleRectSize = new((int) ((Width - _toggleBorderThickness * 2) / 2.25), Height - _toggleBorderThickness * 2);
@@ -175,6 +181,10 @@ namespace CustomLibrary.Buttons {
         private void ResizeChildren(object? sender, EventArgs eventArgs) {
             // Recal coner radius
             _conerRadius = WidgetUtils.ControlRadius();
+            int maxRadius = (int) (Height * .485);
+            if (_conerRadius > maxRadius) {
+                _conerRadius = maxRadius;
+            }
             // Change region
             if (_conerRadius > 0) {
                 using (GraphicsPath path = WidgetUtils.RoundedRect(new(0, 0, Width - 1, Height - 1), _conerRadius)) {
@@ -247,7 +257,7 @@ namespace CustomLibrary.Buttons {
                     }
                 }
                 if (_conerRadius > 0) {
-                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), (int) Math.Round(_conerRadius * .9))) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _toggleConerRadius)) {
                         g.FillPath(new SolidBrush(onToggleColor), path);
                     }
                 } else {
@@ -287,7 +297,7 @@ namespace CustomLibrary.Buttons {
                     }
                 }
                 if (_conerRadius > 0) {
-                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), (int) Math.Round(_conerRadius * .9))) {
+                    using (GraphicsPath path = WidgetUtils.RoundedRect(new(_toggleRectLocation, _toggleRectSize - new Size(1, 1)), _toggleConerRadius)) {
                         g.FillPath(new SolidBrush(offToggleColor), path);
                     }
                 } else {

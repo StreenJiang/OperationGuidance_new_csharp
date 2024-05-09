@@ -1,11 +1,59 @@
 ﻿using OperationGuidance_service.Constants;
+using OperationGuidance_service.Database;
+using System.Collections;
+using System.Data.Common;
+using System.Globalization;
 using System.IO.Ports;
+using System.Resources;
 using WmiLight;
 
 namespace OperationGuidance_service.Utils {
     public class ConnectionUtils {
         public static ConnectionStatus CheckConnection(string ip, int port) {
             return ConnectionStatus.CONNECTED;
+        }
+
+        public static bool CheckTableExists(DbConnection conn, string tableName) {
+            bool exists;
+            DbCommand dbCommand = conn.CreateCommand();
+
+            try {
+                // ANSI SQL way.  Works in PostgreSQL, MSSQL, MySQL.  
+                dbCommand.CommandText = "select case when exists((select * from information_schema.tables where table_name = '" + tableName + "')) then 1 else 0 end";
+
+                exists = (int) dbCommand.ExecuteScalar() == 1;
+            } catch {
+                try {
+                    // Other RDBMS.  Graceful degradation
+                    exists = true;
+                    dbCommand.CommandText = "select 1 from " + tableName + " where 1 = 0";
+                    dbCommand.ExecuteNonQuery();
+                } catch {
+                    exists = false;
+                }
+            }
+
+            return exists;
+        }
+
+        public static string GetInitializationSql(string creatScriptName, string modifyNamePrefix) {
+            string commandText = CommonUtils.CannotBeNull(Resource.ResourceManager.GetString(creatScriptName));
+
+            ResourceSet? resourceSet = Resource.ResourceManager.GetResourceSet(CultureInfo.InvariantCulture, false, false);
+            if (resourceSet != null) {
+                List<string> fileNames = resourceSet.Cast<DictionaryEntry>().Select(entry => entry.Key).Cast<String>().ToList();
+                fileNames.Sort();
+                foreach (string fileName in fileNames) {
+                    if (fileName.Contains(modifyNamePrefix)) {
+                        string? fileText = Resource.ResourceManager.GetString(fileName);
+                        if (!string.IsNullOrEmpty(fileText)) {
+                            commandText += $"\r\n{fileText}";
+                        }
+                    }
+                }
+            }
+
+            return commandText;
         }
 
         public static Dictionary<string, string> GetSerialPorts() {
