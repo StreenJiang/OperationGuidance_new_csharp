@@ -23,7 +23,8 @@ namespace OperationGuidance_service.Utils {
         public static UserAccountInfoDTO UserInfo {
             set {
                 _user = value;
-            } get {
+            }
+            get {
                 if (_user == null) {
                     _user = new() {
                         id = 1,
@@ -43,7 +44,7 @@ namespace OperationGuidance_service.Utils {
         public static DBTypes GetDBTypes() {
             string dbType = DatabaseConfigs.Read(IniFileKeys.DatabaseType);
             if (string.IsNullOrEmpty(dbType)) {
-                dbType = DBTypes.MYSQL + "";
+                dbType = DBTypes.SQLITE + "";
                 DatabaseConfigs.Write(IniFileKeys.DatabaseType, dbType);
             }
             return (DBTypes) Enum.Parse(typeof(DBTypes), dbType);
@@ -139,10 +140,10 @@ namespace OperationGuidance_service.Utils {
         public static bool IsMD5(this string str, int length = 32) {
             if (str.Length < length || str.Length > length)
                 return false;
-         
+
             int count = 0;
             var charArray = "0123456789abcdefABCDEF".ToCharArray();
-         
+
             foreach (var c in str.ToCharArray()) {
                 if (charArray.Any(x => x == c)) {
                     ++count;

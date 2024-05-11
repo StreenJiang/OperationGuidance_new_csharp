@@ -354,7 +354,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             CommonButton sidesDetials = _currentSideName.AddButton("更多");
             sidesDetials.Enabled = true;
             sidesDetials.Click += (s, e) => {
-                PopUpSideListForm();
+                // PopUpSideListForm();
             };
 
             SetMissionDetails();
@@ -421,6 +421,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _missionSelectedName.SetValue(0, _mission.name);
             SetProductImagePanel();
             RefreshImageDisplayPanel();
+            _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
+        }
+        protected virtual void changeSideAndInvalidate() {
+            // List<BoltButton> currentSideBolts;
+            if (CheckIfIsMultiDeviceIndependenceMode()) {
+                // currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
+            } else {
+                // currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
+
+                if (_currentWorkingBolt != null) {
+                    if (_currentWorkingBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
+                        _currentWorkingBolt.ShowingWhileWorking = false;
+                    } else {
+                        _currentWorkingBolt.ShowingWhileWorking = true;
+                    }
+                }
+
+                // 切换side后也切换点位
+                _showingBoltButtons.ForEach(btn => btn.Visible = false);
+                _showingBoltButtons = _allBolts[_sides[_currentSideIndex].id];
+                _showingBoltButtons.ForEach(btn => btn.Visible = true);
+            }
+
+            // 切换产品图片
+            _productImageDisplayPanel.SetImage(_productImageFiles[_currentSideIndex].Image, _productImageFiles[_currentSideIndex].CenterLocation);
+            _productImageFiles[_currentSideIndex].RefreshImage();
+
+            // Change side name
+            _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
         }
         protected abstract void RefreshImageDisplayPanel();
         protected abstract void SetMissionDetails();
@@ -472,9 +501,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 };
                 deviceBlock.MouseMove += (sender, eventArg) => {
                     if (deviceBlock.FloatingForm == null || deviceBlock.FloatingForm.IsDisposed) {
-                        int panelHeight = WidgetUtils.TextOrComboBoxHeight();
+                        int panelHeight = WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight();
                         Size contentSize = new();
-                        contentSize.Width = (int) (WidgetUtils.MainSize.Width * .225);
+                        contentSize.Width = (int) (WidgetUtils.MainSize.Width * .25);
                         if (deviceBlock.Category == DeviceCategories.TOOL) {
                             if (_toolTasks.Count > 0) {
                                 deviceBlock.BlockHoverUp = false;
@@ -491,7 +520,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         } else if (deviceBlock.Category == DeviceCategories.SERIAL_PORT) {
                             if (_serialPortTasks.Count > 0) {
-                                contentSize.Width = (int) (WidgetUtils.MainSize.Width * .45);
+                                contentSize.Width = (int) (WidgetUtils.MainSize.Width * .475);
                                 deviceBlock.FloatingForm = new SerialPortDetailFloatingForm(deviceBlock.CategoryName, _serialPortTasks, panelHeight);
                                 contentSize.Height = panelHeight * _serialPortTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
                             }
@@ -891,6 +920,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             // 默认显示第一个产品面和对应的螺栓点位
+            _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
             int sideId = _sides[_currentSideIndex].id;
             if (sideId > 0) {
                 _showingBoltButtons = _allBolts[_sides[_currentSideIndex].id];
@@ -1059,6 +1089,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void ActionAfterActivatingMission() {
+            // Reset side page
+            _currentSideIndex = 0;
+            changeSideAndInvalidate();
+
             // Add a new record into: mission_record
             _missionRecord = new() {
                 mission_id = _mission.id,
@@ -1170,6 +1204,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 else {
                                     toolTask.SendUnlock();
                                     _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                                    _workingProcessPanel.AppendDesc(_workingProcessPanel.CustomError);
                                 }
                             }
                             // 力臂位置不在点位范围内
@@ -1222,6 +1257,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async void SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
             // // Initialize pset text box first
             // SetPset();
+            _pset.SetValue(0, null);
 
             // If pset is null, show error message in working proccess panel
             if (pset == null) {
@@ -1256,6 +1292,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                         // // 实时显示pset到任务信息框
                         // SetPset("程序号下发失败");
+                        _pset.SetValue(0, "程序号下发失败");
 
                         // Confirm if retry needed
                         if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
@@ -1268,6 +1305,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     boltButton.CurrentParameterSet = pset;
 
                     // SetPset();
+                    _pset.SetValue(0, pset + "");
                 });
             });
         }
@@ -2156,9 +2194,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private void InvokeResizing() {
             _borderRect.Size = Size;
             _borderSize = Width / 40 + Height / 80;
-            _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F);
-            _picturePanel.Size = new(Width - _borderSize * 2, _picturePanelHeight);
-            _picturePanel.Location = new(_borderSize, _borderSize);
+            if (ConerRadius == 0) {
+                _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F);
+                _picturePanel.Size = new(Width - _borderSize * 2, _picturePanelHeight);
+                _picturePanel.Margin = new(_borderSize);
+            } else {
+                _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F) - ConerRadius * 2;
+                _picturePanel.Size = new(Width - _borderSize * 2 - ConerRadius * 2, _picturePanelHeight);
+                _picturePanel.Margin = new(_borderSize + ConerRadius);
+            }
 
             int imageSide = (int) (_picturePanel.Height * .85);
             if (_picturePanel.Height > _picturePanel.Width) {
@@ -2195,7 +2239,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
                     break;
                 case WorkplaceProcessStatus.OPERATION_ENABLE:
-                    graphics.DrawRectangle(new(_correctColor, _borderSize), _borderRect);
+                    if (ConerRadius == 0) {
+                        graphics.DrawRectangle(new(_correctColor, _borderSize), _borderRect);
+                    } else {
+                        int temp = _borderSize / 2;
+                        using (GraphicsPath path = WidgetUtils.RoundedRect(new(new Point(temp, temp), _borderRect.Size - new Size(1 + _borderSize, 1 + _borderSize)), ConerRadius)) {
+                            graphics.DrawPath(new(_correctColor, _borderSize), path);
+                        }
+                    }
                     string descShowing = _statusDesc;
                     // 设置当前点位信息
                     if (_boltSerialNum != null) {

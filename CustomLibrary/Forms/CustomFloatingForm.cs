@@ -13,7 +13,7 @@ namespace CustomLibrary.Forms {
         private CustomContentPanel _outerPanel;
         private CustomContentPanel _titlePanel;
         private CustomContentPanel _contentPanel;
-        
+
         // Outer panel
         // Title panel
         private string _title;
@@ -22,10 +22,10 @@ namespace CustomLibrary.Forms {
 
         // -- Properties --
         // Used in EventFuncs
-        public Color? BorderColor { 
-            get => _borderColor; 
+        public Color? BorderColor {
+            get => _borderColor;
             set {
-                _borderColor = value; 
+                _borderColor = value;
                 if (value != null) {
                     _outerPanel.Location = new(_borderThickness, _borderThickness);
                 } else {
@@ -44,7 +44,7 @@ namespace CustomLibrary.Forms {
 
         public CustomFloatingForm() : base() {
             Control mainParent = WidgetUtils.MainForm;
-             // Initialize self
+            // Initialize self
             Owner = (Form) mainParent;
             StartPosition = FormStartPosition.Manual;
             FormBorderStyle = FormBorderStyle.None;
@@ -56,7 +56,7 @@ namespace CustomLibrary.Forms {
             };
             _title = "(未命名)";
             _titlePanel.SizeChanged += (sender, eventArgs) => {
-                _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular);
+                _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
             };
             _titlePanel.Paint += (sender, eventArgs) => {
                 if (_titleFont != null) {
@@ -71,7 +71,7 @@ namespace CustomLibrary.Forms {
             };
             // Content panel
             _contentPanel = new() {
-                Margin = new(0), 
+                Margin = new(0),
                 Padding = GetContentPadding(),
             };
             // Outer panel

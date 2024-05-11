@@ -247,39 +247,17 @@ namespace OperationGuidance_new.Views {
                             _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
                         }
-                        string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
-                        if (string.IsNullOrEmpty(maxNGNum)) {
-                            check = false;
-                            _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
-                        }
-                        string passwordNeedTime = _detialPopUpForm.PasswordNeedTime.GetTextBox(0).Box.Text;
-                        if (string.IsNullOrEmpty(passwordNeedTime)) {
-                            check = false;
-                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
-                        }
-                        int int_maxNGNum = int.Parse(maxNGNum);
-                        int int_passwordNeedTime = int.Parse(passwordNeedTime);
-                        if (int_passwordNeedTime >= int_maxNGNum) {
-                            check = false;
-                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
-                        }
 
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                         } else {
                             _missionName.SetValue(0, missionName);
                             _missionDTO.name = missionName;
-                            _missionDTO.max_ng_num = int.Parse(maxNGNum);
-                            _missionDTO.password_need_time = int.Parse(passwordNeedTime);
                             if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
                                 _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
                             } else {
                                 _missionDTO.predecessor_mission_id = null;
                             }
-                            _missionDTO.multi_device_independence = _detialPopUpForm.MultiDeviceIndependence.Checked ? (int) YesOrNo.YES : (int) YesOrNo.NO;
                             _detialPopUpForm.Hide();
 
                             // Reset all serial numbers of all bolts
@@ -366,6 +344,7 @@ namespace OperationGuidance_new.Views {
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
                     _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
+                    _currentSideButton.SideDTO.cropped = (int) YesOrNo.NO;
                 });
                 _imageButtonZoomIn = GenerateImageButton("放大图片", Properties.Resources.image_zoom_in, (sender, eventArgs) => {
                     _currentProductImageFile.SaveCurrent();
@@ -461,6 +440,12 @@ namespace OperationGuidance_new.Views {
                     if (!_leftBottomContentPanel.CanTriggerClick()) {
                         // 检查sideDTO是否为空，如果为空则抛出异常，因为在这里不能为空
                         ProductSideDTO sideDTO = CommonUtils.CannotBeNull(_currentSideButton.SideDTO);
+                        // Check if image cropped
+                        if (!_currentProductImageFile.Cropped) {
+                            WidgetUtils.ShowWarningPopUp("产品图片需要裁剪过后才可进行点位增加操作（裁剪是为了将图片当前位置存入数据库）");
+                            return;
+                        }
+
                         ProductBoltDTO boltDTO = new() {
                             side_id = sideDTO.id,
                         };
@@ -525,7 +510,7 @@ namespace OperationGuidance_new.Views {
                 _needSaveBuffer = false;
 
                 // Make left bottom content panel can be auto focus
-                EventFuncs.AddAutoActivatingControl(_leftBottomContentPanel);
+                EventFuncs.AddClickActivateControl(_leftBottomContentPanel);
 
                 // Other events
                 _leftBottomContentPanel.KeyDown += (sender, eventArgs) => {
@@ -1263,21 +1248,15 @@ namespace OperationGuidance_new.Views {
             private TableLayoutPanel _tablePanel;
             private CustomTextBoxGroup _missionName;
             private CustomComboBoxGroup<int> _predecessorMission;
-            private CustomTextBoxGroup _maxNGNum;
-            private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
             private CustomTextBoxGroup _partsBarCodeNum;
-            private ToggleButtonGroup _multiDeviceIndependence;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public CustomTextBoxGroup MissionName { get => _missionName; set => _missionName = value; }
             public CustomComboBoxGroup<int> PredecessorMission { get => _predecessorMission; set => _predecessorMission = value; }
-            public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
-            public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
-            public ToggleButtonGroup MultiDeviceIndependence { get => _multiDeviceIndependence; set => _multiDeviceIndependence = value; }
 
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO,
                     List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
@@ -1300,18 +1279,6 @@ namespace OperationGuidance_new.Views {
                 allOtherMissions.ForEach(m => {
                     _predecessorMission.AddItem(m.name, m.id);
                 });
-                _maxNGNum = new("最大NG数") {
-                    Parent = _tablePanel,
-                    Ratio = 6.75,
-                    NameAlignment = HorizontalAlignment.Right,
-                    PositiveIntOnly = true,
-                };
-                _passwordNeedTime = new("第几次起需密码") {
-                    Parent = _tablePanel,
-                    Ratio = 6.75,
-                    NameAlignment = HorizontalAlignment.Right,
-                    PositiveIntOnly = true,
-                };
                 _productsBarCodeNum = new("产品条码") {
                     Parent = _tablePanel,
                     Ratio = 6.75,
@@ -1324,17 +1291,9 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
-                _multiDeviceIndependence = new("多设备点位独立") {
-                    Parent = _tablePanel,
-                    Ratio = 6.75,
-                    NameAlignment = HorizontalAlignment.Right,
-                    Checked = false,
-                };
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
-                _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
-                _passwordNeedTime.SetValue(0, missionDTO.password_need_time + "");
                 if (missionDTO.predecessor_mission_id != null) {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
                 }
@@ -1349,9 +1308,6 @@ namespace OperationGuidance_new.Views {
                 }
                 _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
                 _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
-                if (missionDTO.multi_device_independence != null) {
-                    _multiDeviceIndependence.Checked = missionDTO.multi_device_independence.Value == (int) YesOrNo.YES;
-                }
             }
 
             public void ResizeSelf() {

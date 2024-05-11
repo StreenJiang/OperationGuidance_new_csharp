@@ -261,7 +261,7 @@ namespace OperationGuidance_new.Views {
                         }
                         int int_maxNGNum = int.Parse(maxNGNum);
                         int int_passwordNeedTime = int.Parse(passwordNeedTime);
-                        if (int_passwordNeedTime >= int_maxNGNum) {
+                        if (int_maxNGNum > 0 && int_passwordNeedTime >= int_maxNGNum) {
                             check = false;
                             _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
@@ -365,6 +365,7 @@ namespace OperationGuidance_new.Views {
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
                     _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
+                    _currentSideButton.SideDTO.cropped = (int) YesOrNo.NO;
                 });
                 _imageButtonZoomIn = GenerateImageButton("放大图片", Properties.Resources.image_zoom_in, (sender, eventArgs) => {
                     _currentProductImageFile.SaveCurrent();
@@ -460,6 +461,12 @@ namespace OperationGuidance_new.Views {
                     if (!_leftBottomContentPanel.CanTriggerClick()) {
                         // 检查sideDTO是否为空，如果为空则抛出异常，因为在这里不能为空
                         ProductSideDTO sideDTO = CommonUtils.CannotBeNull(_currentSideButton.SideDTO);
+                        // Check if image cropped
+                        if (!_currentProductImageFile.Cropped) {
+                            WidgetUtils.ShowWarningPopUp("产品图片需要裁剪过后才可进行点位增加操作（裁剪是为了将图片当前位置存入数据库）");
+                            return;
+                        }
+
                         ProductBoltDTO boltDTO = new() {
                             side_id = sideDTO.id,
                         };
@@ -513,7 +520,7 @@ namespace OperationGuidance_new.Views {
                 _needSaveBuffer = false;
 
                 // Make left bottom content panel can be auto focus
-                EventFuncs.AddAutoActivatingControl(_leftBottomContentPanel);
+                EventFuncs.AddClickActivateControl(_leftBottomContentPanel);
 
                 // Other events
                 _leftBottomContentPanel.KeyDown += (sender, eventArgs) => {
@@ -1273,8 +1280,14 @@ namespace OperationGuidance_new.Views {
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
+                if (missionDTO.max_ng_num == 0) {
+                    missionDTO.max_ng_num = 3;
+                }
                 _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, missionDTO.password_need_time + "");
+                if (missionDTO.password_need_time == 0) {
+                    missionDTO.password_need_time = 2;
+                }
                 if (missionDTO.predecessor_mission_id != null) {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
                 }

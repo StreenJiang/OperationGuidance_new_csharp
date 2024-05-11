@@ -144,6 +144,17 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_side` 
+        ///  ADD COLUMN `cropped` int(1) NULL AFTER `rotate_angle`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240510 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240510", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;main&quot;.&quot;product_mission&quot; (
@@ -188,6 +199,30 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20240413 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240413", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_side&quot; RENAME TO &quot;_product_side_old_20240510&quot;;
+        ///
+        ///CREATE TABLE &quot;main&quot;.&quot;product_side&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;mission_id&quot; integer,
+        ///  &quot;image&quot; text(256),
+        ///  &quot;max_rectangle_width&quot; integer(16),
+        ///  &quot;max_rectangle_height&quot; integer(16),
+        ///  &quot;max_rectangle_location&quot; text(32),
+        ///  &quot;center_location&quot; text(32),
+        ///  &quot;location_offset&quot; text(32),
+        ///  &quot;location_offset_moving&quot; text(32),
+        ///  &quot;zooming_ratio&quot; real(8),
+        ///  &quot;zooming_ratio_extra&quot; real(8),
+        /// [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240510 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240510", resourceCulture);
             }
         }
     }

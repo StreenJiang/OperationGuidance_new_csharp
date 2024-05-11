@@ -32,6 +32,7 @@ namespace CustomLibrary.Forms {
         private HorizontalAlignment _buttonAlignment;
 
         // -- Properties --
+        public Form PopUpFormBackboard { get => _popUpFormBackboard; set => _popUpFormBackboard = value; }
         // Used in EventFuncs
         public Form BackForm { get => _popUpFormBackboard; set => _popUpFormBackboard = value; }
         public Color? BorderColor {
@@ -226,17 +227,17 @@ namespace CustomLibrary.Forms {
             }
         }
 
-        public void CalculateDetailProperties() {
+        public virtual void CalculateDetailProperties() {
             _popUpFormBackboard.Size = WidgetUtils.MainForm.ClientSize;
             _titlePanel.Height = GetTitlePanelHeight();
             _buttonsPanel.Padding = GetButtonsPanelPadding();
             _buttonsPanel.Height = GetButtonsPanelHeight();
             _contentPanel.Padding = GetContentPadding();
         }
-        private int GetTitlePanelHeight() => WidgetUtils.PopUpOrFloatingFormTitle();
-        private int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.PopUpOrFloatingFormCommonButtonHeight();
-        private Padding GetContentPadding() => WidgetUtils.PopUpOrFloatingFormContentPadding();
-        private Padding GetButtonsPanelPadding() => WidgetUtils.PopUpOrFloatingFormButtonsPadding();
+        protected int GetTitlePanelHeight() => WidgetUtils.PopUpOrFloatingFormTitle();
+        protected int GetButtonsPanelHeight() => GetButtonsPanelPadding().Size.Height + WidgetUtils.PopUpOrFloatingFormCommonButtonHeight();
+        protected Padding GetContentPadding() => WidgetUtils.PopUpOrFloatingFormContentPadding();
+        protected Padding GetButtonsPanelPadding() => WidgetUtils.PopUpOrFloatingFormButtonsPadding();
 
         public void SetContentSizeAndSelfSize(Size contentSize) {
             ContentPanel.Height = contentSize.Height;
@@ -270,7 +271,7 @@ namespace CustomLibrary.Forms {
             _outerPanel.Size = outerSize;
         }
 
-        private void AfterSizeChanged(object? sender, EventArgs eventArgs) {
+        protected virtual void AfterSizeChanged(object? sender, EventArgs eventArgs) {
             if (WidgetUtils.MainForm == null || WidgetUtils.MainForm.IsDisposed || _popUpFormBackboard.IsDisposed) {
                 return;
             }

@@ -12,6 +12,7 @@ namespace CustomLibrary.Events {
         public static bool IsOnTopNow(IntPtr handle) => GetForegroundWindow() == handle;
 
         private static List<Control> _autoActivatingControls = new();
+        private static List<Control> _clickToActivateControls = new();
         public static List<Action> _mouseUpActions = new();
         public static List<Action> _mouseDownActions = new();
 
@@ -22,7 +23,14 @@ namespace CustomLibrary.Events {
         public static Control? AutoCloseControl { get; set; }
 
         public static void AddAutoActivatingControl(Control control) {
-            _autoActivatingControls.Add(control);
+            if (!_autoActivatingControls.Contains(control)) {
+                _autoActivatingControls.Add(control);
+            }
+        }
+        public static void AddClickActivateControl(Control control) {
+            if (!_clickToActivateControls.Contains(control)) {
+                _clickToActivateControls.Add(control);
+            }
         }
 
         public static void AddMouseUpAction(Action action) {
@@ -69,10 +77,26 @@ namespace CustomLibrary.Events {
                             Rectangle rectangleToScreen = new(CurrentActiveControl.PointToScreen(Point.Empty), CurrentActiveControl.Size);
                             // 判断鼠标点击的坐标是否在弹框范围外
                             if (!rectangleToScreen.Contains(point)) {
-                                EventFuncs.CurrentActiveControl = null;
+                                CurrentActiveControl = null;
                                 // 判断当前control是否在mainForm上获取的焦点
-                                if (MainForm != null && MainForm.ActiveControl != null) {
+                                if (MainForm.ActiveControl != null) {
                                     MainForm.ActiveControl = null;
+                                }
+                            }
+                        }
+
+                        // Click to activate control
+                        if (CurrentActiveControl == null || CurrentActiveControl.IsDisposed && _clickToActivateControls.Count > 0) {
+                            foreach (Control control in _clickToActivateControls) {
+                                if (control != null && !control.IsDisposed && control.Visible && control.CanFocus && control != MainForm.ActiveControl) {
+                                    Rectangle rectangleToScreen = new(control.PointToScreen(Point.Empty), control.Size);
+                                    if (rectangleToScreen.Contains(point)) {
+                                        MainForm.ActiveControl = control;
+                                        CurrentActiveControl = control;
+                                    } else if (!rectangleToScreen.Contains(point) && MainForm.ActiveControl == control) {
+                                        MainForm.ActiveControl = null;
+                                        CurrentActiveControl = null;
+                                    }
                                 }
                             }
                         }
@@ -110,8 +134,10 @@ namespace CustomLibrary.Events {
                                         Rectangle rectangleToScreen = new(control.PointToScreen(Point.Empty), control.Size);
                                         if (rectangleToScreen.Contains(point)) {
                                             MainForm.ActiveControl = control;
-                                        } else if (!rectangleToScreen.Contains(point)) {
+                                            CurrentActiveControl = control;
+                                        } else if (!rectangleToScreen.Contains(point) && MainForm.ActiveControl == control) {
                                             MainForm.ActiveControl = null;
+                                            CurrentActiveControl = null;
                                         }
                                     }
                                 }

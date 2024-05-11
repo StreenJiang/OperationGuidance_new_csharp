@@ -61,30 +61,25 @@ namespace OperationGuidance_new {
             // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
-            if (!(macs.Contains("002B677C56BC")
-                || macs.Contains("BC542FD57669")
-                || macs.Contains("BE542FD57668")
-                || macs.Contains("BC542FD57668")
-                || macs.Contains("BC542FD5766C")
+            if (!(macs.Contains("002B677C56BC") || macs.Contains("BC542FD57669") || macs.Contains("BE542FD57668") || macs.Contains("BC542FD57668") || macs.Contains("BC542FD5766C")
                 /* living room */
-                || macs.Contains("A4B1C1C841E1")
-                || macs.Contains("A4B1C1C841E5")
-                || macs.Contains("B42E9954DB93")
-                || macs.Contains("A4B1C1C841E2")
-                || macs.Contains("A6B1C1C841E1")
+                || macs.Contains("A4B1C1C841E1") || macs.Contains("A4B1C1C841E5") || macs.Contains("B42E9954DB93")
+                || macs.Contains("A4B1C1C841E2") || macs.Contains("A6B1C1C841E1")
                 /* TPX */
                 || macs.Contains("086AC57C79DD")
                 /* others */
-                || macs.Contains("E43A6E5CBE6A")
-                || macs.Contains("E43A6E4B2F12")
+                || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E4B2F12")
                 /* SCII */
-                || macs.Contains("E43A6E7936B1")
-                || macs.Contains("E43A6E567F30")
+                || macs.Contains("E43A6E7936B1") || macs.Contains("E43A6E567F30")
+                /* GLB */
+                || macs.Contains("E43A6E77B047") || macs.Contains("E43A6E77BO46") || macs.Contains("E43A6E5CC03B") || macs.Contains("E43A6E77AFCC") || macs.Contains("E43A6E77AFCD")
+                || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBDE8") || macs.Contains("E43A6E5CBE6A")
+                || macs.Contains("E43A6E5CBF48") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A")
             )) {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            // MainUtils.Version = AppVersion.SCII;
+            MainUtils.Version = AppVersion.SCII;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;

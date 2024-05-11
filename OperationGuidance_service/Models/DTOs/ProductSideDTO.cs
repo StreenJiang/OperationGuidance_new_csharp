@@ -14,6 +14,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public float? zooming_ratio { get; set; }
         public float? zooming_ratio_extra { get; set; }
         public float? rotate_angle { get; set; }
+        public int? cropped { get; set; }
         public List<ProductBoltDTO>? Bolts { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
@@ -18,6 +19,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private float _zoomingRatio;
         private float _zoomingRatioExtra;
         private float _rotateAngle;
+        private bool _cropped;
         private Stack<ProductImageFile> _undoBuffer;
         private int _undoBufferLength;
         private Rectangle? _imageRange;
@@ -42,6 +44,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public float ZoomingRatio { get => _zoomingRatio; set => _zoomingRatio = value; }
         public float ZoomingRatioExtra { get => _zoomingRatioExtra; set => _zoomingRatioExtra = value; }
         public float RotateAngle { get => _rotateAngle; set => _rotateAngle = value; }
+        public bool Cropped { get => _cropped; set => _cropped = value; }
         public Rectangle? ImageRange { get => _imageRange; }
 
         public ProductImageFile(AProductImageDisplayPanel container, ProductSideDTO sideDTO, int undoBufferLength) {
@@ -62,6 +65,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _zoomingRatio = sideDTO.zooming_ratio != null ? sideDTO.zooming_ratio.Value : 0;
                     _zoomingRatioExtra = sideDTO.zooming_ratio_extra != null ? sideDTO.zooming_ratio_extra.Value : 0;
                     _rotateAngle = sideDTO.rotate_angle != null ? sideDTO.rotate_angle.Value : 0;
+                    _cropped = _sideDTO.cropped != null && _sideDTO.cropped == (int) YesOrNo.YES;
                 }
             }
         }
@@ -77,6 +81,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ZoomingRatio = _zoomingRatio,
                 ZoomingRatioExtra = _zoomingRatioExtra,
                 RotateAngle = _rotateAngle,
+                Cropped = _cropped,
             };
         }
 
@@ -90,6 +95,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _zoomingRatio = from.ZoomingRatio;
             _zoomingRatioExtra = from.ZoomingRatioExtra;
             _rotateAngle = from.RotateAngle;
+            _cropped = from.Cropped;
         }
 
         public void ImageSelect(Action? afterSelected = null) {
@@ -107,8 +113,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _zoomingRatio = 0;
                 _zoomingRatioExtra = 0;
                 _rotateAngle = 0;
+                _cropped = false;
                 RecalculateZoomingRatio();
                 RefreshImage();
+
                 if (afterSelected != null) {
                     afterSelected();
                 }
@@ -183,6 +191,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _zoomingRatio = 1;
                     _zoomingRatioExtra = 0;
                     _rotateAngle = 0;
+                    _cropped = true;
                     RefreshImage();
                 }
             }
@@ -230,7 +239,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 _container.SetImage(null, null);
             }
-            // TODO: this will cause extra time wastes, so can move to save button
+            // WARN: this will cause extra time wastes, so can move to save button
             // SaveSideInfo();
         }
 
@@ -245,7 +254,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _sideDTO.location_offset = _locationOffset.ToString();
             _sideDTO.location_offset_moving = _locationOffsetMoving.ToString();
             _sideDTO.rotate_angle = _rotateAngle;
+            _sideDTO.cropped = _cropped ? (int) YesOrNo.YES : (int) YesOrNo.NO;
         }
-
     }
 }
