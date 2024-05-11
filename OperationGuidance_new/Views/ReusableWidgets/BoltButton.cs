@@ -120,6 +120,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _showingWhileWorking = true;
             _boltStatus = BoltStatus.DEFAULT;
             BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
+            SetLabel();
         }
 
         public void StartFlickering() {

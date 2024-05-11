@@ -376,8 +376,8 @@ namespace OperationGuidance_new.Views {
             _currentSideName.Ratio = 7.5;
             _topRightBottom.Controls.Add(_missionDetailTitle);
             _topRightBottom.Controls.Add(_missionSelectedName);
-            _topRightBottom.Controls.Add(_pset);
             _topRightBottom.Controls.Add(_currentSideName);
+            _topRightBottom.Controls.Add(_pset);
 
             // 下方
             _bottom = new() {

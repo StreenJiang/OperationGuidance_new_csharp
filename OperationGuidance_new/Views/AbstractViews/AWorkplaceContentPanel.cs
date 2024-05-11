@@ -326,6 +326,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
             };
+            _currentSideName = new("产品面") {
+                ReadOnly = true,
+                Enabled = false,
+                NameAlignment = HorizontalAlignment.Right,
+            };
+            // CommonButton sidesDetials = _currentSideName.AddButton("详情");
+            // sidesDetials.Enabled = true;
+            // sidesDetials.Click += (s, e) => {
+            //     PopUpSideListForm();
+            // };
             _productSumPerDay = new("今日生产") {
                 ReadOnly = true,
                 Enabled = false,
@@ -345,16 +355,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 ReadOnly = true,
                 Enabled = false,
                 NameAlignment = HorizontalAlignment.Right,
-            };
-            _currentSideName = new("产品面") {
-                ReadOnly = true,
-                Enabled = false,
-                NameAlignment = HorizontalAlignment.Right,
-            };
-            CommonButton sidesDetials = _currentSideName.AddButton("更多");
-            sidesDetials.Enabled = true;
-            sidesDetials.Click += (s, e) => {
-                // PopUpSideListForm();
             };
 
             SetMissionDetails();
@@ -995,6 +995,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
         protected virtual void PrepareBeforeActivatingMission() {
+            // Reset side page
+            _currentSideIndex = 0;
+            changeSideAndInvalidate();
+
             // Recheck locating enabled
             _locating_enabled = MainUtils.IsArmLocatingEnabled();
 
@@ -1009,8 +1013,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Reset
                 _allBolts[sideId].ForEach(b => {
                     // Reset status (will rename with serial number automatically)
-                    b.BoltStatus = BoltStatus.DEFAULT;
-                    // b.ResetStatusWithoutChangingVisible();
+                    b.ResetStatusWithoutChangingVisible();
                     // Reset ng times
                     b.NgTimes = 0;
                 });
@@ -1089,10 +1092,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void ActionAfterActivatingMission() {
-            // Reset side page
-            _currentSideIndex = 0;
-            changeSideAndInvalidate();
-
             // Add a new record into: mission_record
             _missionRecord = new() {
                 mission_id = _mission.id,

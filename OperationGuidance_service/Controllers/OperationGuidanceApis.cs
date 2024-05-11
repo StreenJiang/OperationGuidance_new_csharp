@@ -318,23 +318,53 @@ namespace OperationGuidance_service.Controllers {
                 List<ProductMissionDTO> productMissionDTOs = new();
                 CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(missions, productMissionDTOs);
 
-                string sidesSql = $"select * from {_productSideService.TableName} t where id in (select min(id) from {_productSideService.TableName} where mission_id in @mission_ids group by mission_id)";
-                if (req.IsEditing == null || !req.IsEditing.Value) {
-                    sidesSql += $" and image is not null and image <> '' and exists (select 1 from {_productBoltService.TableName} where side_id = t.id)";
-                }
-                sidesSql += " order by mission_id";
-                List<ProductSide> sides = _productSideService.FindBySql(sidesSql, new() { { "@mission_ids", missions.Select(m => m.id).ToList() } }).ToList();
+                string sidesSql = $"select * from {_productSideService.TableName} t where mission_id in @mission_ids and deleted = @deleted order by id asc";
+                Dictionary<string, object> sideParameters = new() {
+                    { "@mission_ids", missions.Select(m => m.id).ToList() },
+                    { "@deleted", (int) YesOrNo.NO },
+                };
+                List<ProductSide> sides = _productSideService.FindBySql(sidesSql, sideParameters);
+
+                string boltsSql = $"select * from {_productBoltService.TableName} where side_id in @side_ids and deleted = @deleted";
+                Dictionary<string, object> boltParameters = new() {
+                    { "@side_ids", sides.Select(s => s.id).ToList() },
+                    { "@deleted", (int) YesOrNo.NO },
+                };
+                List<ProductBolt> bolts = _productBoltService.FindBySql(boltsSql, boltParameters);
 
                 // 将 sides 组装到对应的 mission 中
                 foreach (ProductMissionDTO missionDTO in productMissionDTOs.ToList()) {
-                    ProductSide? sideDTO = sides.Find(side => side.mission_id == missionDTO.id);
-                    if (sideDTO != null) {
-                        ProductSideDTO productSideDTO = new();
-                        CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sideDTO, productSideDTO);
-                        missionDTO.ProductSides = new() { productSideDTO };
-                    } else {
-                        productMissionDTOs.Remove(missionDTO);
+                    List<ProductSide> sideTemps = sides.FindAll(side => side.mission_id == missionDTO.id);
+
+                    bool noSide = sideTemps.Count == 0;
+                    bool isEditing = req.IsEditing != null && req.IsEditing.Value;
+                    bool hasNullImageSide = sideTemps.Find(side => side.image == null || string.IsNullOrEmpty(side.image)) != null;
+                    bool hasNullBoltSide = false;
+                    foreach (ProductSide side in sideTemps) {
+                        bool noBolt = bolts.Find(b => b.side_id == side.id) == null;
+                        if (noBolt) {
+                            hasNullBoltSide = true;
+                            break;
+                        }
                     }
+
+                    if (noSide || (!isEditing && (hasNullImageSide || hasNullBoltSide))) {
+                        productMissionDTOs.Remove(missionDTO);
+                    } else {
+                        ProductSideDTO productSideDTO = new();
+                        CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sideTemps[0], productSideDTO);
+                        missionDTO.ProductSides = new() { productSideDTO };
+                    }
+
+                    //
+                    // ProductSide? sideDTO = sides.Find(side => side.mission_id == missionDTO.id);
+                    // if (sideDTO != null) {
+                    //     ProductSideDTO productSideDTO = new();
+                    //     CommonUtils.ObjectConverter<ProductSide, ProductSideDTO>(sideDTO, productSideDTO);
+                    //     missionDTO.ProductSides = new() { productSideDTO };
+                    // } else {
+                    //     productMissionDTOs.Remove(missionDTO);
+                    // }
                 }
 
                 return new(productMissionDTOs);
