@@ -16,6 +16,10 @@ namespace CustomLibrary.Forms {
                 return;
             }
             PopUpFormBackboard.Size = Size;
+        }
+
+        protected override void OnLocationChanged(EventArgs e) {
+            base.OnLocationChanged(e);
             PopUpFormBackboard.Location = Location;
         }
     }

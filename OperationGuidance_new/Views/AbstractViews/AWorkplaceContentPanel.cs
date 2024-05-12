@@ -115,6 +115,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 产品面相关
         protected int _currentSideIndex;
         protected List<ProductSideDTO> _sides;
+        protected Label _productSideTitle;
+        protected List<Image?> _smallSideImagesForShowing;
+        protected PictureBox _smallSideImage;
+        protected TableLayoutPanel _buttonPanel;
+        protected PageSwitchButton _first;
+        protected PageSwitchButton _backward;
+        protected PageSwitchButton _forward;
+        protected PageSwitchButton _last;
+        protected Label _pageInfo;
 
         // 点位相关
         #endregion
@@ -334,7 +343,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // CommonButton sidesDetials = _currentSideName.AddButton("详情");
             // sidesDetials.Enabled = true;
             // sidesDetials.Click += (s, e) => {
-            //     PopUpSideListForm();
+            //     PopUpSideListForm(sidesDetials);
             // };
             _productSumPerDay = new("今日生产") {
                 ReadOnly = true,
@@ -395,19 +404,107 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             popUpForm.Show();
         }
-        private void PopUpSideListForm() {
-            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .7), (int) (WidgetUtils.MainSize.Height * .7));
-            CustomPopUpForm popUpForm = new() {
-                Title = "产品面清单",
+        private void PopUpSideListForm(CommonButton sidesDetialsBtn) {
+            CustomPopUpForm2 popUpForm = new() {
+                Title = "产品面详情",
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
-                ButtonAlignment = HorizontalAlignment.Center,
+                ButtonAlignment = HorizontalAlignment.Right,
             };
-            popUpForm.AddButton("确定").Click += (s, e) => {
+            popUpForm.AddButton("关闭").Click += (s, e) => popUpForm.Dispose();
+            // Page info
+            _productSideTitle = new() {
+                Parent = popUpForm.ContentPanel,
+                Margin = new(1),
+                Padding = new(0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_TEXT,
+                BackColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_BACK,
             };
-            popUpForm.AddButton("关闭").Click += (s, e) => {
+            int currentPage = 1;
+            int totalPages = 1;
+            List<ProductSideDTO>? productSides = _mission.ProductSides;
+            if (productSides != null) {
+                _productSideTitle.Text = productSides[0].name;
+                totalPages = productSides.Count;
+            }
+            _first = new() {
+                Icon = Properties.Resources.page_btn_backward_fast,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
             };
+            _backward = new() {
+                Icon = Properties.Resources.page_btn_backward,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            _pageInfo = new() {
+                Margin = new(0),
+                Padding = new(0),
+                AutoSize = true,
+            };
+            _forward = new() {
+                Icon = Properties.Resources.page_btn_forward,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            _last = new() {
+                Icon = Properties.Resources.page_btn_forward_fast,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            _pageInfo.Text = Text = $"{currentPage}/{totalPages}";
+            _buttonPanel = new() {
+                Parent = popUpForm.ButtonsPanel,
+                Margin = new(0),
+                Padding = new(0),
+                ColumnCount = 5,
+            };
+            _buttonPanel.Controls.Add(_first);
+            _buttonPanel.Controls.Add(_backward);
+            _buttonPanel.Controls.Add(_pageInfo);
+            _buttonPanel.Controls.Add(_forward);
+            _buttonPanel.Controls.Add(_last);
+
+            _first.Click += (sender, eventArgs) => {
+                _currentSideIndex = 0;
+                ChangeSideAndInvalidate();
+            };
+            _backward.Click += (sender, eventArgs) => {
+                if (_currentSideIndex <= 0) {
+                    _currentSideIndex = 0;
+                } else {
+                    _currentSideIndex -= 1;
+                }
+                ChangeSideAndInvalidate();
+            };
+            _forward.Click += (sender, eventArgs) => {
+                if (_currentSideIndex >= _missionImages.Count - 1) {
+                    _currentSideIndex = _missionImages.Count - 1;
+                } else {
+                    _currentSideIndex += 1;
+                }
+                ChangeSideAndInvalidate();
+            };
+            _last.Click += (sender, eventArgs) => {
+                _currentSideIndex = _missionImages.Count - 1;
+                ChangeSideAndInvalidate();
+            };
+
             popUpForm.PretendToShowToCreateHandlesForChildren();
+            int buttonsAreaWidth = popUpForm.ButtonsPanel.Width - popUpForm.ButtonsPanel.Padding.Size.Width;
+            int buttonsAreaHeight = popUpForm.ButtonsPanel.Height - popUpForm.ButtonsPanel.Padding.Size.Height;
+            int switchBtnSide = (int) (buttonsAreaHeight * .8);
+            _first.Size = new(switchBtnSide, switchBtnSide);
+            _backward.Size = new(switchBtnSide, switchBtnSide);
+            _forward.Size = new(switchBtnSide, switchBtnSide);
+            _last.Size = new(switchBtnSide, switchBtnSide);
+            _buttonPanel.Size = new(switchBtnSide * 7, switchBtnSide);
+            _buttonPanel.Location = new(buttonsAreaWidth - popUpForm.ButtonsInnerPanel.Width - _buttonPanel.Width, 0);
+
+            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .3), (int) (WidgetUtils.MainSize.Height * .4));
             popUpForm.SetContentSizeAndSelfSize(contentSize);
+            Point point = sidesDetialsBtn.PointToScreen(Point.Empty);
+            popUpForm.Location = new(point.X - popUpForm.Width, point.Y - popUpForm.Height + sidesDetialsBtn.Height);
 
             Padding contentPadding = popUpForm.ContentPanel.Padding;
             int innerContentWidth = contentSize.Width - contentPadding.Size.Width;
@@ -423,7 +520,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             RefreshImageDisplayPanel();
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
         }
-        protected virtual void changeSideAndInvalidate() {
+        protected virtual void ChangeSideAndInvalidate() {
             // List<BoltButton> currentSideBolts;
             if (CheckIfIsMultiDeviceIndependenceMode()) {
                 // currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
@@ -997,7 +1094,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void PrepareBeforeActivatingMission() {
             // Reset side page
             _currentSideIndex = 0;
-            changeSideAndInvalidate();
+            ChangeSideAndInvalidate();
 
             // Recheck locating enabled
             _locating_enabled = MainUtils.IsArmLocatingEnabled();

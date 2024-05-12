@@ -59,6 +59,7 @@ namespace CustomLibrary.Forms {
         public CustomContentPanel ContentPanel { get => _contentPanel; set => _contentPanel = value; }
         // Buttons panel
         public Panel ButtonsPanel { get => _buttonsPanel; set => _buttonsPanel = value; }
+        public CustomContentPanel ButtonsInnerPanel { get => _buttonsInnerPanel; set => _buttonsInnerPanel = value; }
         public HorizontalAlignment ButtonAlignment {
             get => _buttonAlignment;
             set {

@@ -971,7 +971,7 @@ namespace OperationGuidance_new.Views {
                                                 _currentSideIndex++;
                                                 _currentWorkingBolt = SwitchBolt(0);
                                                 ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                                changeSideAndInvalidate();
+                                                ChangeSideAndInvalidate();
                                                 allDone = false;
                                             }
                                         }

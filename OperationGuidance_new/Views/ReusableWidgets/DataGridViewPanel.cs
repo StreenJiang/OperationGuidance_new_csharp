@@ -550,7 +550,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         private void ResetPageInfo() {
             _countPerPage.Text = $"{_pageSize} 条/页";
-            _pageInfo.Text = $"{_currentPage}/{_totalPages}";
             _dataCountInfo.Text = $"共 {_dataSource.Count} 条";
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";
         }
