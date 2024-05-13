@@ -1082,6 +1082,11 @@ namespace OperationGuidance_new.Views {
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
                 BeginInvoke(async () => {
+                    // Nonactivated or finished will not handle any received data
+                    if (!_activated || _finished) {
+                        return;
+                    }
+
                     ToolTask toolTask = _toolTasks[deviceId];
                     if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
                         int workstationId = toolTask.WorkstationId.Value;
