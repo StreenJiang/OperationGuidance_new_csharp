@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Data.Common;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Reflection;
 using CustomLibrary.Constants;
@@ -21,6 +22,7 @@ using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static readonly int DBRetryTimes = 2;
         public static AppVersion Version { get; set; } = AppVersion.STANDARD;
 
         public static LoginView LoginView { get; set; }
@@ -52,14 +54,39 @@ namespace OperationGuidance_new.Utils {
         public static bool AppRunning { get; internal set; } = true;
         public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
 
-        public static async void CheckDBConnection() {
-            await Task.Run(() => {
+        public static void CheckDBConnection() {
+            Form formPopup = new Form() {
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.None,
+                Size = new(300, 100),
+            };
+            Label label = new() {
+                Parent = formPopup,
+                Text = "正在连接数据库，请稍后...",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+            };
+            formPopup.Show();
+
+            DbConnection? dbConnection = null;
+            int tryTimes = 0;
+
+            while (tryTimes <= DBRetryTimes) {
                 try {
-                    DbConnector.CheckConnection();
+                    dbConnection = DbConnector.GetConnection();
                 } catch (DatabaseException de) {
-                    throw de;
+                    GetLogger(typeof(MainUtils)).Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
+                    continue;
+                } finally {
+                    tryTimes++;
                 }
-            });
+            }
+
+            formPopup.Dispose();
+            if (dbConnection == null) {
+                throw new DatabaseException("数据库连接失败，请检查数据库配置或网络连接状态");
+            }
         }
 
         private static IniFileUtil Settings { get; } = new();
