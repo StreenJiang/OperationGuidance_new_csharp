@@ -2586,7 +2586,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
                 base.ResizeChildren(sender, eventArgs);
-                Font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
+                Font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
                 _coordinatesX = (int) (TextRenderer.MeasureText(_content, Font).Width * 1.2);
                 _resetPositionX();
             }

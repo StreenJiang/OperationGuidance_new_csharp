@@ -51,6 +51,10 @@ namespace OperationGuidance_new {
 
         #region Windows Form manually initialization code
 
+        /// <summary>
+        /// Write to whom that take over my job to continue all this shity code:
+        /// This motherfucker leader X
+        /// </summary>
         private void InitializeComponentManually() {
             String thisprocessname = Process.GetCurrentProcess().ProcessName;
             // AllocConsole();

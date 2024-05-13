@@ -30,6 +30,5 @@ namespace OperationGuidance_service.Database {
             }
             return null;
         }
-
     }
 }
