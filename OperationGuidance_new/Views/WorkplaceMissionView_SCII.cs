@@ -185,6 +185,7 @@ namespace OperationGuidance_new.Views {
             InitializeBottom();
 
             _checkRedo = true;
+            _toolControlNeedAdminPasswor = true;
         }
 
         // 初始化所有外框

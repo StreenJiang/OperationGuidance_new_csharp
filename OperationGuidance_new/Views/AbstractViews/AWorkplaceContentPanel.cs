@@ -26,11 +26,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         #region Fields
         protected OperationGuidanceApis _apis;
-        protected ProductMissionDTO _mission;
+        public ProductMissionDTO _mission;
         protected Action<string> _resetMissionName;
         protected bool _activated;
         protected bool _finished;
-        protected Image _defaultImage;
+        public Image _defaultImage;
         protected readonly int _checkDevicesConnectionDelay = 2500;
         protected readonly int _resendPsetMaxTimes = 5;
 
@@ -64,9 +64,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected Image _barCodeImage;
         protected PictureBox _barCodePictureBox;
 
-        protected ProductImageDisplayPanel _productImageDisplayPanel;
+        public ProductImageDisplayPanel _productImageDisplayPanel;
         protected List<ProductImageFile> _productImageFiles;
-        protected List<Image?> _missionImages;
+        public List<Image?> _missionImages;
 
         protected Label _operatorInfoTitle;
         protected CustomTextBoxGroup _operatorName;
@@ -109,21 +109,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // 设备相关
         protected List<DeviceBlock> _deviceBlocks;
+        protected bool _toolControlNeedAdminPasswor;
         protected Action? _actionAfterSendingPset;
         protected ModBusServer_YF? ModBusServer;
 
         // 产品面相关
-        protected int _currentSideIndex;
+        public int _currentSideIndex;
         protected List<ProductSideDTO> _sides;
-        protected Label _productSideTitle;
-        protected List<Image?> _smallSideImagesForShowing;
-        protected PictureBox _smallSideImage;
-        protected TableLayoutPanel _buttonPanel;
-        protected PageSwitchButton _first;
-        protected PageSwitchButton _backward;
-        protected PageSwitchButton _forward;
-        protected PageSwitchButton _last;
-        protected Label _pageInfo;
+        private SidePopUpForm? _sidePopUpForm = null;
 
         // 点位相关
         #endregion
@@ -340,11 +333,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            // CommonButton sidesDetials = _currentSideName.AddButton("详情");
-            // sidesDetials.Enabled = true;
-            // sidesDetials.Click += (s, e) => {
-            //     PopUpSideListForm(sidesDetials);
-            // };
+            CommonButton sidesDetials = _currentSideName.AddButton("详情");
+            sidesDetials.Enabled = true;
+            sidesDetials.Click += (s, e) => {
+                PopUpSideListForm(sidesDetials);
+            };
             _productSumPerDay = new("今日生产") {
                 ReadOnly = true,
                 Enabled = false,
@@ -405,112 +398,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
             popUpForm.Show();
         }
         private void PopUpSideListForm(CommonButton sidesDetialsBtn) {
-            CustomPopUpForm2 popUpForm = new() {
+            _sidePopUpForm = new(this) {
                 Title = "产品面详情",
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 ButtonAlignment = HorizontalAlignment.Right,
             };
-            popUpForm.AddButton("关闭").Click += (s, e) => popUpForm.Dispose();
-            // Page info
-            _productSideTitle = new() {
-                Parent = popUpForm.ContentPanel,
-                Margin = new(1),
-                Padding = new(0),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_TEXT,
-                BackColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_BACK,
-            };
-            int currentPage = 1;
-            int totalPages = 1;
-            List<ProductSideDTO>? productSides = _mission.ProductSides;
-            if (productSides != null) {
-                _productSideTitle.Text = productSides[0].name;
-                totalPages = productSides.Count;
-            }
-            _first = new() {
-                Icon = Properties.Resources.page_btn_backward_fast,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            _backward = new() {
-                Icon = Properties.Resources.page_btn_backward,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            _pageInfo = new() {
-                Margin = new(0),
-                Padding = new(0),
-                AutoSize = true,
-            };
-            _forward = new() {
-                Icon = Properties.Resources.page_btn_forward,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            _last = new() {
-                Icon = Properties.Resources.page_btn_forward_fast,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            _pageInfo.Text = Text = $"{currentPage}/{totalPages}";
-            _buttonPanel = new() {
-                Parent = popUpForm.ButtonsPanel,
-                Margin = new(0),
-                Padding = new(0),
-                ColumnCount = 5,
-            };
-            _buttonPanel.Controls.Add(_first);
-            _buttonPanel.Controls.Add(_backward);
-            _buttonPanel.Controls.Add(_pageInfo);
-            _buttonPanel.Controls.Add(_forward);
-            _buttonPanel.Controls.Add(_last);
-
-            _first.Click += (sender, eventArgs) => {
-                _currentSideIndex = 0;
-                ChangeSideAndInvalidate();
-            };
-            _backward.Click += (sender, eventArgs) => {
-                if (_currentSideIndex <= 0) {
-                    _currentSideIndex = 0;
-                } else {
-                    _currentSideIndex -= 1;
-                }
-                ChangeSideAndInvalidate();
-            };
-            _forward.Click += (sender, eventArgs) => {
-                if (_currentSideIndex >= _missionImages.Count - 1) {
-                    _currentSideIndex = _missionImages.Count - 1;
-                } else {
-                    _currentSideIndex += 1;
-                }
-                ChangeSideAndInvalidate();
-            };
-            _last.Click += (sender, eventArgs) => {
-                _currentSideIndex = _missionImages.Count - 1;
-                ChangeSideAndInvalidate();
-            };
-
-            popUpForm.PretendToShowToCreateHandlesForChildren();
-            int buttonsAreaWidth = popUpForm.ButtonsPanel.Width - popUpForm.ButtonsPanel.Padding.Size.Width;
-            int buttonsAreaHeight = popUpForm.ButtonsPanel.Height - popUpForm.ButtonsPanel.Padding.Size.Height;
-            int switchBtnSide = (int) (buttonsAreaHeight * .8);
-            _first.Size = new(switchBtnSide, switchBtnSide);
-            _backward.Size = new(switchBtnSide, switchBtnSide);
-            _forward.Size = new(switchBtnSide, switchBtnSide);
-            _last.Size = new(switchBtnSide, switchBtnSide);
-            _buttonPanel.Size = new(switchBtnSide * 7, switchBtnSide);
-            _buttonPanel.Location = new(buttonsAreaWidth - popUpForm.ButtonsInnerPanel.Width - _buttonPanel.Width, 0);
-
-            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .3), (int) (WidgetUtils.MainSize.Height * .4));
-            popUpForm.SetContentSizeAndSelfSize(contentSize);
+            _sidePopUpForm.AddButton("关闭").Click += (s, e) => _sidePopUpForm.Dispose();
+            _sidePopUpForm.PretendToShowToCreateHandlesForChildren();
+            _sidePopUpForm.ResizeSelf();
             Point point = sidesDetialsBtn.PointToScreen(Point.Empty);
-            popUpForm.Location = new(point.X - popUpForm.Width, point.Y - popUpForm.Height + sidesDetialsBtn.Height);
-
-            Padding contentPadding = popUpForm.ContentPanel.Padding;
-            int innerContentWidth = contentSize.Width - contentPadding.Size.Width;
-            int innerContentHeight = contentSize.Height - contentPadding.Size.Height;
-
-            popUpForm.Show();
+            _sidePopUpForm.Location = new(point.X - _sidePopUpForm.Width, point.Y - _sidePopUpForm.Height + sidesDetialsBtn.Height);
+            _sidePopUpForm.Show();
         }
         public virtual void SwitchToMission(ProductMissionDTO mission) {
             _mission = mission;
@@ -520,7 +418,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             RefreshImageDisplayPanel();
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
         }
-        protected virtual void ChangeSideAndInvalidate() {
+        public virtual void ChangeSideAndInvalidate() {
             // List<BoltButton> currentSideBolts;
             if (CheckIfIsMultiDeviceIndependenceMode()) {
                 // currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
@@ -547,6 +445,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Change side name
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
+
+            if (_sidePopUpForm != null && !_sidePopUpForm.IsDisposed) {
+                _sidePopUpForm.ResetImage();
+            }
         }
         protected abstract void RefreshImageDisplayPanel();
         protected abstract void SetMissionDetails();
@@ -581,6 +483,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         private void InitializeDeviceBlocks() {
+            _toolControlNeedAdminPasswor = false;
             _deviceBlocks = new();
             List<DeviceCategory> deviceCategories = new();
             // Reverse because of RightToLeft flow direction
@@ -651,13 +554,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             contentSize.Width = (int) (WidgetUtils.MainSize.Width * .65);
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码");
-                                    if (!_adminConfirmed.Value) {
+                                    if (_toolControlNeedAdminPasswor) {
+                                        _adminConfirmed = false;
+                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码");
+                                        if (!_adminConfirmed.Value) {
+                                            _adminConfirmed = null;
+                                            return;
+                                        }
                                         _adminConfirmed = null;
-                                        return;
                                     }
-                                    _adminConfirmed = null;
+
                                     int? currentWorkstationId = null;
                                     deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, _currentWorkingBoltIndependence, CheckIfIsMultiDeviceIndependenceMode(),
                                             deviceBlock.CategoryName, _workingProcessPanel, _workstationsDTOs, _toolTasks, currentWorkstationId, _actionAfterSendingPset);
@@ -2566,6 +2472,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private class CoordinatesPanel: CustomContentPanel {
             private int _panelHeight;
             private string _content;
+            private int _Y = 0;
             private int _coordinatesX = 0;
             private Action _resetPositionX;
 
@@ -2588,6 +2495,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 base.ResizeChildren(sender, eventArgs);
                 Font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
                 _coordinatesX = (int) (TextRenderer.MeasureText(_content, Font).Width * 1.2);
+                _Y = (_panelHeight - Font.Height) / 2;
                 _resetPositionX();
             }
 
@@ -2599,8 +2507,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 if (ZStr != "0") {
                     coordinates += $"    Z-{ZStr}";
                 }
-                g.DrawString(_content, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(0, 0));
-                g.DrawString(coordinates, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(_coordinatesX, 0));
+                g.DrawString(_content, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(0, _Y));
+                g.DrawString(coordinates, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(_coordinatesX, _Y));
             }
 
             public void SetCoordinates(Coordinates3D coordinates) {
@@ -2729,7 +2637,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (await toolTask.SendLockAsync()) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 工具已经是锁止状态\r\n2. 未给当前工具型号配置命令");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 工具已经是锁止状态\r\n3. 未给当前工具型号配置命令");
                     }
                 });
             };
@@ -2741,7 +2649,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
                         string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 工具已经是解锁状态\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 工具已经是解锁状态\r\n3. 未给当前工具型号配置命令\r\n4. 控制器未配置【程序{parameterSet}】, 工具锁定");
                     }
                 });
             };
@@ -2774,7 +2682,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             Dispose();
                         }
                     } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 未给当前工具型号配置命令\r\n2. 控制器未配置【程序{parameterSet}】, 工具锁定");
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定");
                         canUnlock = false;
                     }
                 });
@@ -2917,6 +2825,179 @@ namespace OperationGuidance_new.Views.AbstractViews {
             PartsBarCodes.Clear();
             PartsMatchingRulesCached.Clear();
             PartsRulesCount = 0;
+        }
+    }
+
+    public class SidePopUpForm: CustomPopUpForm2 {
+        private AWorkplaceContentPanel _workplace;
+        public Label ProductSideTitle { get; set; }
+        public PictureBox SmallSideImage { get; set; }
+        public PageSwitchButton First { get; set; }
+        public PageSwitchButton Backward { get; set; }
+        public Label PageInfo { get; set; }
+        public PageSwitchButton Forward { get; set; }
+        public PageSwitchButton Last { get; set; }
+        public TableLayoutPanel ButtonPanel { get; set; }
+
+        public SidePopUpForm(AWorkplaceContentPanel workplace) {
+            _workplace = workplace;
+
+            // Title of current side
+            ProductSideTitle = new() {
+                Parent = ContentPanel,
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+            };
+            SmallSideImage = new() {
+                Parent = ContentPanel,
+                BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
+            };
+            // Page info
+            int currentPage = 1;
+            int totalPages = 1;
+            List<ProductSideDTO>? productSides = workplace._mission.ProductSides;
+            if (productSides != null) {
+                ProductSideTitle.Text = productSides[0].name;
+                totalPages = productSides.Count;
+            }
+            First = new() {
+                Icon = Properties.Resources.page_btn_backward_fast,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            Backward = new() {
+                Icon = Properties.Resources.page_btn_backward,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            PageInfo = new() {
+                Margin = new(0),
+                Padding = new(0),
+                AutoSize = true,
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+            };
+            Forward = new() {
+                Icon = Properties.Resources.page_btn_forward,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            Last = new() {
+                Icon = Properties.Resources.page_btn_forward_fast,
+                TotalPages = totalPages,
+                CurrentPage = currentPage,
+            };
+            PageInfo.Text = Text = $"{currentPage}/{totalPages}";
+            ButtonPanel = new() {
+                Parent = ButtonsPanel,
+                Margin = new(0),
+                Padding = new(0),
+                ColumnCount = 5,
+            };
+            ButtonPanel.Controls.Add(First);
+            ButtonPanel.Controls.Add(Backward);
+            ButtonPanel.Controls.Add(PageInfo);
+            ButtonPanel.Controls.Add(Forward);
+            ButtonPanel.Controls.Add(Last);
+
+            First.Click += (sender, eventArgs) => {
+                if (workplace._mission.id > 0) {
+                    workplace._currentSideIndex = 0;
+                    workplace.ChangeSideAndInvalidate();
+                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
+                }
+            };
+            Backward.Click += (sender, eventArgs) => {
+                if (workplace._mission.id > 0) {
+                    if (workplace._currentSideIndex <= 0) {
+                        workplace._currentSideIndex = 0;
+                    } else {
+                        workplace._currentSideIndex -= 1;
+                    }
+                    workplace.ChangeSideAndInvalidate();
+                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
+                }
+            };
+            Forward.Click += (sender, eventArgs) => {
+                if (workplace._mission.id > 0) {
+                    if (workplace._currentSideIndex >= workplace._missionImages.Count - 1) {
+                        workplace._currentSideIndex = workplace._missionImages.Count - 1;
+                    } else {
+                        workplace._currentSideIndex += 1;
+                    }
+                    workplace.ChangeSideAndInvalidate();
+                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
+                }
+            };
+            Last.Click += (sender, eventArgs) => {
+                if (workplace._mission.id > 0) {
+                    workplace._currentSideIndex = workplace._missionImages.Count - 1;
+                    workplace.ChangeSideAndInvalidate();
+                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
+                }
+            };
+        }
+
+        public void ResizeSelf() {
+            int buttonsAreaWidth = ButtonsPanel.Width - ButtonsPanel.Padding.Size.Width;
+            int buttonsAreaHeight = ButtonsPanel.Height - ButtonsPanel.Padding.Size.Height;
+            int switchBtnSide = (int) (buttonsAreaHeight * .725);
+            int vPadding = (buttonsAreaHeight - switchBtnSide) / 2;
+            int hPadding = (int) (switchBtnSide * .5);
+
+            PageInfo.Font = new(WidgetsConfigs.SystemFontFamily, switchBtnSide * .75F, FontStyle.Regular, GraphicsUnit.Pixel);
+            First.Size = new(switchBtnSide, switchBtnSide);
+            Backward.Size = new(switchBtnSide, switchBtnSide);
+            Forward.Size = new(switchBtnSide, switchBtnSide);
+            Last.Size = new(switchBtnSide, switchBtnSide);
+
+            First.Margin = new(0, vPadding, hPadding, 0);
+            Backward.Margin = new(0, vPadding, hPadding, 0);
+            PageInfo.Margin = new(0, vPadding, hPadding, 0);
+            Forward.Margin = new(0, vPadding, hPadding, 0);
+            Last.Margin = new(0, vPadding, 0, 0);
+
+            ButtonPanel.Size = new(switchBtnSide * 4 + PageInfo.Width + hPadding * 4 + ContentPanel.Padding.Right, buttonsAreaHeight);
+            ButtonPanel.Location = new(ContentPanel.Padding.Left, 0);
+
+            int contentVPadding = ContentPanel.Padding.Top;
+            ProductSideTitle.Font = new(WidgetsConfigs.SystemFontFamily, WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight() * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
+            int sideTitleHeight = ProductSideTitle.Font.Height;
+            int contentRealWidth = ButtonsInnerPanel.Width + ButtonPanel.Width;
+            int smallImageHeight = _workplace._productImageDisplayPanel.Height * contentRealWidth / _workplace._productImageDisplayPanel.Width;
+            int contentRealHeight = contentVPadding + smallImageHeight + sideTitleHeight;
+
+            ProductSideTitle.Size = new(contentRealWidth, sideTitleHeight);
+            SmallSideImage.Size = new(contentRealWidth, smallImageHeight);
+            SmallSideImage.Margin = new(0, contentVPadding, 0, 0);
+            ResetImage();
+
+            Size contentSize = new(ContentPanel.Padding.Size.Width + contentRealWidth, ContentPanel.Padding.Size.Height + contentRealHeight);
+            SetContentSizeAndSelfSize(contentSize);
+        }
+
+        public void ResetImage() {
+            if (_workplace._mission.id > 0) {
+                Image? image = _workplace._missionImages[_workplace._currentSideIndex];
+                if (image != null) {
+                    float zoomingRatio = MainUtils.GetZoomingRatio(image.Size, SmallSideImage.Size);
+                    Image imageTemp = MainUtils.ResizeImageByZoomingRatio(image, zoomingRatio);
+                    SmallSideImage.Image = imageTemp;
+                    if (SmallSideImage.Width > imageTemp.Width) {
+                        int iHPadding = (SmallSideImage.Width - imageTemp.Width) / 2;
+                        SmallSideImage.Padding = new(iHPadding, 0, iHPadding, 0);
+                    } else if (SmallSideImage.Height > imageTemp.Height) {
+                        int iVPadding = (SmallSideImage.Height - imageTemp.Height) / 2;
+                        SmallSideImage.Padding = new(0, iVPadding, 0, iVPadding);
+                    }
+                }
+            } else {
+                float zoomingRatio = (MainUtils.GetZoomingRatio(_workplace._defaultImage.Size, SmallSideImage.Size) * .5F);
+                Image imageTemp = MainUtils.ResizeImageByZoomingRatio(_workplace._defaultImage, zoomingRatio);
+                SmallSideImage.Image = imageTemp;
+                int iHPadding = (SmallSideImage.Width - imageTemp.Width) / 2;
+                int iVPadding = (SmallSideImage.Height - imageTemp.Height) / 2;
+                SmallSideImage.Padding = new(iHPadding, iVPadding, iHPadding, iVPadding);
+            }
         }
     }
 }

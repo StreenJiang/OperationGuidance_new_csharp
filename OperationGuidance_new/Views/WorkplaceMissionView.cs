@@ -849,6 +849,12 @@ namespace OperationGuidance_new.Views {
                                 currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                             }
 
+                            // Check if current showing side is equal to side of working bolt, if no then switch to the right side
+                            if (currentBolt.BoltDTO.side_id != _currentSideIndex) {
+                                _currentSideIndex = currentBolt.BoltDTO.side_id;
+                                ChangeSideAndInvalidate();
+                            }
+
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
