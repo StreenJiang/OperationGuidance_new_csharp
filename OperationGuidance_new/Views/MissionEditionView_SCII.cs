@@ -612,33 +612,6 @@ namespace OperationGuidance_new.Views {
                     _currentProductImageFile = _currentSideButton.ProductImageFileNew;
                     _currentSideButton.SetToggle(true);
                 }
-
-                _addNewSideButton = new("新增") {
-                    Parent = _sideTitlePanel,
-                    BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_NEW,
-                    ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
-                    ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
-                    BlockHoverUp = true,
-                };
-                _addNewSideButton.Click += (sender, eventArgs) => {
-                    ProductSideDTO sideDTO = new() {
-                        name = "产品图片" + (_sideButtons.Count + 1),
-                        Bolts = new(),
-                    };
-                    // Add new sideDto to sideDto
-                    _missionDTO.ProductSides.Add(sideDTO);
-                    // Create a new side button
-                    SideButton sideButton = NewSideButton(sideDTO);
-                    _sideButtons.Add(sideButton);
-                    // Send "new side button" to back
-                    _addNewSideButton.SendToBack();
-
-                    ResizeSideButtons();
-                    // Toggle new button right after creating
-                    SideButonClick(sideButton);
-                    // Change state
-                    Modified = true;
-                };
             }
 
             private SideButton NewSideButton(ProductSideDTO sideDTO) {
@@ -1075,7 +1048,6 @@ namespace OperationGuidance_new.Views {
                         sideButton.Width = (int) (btnLabelWidth + newHeight * _sideButtonWidthRatio);
                     }
                 }
-                _addNewSideButton.Size = new((int) (_sideTitlePanel.Width * .08), newHeight);
             }
 
             private void ResizeTop() {
