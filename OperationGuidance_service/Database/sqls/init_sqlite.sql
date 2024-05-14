@@ -433,6 +433,21 @@ CREATE TABLE "workstation" (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for sql_execute_record
+-- ----------------------------
+DROP TABLE IF EXISTS "sql_execute_record";
+CREATE TABLE "sql_execute_record" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "file_name" text(128),
+  "user_id" integer NOT NULL,
+  "deleted" integer(1) NOT NULL,
+  "creator" text(128) NOT NULL,
+  "modifier" text(128) NOT NULL,
+  "create_time" text(64) NOT NULL,
+  "modify_time" text(64) NOT NULL
+);
+
+-- ----------------------------
 -- Indexes structure for table mac_addresses
 -- ----------------------------
 CREATE INDEX "index_macs"

@@ -20,14 +20,13 @@ namespace OperationGuidance_service.Utils {
             try {
                 // ANSI SQL way.  Works in PostgreSQL, MSSQL, MySQL.  
                 dbCommand.CommandText = "select case when exists((select * from information_schema.tables where table_name = '" + tableName + "')) then 1 else 0 end";
-
                 exists = (int) dbCommand.ExecuteScalar() == 1;
             } catch {
                 try {
                     // Other RDBMS.  Graceful degradation
-                    exists = true;
                     dbCommand.CommandText = "select 1 from " + tableName + " where 1 = 0";
                     dbCommand.ExecuteNonQuery();
+                    exists = true;
                 } catch {
                     exists = false;
                 }
@@ -39,21 +38,32 @@ namespace OperationGuidance_service.Utils {
         public static string GetInitializationSql(string creatScriptName, string modifyNamePrefix) {
             string commandText = CommonUtils.CannotBeNull(Resource.ResourceManager.GetString(creatScriptName));
 
-            ResourceSet? resourceSet = Resource.ResourceManager.GetResourceSet(CultureInfo.InvariantCulture, false, false);
-            if (resourceSet != null) {
-                List<string> fileNames = resourceSet.Cast<DictionaryEntry>().Select(entry => entry.Key).Cast<String>().ToList();
-                fileNames.Sort();
-                foreach (string fileName in fileNames) {
-                    if (fileName.Contains(modifyNamePrefix)) {
-                        string? fileText = Resource.ResourceManager.GetString(fileName);
-                        if (!string.IsNullOrEmpty(fileText)) {
-                            commandText += $"\r\n{fileText}";
-                        }
+            List<string> fileNames = GetResourcesFileNames();
+            foreach (string fileName in fileNames) {
+                if (fileName.Contains(modifyNamePrefix)) {
+                    string? fileText = Resource.ResourceManager.GetString(fileName);
+                    if (!string.IsNullOrEmpty(fileText)) {
+                        commandText += $"\r\n{fileText}";
                     }
                 }
             }
 
             return commandText;
+        }
+
+        public static List<String> GetResourcesFileNames() {
+            List<String> fileNames = new();
+
+            // Need to call this first otherwise can't get resource set
+            string init_mysql = Resource.init_mysql;
+
+            ResourceSet? resourceSet = Resource.ResourceManager.GetResourceSet(CultureInfo.InvariantCulture, false, false);
+            if (resourceSet != null) {
+                fileNames = resourceSet.Cast<DictionaryEntry>().Select(entry => entry.Key).Cast<String>().ToList();
+                fileNames.Sort();
+            }
+
+            return fileNames;
         }
 
         public static Dictionary<string, string> GetSerialPorts() {
