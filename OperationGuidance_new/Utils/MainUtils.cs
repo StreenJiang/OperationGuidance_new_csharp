@@ -75,6 +75,9 @@ namespace OperationGuidance_new.Utils {
             while (tryTimes <= DBRetryTimes) {
                 try {
                     dbConnection = DbConnector.GetConnection();
+                    if (dbConnection != null) {
+                        break;
+                    }
                 } catch (DatabaseException de) {
                     GetLogger(typeof(MainUtils)).Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
                     continue;
