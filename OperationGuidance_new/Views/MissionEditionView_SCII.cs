@@ -630,28 +630,6 @@ namespace OperationGuidance_new.Views {
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
                     BoltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio),
                 };
-                sideButton.Deleted += () => {
-                    sideDTO.deleted = (int) YesOrNo.YES;
-                    if (sideDTO.id == -1) {
-                        // 将没有存入数据库的数据直接从缓存中去掉，已存入数据库的数据需要修改deleted字段使其变成已删除
-                        CommonUtils.CannotBeNull(_missionDTO.ProductSides).Remove(sideDTO);
-                    }
-                    int index = _sideButtons.IndexOf(sideButton);
-                    if (_sideButtons.Count == 1) {
-                        _sideButtons.Remove(sideButton);
-                        // close first then create a new one
-                        _addNewSideButton.PerformClick();
-                    } else if (index < _sideButtons.Count - 1) {
-                        SideButonClick(_sideButtons[index + 1]);
-                        // click first then close
-                        _sideButtons.Remove(sideButton);
-                    } else {
-                        SideButonClick(_sideButtons[index - 1]);
-                        // click first then close
-                        _sideButtons.Remove(sideButton);
-                    }
-                    Modified = true;
-                };
                 sideButton.SingleClickDelegate += (eventArgs) => SideButonClick(sideButton);
                 sideButton.DoubleClickDelegate += (eventArgs) => {
                     TextBox box = new() {
@@ -1390,7 +1368,7 @@ namespace OperationGuidance_new.Views {
                 }
             }
         }
-        public class SideButton: DeletableButton {
+        public class SideButton: CommonButton {
             private ILog logger = MainUtils.GetLogger(typeof(SideButton));
 
             private Color? _originalBackColor;
@@ -1614,14 +1592,12 @@ namespace OperationGuidance_new.Views {
             }
             protected override void OnMouseUp(MouseEventArgs mevent) {
                 base.OnMouseUp(mevent);
-                if (!PressingClose) {
-                    if (mevent.Button == MouseButtons.Left) {
-                        if (ClickTimes == 0) {
-                            EventArgs = mevent;
-                            ClickTimer.Start();
-                        }
-                        ClickTimes++;
+                if (mevent.Button == MouseButtons.Left) {
+                    if (ClickTimes == 0) {
+                        EventArgs = mevent;
+                        ClickTimer.Start();
                     }
+                    ClickTimes++;
                 }
             }
         }
