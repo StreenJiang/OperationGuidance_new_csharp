@@ -42,24 +42,6 @@ namespace OperationGuidance_service.Controllers {
         private MissionRecordService _missionRecordService;
         [Autowired]
         private MacAddressesService _macAddressesService;
-        [Autowired]
-        private SqlExecuteRecordService _sqlExecuteRecordService;
-
-        #region sql执行记录相关
-        // 查询所有已执行的 modify sql 记录
-        public QuerySqlExecuteRecordListRsp QuerySqlExecuteRecordList(QuerySqlExecuteRecordListReq req) {
-            List<SqlExecuteRecord> sqlExecuteRecords = _sqlExecuteRecordService.QueryListWithoutUserId();
-            List<SqlExecuteRecordDTO> sqlExecuteRecordDTOs = new();
-            CommonUtils.ObjectConverter<SqlExecuteRecord, SqlExecuteRecordDTO>(sqlExecuteRecords, sqlExecuteRecordDTOs);
-            return new(sqlExecuteRecordDTOs);
-        }
-        // 批量插入 modify sql 执行记录
-        public BatchAddSqlExecuteRecordsRsp BatchAddSqlExecuteRecords(BatchAddSqlExecuteRecordsReq req) {
-            List<SqlExecuteRecord> sqlExecuteRecords = new();
-            CommonUtils.ObjectConverter<SqlExecuteRecordDTO, SqlExecuteRecord>(req.SqlExecuteRecordDTOs, sqlExecuteRecords);
-            return new() { Num = _sqlExecuteRecordService.AddBatch(sqlExecuteRecords) };
-        }
-        #endregion
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
