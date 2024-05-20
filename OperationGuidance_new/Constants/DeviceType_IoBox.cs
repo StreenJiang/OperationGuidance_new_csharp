@@ -1,5 +1,6 @@
 ﻿using log4net;
 using OperationGuidance_new.Utils;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_IoBox {
@@ -46,16 +47,13 @@ namespace OperationGuidance_new.Constants {
 
     public abstract class DeviceTypeIoBox: DeviceTypeBase {
         protected ILog logger;
-        private Command? _command_write;
+        private Command _command_write;
 
-        public Command? COMMAND_READ;
-        public Command? COMMAND_WRITE(string writeMsg) {
-            if (_command_write != null) {
-                string temp = _command_write.GetMessage(writeMsg);
-                byte[] bytes = MainUtils.ToBytes(temp);
-                return new(temp + MainUtils.Crc16ToString(bytes));
-            }
-            return null;
+        public Command COMMAND_READ;
+        public Command COMMAND_WRITE(string writeMsg) {
+            string temp = _command_write.GetMessage(writeMsg);
+            byte[] bytes = MainUtils.ToBytes(temp);
+            return new(temp + MainUtils.Crc16ToString(bytes));
         }
         public DeviceTypeIoBox(int id, string name) : base(id, name) {
             logger = MainUtils.GetLogger(GetType());
@@ -63,10 +61,13 @@ namespace OperationGuidance_new.Constants {
             _command_write = new("0906000000{0}");
         }
 
-        public abstract string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null, int? deviceId = null);
+        public abstract string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId);
     }
 
     public abstract class IoBoxSetterSelector: DeviceTypeIoBox {
+        public static string IconStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector);
+        public static string IconErrorStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector_error);
+        public static string IconEmptyStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector_empty);
         public IoBoxSetterSelector(int id, string name) : base(id, name) { }
     }
 
@@ -75,8 +76,11 @@ namespace OperationGuidance_new.Constants {
 
         public IoBoxSetterSelector_4() : base(1, "SetterSelector_4") { }
 
-        public override string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null, int? deviceId = null) {
+        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
             string? result = null;
+            if (_ioBoxActionAfterAnalysis != null) {
+                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+            }
             return result;
         }
     }
@@ -86,17 +90,26 @@ namespace OperationGuidance_new.Constants {
 
         public IoBoxSetterSelector_8() : base(2, "SetterSelector_8") { }
 
-        public override string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null, int? deviceId = null) {
+        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
             string? result = null;
+            if (_ioBoxActionAfterAnalysis != null) {
+                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+            }
             return result;
         }
     }
 
     public class IoBoxArranger: DeviceTypeIoBox {
+        public static string IconStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder);
+        public static string IconErrorStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder_error);
+        public static string IconEmptyStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder_empty);
         public IoBoxArranger() : base(3, "Arranger") { }
 
-        public override string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null, int? deviceId = null) {
+        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
             string? result = null;
+            if (_ioBoxActionAfterAnalysis != null) {
+                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+            }
             return result;
         }
     }

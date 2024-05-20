@@ -280,6 +280,53 @@ namespace OperationGuidance_new.Tasks {
                         }
                     });
 
+                    // Initialize ioBox tasks
+                    List<DeviceIoDTO> ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs;
+                    // Remove ioBoxs which had been deleted
+                    ioBoxDTOs.ForEach(dto => {
+                        if (MainUtils.IoBoxTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
+                            MainUtils.IoBoxTasks[dto.id].CloseConnection();
+                            MainUtils.Info(logger, $"ioBox[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
+                            MainUtils.IoBoxTasks.Remove(dto.id);
+                        }
+                    });
+                    ioBoxDTOs = ioBoxDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                    // Loop to check all ioBoxs
+                    ioBoxDTOs.ForEach(async dto => {
+                        IoBoxTask? ioBoxTask = MainUtils.TryGetIoBoxTask(dto.id);
+                        if (ioBoxTask == null) {
+                            DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
+                            if (deviceIoBox != null) {
+                                MainUtils.NewIoBoxTask(dto.id, dto.name, dto.ip, dto.port, deviceIoBox);
+                                MainUtils.Info(logger, $"Connecting to ioBox[{dto.name} - {dto.ip}: {dto.port} - {deviceIoBox.Name}]...");
+                            }
+                        } else {
+                            if (ioBoxTask.Ip != dto.ip || ioBoxTask.Port != dto.port || ioBoxTask.IoBoxType.Id != dto.type) {
+                                ioBoxTask.CloseConnection();
+                                await Task.Delay(ioBoxTask.AuotReconnectingTrialDelay);
+
+                                DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
+                                if (deviceIoBox != null) {
+                                    MainUtils.Info(logger, $"ioBox info changed, Reconnecting to ioBox[{dto.name} - {dto.ip}: {dto.port} - {deviceIoBox.Name}]...");
+                                    ioBoxTask.Ip = dto.ip;
+                                    ioBoxTask.Port = dto.port;
+                                    ioBoxTask.IoBoxType = deviceIoBox;
+                                    ioBoxTask.CloseConnectionManually = false;
+                                    ioBoxTask.Connect();
+                                } else {
+                                    MainUtils.IoBoxTasks.Remove(dto.id);
+                                    MainUtils.Info(logger, $"ioBox[{dto.name} - {dto.ip}: {dto.port}] removed, can't find ioBox type [{dto.type}].");
+                                }
+                            } else if (!ioBoxTask.Connected && ioBoxTask.Status != ATaskBase.CONNECTING) {
+                                Task.Run(async () => {
+                                    MainUtils.Info(logger, $"Disconnected to ioBox[{dto.name} - {dto.ip}: {dto.port} - {ioBoxTask.IoBoxType.Name}], trying to reconnect...");
+                                    await ioBoxTask.Connect();
+                                    MainUtils.Info(logger, $"Reconnected to ioBox[{dto.name} - {dto.ip}: {dto.port} - {ioBoxTask.IoBoxType.Name}]");
+                                });
+                            }
+                        }
+                    });
+
                     // Delay in task looping
                     await Task.Delay(LoopingDelay);
                 }

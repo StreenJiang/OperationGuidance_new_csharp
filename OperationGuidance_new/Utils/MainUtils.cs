@@ -488,6 +488,32 @@ namespace OperationGuidance_new.Utils {
             return null;
         }
 
+        private static Dictionary<int, IoBoxTask> _ioBoxTasks = new();
+        public static Dictionary<int, IoBoxTask> IoBoxTasks => _ioBoxTasks;
+        public static void NewIoBoxTask(int ioBoxId, string? ioBoxName, string ip, int port, DeviceTypeIoBox ioBox) {
+            IoBoxTask task = new(ioBoxId, ioBoxName, ip, port, ioBox);
+            task.Connect();
+            _ioBoxTasks.Add(ioBoxId, task);
+        }
+        public static async Task<IoBoxTask> NewIoBoxTaskAsync(int ioBoxId, string? ioBoxName, string ip, int port, DeviceTypeIoBox ioBox) {
+            IoBoxTask task = new(ioBoxId, ioBoxName, ip, port, ioBox);
+            await task.ConnectAsync();
+            _ioBoxTasks.Add(ioBoxId, task);
+            return task;
+        }
+        public static IoBoxTask GetIoBoxTask(int ioBoxId) {
+            if (_ioBoxTasks.ContainsKey(ioBoxId)) {
+                return _ioBoxTasks[ioBoxId];
+            }
+            throw new ArgumentException($"IoBoxTask for ioBoxId<{ioBoxId}> has not been created.");
+        }
+        public static IoBoxTask? TryGetIoBoxTask(int ioBoxId) {
+            if (_ioBoxTasks.ContainsKey(ioBoxId)) {
+                return _ioBoxTasks[ioBoxId];
+            }
+            return null;
+        }
+
         public static List<string> LogCache { get; } = new();
         private static TextBox? _textArea = null;
         public static TextBox? EventLogTextArea {

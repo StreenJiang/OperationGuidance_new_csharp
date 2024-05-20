@@ -42,6 +42,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected Dictionary<int, ToolTask> _toolTasks = new();
         protected Dictionary<int, SerialPortTask> _serialPortTasks = new();
         protected Dictionary<int, CommunicationTask> _communicationTasks = new();
+        protected Dictionary<int, IoBoxTask> _ioBoxTasks;
         protected CommunicationTask? _communicationTask;
         protected MissionRecordDTO? _missionRecord;
         protected bool _needLoosening = false;
@@ -766,22 +767,20 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             break;
                         }
                     } else if (category == DeviceCategories.IOBOX) {
-                        // _communicationTasks = MainUtils.CommunicationTasks;
-                        // foreach (KeyValuePair<int, CommunicationTask> pair in _communicationTasks) {
-                        //     CommunicationTask communicationTask = pair.Value;
-                        //     communicationTask.ModBusServer = ModBusServer;
-                        //     // Reset all
-                        //     if (ModBusServer != null) {
-                        //         WriteRequestMessage req = new();
-                        //         req.Data.MessageHexBytes = ModBusServer.ResetBytes();
-                        //         req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
-                        //         req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
-                        //         req.SetLength();
-                        //         communicationTask.WriteToServer(req);
-                        //     }
-                        //     _communicationTask = communicationTask;
-                        //     break;
-                        // }
+                        _ioBoxTasks = MainUtils.IoBoxTasks;
+                        if (_ioBoxTasks.Count == 1) {
+                            foreach (IoBoxTask task in _ioBoxTasks.Values) {
+                                if (task.IoBoxType is IoBoxSetterSelector selector) {
+                                    block.icons.Add(IoBoxSetterSelector.IconStr);
+                                    block.icons.Add(IoBoxSetterSelector.IconErrorStr);
+                                    block.icons.Add(IoBoxSetterSelector.IconEmptyStr);
+                                } else if (task.IoBoxType is IoBoxArranger arranger) {
+                                    block.icons.Add(IoBoxArranger.IconStr);
+                                    block.icons.Add(IoBoxArranger.IconErrorStr);
+                                    block.icons.Add(IoBoxArranger.IconEmptyStr);
+                                }
+                            }
+                        }
                     } else {
                         // TODO
                     }
@@ -806,7 +805,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (category == DeviceCategories.COMMUNICATION) {
                                 Check(block, _communicationTasks.Values.ToList());
                             } else if (category == DeviceCategories.IOBOX) {
-                                // Check(block, _communicationTasks.Values.ToList());
+                                Check(block, _ioBoxTasks.Values.ToList());
                             } else {
                                 // TODO
                             }
@@ -1163,6 +1162,37 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } else {
                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.ACTIVATED;
             }
+
+            // Check whether data receiving from io box is needed
+            bool needed = false;
+            if (CheckIfIsMultiDeviceIndependenceMode()) {
+                // If bit specification of any is not null and grater than 0, need to receive data from io box and keep checking the status of setter selector
+                foreach (Dictionary<int, List<BoltButton>> pair in _allBoltsIndependence.Values) {
+                    foreach (List<BoltButton> bolts in pair.Values) {
+                        if (bolts.Find(b => b.BoltDTO.bit_specification != null && b.BoltDTO.bit_specification > 0) != null) {
+                            needed = true;
+                            break;
+                        }
+                    }
+                    if (needed) {
+                        break;
+                    }
+                }
+            } else {
+                List<int> workstationIds = new();
+                foreach (List<BoltButton> bolts in _allBolts.Values) {
+                    if (bolts.Find(b => b.BoltDTO.bit_specification != null && b.BoltDTO.bit_specification > 0) != null) {
+                        needed = true;
+                        break;
+                    }
+                }
+            }
+            if (needed) {
+                foreach (IoBoxTask task in _ioBoxTasks.Values) {
+                    task.RetrieveResult = true;
+                    task.IoBoxActionAfterAnalysis += DoIoBoxActionAfterAnalysis;
+                }
+            }
         }
 
         // 读取力臂数据并根据当前螺栓点位配置信息进行解锁、锁枪
@@ -1450,12 +1480,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 });
             }
 
+            // Stop listening status of io box
+            foreach (IoBoxTask task in _ioBoxTasks.Values) {
+                if (task.IoBoxActionAfterAnalysis != null) {
+                    task.IoBoxActionAfterAnalysis -= DoIoBoxActionAfterAnalysis;
+                }
+            }
+
             // Clear all cached bar codes
             _barCodeObj.Reset();
         }
         // 螺栓拧紧NG时，如果需要管理员输入密码，则调用此方法
         protected void NGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。");
         protected virtual void InitializeAfterHandelCreated() { }
+
+        // Action After io box data has been read
+        protected virtual void DoIoBoxActionAfterAnalysis(string dataMessage, int deviceId) {
+            Console.WriteLine("DoIoBoxActionAfterAnalysis ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        }
         #endregion
 
         #region Events
@@ -2359,6 +2401,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public string CategoryName { get => _categoryName; set => _categoryName = value; }
         public CustomFloatingForm? FloatingForm { get => _floatingForm; set => _floatingForm = value; }
         public CustomPopUpForm? PopUpForm { get => _popUpForm; set => _popUpForm = value; }
+        public List<string> icons { get; } = new();
 
         public DeviceBlock(DeviceCategory category) : base() {
             _category = category;
@@ -2374,13 +2417,25 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public void ResetIconByStatus(DeviceStatus status) {
             switch (status) {
                 case DeviceStatus.NORMAL:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconStr);
+                    if (icons.Count > 0) {
+                        Icon = CommonUtils.ImageBase64ToImage(icons[0]);
+                    } else {
+                        Icon = CommonUtils.ImageBase64ToImage(_category.IconStr);
+                    }
                     break;
                 case DeviceStatus.ERROR:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconErrorStr);
+                    if (icons.Count > 0) {
+                        Icon = CommonUtils.ImageBase64ToImage(icons[1]);
+                    } else {
+                        Icon = CommonUtils.ImageBase64ToImage(_category.IconErrorStr);
+                    }
                     break;
                 case DeviceStatus.EMPTY:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconEmptyStr);
+                    if (icons.Count > 0) {
+                        Icon = CommonUtils.ImageBase64ToImage(icons[2]);
+                    } else {
+                        Icon = CommonUtils.ImageBase64ToImage(_category.IconEmptyStr);
+                    }
                     break;
             }
             ResizeIconImage();
