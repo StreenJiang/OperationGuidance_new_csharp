@@ -122,6 +122,14 @@ namespace OperationGuidance_new.Configs {
                         }, 
                     },
                     new() {
+                        Id = 510,
+                        Name = "IO设备管理",
+                        Icon = Properties.Resources.device_io_box,
+                        ViewTypes = new() {
+                            {AppVersion.STANDARD, typeof(DeviceIoView)},
+                        }, 
+                    },
+                    new() {
                         Id = 507,
                         Name = "条码匹配管理",
                         Icon = Properties.Resources.bar_code,

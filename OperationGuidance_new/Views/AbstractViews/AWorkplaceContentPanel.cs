@@ -529,6 +529,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 deviceBlock.FloatingForm = new CommunicationDetailFloatingForm(deviceBlock.CategoryName, _communicationTasks, panelHeight);
                                 contentSize.Height = panelHeight * _communicationTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
                             }
+                        } else if (deviceBlock.Category == DeviceCategories.IOBOX) {
+                            // if (_communicationTasks.Count > 0) {
+                            //     deviceBlock.FloatingForm = new CommunicationDetailFloatingForm(deviceBlock.CategoryName, _communicationTasks, panelHeight);
+                            //     contentSize.Height = panelHeight * _communicationTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
+                            // }
                         } else {
                             // TODO:
                         }
@@ -609,6 +614,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (deviceBlock.Category == DeviceCategories.SERIAL_PORT) {
                                 // TODO
                             } else if (deviceBlock.Category == DeviceCategories.COMMUNICATION) {
+                                // TODO
+                            } else if (deviceBlock.Category == DeviceCategories.IOBOX) {
                                 // TODO
                             } else {
                                 // TODO
@@ -723,6 +730,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                             DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
                                             // 如果有空的数据进来，则跳过
                                             if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                                logger.Warn("Message is null from serial port device, please check.");
                                                 return;
                                             }
                                             if (dto.invalid_char != null) {
@@ -757,6 +765,23 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             _communicationTask = communicationTask;
                             break;
                         }
+                    } else if (category == DeviceCategories.IOBOX) {
+                        // _communicationTasks = MainUtils.CommunicationTasks;
+                        // foreach (KeyValuePair<int, CommunicationTask> pair in _communicationTasks) {
+                        //     CommunicationTask communicationTask = pair.Value;
+                        //     communicationTask.ModBusServer = ModBusServer;
+                        //     // Reset all
+                        //     if (ModBusServer != null) {
+                        //         WriteRequestMessage req = new();
+                        //         req.Data.MessageHexBytes = ModBusServer.ResetBytes();
+                        //         req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
+                        //         req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
+                        //         req.SetLength();
+                        //         communicationTask.WriteToServer(req);
+                        //     }
+                        //     _communicationTask = communicationTask;
+                        //     break;
+                        // }
                     } else {
                         // TODO
                     }
@@ -780,6 +805,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 Check(block, _serialPortTasks.Values.ToList());
                             } else if (category == DeviceCategories.COMMUNICATION) {
                                 Check(block, _communicationTasks.Values.ToList());
+                            } else if (category == DeviceCategories.IOBOX) {
+                                // Check(block, _communicationTasks.Values.ToList());
                             } else {
                                 // TODO
                             }

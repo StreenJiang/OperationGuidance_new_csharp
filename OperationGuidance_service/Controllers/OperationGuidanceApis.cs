@@ -33,6 +33,8 @@ namespace OperationGuidance_service.Controllers {
         [Autowired]
         private DeviceCommunicationService _deviceCommunicationService;
         [Autowired]
+        private DeviceIoService _deviceIoService;
+        [Autowired]
         private WorkstationService _workstationService;
         [Autowired]
         private OperationDataService _operationDataService;
@@ -42,24 +44,6 @@ namespace OperationGuidance_service.Controllers {
         private MissionRecordService _missionRecordService;
         [Autowired]
         private MacAddressesService _macAddressesService;
-        [Autowired]
-        private SqlExecuteRecordService _sqlExecuteRecordService;
-
-        #region sql执行记录相关
-        // 查询所有已执行的 modify sql 记录
-        public QuerySqlExecuteRecordListRsp QuerySqlExecuteRecordList(QuerySqlExecuteRecordListReq req) {
-            List<SqlExecuteRecord> sqlExecuteRecords = _sqlExecuteRecordService.QueryListWithoutUserId();
-            List<SqlExecuteRecordDTO> sqlExecuteRecordDTOs = new();
-            CommonUtils.ObjectConverter<SqlExecuteRecord, SqlExecuteRecordDTO>(sqlExecuteRecords, sqlExecuteRecordDTOs);
-            return new(sqlExecuteRecordDTOs);
-        }
-        // 批量插入 modify sql 执行记录
-        public BatchAddSqlExecuteRecordsRsp BatchAddSqlExecuteRecords(BatchAddSqlExecuteRecordsReq req) {
-            List<SqlExecuteRecord> sqlExecuteRecords = new();
-            CommonUtils.ObjectConverter<SqlExecuteRecordDTO, SqlExecuteRecord>(req.SqlExecuteRecordDTOs, sqlExecuteRecords);
-            return new() { Num = _sqlExecuteRecordService.AddBatch(sqlExecuteRecords) };
-        }
-        #endregion
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -281,6 +265,8 @@ namespace OperationGuidance_service.Controllers {
             count += _deviceCommunicationService.ExecuteSql(string.Format(sqlTemp, _deviceCommunicationService.TableName, req.IdTo, req.IdFrom));
             // 串口设备
             count += _deviceSerialPortService.ExecuteSql(string.Format(sqlTemp, _deviceSerialPortService.TableName, req.IdTo, req.IdFrom));
+            // IO设备
+            count += _deviceIoService.ExecuteSql(string.Format(sqlTemp, _deviceIoService.TableName, req.IdTo, req.IdFrom));
             // 产品任务
             count += _productMissionService.ExecuteSql(string.Format(sqlTemp, _productMissionService.TableName, req.IdTo, req.IdFrom));
             // 站点
@@ -997,6 +983,65 @@ namespace OperationGuidance_service.Controllers {
             int deletedRows = _deviceCommunicationService.DeleteByIds(req.Ids);
 
             DeleteDeviceCommunicationByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        #endregion
+
+        #region IO设备相关
+        // 查询IO设备列表
+        public QueryDeviceIoListRsp QueryDeviceIoList(QueryDeviceIoListReq req) {
+            List<DeviceIo> deviceCategories;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_deviceIoService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            // 如果是为了启动线程而查询则不需要考虑权限，一定要检查mac地址，并且被删掉的数据也要查询
+            if (req.ForTask) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
+            }
+            // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
+            else {
+                sql += " and deleted = @deleted";
+                parameters.Add("deleted", (int) YesOrNo.NO);
+                // 不是管理员就需要检查mac地址
+                if (role != null && role != Roles.DEVELOPER) {
+                    sql += " and macs_id = @macs_id";
+                    parameters.Add("macs_id", req.MacsId);
+                }
+            }
+            deviceCategories = _deviceIoService.FindBySql(sql, parameters);
+
+            List<DeviceIoDTO> deviceIoDTOs = new();
+            CommonUtils.ObjectConverter<DeviceIo, DeviceIoDTO>(deviceCategories, deviceIoDTOs);
+
+            return new() {
+                DeviceIoDTOs = deviceIoDTOs,
+            };
+        }
+        // 新增或修改IO设备
+        public AddOrUpdateDeviceIoRsp AddOrUpdateDeviceIo(AddOrUpdateDeviceIoReq req) {
+            DeviceIoDTO deviceIoDTO = req.DeviceIoDTO;
+            DeviceIo deviceIo = new();
+            CommonUtils.ObjectConverter<DeviceIoDTO, DeviceIo>(deviceIoDTO, deviceIo);
+            DeviceIo? deviceIoNew = _deviceIoService.InsertOrUpdate(deviceIo);
+            if (deviceIoNew != null) {
+                deviceIoDTO.id = deviceIoNew.id;
+            }
+
+            return new() {
+                DeviceIoDTO = deviceIoDTO,
+            };
+        }
+        // 删除IO设备
+        public DeleteDeviceIoByIdsRsp DeleteDeviceIo(DeleteDeviceIoByIdsReq req) {
+            int deletedRows = _deviceIoService.DeleteByIds(req.Ids);
+
+            DeleteDeviceIoByIdsRsp rsp = new();
             if (deletedRows < req.Ids.Count) {
                 rsp.RsponseCode = HttpResponseCode.ERROR;
                 rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";

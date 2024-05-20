@@ -148,6 +148,15 @@
   <data name="aneng_feeder_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_feeder_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="aneng_io_box" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_io_box.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_io_box_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_io_box_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="aneng_io_box_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\aneng_io_box_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="aneng_screw_gun" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\aneng_screw_gun.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -216,6 +225,9 @@
   </data>
   <data name="device_disconnected" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\device_disconnected.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="device_io_box" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\device_io_box.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="device_model" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\device_model.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

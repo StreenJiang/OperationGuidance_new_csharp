@@ -1,8 +1,11 @@
 ﻿namespace OperationGuidance_new.Constants {
     public class DeviceType_Arm {
         public static List<DeviceTypeBase> Elements = new();
-        private static T AddNew<T>() where T: DeviceTypeBase, new() {
+        private static T AddNew<T>() where T : DeviceTypeBase, new() {
             T type = new();
+            if (Elements.Find(e => e.Id == type.Id) != null) {
+                throw new InvalidDataException($"Duplicated Id for type {typeof(DeviceType_Arm).Name}");
+            }
             Elements.Add(type);
             return type;
         }

@@ -6,6 +6,9 @@ namespace OperationGuidance_new.Constants {
         public static List<DeviceTypeTool> Elements = new();
         private static T AddNew<T>() where T : DeviceTypeTool, new() {
             T type = new();
+            if (Elements.Find(e => e.Id == type.Id) != null) {
+                throw new InvalidDataException($"Duplicated Id for type {typeof(DeviceType_Tool).Name}");
+            }
             Elements.Add(type);
             return type;
         }
@@ -44,9 +47,7 @@ namespace OperationGuidance_new.Constants {
     public abstract class DeviceTypeTool: DeviceTypeBase {
         protected ILog logger;
 
-        public Command? COMMAND_CONNECT_ASCII;
         public Command? COMMAND_DATA_ASCII;
-        public Command? COMMAND_HEART_ASCII;
         public Command? COMMAND_LOCK_ASCII;
         public Command? COMMAND_UNLOCK_ASCII;
         public Command? COMMAND_PSET_ASCII;
@@ -56,14 +57,22 @@ namespace OperationGuidance_new.Constants {
         }
 
         public abstract string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null);
+    }
+
+    public abstract class ToolPFSeries: DeviceTypeTool {
+        public Command? COMMAND_CONNECT_ASCII;
+        public Command? COMMAND_HEART_ASCII;
+
+        public ToolPFSeries(int id, string name) : base(id, name) { }
+
         public abstract string GetMidFromResult(string result);
     }
 
-    public class ToolPF4000: DeviceTypeTool {
+    public class ToolPF4000: ToolPFSeries {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII = new("00200001003         \x00");
-            COMMAND_DATA_ASCII = new("002000600031        \x00");
             COMMAND_HEART_ASCII = new("00209999001         \x00");
+            COMMAND_DATA_ASCII = new("002000600031        \x00");
             COMMAND_LOCK_ASCII = new("00200042001         \x00");
             COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
             COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
@@ -151,6 +160,7 @@ namespace OperationGuidance_new.Constants {
             }
             return result;
         }
+
         public override string GetMidFromResult(string result) {
             string mid = "";
             try {
@@ -162,11 +172,11 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class ToolPF6000OP: DeviceTypeTool {
+    public class ToolPF6000OP: ToolPFSeries {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII = new("00200001006         \x00");
-            COMMAND_DATA_ASCII = new("002000600031        \x00");
             COMMAND_HEART_ASCII = new("00209999001         \x00");
+            COMMAND_DATA_ASCII = new("002000600031        \x00");
             COMMAND_LOCK_ASCII = new("00200042001         \x00");
             COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
             COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
@@ -254,6 +264,7 @@ namespace OperationGuidance_new.Constants {
             }
             return result;
         }
+
         public override string GetMidFromResult(string result) {
             string mid = "";
             try {
@@ -272,9 +283,9 @@ namespace OperationGuidance_new.Constants {
             string? result = null;
             return result;
         }
-        public override string GetMidFromResult(string result) {
-            string mid = "";
-            return mid;
+
+        public bool SendPsetOk(string result) {
+            return false;
         }
     }
 }

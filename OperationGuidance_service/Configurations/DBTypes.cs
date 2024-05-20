@@ -2,5 +2,6 @@
     public enum DBTypes {
         SQLITE,
         MYSQL,
+        SQLSERVER,
     }
 }

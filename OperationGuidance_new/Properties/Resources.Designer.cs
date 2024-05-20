@@ -163,6 +163,36 @@ namespace OperationGuidance_new.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap aneng_io_box {
+            get {
+                object obj = ResourceManager.GetObject("aneng_io_box", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap aneng_io_box_empty {
+            get {
+                object obj = ResourceManager.GetObject("aneng_io_box_empty", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap aneng_io_box_error {
+            get {
+                object obj = ResourceManager.GetObject("aneng_io_box_error", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap aneng_screw_gun {
             get {
                 object obj = ResourceManager.GetObject("aneng_screw_gun", resourceCulture);
@@ -386,6 +416,16 @@ namespace OperationGuidance_new.Properties {
         internal static System.Drawing.Bitmap device_disconnected {
             get {
                 object obj = ResourceManager.GetObject("device_disconnected", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap device_io_box {
+            get {
+                object obj = ResourceManager.GetObject("device_io_box", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

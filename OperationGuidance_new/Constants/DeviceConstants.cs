@@ -16,6 +16,7 @@ namespace OperationGuidance_new.Constants {
         public static DeviceCategory ARM = AddNew<ARM>();
         public static DeviceCategory COMMUNICATION = AddNew<COMMUNICATION>();
         public static DeviceCategory SERIAL_PORT = AddNew<SERIAL_PORT>();
+        public static DeviceCategory IOBOX = AddNew<IOBOX>();
 
         public static string? GetNameById(int id) {
             foreach (DeviceCategory type in Elements) {
@@ -73,6 +74,12 @@ namespace OperationGuidance_new.Constants {
             Properties.Resources.aneng_communication,
             Properties.Resources.aneng_communication_error,
             Properties.Resources.aneng_communication_empty) {}
+    }
+    public class IOBOX: DeviceCategory {
+        public IOBOX(): base(5, "IO通讯盒", 
+            Properties.Resources.aneng_io_box,
+            Properties.Resources.aneng_io_box_error,
+            Properties.Resources.aneng_io_box_empty) { }
     }
 
     public class DeviceTypeBase {

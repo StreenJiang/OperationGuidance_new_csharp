@@ -47,28 +47,38 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
+        protected void RegisterTCPClient() => MainUtils.RegisterTCPClient(_ip, _port, CommonUtils.CannotBeNull(socketClient));
+        protected void DeregisterTCPClient() => MainUtils.DeregisterTCPClient(_ip, _port);
         protected override void RunTask() {
             Task.Run(async () => {
                 try {
                     while (Connected) {
                         // Check if any command
                         if (Commands.Count > 0) {
-                            string command = Commands.Dequeue();
-                            // Send command to controller
-                            await socketClient.SendAsync(MainUtils.ToBytes(command), SocketFlags.None);
-                            // Check response
-                            try {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen >= 5) {
-                                    Result = MainUtils.ToHexString(msgBytes.Take(msgLen).ToArray());
-                                } else {
-                                    Result = "";
+                            lock (SendSyncRoot) {
+                                string command = Commands.Dequeue();
+                                // Send command to controller
+                                socketClient.Send(MainUtils.ToBytes(command), SocketFlags.None);
+
+                                lock (ReceiveSyncRoot) {
+                                    // Check response
+                                    try {
+                                        byte[] msgBytes = new byte[1024 * 1024];
+                                        int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                        if (msgLen >= 5) {
+                                            Result = MainUtils.ToHexString(msgBytes.Take(msgLen).ToArray());
+                                        } else {
+                                            Result = "";
+                                        }
+                                    } catch (Exception e) {
+                                        System.Console.WriteLine($"No data received...");
+                                    }
+
                                 }
-                            } catch (Exception e) {
-                                System.Console.WriteLine($"No data received...");
                             }
                         }
+
+                        await Task.Delay(LoopingInterval);
                     }
                 } catch (Exception e) {
                     logger.Warn($"Error while running task for connection<ARM[{_device_name} - {_ip}: {_port}]>, e: {e}");
@@ -90,6 +100,7 @@ namespace OperationGuidance_new.Tasks {
                 while (!Connected && !CloseConnectionManually) {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
+                        RegisterTCPClient();
                         RunTask();
                         RunLoop();
                         Status = CONNECTED;
@@ -103,6 +114,7 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Close connection<ARM[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 socketClient.Close();
+                DeregisterTCPClient();
             }
             CloseConnectionManually = true;
             Result = null;
@@ -121,6 +133,14 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Connecting to ARM[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
+
+            // 0. Check if socket already registerd
+            Socket? socket = MainUtils.GetTCPClient(_ip, _port);
+            if (socket != null) {
+                socketClient = socket;
+                MainUtils.Info(logger, $"Successfully connect to ARM[{_device_name} - {_ip}: {_port}] (already registerd)");
+                return true;
+            }
 
             // 1. check ping
             pingSuccess = MainUtils.PingHost(_ip);

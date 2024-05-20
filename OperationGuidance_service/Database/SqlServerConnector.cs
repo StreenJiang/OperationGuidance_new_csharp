@@ -1,13 +1,13 @@
 ﻿using log4net;
-using MySql.Data.MySqlClient;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
+using System.Data.SqlClient;
 
 namespace OperationGuidance_service.Database {
-    public class MySqlConnector: ADbConnector {
-        private static ILog logger = LogManager.GetLogger(typeof(MySqlConnector));
+    public class SqlServerConnector: ADbConnector {
+        private static ILog logger = LogManager.GetLogger(typeof(SqlServerConnector));
 
         public static string Server = string.Empty;
         public static string Port = string.Empty;
@@ -17,21 +17,21 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetDbConnection() {
             try {
-                MySqlConnection conn = new($"server={Server}; port={Port}; database={Database}; user={User}; password={Password}; charset=UTF8; Connection Timeout=2;");
+                SqlConnection conn = new($"server={Server}; port={Port}; database={Database}; user={User}; password={Password}; charset=UTF8; Connection Timeout=2;");
                 conn.Open();
 
-                string sqlScriptPrefix = "modify_mysql";
+                string sqlScriptPrefix = "modify_sqlserver";
                 if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
-                    using (MySqlCommand command = conn.CreateCommand()) {
-                        command.CommandText = ConnectionUtils.GetInitializationSql("init_mysql", sqlScriptPrefix);
+                    using (SqlCommand command = conn.CreateCommand()) {
+                        command.CommandText = ConnectionUtils.GetInitializationSql("init_sqlserver", sqlScriptPrefix);
                         command.ExecuteNonQuery();
                     }
                 } else {
                     // Check if any modification scripts hasn't been executed
                     List<string> executedFileNames = new();
-                    using (MySqlCommand command = conn.CreateCommand()) {
+                    using (SqlCommand command = conn.CreateCommand()) {
                         command.CommandText = "Select file_name from sql_execute_record where deleted = 2";
-                        using (MySqlDataReader reader = command.ExecuteReader()) {
+                        using (SqlDataReader reader = command.ExecuteReader()) {
                             while (reader.Read()) {
                                 executedFileNames.Add(CommonUtils.CannotBeNull(reader["file_name"].ToString()));
                             }
@@ -40,7 +40,7 @@ namespace OperationGuidance_service.Database {
 
                     // Execute scripts that didn't execute
                     List<string> newExecutedSqlFileName = new();
-                    using (MySqlCommand command = conn.CreateCommand()) {
+                    using (SqlCommand command = conn.CreateCommand()) {
                         List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
                         foreach (string fileName in fileNames) {
                             try {
@@ -62,7 +62,7 @@ namespace OperationGuidance_service.Database {
                     }
 
                     if (newExecutedSqlFileName.Count > 0) {
-                        using (MySqlCommand command = conn.CreateCommand()) {
+                        using (SqlCommand command = conn.CreateCommand()) {
                             string insertSql = "";
                             foreach (string fileName in newExecutedSqlFileName) {
                                 string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -76,7 +76,7 @@ namespace OperationGuidance_service.Database {
 
                 return conn;
             } catch (Exception e) {
-                logger.Error($"Connect to mysql [server={Server}, port={Port}] failed, e: {e}");
+                logger.Error($"Connect to sqlserver [server={Server}, port={Port}] failed, e: {e}");
             }
             return null;
         }

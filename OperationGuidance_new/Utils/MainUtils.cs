@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
@@ -25,10 +26,12 @@ namespace OperationGuidance_new.Utils {
         public static readonly int DBRetryTimes = 2;
         public static AppVersion Version { get; set; } = AppVersion.STANDARD;
 
+        public static bool AppRunning { get; internal set; } = true;
         public static LoginView LoginView { get; set; }
         public static bool LoginFlag { get; set; } = true;
         public static Action? ActionAfterLogout { get; set; }
         public static string? LastProductBatch { get; set; }
+        public static Dictionary<string, Socket> TCPClients { get; } = new();
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
         public static readonly string DATETIME_FORMAT_FULL_NO_PUNCTUATION = "yyyyMMddHHmmss";
@@ -51,7 +54,6 @@ namespace OperationGuidance_new.Utils {
         static MainUtils() {
             XmlConfigurator.Configure();
         }
-        public static bool AppRunning { get; internal set; } = true;
         public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
 
         public static void CheckDBConnection() {
@@ -360,6 +362,23 @@ namespace OperationGuidance_new.Utils {
             }
             return false;
         }
+
+        // Register TCP client
+        public static void RegisterTCPClient(string ip, int port, Socket client) {
+            string key = ip + port;
+            if (!TCPClients.ContainsKey(key)) {
+                TCPClients.Add(key, client);
+            }
+        }
+        // Deregister TCP client
+        public static void DeregisterTCPClient(string ip, int port) {
+            string key = ip + port;
+            if (TCPClients.ContainsKey(key)) {
+                TCPClients.Remove(key);
+            }
+        }
+        // Get registerd TCP client
+        public static Socket? GetTCPClient(string ip, int port) => TCPClients.GetValueOrDefault(ip + port);
 
         private static Dictionary<int, ArmTask> _armTasks = new();
         public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
@@ -845,6 +864,34 @@ namespace OperationGuidance_new.Utils {
                 intValues[i] = int.Parse(c.ToString());
             }
             return intValues;
+        }
+
+        public static byte[] Crc16ToBytes(IEnumerable<byte> data) {
+            var numArray = new byte[2];
+            var maxValue1 = byte.MaxValue;
+            var maxValue2 = byte.MaxValue;
+            byte num1 = 1;
+            byte num2 = 160;
+            foreach (var t in data) {
+                maxValue1 ^= t;
+                for (int index2 = 0; index2 <= 7; ++index2) {
+                    byte num3 = maxValue2;
+                    byte num4 = maxValue1;
+                    maxValue2 >>= 1;
+                    maxValue1 >>= 1;
+                    if ((num3 & 1) == 1)
+                        maxValue1 |= 128;
+                    if ((num4 & 1) == 1) {
+                        maxValue2 ^= num2;
+                        maxValue1 ^= num1;
+                    }
+                }
+            }
+            return new[] { maxValue1, maxValue2 };
+        }
+
+        public static string Crc16ToString(IEnumerable<byte> data) {
+            return ToHexString(Crc16ToBytes(data));
         }
     }
 }

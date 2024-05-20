@@ -850,9 +850,12 @@ namespace OperationGuidance_new.Views {
                             }
 
                             // Check if current showing side is equal to side of working bolt, if no then switch to the right side
-                            if (currentBolt.BoltDTO.side_id != _currentSideIndex) {
-                                _currentSideIndex = currentBolt.BoltDTO.side_id;
-                                ChangeSideAndInvalidate();
+                            if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
+                                ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
+                                if (sideTemp != null) {
+                                    _currentSideIndex = _sides.IndexOf(sideTemp);
+                                    ChangeSideAndInvalidate();
+                                }
                             }
 
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;

@@ -1,8 +1,11 @@
 ﻿namespace OperationGuidance_new.Constants {
     public class DeviceType_SerialPort {
         public static List<DeviceTypeSerialPort> Elements = new();
-        private static T AddNew<T>() where T: DeviceTypeSerialPort, new() {
+        private static T AddNew<T>() where T : DeviceTypeSerialPort, new() {
             T type = new();
+            if (Elements.Find(e => e.Id == type.Id) != null) {
+                throw new InvalidDataException($"Duplicated Id for type {typeof(DeviceType_SerialPort).Name}");
+            }
             Elements.Add(type);
             return type;
         }
@@ -37,7 +40,7 @@
     }
 
     public class DeviceTypeSerialPort: DeviceTypeBase {
-        public DeviceTypeSerialPort(int id, string name) : base(id, name) {}
+        public DeviceTypeSerialPort(int id, string name) : base(id, name) { }
     }
 
     public class SerialPortScanner: DeviceTypeSerialPort {

@@ -5,14 +5,13 @@ using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
-        private readonly object SendSyncRoot = new();
-        private readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 2000;
         private readonly int HeartBeatDelay = 5000;
         private readonly int LockDelay = 1000;
@@ -47,17 +46,27 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
+        protected void RegisterTCPClient() => MainUtils.RegisterTCPClient(_ip, _port, CommonUtils.CannotBeNull(socketClient));
+        protected void DeregisterTCPClient() => MainUtils.DeregisterTCPClient(_ip, _port);
         protected override void RunTask() {
             Task.Run(async () => {
                 try {
                     while (Connected) {
-                        if (_toolType.COMMAND_HEART_ASCII != null && HeartBeatCounter >= 5000) {
+                        // Reset heart beat counter
+                        if (HeartBeatCounter >= 5000) {
                             HeartBeatCounter = 0;
-                            System.Console.WriteLine("Send heart beat command to keep alive...");
-                            // Send heart beat command to controller
-                            string? result = await SendCommandAsync(_toolType.COMMAND_HEART_ASCII.GetMessage());
-                            if (string.IsNullOrEmpty(result) || _toolType.GetMidFromResult(result) != "9999") {
-                                break;
+
+                            // Only check hart beat interval if heart beat command is not null
+                            if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
+                                System.Console.WriteLine("Send heart beat command to keep alive...");
+
+                                // Send heart beat command to controller
+                                string? result = await SendCommandAsync(toolPF.COMMAND_HEART_ASCII.GetMessage());
+
+                                // If result is not equal to '9999' then the connection is down, break out of the loop
+                                if (string.IsNullOrEmpty(result) || toolPF.GetMidFromResult(result) != "9999") {
+                                    break;
+                                }
                             }
                         }
 
@@ -78,7 +87,7 @@ namespace OperationGuidance_new.Tasks {
                     }
                 }
             });
-            Task.Run(() => {
+            Task.Run(async () => {
                 try {
                     while (Connected) {
                         try {
@@ -86,12 +95,21 @@ namespace OperationGuidance_new.Tasks {
                                 byte[] msgBytes = new byte[1024 * 1024];
                                 int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.Peek);
                                 string resultTemp = Encoding.ASCII.GetString(msgBytes);
-                                Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
-                                if (Result == null) {
-                                    msgBytes = new byte[1024 * 1024];
-                                    msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+
+                                if (_toolType is ToolPFSeries toolPF) {
+                                    Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
+                                    // If result is not null, then this is not the result of tightening data, then keep don't retrieve it
+                                    if (Result == null) {
+                                        msgBytes = new byte[1024 * 1024];
+                                        msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                    }
+                                } else {
+                                    throw new Exception($"Tool[{_device_name} - {_ip}: {_port}] has no data handler set up, please check code.");
                                 }
                             }
+
+                            // Looping interval
+                            await Task.Delay(LoopingInterval);
                         } catch (SocketException se) {
                             System.Console.WriteLine($"No data received... ");
                         } catch (Exception e) {
@@ -123,6 +141,7 @@ namespace OperationGuidance_new.Tasks {
                 while (!Connected) {
                     Status = CONNECTING;
                     if (ConnectToServer()) {
+                        RegisterTCPClient();
                         RunTask();
                         Status = CONNECTED;
                         // Lock tool to keep safe
@@ -137,6 +156,7 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 socketClient.Close();
+                DeregisterTCPClient();
             }
             CloseConnectionManually = true;
             Result = null;
@@ -145,16 +165,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        // private async Task<string?> CheckResultAsync() {
-        //     string? result = null;
-        //     if (Connected) {
-        //         byte[] msgBytes = new byte[1024 * 1024];
-        //         int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.Peek);
-        //         string resultTemp = Encoding.ASCII.GetString(msgBytes);
-        //         result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis);
-        //     }
-        //     return result;
-        // }
         private bool ConnectToServer() {
             if (Connected) {
                 logger.Warn($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
@@ -167,6 +177,14 @@ namespace OperationGuidance_new.Tasks {
             bool sendConnectMsgSuceess = false;
             bool enableMsgSuccess = false;
 
+            // 0. Check if socket already registerd
+            Socket? socket = MainUtils.GetTCPClient(_ip, _port);
+            if (socket != null) {
+                socketClient = socket;
+                MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                return true;
+            }
+
             // 1. check ping
             pingSuccess = MainUtils.PingHost(_ip);
             if (pingSuccess) {
@@ -178,24 +196,29 @@ namespace OperationGuidance_new.Tasks {
                     connectSuccess = true;
 
                     // 3. send connecting message
-                    if (connectSuccess && _toolType.COMMAND_CONNECT_ASCII != null) {
-                        string? result1 = SendCommand(_toolType.COMMAND_CONNECT_ASCII.GetMessage());
-                        if (result1 != null) {
-                            string mid1 = _toolType.GetMidFromResult(result1);
-                            sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                        }
+                    if (connectSuccess && _toolType is ToolPFSeries toolPF) {
+                        if (toolPF.COMMAND_CONNECT_ASCII != null) {
+                            string? result1 = SendCommand(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
+                            if (result1 != null) {
+                                string mid1 = toolPF.GetMidFromResult(result1);
+                                sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
+                            }
 
-                        // 4. send data receving enable message
-                        if (sendConnectMsgSuceess && _toolType.COMMAND_DATA_ASCII != null) {
-                            string? result2 = SendCommand(_toolType.COMMAND_DATA_ASCII.GetMessage());
-                            if (result2 != null) {
-                                string mid2 = _toolType.GetMidFromResult(result2);
-                                enableMsgSuccess = mid2 == "0002" || mid2 == "0005";
-                                if (enableMsgSuccess) {
-                                    MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                            // 4. send data receving enable message
+                            if (sendConnectMsgSuceess && _toolType.COMMAND_DATA_ASCII != null) {
+                                string? result2 = SendCommand(_toolType.COMMAND_DATA_ASCII.GetMessage());
+                                if (result2 != null) {
+                                    string mid2 = toolPF.GetMidFromResult(result2);
+                                    enableMsgSuccess = mid2 == "0002" || mid2 == "0005";
+                                    if (enableMsgSuccess) {
+                                        MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        sendConnectMsgSuceess = true;
+                        enableMsgSuccess = true;
                     }
                 } catch (Exception e) {
                     logger.Warn($"Connect error while connecting to TOOL[{_device_name} - {_ip}: {_port}], e: {e}");
@@ -223,8 +246,9 @@ namespace OperationGuidance_new.Tasks {
                             byte[] msgBytes = new byte[1024 * 1024];
                             int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                             string resultTemp = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
-                            Result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
-                            return Result;
+                            string? result = _toolType.AnalyzeData(resultTemp, _actionAfterAnalysis, DeviceId);
+                            Result = result;
+                            return result;
                         }
                     }
                 } catch (Exception e) {
@@ -244,7 +268,17 @@ namespace OperationGuidance_new.Tasks {
                 } else if (_toolType.COMMAND_PSET_ASCII != null) {
                     string command = _toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000"));
                     string? result = await SendCommandAsync(command);
-                    return result != null && _toolType.GetMidFromResult(result) == "0005";
+
+                    bool isOk;
+                    if (result != null && _toolType is ToolPFSeries toolPF) {
+                        isOk = toolPF.GetMidFromResult(result) == "0005";
+                    } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                        isOk = toolSDX7.SendPsetOk(result);
+                    } else {
+                        isOk = false;
+                    }
+
+                    return isOk;
                 }
                 return false;
             });
@@ -253,7 +287,17 @@ namespace OperationGuidance_new.Tasks {
             if (_toolType.COMMAND_LOCK_ASCII != null && (Locked == null || !Locked.Value)) {
                 string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
-                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+
+                bool isOk;
+                if (result != null && _toolType is ToolPFSeries toolPF) {
+                    isOk = toolPF.GetMidFromResult(result) == "0005";
+                } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                    isOk = true;
+                } else {
+                    isOk = false;
+                }
+
+                if (isOk) {
                     logger.Info($"Send lock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = true;
                     return;
@@ -265,7 +309,17 @@ namespace OperationGuidance_new.Tasks {
             if (_toolType.COMMAND_LOCK_ASCII != null && (Locked == null || !Locked.Value)) {
                 string command = _toolType.COMMAND_LOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
-                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+
+                bool isOk;
+                if (result != null && _toolType is ToolPFSeries toolPF) {
+                    isOk = toolPF.GetMidFromResult(result) == "0005";
+                } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                    isOk = true;
+                } else {
+                    isOk = false;
+                }
+
+                if (isOk) {
                     logger.Info($"Send lock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = true;
                     return true;
@@ -278,7 +332,17 @@ namespace OperationGuidance_new.Tasks {
             if (_toolType.COMMAND_UNLOCK_ASCII != null && (Locked == null || Locked.Value)) {
                 string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
-                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+
+                bool isOk;
+                if (result != null && _toolType is ToolPFSeries toolPF) {
+                    isOk = toolPF.GetMidFromResult(result) == "0005";
+                } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                    isOk = true;
+                } else {
+                    isOk = false;
+                }
+
+                if (isOk) {
                     logger.Info($"Send unlock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = false;
                     return;
@@ -290,7 +354,17 @@ namespace OperationGuidance_new.Tasks {
             if (_toolType.COMMAND_UNLOCK_ASCII != null && (Locked == null || Locked.Value)) {
                 string command = _toolType.COMMAND_UNLOCK_ASCII.GetMessage();
                 string? result = await SendCommandAsync(command);
-                if (result != null && _toolType.GetMidFromResult(result) == "0005") {
+
+                bool isOk;
+                if (result != null && _toolType is ToolPFSeries toolPF) {
+                    isOk = toolPF.GetMidFromResult(result) == "0005";
+                } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                    isOk = true;
+                } else {
+                    isOk = false;
+                }
+
+                if (isOk) {
                     logger.Info($"Send unlock successfully for Tool[{_device_name} - {_ip}: {_port}], command = {command}, result = {result}");
                     Locked = false;
                     return true;
