@@ -1,6 +1,7 @@
 using System.Text;
 using log4net;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;
@@ -77,19 +78,18 @@ namespace OperationGuidance_new.Tasks {
                 }
             });
         }
-        public override Task Connect() {
-            return Task.Run(async () => {
-                while (!Connected && !CloseConnectionManually) {
-                    Status = CONNECTING;
-                    if (ConnectToSerialPortDevice()) {
-                        RunTask();
-                        Status = CONNECTED;
-                        break;
-                    }
-                    await Task.Delay(AuotReconnectingTrialDelay);
+        public override async void Connect() {
+            while (!Connected && !CloseConnectionManually) {
+                Status = CONNECTING;
+                if (ConnectToSerialPortDevice()) {
+                    RunTask();
+                    Status = CONNECTED;
+                    break;
                 }
-            });
+                await Task.Delay(AutoReconnectingTrialDelay);
+            }
         }
+        public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
             logger.Info($"Close SerialPort[{_device_name}] manually...");
             if (Connected) {

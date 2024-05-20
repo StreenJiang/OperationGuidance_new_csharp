@@ -1,9 +1,12 @@
-﻿using OperationGuidance_service.Utils;
+﻿using log4net;
+using OperationGuidance_new.Utils;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceConstants {
     }
 
+    // This is for DeviceBlock
     public static class DeviceCategories {
         public static List<DeviceCategory> Elements = new();
         private static T AddNew<T>() where T: DeviceCategory, new() {
@@ -16,7 +19,8 @@ namespace OperationGuidance_new.Constants {
         public static DeviceCategory ARM = AddNew<ARM>();
         public static DeviceCategory COMMUNICATION = AddNew<COMMUNICATION>();
         public static DeviceCategory SERIAL_PORT = AddNew<SERIAL_PORT>();
-        public static DeviceCategory IOBOX = AddNew<IOBOX>();
+        public static DeviceCategory IOBOX_ARRANGER = AddNew<IOBOX_ARRANGER>();
+        public static DeviceCategory IOBOX_SETTERSELECTOR = AddNew<IOBOX_SETTERSELECTOR>();
 
         public static string? GetNameById(int id) {
             foreach (DeviceCategory type in Elements) {
@@ -75,18 +79,26 @@ namespace OperationGuidance_new.Constants {
             Properties.Resources.aneng_communication_error,
             Properties.Resources.aneng_communication_empty) {}
     }
-    public class IOBOX: DeviceCategory {
-        public IOBOX(): base(5, "IO通讯盒", 
-            Properties.Resources.aneng_io_box,
-            Properties.Resources.aneng_io_box_error,
-            Properties.Resources.aneng_io_box_empty) { }
+    public class IOBOX_ARRANGER: DeviceCategory {
+        public IOBOX_ARRANGER(): base(5, "排列机", 
+            Properties.Resources.aneng_feeder,
+            Properties.Resources.aneng_feeder_error,
+            Properties.Resources.aneng_feeder_empty) { }
+    }
+    public class IOBOX_SETTERSELECTOR: DeviceCategory {
+        public IOBOX_SETTERSELECTOR(): base(6, "套筒选择器", 
+            Properties.Resources.aneng_setter_selector,
+            Properties.Resources.aneng_setter_selector_error,
+            Properties.Resources.aneng_setter_selector_empty) { }
     }
 
     public class DeviceTypeBase {
+        protected ILog logger;
         public List<Command> Commands;
         public int Id { get; }
         public string Name { get; }
         public DeviceTypeBase(int id, string name) {
+            logger = MainUtils.GetLogger(GetType());
             Id = id;
             Name = name;
             Commands = new();

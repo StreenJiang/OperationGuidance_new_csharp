@@ -20,9 +20,12 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
+using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static ILog logger = GetLogger(typeof(MainUtils));
+
         public static readonly int DBRetryTimes = 2;
         public static AppVersion Version { get; set; } = AppVersion.STANDARD;
 
@@ -62,33 +65,64 @@ namespace OperationGuidance_new.Utils {
                 FormBorderStyle = FormBorderStyle.None,
                 Size = new(300, 100),
             };
+            formPopup.FormClosing += (s, e) => e.Cancel = true;
+            string text = "正在连接数据库，请稍后";
+            string dotStr = "...";
             Label label = new() {
                 Parent = formPopup,
-                Text = "正在连接数据库，请稍后...",
                 AutoSize = false,
+                Text = text + dotStr,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
             };
+
+            // Pretend to show pop up to ensure handle is created
+            formPopup.Opacity = 0;
             formPopup.Show();
 
+            // Start timer
+            Timer timer = new();
+            formPopup.BeginInvoke(() => {
+                timer.Interval = 350;
+                timer.Tick += (s, e) => {
+                    if (dotStr.Length >= 3) {
+                        dotStr = ".";
+                    } else {
+                        dotStr += ".";
+                    }
+                    label.Text = text + dotStr;
+                    label.Invalidate();
+                };
+                timer.Start();
+            });
+
+            // Begin async task
             DbConnection? dbConnection = null;
             int tryTimes = 0;
-
-            while (tryTimes <= DBRetryTimes) {
-                try {
-                    dbConnection = DbConnector.GetConnection();
-                    if (dbConnection != null) {
-                        break;
+            formPopup.BeginInvoke(() => {
+                while (tryTimes <= DBRetryTimes) {
+                    try {
+                        dbConnection = DbConnector.GetConnection();
+                        if (dbConnection != null) {
+                            break;
+                        }
+                    } catch (DatabaseException de) {
+                        GetLogger(typeof(MainUtils)).Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
+                        continue;
+                    } finally {
+                        tryTimes++;
                     }
-                } catch (DatabaseException de) {
-                    GetLogger(typeof(MainUtils)).Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
-                    continue;
-                } finally {
-                    tryTimes++;
                 }
-            }
+                timer.Stop();
+                formPopup.Dispose();
+            });
 
-            formPopup.Dispose();
+            // Show pop up (really)
+            formPopup.Hide();
+            formPopup.Opacity = 1;
+            formPopup.ShowDialog();
+
+            // Check after pop up form is closed
             if (dbConnection == null) {
                 throw new DatabaseException("数据库连接失败，请检查数据库配置或网络连接状态");
             }
@@ -350,7 +384,7 @@ namespace OperationGuidance_new.Utils {
             Ping? pinger = null;
             try {
                 pinger = new();
-                PingReply pingReply = pinger.Send(IPAddress.Parse(nameOrAddress), 2500);
+                PingReply pingReply = pinger.Send(IPAddress.Parse(nameOrAddress), 1500);
                 bool pingResult = pingReply.Status == IPStatus.Success;
                 return pingResult;
             } catch (PingException pe) {
@@ -365,45 +399,26 @@ namespace OperationGuidance_new.Utils {
 
         // Register TCP client
         public static void RegisterTCPClient(string ip, int port, Socket client) {
-            string key = ip + port;
+            string key = GetTCPClientKey(ip, port);
             if (!TCPClients.ContainsKey(key)) {
                 TCPClients.Add(key, client);
+                logger.Info($"Register tcp client [{key}]");
             }
         }
         // Deregister TCP client
         public static void DeregisterTCPClient(string ip, int port) {
-            string key = ip + port;
+            string key = GetTCPClientKey(ip, port);
             if (TCPClients.ContainsKey(key)) {
                 TCPClients.Remove(key);
+                logger.Info($"Deregister tcp client [{key}]");
             }
         }
         // Get registerd TCP client
         public static Socket? GetTCPClient(string ip, int port) => TCPClients.GetValueOrDefault(ip + port);
-
-        private static Dictionary<int, ArmTask> _armTasks = new();
-        public static Dictionary<int, ArmTask> ArmTasks => _armTasks;
-        public static void NewArmTask(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
-            ArmTask task = new(armId, armName, ip, port, arm);
-            task.Connect();
-            _armTasks.Add(armId, task);
-        }
-        public static async Task<ArmTask> NewArmTaskAsync(int armId, string? armName, string ip, int port, DeviceTypeArm arm) {
-            ArmTask task = new(armId, armName, ip, port, arm);
-            await task.ConnectAsync();
-            _armTasks.Add(armId, task);
-            return task;
-        }
-        public static ArmTask GetArmTask(int armId) {
-            if (_armTasks.ContainsKey(armId)) {
-                return _armTasks[armId];
-            }
-            throw new ArgumentException($"ArmTask for armId<{armId}> has not been created.");
-        }
-        public static ArmTask? TryGetArmTask(int armId) {
-            if (_armTasks.ContainsKey(armId)) {
-                return _armTasks[armId];
-            }
-            return null;
+        public static string GetTCPClientKey(string ip, int port) => $"{ip}: {port}";
+        public static Tuple<string, int> GetHostFromTCPClientKey(string key) {
+            string[] strings = key.Split(":");
+            return new(strings[0].Trim(), int.Parse(strings[1].Trim()));
         }
 
         private static Dictionary<int, ToolTask> _toolTasks = new();
@@ -488,28 +503,31 @@ namespace OperationGuidance_new.Utils {
             return null;
         }
 
-        private static Dictionary<int, IoBoxTask> _ioBoxTasks = new();
-        public static Dictionary<int, IoBoxTask> IoBoxTasks => _ioBoxTasks;
-        public static void NewIoBoxTask(int ioBoxId, string? ioBoxName, string ip, int port, DeviceTypeIoBox ioBox) {
-            IoBoxTask task = new(ioBoxId, ioBoxName, ip, port, ioBox);
+        private static Dictionary<string, IoBoxTask> _ioBoxTasks = new();
+        public static Dictionary<string, IoBoxTask> IoBoxTasks => _ioBoxTasks;
+        public static IoBoxTask NewIoBoxTask(string ip, int port) {
+            IoBoxTask task = new(ip, port);
             task.Connect();
-            _ioBoxTasks.Add(ioBoxId, task);
-        }
-        public static async Task<IoBoxTask> NewIoBoxTaskAsync(int ioBoxId, string? ioBoxName, string ip, int port, DeviceTypeIoBox ioBox) {
-            IoBoxTask task = new(ioBoxId, ioBoxName, ip, port, ioBox);
-            await task.ConnectAsync();
-            _ioBoxTasks.Add(ioBoxId, task);
+            _ioBoxTasks.Add(GetTCPClientKey(ip, port), task);
             return task;
         }
-        public static IoBoxTask GetIoBoxTask(int ioBoxId) {
-            if (_ioBoxTasks.ContainsKey(ioBoxId)) {
-                return _ioBoxTasks[ioBoxId];
-            }
-            throw new ArgumentException($"IoBoxTask for ioBoxId<{ioBoxId}> has not been created.");
+        public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port) {
+            IoBoxTask task = new(ip, port);
+            await task.ConnectAsync();
+            _ioBoxTasks.Add(GetTCPClientKey(ip, port), task);
+            return task;
         }
-        public static IoBoxTask? TryGetIoBoxTask(int ioBoxId) {
-            if (_ioBoxTasks.ContainsKey(ioBoxId)) {
-                return _ioBoxTasks[ioBoxId];
+        public static IoBoxTask GetIoBoxTask(string ip, int port) => GetIoBoxTask(GetTCPClientKey(ip, port));
+        public static IoBoxTask GetIoBoxTask(string key) {
+            if (_ioBoxTasks.ContainsKey(key)) {
+                return _ioBoxTasks[key];
+            }
+            throw new ArgumentException($"IoBoxTask for key<{key}> has not been created.");
+        }
+        public static IoBoxTask? TryGetIoBoxTask(string ip, int port) => TryGetIoBoxTask(GetTCPClientKey(ip, port));
+        public static IoBoxTask? TryGetIoBoxTask(string key) {
+            if (_ioBoxTasks.ContainsKey(key)) {
+                return _ioBoxTasks[key];
             }
             return null;
         }
@@ -808,6 +826,7 @@ namespace OperationGuidance_new.Utils {
         public static byte[] ToBytes(string hexString) {
             if (hexString.Length % 2 != 0) {
                 string errorMsg = $"Value[{hexString}] can not convert to bytes because its length is not an even number.";
+                logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
             return Enumerable.Range(0, hexString.Length)
@@ -819,23 +838,26 @@ namespace OperationGuidance_new.Utils {
         public static byte[] ToBytes(int intValue) {
             int maxToByte = 256 * 256 - 1;
             if (intValue > maxToByte) {
-                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not larger than {maxToByte}.";
+                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not greater than {maxToByte}.";
+                logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
-            return ToBytes(ToHexString(intValue));
+            return ToBytes(ToHexString2(intValue));
         }
         public static byte[] ToSingleBytes(int intValue) {
             int maxToByte = 256 - 1;
             if (intValue > maxToByte) {
-                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not larger than {maxToByte}.";
+                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not greater than {maxToByte}.";
+                logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
-            return ToBytes(ToSingleHexString(intValue));
+            return ToBytes(ToHexString1(intValue));
         }
 
         public static byte[] ToBytesByBinaryString(string binaryString) {
             if (binaryString.Length % 8 != 0) {
                 string errorMsg = $"Value[{binaryString}] can not convert to bytes because its length is not an even number.";
+                logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
             int byteNum = binaryString.Length / 8;
@@ -846,21 +868,23 @@ namespace OperationGuidance_new.Utils {
             return bytes;
         }
 
-        public static string ToHexString(int intValue) {
-            int maxToByte = 256 * 256 - 1;
-            if (intValue > maxToByte) {
-                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not larger than {maxToByte}.";
-                throw new InvalidCastException(errorMsg);
-            }
-            return Convert.ToString(intValue, 16).PadLeft(4, '0');
-        }
-        public static string ToSingleHexString(int intValue) {
-            int maxToByte = 256 - 1;
-            if (intValue > maxToByte) {
-                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not larger than {maxToByte}.";
+        public static string ToHexString1(int intValue) {
+            int maxToTwoBytes = 16 * 16 - 1;
+            if (intValue > maxToTwoBytes) {
+                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not greater than {maxToTwoBytes}.";
+                logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
             return Convert.ToString(intValue, 16).PadLeft(2, '0');
+        }
+        public static string ToHexString2(int intValue) {
+            int maxToFourBytes = 16 * 16 * 16 * 16 - 1;
+            if (intValue > maxToFourBytes) {
+                string errorMsg = $"Value[{intValue}] too large for 4 bytes value, can not greater than {maxToFourBytes}.";
+                logger.Error(errorMsg);
+                throw new InvalidCastException(errorMsg);
+            }
+            return Convert.ToString(intValue, 16).PadLeft(4, '0');
         }
 
         public static string ToHexString(byte[] hexBytes) {
@@ -869,6 +893,26 @@ namespace OperationGuidance_new.Utils {
 
         public static string ToHexString(string binaryString) {
             return ToHexString(ToBytesByBinaryString(binaryString));
+        }
+
+        public static string ToBinaryString(int intValue) {
+            int maxToOneByte = (int) Math.Pow(16, 2) - 1;
+            if (intValue > maxToOneByte) {
+                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not greater than {maxToOneByte}.";
+                logger.Error(errorMsg);
+                throw new InvalidCastException(errorMsg);
+            }
+            return Convert.ToString(intValue, 2).PadLeft(8, '0');
+        }
+        public static string ToBinaryString_half(int intValue) {
+            string a = Convert.ToString(intValue, 2);
+            int maxToHalfBytes = 16 - 1;
+            if (intValue > maxToHalfBytes) {
+                string errorMsg = $"Value[{intValue}] too large for half of a bytes value, can not greater than {maxToHalfBytes}.";
+                logger.Error(errorMsg);
+                throw new InvalidCastException(errorMsg);
+            }
+            return Convert.ToString(intValue, 2).PadLeft(4, '0');
         }
 
         public static string ToBinaryString(byte[] hexBytes) {
@@ -890,6 +934,14 @@ namespace OperationGuidance_new.Utils {
                 intValues[i] = int.Parse(c.ToString());
             }
             return intValues;
+        }
+
+        public static int ToIntByBinaryString(string binaryString) {
+            return Convert.ToInt32(binaryString, 2);
+        }
+
+        public static int ToIntByHexString(string binaryString) {
+            return Convert.ToInt32(binaryString, 16);
         }
 
         public static byte[] Crc16ToBytes(IEnumerable<byte> data) {

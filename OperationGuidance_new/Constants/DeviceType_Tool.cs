@@ -13,7 +13,6 @@ namespace OperationGuidance_new.Constants {
             return type;
         }
 
-        public static DeviceCategory Category = DeviceCategories.TOOL;
         public static ToolPF4000 PF4000 { get; } = AddNew<ToolPF4000>();
         public static ToolPF6000OP PF6000_OP { get; } = AddNew<ToolPF6000OP>();
         public static ToolSudongX7 SudongX7 { get; } = AddNew<ToolSudongX7>();

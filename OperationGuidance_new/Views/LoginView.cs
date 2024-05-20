@@ -6,6 +6,7 @@ using CustomLibrary.Forms;
 using OperationGuidance_service.Utils;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_new.Utils;
+using System.Diagnostics;
 
 namespace OperationGuidance_new.Views {
     public class LoginView: CustomContentPanel {
@@ -54,16 +55,11 @@ namespace OperationGuidance_new.Views {
                     ClickLogin();
                 }
             };
-            _loginForm.HandleDestroyed += (s, e) => {
-                if (!_isLoggedIn) {
-                    Application.Exit();
-                }
-            };
-
+            _loginForm.FormClosing += (s, e) => e.Cancel = true;
             _loginForm.AddButton("登录").Click += (s, e) => ClickLogin();
             _loginForm.AddButton("退出").Click += (s, e) => {
                 if (WidgetUtils.ShowConfirmPopUp("确认退出？")) {
-                    _loginForm.Dispose();
+                    Process.GetCurrentProcess().Kill();
                 }
             };
 

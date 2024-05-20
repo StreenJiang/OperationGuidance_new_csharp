@@ -92,9 +92,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _titlePanel.Margin = new(0, boxMargin, 0, boxMargin);
             _titlePanel.Size = new(width, titleHeight);
             _tablePanel.Size = new(width, tableHeight);
+            int contentPieceWidth = (_tablePanel.Width - boxMargin * (_tablePanel.ColumnCount + 1)) / _tablePanel.ColumnCount;
             foreach (Control control in _tablePanel.Controls) {
-                control.Margin = new(boxMargin);
-                control.Size = new(_tablePanel.Width / _tablePanel.ColumnCount - boxMargin * 2, boxHeight);
+                control.Margin = new(boxMargin, boxMargin, 0, boxMargin);
+
+                int columnSpan = _tablePanel.GetColumnSpan(control);
+                if (columnSpan > 1) {
+                    control.Size = new(contentPieceWidth * columnSpan + boxMargin * (columnSpan - 1), boxHeight);
+                } else {
+                    control.Size = new(contentPieceWidth, boxHeight);
+                }
             }
             Size = new(width, tableHeight + titleHeight + titleMargin * 2);
             Invalidate();

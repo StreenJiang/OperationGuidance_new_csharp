@@ -4,6 +4,7 @@ using System.Text;
 using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Utils;
 
@@ -12,6 +13,8 @@ namespace OperationGuidance_new.Tasks {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
+        private static readonly object SendSyncRoot = new();
+        private static readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 2000;
         private readonly int HeartBeatDelay = 5000;
         private readonly int LockDelay = 1000;
@@ -134,24 +137,23 @@ namespace OperationGuidance_new.Tasks {
             });
         }
 
-        public override Task Connect() {
+        public override async void Connect() {
             HeartBeatCounter = HeartBeatDelay;
             CloseConnectionManually = false;
-            return Task.Run(async () => {
-                while (!Connected) {
-                    Status = CONNECTING;
-                    if (ConnectToServer()) {
-                        RegisterTCPClient();
-                        RunTask();
-                        Status = CONNECTED;
-                        // Lock tool to keep safe
-                        SendLock();
-                        break;
-                    }
-                    await Task.Delay(AuotReconnectingTrialDelay);
+            while (!Connected) {
+                Status = CONNECTING;
+                if (ConnectToServer()) {
+                    RegisterTCPClient();
+                    RunTask();
+                    Status = CONNECTED;
+                    // Lock tool to keep safe
+                    SendLock();
+                    break;
                 }
-            });
+                await Task.Delay(AutoReconnectingTrialDelay);
+            }
         }
+        public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
             logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {

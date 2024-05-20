@@ -83,7 +83,7 @@ namespace OperationGuidance_new {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            // MainUtils.Version = AppVersion.SCII;
+            MainUtils.Version = AppVersion.SCII;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;

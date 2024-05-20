@@ -1,6 +1,7 @@
 ﻿using CustomLibrary.Panels;
 using OperationGuidance_new.Views;
 using OperationGuidance_new.Constants;
+using System.Diagnostics;
 
 namespace OperationGuidance_new.Configs {
     public static class SystemConfigs {
@@ -191,7 +192,7 @@ namespace OperationGuidance_new.Configs {
                 Click = new((sender, eventArgs) => {
                     DialogResult result = MessageBox.Show(null, "确定要退出吗？", "退出程序", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                     if (result == DialogResult.Yes) {
-                        Application.Exit();
+                        Process.GetCurrentProcess().Kill();
                     }
                 }),
             },

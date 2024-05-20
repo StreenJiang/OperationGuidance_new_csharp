@@ -2,6 +2,7 @@ using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_service.Models.DTOs;
 using System.Drawing.Drawing2D;
 
@@ -16,6 +17,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         private readonly int _flikerInterval = 500;
         private readonly float _opacity = .75F;
+        private readonly int _arranger_send_delay = 50;
+        private readonly int _arranger_pulse_delay = 500;
+        private readonly int _arranger_time_out = 3000;
+        private readonly int _setter_selector_delay = 50;
+        private readonly int _setter_selector_time_out = 10000;
         private int _borderSize;
         private ProductBoltDTO _boltDTO;
         private BoltStatus _boltStatus;
@@ -27,7 +33,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int? _currentParameterSet;
         private string? _label;
         private int? _upperNum;
+        private float? _specification;
+        private bool _specificationOk;
+        private int _arranger_time_count = 0;
+        private int _setter_selector_time_count = 0;
+        private float? _bitSpecification;
+        private bool _bitSpecificationOk;
 
+        public int Arranger_time_out => _arranger_time_out;
+        public int Setter_selector_time_out => _setter_selector_time_out;
         public ProductBoltDTO BoltDTO {
             get => _boltDTO;
             set => _boltDTO = value;
@@ -71,6 +85,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool ShowingWhileWorking { get => _showingWhileWorking; set => _showingWhileWorking = value; }
         public int NgTimes { get => _ngTimes; set => _ngTimes = value; }
         public int? CurrentParameterSet { get => _currentParameterSet; set => _currentParameterSet = value; }
+        public float? Specification { get => _specification; set => _specification = value; }
+        public bool SpecificationOk { get => _specificationOk; set => _specificationOk = value; }
+        public float? BitSpecification { get => _bitSpecification; set => _bitSpecification = value; }
+        public bool BitSpecificationOk { get => _bitSpecificationOk; set => _bitSpecificationOk = value; }
         public new string? Label {
             get => base.Label;
             set {
@@ -120,6 +138,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _showingWhileWorking = true;
             _boltStatus = BoltStatus.DEFAULT;
             BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
+            ForeColor = TEXT_BLACK;
             SetLabel();
         }
 
@@ -142,6 +161,143 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 Visible = false;
             }
+        }
+
+        public void SendSignalToArragner(float specification, IoBoxTypeArranger arrangerType, Action<bool, bool> callBack) {
+            // Initialize variables
+            _specification = specification;
+            _specificationOk = false;
+            _arranger_time_count = 0;
+
+            // Start task
+            BeginInvoke(() => {
+                Task.Run(async () => {
+                    // Start retrieve result from io box - arranger
+                    arrangerType.RetrieveResult = true;
+                    arrangerType.ActionAfterCoordinatesReceived += DoArrangerActionAfterAnalysis;
+
+                    // Reset if disposed
+                    HandleDestroyed += (s, e) => {
+                        // Set to true to break from loop
+                        _specificationOk = true;
+
+                        arrangerType.RetrieveResult = false;
+                        if (arrangerType.ActionAfterCoordinatesReceived != null && arrangerType.ActionAfterCoordinatesReceived.GetInvocationList().Contains(DoArrangerActionAfterAnalysis)) {
+                            arrangerType.ActionAfterCoordinatesReceived -= DoArrangerActionAfterAnalysis;
+                        }
+
+                        // Reset again to ensure status of arranger is right
+                        arrangerType.Reset();
+                    };
+
+                    // Waiting for finish signal from arranger
+                    while (!_specificationOk && _arranger_time_count < _arranger_time_out) {
+                        // Start sending signal
+                        string result = arrangerType.WritePosition((int) specification);
+                        if (!arrangerType.DeviceType.WriteOk(result)) {
+                            await WaitAndCountAsync(_arranger_send_delay);
+                            continue;
+                        }
+                        await WaitAndCountAsync(_arranger_pulse_delay);
+
+                        // Reset signal
+                        arrangerType.Reset();
+                        await WaitAndCountAsync(_arranger_pulse_delay);
+                    }
+
+                    // Reset again to ensure status of arranger is right
+                    arrangerType.Reset();
+
+                    callBack(_specificationOk, _arranger_time_count >= _arranger_time_out);
+
+                    // Stop retrieve result
+                    arrangerType.RetrieveResult = false;
+                    arrangerType.ActionAfterCoordinatesReceived -= DoArrangerActionAfterAnalysis;
+
+                    // Reset variables
+                    _specification = null;
+                    _specificationOk = false;
+                    _arranger_time_count = 0;
+                });
+            });
+
+            async Task WaitAndCountAsync(int delay) {
+                // Delay for a little bit
+                await Task.Delay(delay);
+                // Counting time
+                _arranger_time_count += delay;
+            }
+        }
+        private void DoArrangerActionAfterAnalysis(int position) {
+            BeginInvoke(() => {
+                if (position > 0) {
+                    if (!_specificationOk && _specification == position) {
+                        _specificationOk = true;
+                    }
+                }
+            });
+        }
+
+        public void SendSignalToSetterSelector(float bitSpecification, IoBoxTypeSetterSelector setterSelectorType, Action<bool, bool> callBack) {
+            _bitSpecification = bitSpecification;
+            _bitSpecificationOk = false;
+            _setter_selector_time_count = 0;
+
+            // Start task
+            BeginInvoke(() => {
+                Task.Run(async () => {
+                    // Start retrieve result from io box - arranger
+                    setterSelectorType.RetrieveResult = true;
+                    setterSelectorType.ActionAfterCoordinatesReceived += DoSetterSelectorActionAfterAnalysis;
+
+                    // Reset if disposed
+                    HandleDestroyed += (s, e) => {
+                        // Set to true to break from loop
+                        _bitSpecificationOk = true;
+
+                        setterSelectorType.RetrieveResult = false;
+                        if (setterSelectorType.ActionAfterCoordinatesReceived != null && setterSelectorType.ActionAfterCoordinatesReceived.GetInvocationList().Contains(DoSetterSelectorActionAfterAnalysis)) {
+                            setterSelectorType.ActionAfterCoordinatesReceived -= DoSetterSelectorActionAfterAnalysis;
+                        }
+
+                        // Send reset command
+                        setterSelectorType.Reset();
+                    };
+
+                    // Start sending signal
+                    while (!_bitSpecificationOk && _setter_selector_time_count < _setter_selector_time_out) {
+                        setterSelectorType.WritePosition((int) bitSpecification);
+
+                        // Delay for a little bit
+                        await Task.Delay(_setter_selector_delay);
+                        // Counting time
+                        _setter_selector_time_count += _setter_selector_delay;
+                    }
+
+                    // Send reset command
+                    setterSelectorType.Reset();
+
+                    callBack(_bitSpecificationOk, _setter_selector_time_count >= _setter_selector_time_out);
+
+                    // Stop retrieve result
+                    setterSelectorType.RetrieveResult = false;
+                    setterSelectorType.ActionAfterCoordinatesReceived -= DoSetterSelectorActionAfterAnalysis;
+
+                    // Reset variables
+                    _bitSpecification = null;
+                    _bitSpecificationOk = false;
+                    _setter_selector_time_count = 0;
+                });
+            });
+        }
+        private void DoSetterSelectorActionAfterAnalysis(int position) {
+            BeginInvoke(() => {
+                if (position > 0) {
+                    if (!_bitSpecificationOk && _bitSpecification == position) {
+                        _bitSpecificationOk = true;
+                    }
+                }
+            });
         }
 
         protected override void OnSizeChanged(EventArgs e) {

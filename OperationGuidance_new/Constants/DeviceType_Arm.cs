@@ -1,4 +1,7 @@
-﻿namespace OperationGuidance_new.Constants {
+﻿using System.Globalization;
+using OperationGuidance_service.Utils;
+
+namespace OperationGuidance_new.Constants {
     public class DeviceType_Arm {
         public static List<DeviceTypeBase> Elements = new();
         private static T AddNew<T>() where T : DeviceTypeBase, new() {
@@ -10,7 +13,6 @@
             return type;
         }
 
-        public static DeviceCategory DEVICE_TYPE = DeviceCategories.ARM;
         public static ArmCF01 CF01 { get; } = AddNew<ArmCF01>();
         public static ArmCF02 CF02 { get; } = AddNew<ArmCF02>();
         public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
@@ -54,6 +56,36 @@
                 COMMAND_READ_Z_HEX = new(commands[2]);
                 Commands.Add(COMMAND_READ_Z_HEX);
             }
+        }
+
+        public virtual void AnalyzeData(string x, string y, string? z, Action<Coordinates3D>? _ioBoxActionAfterAnalysis, int deviceId) {
+            if (_ioBoxActionAfterAnalysis != null) {
+                Coordinates3D coordinates = new();
+                if (!string.IsNullOrEmpty(x)) {
+                    coordinates.X = ParseResult(x);
+                }
+                if (!string.IsNullOrEmpty(y)) {
+                    coordinates.Y = ParseResult(y);
+                }
+                if (!string.IsNullOrEmpty(z)) {
+                    coordinates.Z = ParseResult(z);
+                }
+
+                _ioBoxActionAfterAnalysis(coordinates);
+            }
+        }
+
+        private int ParseResult(string result) {
+            int coordinate = 0;
+            if (result != null && result != "") {
+                string lowData = result.Substring(6, 4);
+                string HighData = result.Substring(10, 4);
+                if (lowData != "ffff" && HighData != "ffff") {
+                    coordinate = int.Parse(lowData, NumberStyles.HexNumber);
+                    // coordinate = Convert.ToInt32(lowData, 16);
+                }
+            }
+            return coordinate;
         }
     }
 

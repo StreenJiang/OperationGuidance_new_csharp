@@ -1,6 +1,4 @@
-﻿using log4net;
-using OperationGuidance_new.Utils;
-using OperationGuidance_service.Utils;
+﻿using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_IoBox {
@@ -14,7 +12,6 @@ namespace OperationGuidance_new.Constants {
             return type;
         }
 
-        public static DeviceCategory Category = DeviceCategories.IOBOX;
         public static IoBoxSetterSelector_4 SetterSelector_4 { get; } = AddNew<IoBoxSetterSelector_4>();
         public static IoBoxSetterSelector_8 SetterSelector_8 { get; } = AddNew<IoBoxSetterSelector_8>();
         public static IoBoxArranger Arranger { get; } = AddNew<IoBoxArranger>();
@@ -46,71 +43,159 @@ namespace OperationGuidance_new.Constants {
     }
 
     public abstract class DeviceTypeIoBox: DeviceTypeBase {
-        protected ILog logger;
-        private Command _command_write;
+        protected string _original_signal = "00000000";
+        protected string _current_signal;
+        protected int _currentPosition; // Io write
+        protected int _currentStatus; // Io read
+        protected Command _command_write;
 
         public Command COMMAND_READ;
-        public Command COMMAND_WRITE(string writeMsg) {
-            string temp = _command_write.GetMessage(writeMsg);
-            byte[] bytes = MainUtils.ToBytes(temp);
-            return new(temp + MainUtils.Crc16ToString(bytes));
-        }
+        public int CurrentStatus => _currentStatus;
         public DeviceTypeIoBox(int id, string name) : base(id, name) {
-            logger = MainUtils.GetLogger(GetType());
+            _current_signal = _original_signal;
             COMMAND_READ = new("0903000000044541");
             _command_write = new("0906000000{0}");
         }
 
-        public abstract string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId);
+        public abstract Command GetWriteCommand(int position);
+        protected abstract string GetCommand();
+        public abstract bool ResetIsOk(string? resultMsg);
+        public abstract void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis);
+
+        public Command GetResetAllCommand() => new(_original_signal);
+
+        public Command GetResetCommand() {
+            _currentPosition = 0;
+            return new(GetCommand());
+        }
+
+        public bool WriteOk(string? resultMsg) {
+            string currentCommand = GetCommand();
+            bool isOk = !string.IsNullOrEmpty(resultMsg) && currentCommand == resultMsg;
+            return isOk;
+        }
     }
 
     public abstract class IoBoxSetterSelector: DeviceTypeIoBox {
-        public static string IconStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector);
-        public static string IconErrorStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector_error);
-        public static string IconEmptyStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_setter_selector_empty);
-        public IoBoxSetterSelector(int id, string name) : base(id, name) { }
+        public int SetterNum { get; set; }
+        public IoBoxSetterSelector(int id, string name, int setterNum) : base(id, name) {
+            SetterNum = setterNum;
+        }
+
+        public override Command GetWriteCommand(int position) {
+            _currentPosition = position;
+            return new(GetCommand());
+        }
+
+        protected override string GetCommand() {
+            string high = string.Join("", _current_signal.Take(4));
+            string low;
+            if (_currentPosition > 0) {
+                low = MainUtils.ToBinaryString_half(_currentPosition);
+            } else {
+                low = "0000";
+            }
+
+            _current_signal = high + low;
+
+            string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
+            byte[] bytes = MainUtils.ToBytes(temp);
+            return temp + MainUtils.Crc16ToString(bytes);
+        }
+
+        public override bool ResetIsOk(string? resultMsg) => !string.IsNullOrEmpty(resultMsg) && string.Join("", resultMsg.Skip(7).Take(1)) == "0";
+
+        public override void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis) {
+            string low = string.Join("", dataMessage.Skip(9).Take(1));
+            _currentStatus = MainUtils.ToIntByHexString(low);
+
+            if (_ioBoxActionAfterAnalysis != null) {
+                _ioBoxActionAfterAnalysis(_currentStatus);
+            }
+        }
     }
 
     public class IoBoxSetterSelector_4: IoBoxSetterSelector {
-        public int SetterNum { get; set; } = 4;
+        public IoBoxSetterSelector_4() : base(1, "SetterSelector_4", 4) { }
 
-        public IoBoxSetterSelector_4() : base(1, "SetterSelector_4") { }
-
-        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
-            string? result = null;
-            if (_ioBoxActionAfterAnalysis != null) {
-                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+        public override Command GetWriteCommand(int position) {
+            int min = 1;
+            int max = SetterNum;
+            if (position > max || position < min) {
+                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
+                logger.Error(errorMsg);
+                throw new IndexOutOfRangeException(errorMsg);
             }
-            return result;
+
+            return base.GetWriteCommand(position);
         }
     }
 
     public class IoBoxSetterSelector_8: IoBoxSetterSelector {
-        public int SetterNum { get; set; } = 8;
+        public IoBoxSetterSelector_8() : base(2, "SetterSelector_8", 8) { }
 
-        public IoBoxSetterSelector_8() : base(2, "SetterSelector_8") { }
-
-        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
-            string? result = null;
-            if (_ioBoxActionAfterAnalysis != null) {
-                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+        public override Command GetWriteCommand(int position) {
+            int min = 1;
+            int max = SetterNum;
+            if (position > max || position < min) {
+                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
+                logger.Error(errorMsg);
+                throw new IndexOutOfRangeException(errorMsg);
             }
-            return result;
+
+            return base.GetWriteCommand(position);
         }
     }
 
     public class IoBoxArranger: DeviceTypeIoBox {
-        public static string IconStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder);
-        public static string IconErrorStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder_error);
-        public static string IconEmptyStr = CommonUtils.ImageToBase64(Properties.Resources.aneng_feeder_empty);
+        private int _sendingPosition = 0;
         public IoBoxArranger() : base(3, "Arranger") { }
 
-        public override string? AnalyzeData(string dataMessage, Action<string, int>? _ioBoxActionAfterAnalysis, int deviceId) {
-            string? result = null;
-            if (_ioBoxActionAfterAnalysis != null) {
-                _ioBoxActionAfterAnalysis(dataMessage, deviceId);
+        public override Command GetWriteCommand(int position) {
+            _currentPosition = position;
+
+            int min = 1;
+            int max = 4;
+            if (_currentPosition > max || _currentPosition < min) {
+                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
+                logger.Error(errorMsg);
+                throw new IndexOutOfRangeException(errorMsg);
             }
-            return result;
+
+            return new(GetCommand());
+        }
+
+        protected override string GetCommand() {
+            string[] highTemp = { "0", "0", "0", "0" };
+            if (_currentPosition > 0) {
+                highTemp[_currentPosition - 1] = "1";
+                _sendingPosition = _currentPosition;
+            }
+            string high = string.Join("", highTemp.Reverse());
+            string low = string.Join("", _current_signal.Skip(4));
+
+            _current_signal = high + low;
+
+            string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
+            byte[] bytes = MainUtils.ToBytes(temp);
+            return temp + MainUtils.Crc16ToString(bytes);
+        }
+
+        public override bool ResetIsOk(string? resultMsg) => !string.IsNullOrEmpty(resultMsg) && string.Join("", resultMsg.Skip(6).Take(1)) == "0";
+
+        public override void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis) {
+            if (_sendingPosition > 0) {
+                string high = string.Join("", dataMessage.Skip(8).Take(1));
+                String reversedBinaryStr = new(MainUtils.ToBinaryString(high).Reverse().ToArray());
+                _currentStatus = int.Parse(reversedBinaryStr[_sendingPosition - 1].ToString());
+
+                if (_ioBoxActionAfterAnalysis != null) {
+                    if (_currentStatus == 0) {
+                        _ioBoxActionAfterAnalysis(_sendingPosition);
+                        _sendingPosition = 0;
+                    }
+                }
+            }
         }
     }
 }

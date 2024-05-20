@@ -10,7 +10,6 @@
             return type;
         }
 
-        public static DeviceCategory Category => DeviceCategories.SERIAL_PORT;
         public static SerialPortScanner Scanner { get; } = AddNew<SerialPortScanner>();
 
         public static DeviceTypeSerialPort GetById(int id) {

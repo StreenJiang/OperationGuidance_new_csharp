@@ -1,6 +1,6 @@
-ALTER TABLE "main"."product_side" RENAME TO "_product_side_old_20240510";
+ALTER TABLE "product_side" RENAME TO "_product_side_old_20240510";
 
-CREATE TABLE "main"."product_side" (
+CREATE TABLE "product_side" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "mission_id" integer,
@@ -23,9 +23,9 @@ CREATE TABLE "main"."product_side" (
   "modify_time" text(64) NOT NULL
 );
 
-INSERT INTO "main"."sqlite_sequence" (name, seq) VALUES ('product_side', '1');
+INSERT INTO "sqlite_sequence" (name, seq) VALUES ('product_side', '1');
 
-INSERT INTO "main"."product_side" ("id", "name", "mission_id", "image", "max_rectangle_width", "max_rectangle_height", "max_rectangle_location", "center_location", "location_offset", "location_offset_moving", "zooming_ratio", "zooming_ratio_extra", "rotate_angle", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time") SELECT "id", "name", "mission_id", "image", "max_rectangle_width", "max_rectangle_height", "max_rectangle_location", "center_location", "location_offset", "location_offset_moving", "zooming_ratio", "zooming_ratio_extra", "rotate_angle", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time" FROM "main"."_product_side_old_20240510";
+INSERT INTO "product_side" ("id", "name", "mission_id", "image", "max_rectangle_width", "max_rectangle_height", "max_rectangle_location", "center_location", "location_offset", "location_offset_moving", "zooming_ratio", "zooming_ratio_extra", "rotate_angle", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time") SELECT "id", "name", "mission_id", "image", "max_rectangle_width", "max_rectangle_height", "max_rectangle_location", "center_location", "location_offset", "location_offset_moving", "zooming_ratio", "zooming_ratio_extra", "rotate_angle", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time" FROM "_product_side_old_20240510";
 
 
-DROP TABLE "main"."_product_side_old_20240510";
+DROP TABLE "_product_side_old_20240510";

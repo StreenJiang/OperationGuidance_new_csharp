@@ -1,0 +1,18 @@
+using OperationGuidance_new.Constants;
+
+namespace OperationGuidance_new.Tasks.AsbtractClasses {
+    public abstract class AIoBoxDevice<T> where T : DeviceTypeBase {
+        private bool _retrieveResult = false;
+        private T _deviceType;
+        private int _deviceId;
+
+        public bool RetrieveResult { get => _retrieveResult; set => _retrieveResult = value; }
+        public T DeviceType { get => _deviceType; set => _deviceType = value; }
+        public int DeviceId { get => _deviceId; set => _deviceId = value; }
+
+        public AIoBoxDevice(T deviceType, int deviceId) {
+            _deviceType = deviceType;
+            _deviceId = deviceId;
+        }
+    }
+}

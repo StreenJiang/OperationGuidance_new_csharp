@@ -365,7 +365,6 @@ namespace OperationGuidance_new.Views {
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
                     _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
-                    _currentSideButton.SideDTO.cropped = (int) YesOrNo.NO;
                 });
                 _imageButtonZoomIn = GenerateImageButton("放大图片", Properties.Resources.image_zoom_in, (sender, eventArgs) => {
                     _currentProductImageFile.SaveCurrent();
@@ -811,16 +810,28 @@ namespace OperationGuidance_new.Views {
                     boltDTO.parameters_set = null;
                 }
                 if (_boltPopUpForm.SpecificationToggle.Checked) {
+                    DeviceIoDTO? ioDTO = _boltPopUpForm.ArrangerType.Value;
+                    if (ioDTO == null) {
+                        check = false;
+                        _boltPopUpForm.ArrangerType.SetError(true);
+                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，排列机组不能为空\r\n";
+                    }
                     string specification = _boltPopUpForm.SpecificationBox.GetTextBox(0).Box.Text;
                     if (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0) {
                         check = false;
                         _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
-                        warningMsg += $"{warningIndex++}. 螺栓规格字段开启后，不能为空且必须大于0\r\n";
+                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.specification = null;
                 }
                 if (_boltPopUpForm.BitSpecificationToggle.Checked) {
+                    DeviceIoDTO? ioDTO = _boltPopUpForm.SetterSelectorType.Value;
+                    if (ioDTO == null) {
+                        check = false;
+                        _boltPopUpForm.SetterSelectorType.SetError(true);
+                        warningMsg += $"{warningIndex++}. 套筒位数字段开启后，套筒选择器不能为空\r\n";
+                    }
                     string bitSpecification = _boltPopUpForm.BitSpecificationBox.GetTextBox(0).Box.Text;
                     if (string.IsNullOrEmpty(bitSpecification) || int.Parse(bitSpecification) <= 0) {
                         check = false;
@@ -1230,14 +1241,8 @@ namespace OperationGuidance_new.Views {
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
-                if (missionDTO.max_ng_num == 0) {
-                    missionDTO.max_ng_num = 3;
-                }
                 _maxNGNum.SetValue(0, missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, missionDTO.password_need_time + "");
-                if (missionDTO.password_need_time == 0) {
-                    missionDTO.password_need_time = 2;
-                }
                 if (missionDTO.predecessor_mission_id != null) {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
                 }

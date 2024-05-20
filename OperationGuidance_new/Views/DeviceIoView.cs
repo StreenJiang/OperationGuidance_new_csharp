@@ -170,16 +170,18 @@ namespace OperationGuidance_new.Views {
                     check = false;
                     warningMsg += $"{warningIndex++}. 端口设置出错\r\n";
                 }
-                if (allData.Exists(d => d.id != dto.id && d.ip == dto.ip && d.port == dto.port)) {
-                    check = false;
-                    ipBox.IsError = true;
-                    portBox.IsError = true;
-                    warningMsg += $"{warningIndex++}. 此IP地址及对应端口已存在，不可重复配置\r\n";
-                }
                 if (type.IsDefaultValue()) {
                     type.SetError(true);
                     check = false;
                     warningMsg += $"{warningIndex++}. 没有选择IO设备类型\r\n";
+                } else {
+                    if (allData.Exists(d => d.id != dto.id && d.ip == dto.ip && d.port == dto.port && d.type == type.Value)) {
+                        check = false;
+                        ipBox.IsError = true;
+                        portBox.IsError = true;
+                        type.SetError(true);
+                        warningMsg += $"{warningIndex++}. 已存在类型为[{type.GetChosenItem().Name}]且IP及端口相同的设备，不可重复配置\r\n";
+                    }
                 }
                 if (!check) {
                     WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");

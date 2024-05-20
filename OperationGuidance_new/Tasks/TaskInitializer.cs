@@ -1,5 +1,7 @@
+using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
@@ -23,8 +25,8 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
-        private static void TaskCheckingLoop() {
-            Task.Run(async () => {
+        private static async void TaskCheckingLoop() {
+            await Task.Run(async () => {
                 while (true) {
                     // Query all workstations for devices configuration
                     Dictionary<int, int> toolMaps = new();
@@ -77,7 +79,7 @@ namespace OperationGuidance_new.Tasks {
 
                             if (toolTask.Ip != dto.ip || toolTask.Port != dto.port || toolTask.ToolType.Id != dto.type) {
                                 toolTask.CloseConnection();
-                                await Task.Delay(toolTask.AuotReconnectingTrialDelay);
+                                await Task.Delay(toolTask.AutoReconnectingTrialDelay);
 
                                 DeviceTypeTool? deviceTool = DeviceType_Tool.GetById(dto.type);
                                 MainUtils.ToolTasks.Remove(dto.id);
@@ -93,64 +95,7 @@ namespace OperationGuidance_new.Tasks {
                                     MainUtils.Info(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
                                 }
                             } else if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}], trying to reconnect...");
-                                    await toolTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}]");
-                                });
-                            }
-                        }
-                    });
-
-                    // Initialize arm tasks
-                    List<DeviceArmDTO> armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs;
-                    // Remove arms which had been deleted
-                    armDTOs.ForEach(dto => {
-                        if (MainUtils.ArmTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
-                            MainUtils.ArmTasks[dto.id].CloseConnection();
-                            MainUtils.Info(logger, $"ARM[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
-                            MainUtils.ArmTasks.Remove(dto.id);
-                        }
-                    });
-                    armDTOs = armDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                    // Loop to check all arms
-                    armDTOs.ForEach(async dto => {
-                        ArmTask? armTask = MainUtils.TryGetArmTask(dto.id);
-                        if (armTask == null) {
-                            DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
-                            if (deviceArm != null) {
-                                MainUtils.NewArmTask(dto.id, dto.name, dto.ip, dto.port, deviceArm);
-                                MainUtils.Info(logger, $"Connecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
-                            }
-                        } else {
-                            if (armMaps.ContainsKey(armTask.DeviceId)) {
-                                armTask.WorkstationId = armMaps[armTask.DeviceId];
-                            } else {
-                                armTask.WorkstationId = null;
-                            }
-
-                            if (armTask.Ip != dto.ip || armTask.Port != dto.port || armTask.ArmType.Id != dto.type) {
-                                armTask.CloseConnection();
-                                await Task.Delay(armTask.AuotReconnectingTrialDelay);
-
-                                DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
-                                if (deviceArm != null) {
-                                    MainUtils.Info(logger, $"ARM info changed, Reconnecting to ARM[{dto.name} - {dto.ip}: {dto.port} - {deviceArm.Name}]...");
-                                    armTask.Ip = dto.ip;
-                                    armTask.Port = dto.port;
-                                    armTask.ArmType = deviceArm;
-                                    armTask.CloseConnectionManually = false;
-                                    armTask.Connect();
-                                } else {
-                                    MainUtils.ArmTasks.Remove(dto.id);
-                                    MainUtils.Info(logger, $"ARM[{dto.name} - {dto.ip}: {dto.port}] removed, can't find arm type [{dto.type}].");
-                                }
-                            } else if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}], trying to reconnect...");
-                                    await armTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to ARM[{dto.name} - {dto.ip}: {dto.port} - {armTask.ArmType.Name}]");
-                                });
+                                Reconnect(toolTask, $"TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}]");
                             }
                         }
                     });
@@ -184,7 +129,7 @@ namespace OperationGuidance_new.Tasks {
 
                             if (communicationTask.Ip != dto.ip || communicationTask.Port != dto.port || communicationTask.CommunicationType.Id != dto.type) {
                                 communicationTask.CloseConnection();
-                                await Task.Delay(communicationTask.AuotReconnectingTrialDelay);
+                                await Task.Delay(communicationTask.AutoReconnectingTrialDelay);
 
                                 DeviceTypeCommunication? deviceCommunication = DeviceType_Communication.GetById(dto.type);
                                 if (deviceCommunication != null) {
@@ -199,11 +144,7 @@ namespace OperationGuidance_new.Tasks {
                                     MainUtils.Info(logger, $"Communication device[{dto.name} - {dto.ip}: {dto.port}] removed, can't find Communication device type [{dto.type}].");
                                 }
                             } else if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}], trying to reconnect...");
-                                    await communicationTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}]");
-                                });
+                                Reconnect(communicationTask, $"Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}]");
                             }
                         }
                     });
@@ -242,7 +183,7 @@ namespace OperationGuidance_new.Tasks {
                                         || (int) serialPortTask.StopBits != dto.stop_bit || (int) serialPortTask.DataType != dto.data_type
                                         || serialPortTask.SerialPortType.Id != dto.type) {
                                 serialPortTask.CloseConnection();
-                                await Task.Delay(serialPortTask.AuotReconnectingTrialDelay);
+                                await Task.Delay(serialPortTask.AutoReconnectingTrialDelay);
 
                                 DeviceTypeSerialPort? deviceSerialPort = DeviceType_SerialPort.GetById(dto.type);
                                 if (deviceSerialPort != null) {
@@ -271,58 +212,94 @@ namespace OperationGuidance_new.Tasks {
                                 //     (StopBits) dto.stop_bit, (DataTypes) dto.data_type, deviceSerialPort);
                                 // MainUtils.Info(logger, $"Connecting to SerialPort[{dto.name}]");
                             } else if (!serialPortTask.Connected && serialPortTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}], trying to reconnect...");
-                                    await serialPortTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
-                                });
+                                Reconnect(serialPortTask, $"SerialPort device[{dto.name} - {serialPortTask.SerialPortType.Name}]");
                             }
                         }
                     });
 
-                    // Initialize ioBox tasks
+                    // Initialize ioBox tasks, arm devices included
                     List<DeviceIoDTO> ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs;
+                    List<DeviceArmDTO> armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs;
                     // Remove ioBoxs which had been deleted
-                    ioBoxDTOs.ForEach(dto => {
-                        if (MainUtils.IoBoxTasks.ContainsKey(dto.id) && dto.deleted == (int) YesOrNo.YES) {
-                            MainUtils.IoBoxTasks[dto.id].CloseConnection();
-                            MainUtils.Info(logger, $"ioBox[{dto.name} - {dto.ip}: {dto.port}] had been deleted, remove it.");
-                            MainUtils.IoBoxTasks.Remove(dto.id);
+                    foreach (string key in MainUtils.IoBoxTasks.Keys) {
+                        Tuple<string, int> tuple = MainUtils.GetHostFromTCPClientKey(key);
+                        List<DeviceIoDTO> ioBoxDtos = ioBoxDTOs.Where(dto => dto.ip == tuple.Item1 && dto.port == tuple.Item2).ToList();
+                        List<DeviceArmDTO> armDtos = armDTOs.Where(dto => dto.ip == tuple.Item1 && dto.port == tuple.Item2).ToList();
+                        if ((ioBoxDtos.Count == 0 && armDtos.Count == 0) || (ioBoxDtos.Find(dto => dto.deleted == (int) YesOrNo.NO) == null && armDtos.Find(dto => dto.deleted == (int) YesOrNo.NO) == null)) {
+                            MainUtils.IoBoxTasks[key].CloseConnection();
+                            MainUtils.Info(logger, $"all devices in ioBox[{key}] had been deleted, remove it.");
+                            MainUtils.IoBoxTasks.Remove(key);
                         }
-                    });
+                    }
                     ioBoxDTOs = ioBoxDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                    armDTOs = armDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                     // Loop to check all ioBoxs
                     ioBoxDTOs.ForEach(async dto => {
-                        IoBoxTask? ioBoxTask = MainUtils.TryGetIoBoxTask(dto.id);
+                        string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+
+                        IoBoxTask? ioBoxTask = MainUtils.TryGetIoBoxTask(key);
                         if (ioBoxTask == null) {
                             DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
                             if (deviceIoBox != null) {
-                                MainUtils.NewIoBoxTask(dto.id, dto.name, dto.ip, dto.port, deviceIoBox);
-                                MainUtils.Info(logger, $"Connecting to ioBox[{dto.name} - {dto.ip}: {dto.port} - {deviceIoBox.Name}]...");
+                                MainUtils.Info(logger, $"Connecting to ioBox[{dto.ip}: {dto.port}]...");
+                                ioBoxTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
                             }
                         } else {
-                            if (ioBoxTask.Ip != dto.ip || ioBoxTask.Port != dto.port || ioBoxTask.IoBoxType.Id != dto.type) {
+                            if (ioBoxTask.Ip != dto.ip || ioBoxTask.Port != dto.port) {
                                 ioBoxTask.CloseConnection();
-                                await Task.Delay(ioBoxTask.AuotReconnectingTrialDelay);
+                                await Task.Delay(ioBoxTask.AutoReconnectingTrialDelay);
 
-                                DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
-                                if (deviceIoBox != null) {
-                                    MainUtils.Info(logger, $"ioBox info changed, Reconnecting to ioBox[{dto.name} - {dto.ip}: {dto.port} - {deviceIoBox.Name}]...");
-                                    ioBoxTask.Ip = dto.ip;
-                                    ioBoxTask.Port = dto.port;
-                                    ioBoxTask.IoBoxType = deviceIoBox;
-                                    ioBoxTask.CloseConnectionManually = false;
-                                    ioBoxTask.Connect();
-                                } else {
-                                    MainUtils.IoBoxTasks.Remove(dto.id);
-                                    MainUtils.Info(logger, $"ioBox[{dto.name} - {dto.ip}: {dto.port}] removed, can't find ioBox type [{dto.type}].");
-                                }
+                                MainUtils.Info(logger, $"ioBox info changed, Reconnecting to ioBox[{dto.ip}: {dto.port}]...");
+                                ioBoxTask.Ip = dto.ip;
+                                ioBoxTask.Port = dto.port;
+                                ioBoxTask.CloseConnectionManually = false;
+                                ioBoxTask.Connect();
                             } else if (!ioBoxTask.Connected && ioBoxTask.Status != ATaskBase.CONNECTING) {
-                                Task.Run(async () => {
-                                    MainUtils.Info(logger, $"Disconnected to ioBox[{dto.name} - {dto.ip}: {dto.port} - {ioBoxTask.IoBoxType.Name}], trying to reconnect...");
-                                    await ioBoxTask.Connect();
-                                    MainUtils.Info(logger, $"Reconnected to ioBox[{dto.name} - {dto.ip}: {dto.port} - {ioBoxTask.IoBoxType.Name}]");
-                                });
+                                Reconnect(ioBoxTask, $"ioBox[{dto.ip}: {dto.port}]");
+                            }
+                        }
+
+                        if (ioBoxTask != null) {
+                            DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
+                            if (deviceIoBox is IoBoxArranger arranger && ioBoxTask.ArrangerType == null) {
+                                ioBoxTask.ArrangerType = new(ioBoxTask, arranger, dto.id);
+                                ioBoxTask.ArrangerType.Reset();
+                            } else if (deviceIoBox is IoBoxSetterSelector setterSelector && ioBoxTask.SetterSelectorType == null) {
+                                ioBoxTask.SetterSelectorType = new(ioBoxTask, setterSelector, dto.id);
+                                ioBoxTask.SetterSelectorType.Reset();
+                            }
+                        }
+                    });
+                    // Loop to check all arms 
+                    armDTOs.ForEach(async dto => {
+                        string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+
+                        IoBoxTask? armTask = MainUtils.TryGetIoBoxTask(key);
+                        if (armTask == null) {
+                            DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
+                            if (deviceArm != null) {
+                                MainUtils.Info(logger, $"Connecting to arm[{dto.ip}: {dto.port}]...");
+                                armTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
+                            }
+                        } else {
+                            if (armTask.Ip != dto.ip || armTask.Port != dto.port) {
+                                armTask.CloseConnection();
+                                await Task.Delay(armTask.AutoReconnectingTrialDelay);
+
+                                MainUtils.Info(logger, $"arm info changed, Reconnecting to arm[{dto.ip}: {dto.port}]...");
+                                armTask.Ip = dto.ip;
+                                armTask.Port = dto.port;
+                                armTask.CloseConnectionManually = false;
+                                armTask.Connect();
+                            } else if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
+                                Reconnect(armTask, $"arm[{dto.ip}: {dto.port}]");
+                            }
+                        }
+
+                        if (armTask != null) {
+                            DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
+                            if (deviceArm != null && armTask.ArmType == null) {
+                                armTask.ArmType = new(deviceArm, dto.id);
                             }
                         }
                     });
@@ -330,8 +307,15 @@ namespace OperationGuidance_new.Tasks {
                     // Delay in task looping
                     await Task.Delay(LoopingDelay);
                 }
-            });
 
+                async void Reconnect(ATaskBase task, string deviceInfo) {
+                    await Task.Run(async () => {
+                        MainUtils.Info(logger, $"Disconnected to {deviceInfo}, trying to reconnect...");
+                        await task.ConnectAsync();
+                        MainUtils.Info(logger, $"Reconnected to {deviceInfo}");
+                    });
+                }
+            });
         }
     }
 }

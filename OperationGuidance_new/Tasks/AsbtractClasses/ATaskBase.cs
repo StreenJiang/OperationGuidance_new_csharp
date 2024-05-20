@@ -1,13 +1,11 @@
-namespace OperationGuidance_new.Tasks {
+namespace OperationGuidance_new.Tasks.AsbtractClasses {
     public abstract class ATaskBase {
         #region Readonly fields
-        protected readonly object SendSyncRoot = new();
-        protected readonly object ReceiveSyncRoot = new();
         private int _deviceId;
         private int? _workstationId;
         protected string? _device_name = "";
         protected readonly int LoopingInterval = 50;
-        public readonly int AuotReconnectingTrialDelay = 1000; // 断线重连尝试间隔
+        public readonly int AutoReconnectingTrialDelay = 500; // 断线重连尝试间隔
         public static readonly int DISCONNECTED = 0;
         public static readonly int CONNECTING = 1;
         public static readonly int CONNECTED = 2;
@@ -29,11 +27,9 @@ namespace OperationGuidance_new.Tasks {
 
         #region Main methods
         protected abstract void RunTask();
-        public abstract Task Connect();
+        public abstract void Connect();
         // Can await util socket is connected
-        public Task ConnectAsync() {
-            return Connect();
-        }
+        public abstract Task ConnectAsync();
         public abstract void CloseConnection();
         public abstract bool WorkplaceCheckConnection();
         #endregion

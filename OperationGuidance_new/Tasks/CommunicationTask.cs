@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using log4net;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Utils;
 
@@ -10,6 +11,8 @@ namespace OperationGuidance_new.Tasks {
         private ILog logger = MainUtils.GetLogger(typeof(CommunicationTask));
 
         #region Fields
+        private static readonly object SendSyncRoot = new();
+        private static readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 500;
         private readonly int KeepAliveDelay = 200;
         private Socket? socketClient = null;
@@ -83,20 +86,19 @@ namespace OperationGuidance_new.Tasks {
                 }
             });
         }
-        public override Task Connect() {
-            return Task.Run(async () => {
-                while (!Connected && !CloseConnectionManually) {
-                    Status = CONNECTING;
-                    if (ConnectToServer()) {
-                        RegisterTCPClient();
-                        RunTask();
-                        Status = CONNECTED;
-                        break;
-                    }
-                    await Task.Delay(AuotReconnectingTrialDelay);
+        public override async void Connect() {
+            while (!Connected && !CloseConnectionManually) {
+                Status = CONNECTING;
+                if (ConnectToServer()) {
+                    RegisterTCPClient();
+                    RunTask();
+                    Status = CONNECTED;
+                    break;
                 }
-            });
+                await Task.Delay(AutoReconnectingTrialDelay);
+            }
         }
+        public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
             logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
@@ -162,7 +164,7 @@ namespace OperationGuidance_new.Tasks {
                         }
                     }
                 } catch (Exception e) {
-                    logger.Error($"Error while sending command to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
+                    logger.Error($"Error while sending command[{command}] to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
                     // throw e;
                 }
             }

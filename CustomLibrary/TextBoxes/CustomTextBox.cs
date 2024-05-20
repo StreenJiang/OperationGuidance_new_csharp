@@ -151,6 +151,10 @@ namespace CustomLibrary.TextBoxes {
                         }
                         index++;
                     }
+                    if (_numberOnly && _box.Text.Where(c => c == '.').Count() > 1) {
+                        _box.Text = new(_box.Text.Take(_box.Text.Length - 1).ToArray());
+                        errorCount++;
+                    }
                     _box.SelectionStart = _box.Text.Length;
                     _box.SelectionLength = 0;
                     if (errorCount == 0) {

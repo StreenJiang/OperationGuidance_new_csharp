@@ -845,6 +845,7 @@ namespace OperationGuidance_new.Views {
                     _productBatchNoticeOriginal = MainUtils.IsProductBatchNoticeEnabled();
                     _enableArmLocatingToggle.Checked = _enableArmLocatingOriginal;
                     _armLocatingAccuracyBox.SetValue(0, _armLocatingAccuracyOriginal + "");
+                    _armLocatingAccuracyBox.Enabled = _enableArmLocatingOriginal;
                     _productBatchNoticeToggle.Checked = _productBatchNoticeOriginal;
                 });
             });

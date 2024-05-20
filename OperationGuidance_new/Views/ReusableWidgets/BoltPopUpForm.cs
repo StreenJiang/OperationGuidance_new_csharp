@@ -7,10 +7,13 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.ComboBoxes;
 using OperationGuidance_service.Models.Responses;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltPopUpForm: CustomPopUpForm {
-        private readonly int _columnCount = 1;
+        private readonly int _columnCount = 2;
+        private readonly double _boxRatioOneLine = 8.5925;
+        private readonly double _boxRatio = 7.2;
         protected OperationGuidanceApis apis;
         private ProductBoltDTO _originalBoltDTO;
 
@@ -25,7 +28,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private CustomComboBoxGroup<WorkstationDTO> _workstation;
         private CustomTextBoxButtonGroup _position;
         private CustomTextBoxGroup _parameterSetBox;
+        private List<DeviceIoDTO> _deviceIoDTOs;
+        private CustomComboBoxGroup<DeviceIoDTO> _arrangerType;
         private CustomTextBoxGroup _specificationBox;
+        private CustomComboBoxGroup<DeviceIoDTO> _setterSelectorType;
         private CustomTextBoxGroup _bitSpecificationBox;
         private CustomTextBoxGroup _torqueBox;
         private CustomTextBoxGroup _angleBox;
@@ -61,24 +67,27 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             _serialNumBox = new("点位编号") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 PositiveIntOnly = true,
                 Enabled = false,
             };
             _nameBox = new("点位名称") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
             // 站点
             _workstation = new("站点") {
                 Parent = TablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 Enabled = false,
             };
+            _tablePanel.SetColumnSpan(_serialNumBox, _columnCount);
+            _tablePanel.SetColumnSpan(_nameBox, _columnCount);
+            _tablePanel.SetColumnSpan(_workstation, _columnCount);
             QueryWorkstationListRsp queryWorkstationListRsp = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id));
             _workstationsDTOs = queryWorkstationListRsp.WorkstationsDTOs;
             foreach (WorkstationDTO dto in _workstationsDTOs) {
@@ -87,35 +96,62 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 点位坐标
             _position = new("点位坐标") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 Separator = ",",
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
                 Enabled = false,
             };
+            _tablePanel.SetColumnSpan(_position, _columnCount);
             _position.GetTextBox(0);
             _position.AddTextBox();
             _position.AddTextBox();
             // 程序号 pset
             _parameterSetBox = new("程序号") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
                 Enabled = false,
             };
-            // 螺栓规格
-            _specificationBox = new("螺栓规格") {
+            _tablePanel.SetColumnSpan(_parameterSetBox, _columnCount);
+            _deviceIoDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id)).DeviceIoDTOs;
+            // 排列机组
+            _arrangerType = new("排列机组") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+                Enabled = false,
+            };
+            foreach (DeviceIoDTO dto in _deviceIoDTOs) {
+                if (dto.type == DeviceType_IoBox.Arranger.Id) {
+                    _arrangerType.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+                }
+            }
+            // 螺钉序号
+            _specificationBox = new("螺钉序号") {
+                Parent = _tablePanel,
+                Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
                 Enabled = false,
             };
+            // 套筒选择器
+            _setterSelectorType = new("套筒选择器") {
+                Parent = _tablePanel,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+                Enabled = false,
+            };
+            foreach (DeviceIoDTO dto in _deviceIoDTOs) {
+                if (dto.type == DeviceType_IoBox.SetterSelector_4.Id || dto.type == DeviceType_IoBox.SetterSelector_8.Id) {
+                    _setterSelectorType.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+                }
+            }
             // 套筒位数
             _bitSpecificationBox = new("套筒位数") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
                 Enabled = false,
@@ -123,21 +159,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 扭矩范围
             _torqueBox = new("扭矩范围") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
                 Enabled = false,
             };
+            _tablePanel.SetColumnSpan(_torqueBox, _columnCount);
             _torqueBox.Separator = "~";
             _torqueBox.GetTextBox(0);
             _torqueBox.AddTextBox();
             // 角度范围
             _angleBox = new("角度范围") {
                 Parent = _tablePanel,
-                Ratio = 8,
+                Ratio = _boxRatioOneLine,
                 NameAlignment = HorizontalAlignment.Right,
                 NumberOnly = true,
             };
+            _tablePanel.SetColumnSpan(_angleBox, _columnCount);
             _angleBox.Separator = "~";
             _angleBox.GetTextBox(0);
             _angleBox.AddTextBox();
@@ -165,15 +203,31 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _parameterSetBox.Hide();
             }
             if (boltDTO.specification != null) {
+                _arrangerType.Show();
                 _specificationBox.Show();
+                DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.arranger_id);
+                if (deviceIoDTO != null) {
+                    _arrangerType.SetCurrent(_arrangerType.IndexOf(deviceIoDTO));
+                } else {
+                    _arrangerType.SetError(true);
+                }
                 _specificationBox.SetValue(0, boltDTO.specification + "");
             } else {
+                _arrangerType.Hide();
                 _specificationBox.Hide();
             }
             if (boltDTO.bit_specification != null) {
+                _setterSelectorType.Show();
                 _bitSpecificationBox.Show();
+                DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.setter_selector_id);
+                if (deviceIoDTO != null) {
+                    _setterSelectorType.SetCurrent(_setterSelectorType.IndexOf(deviceIoDTO));
+                } else {
+                    _setterSelectorType.SetError(true);
+                }
                 _bitSpecificationBox.SetValue(0, boltDTO.bit_specification + "");
             } else {
+                _setterSelectorType.Hide();
                 _bitSpecificationBox.Hide();
             }
             if (boltDTO.torque_min != null && boltDTO.torque_max != null) {
@@ -209,7 +263,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int previousRowIndex = -1;
             int cntentWidth = (int) (WidgetUtils.MainSize.Width * .55);
             int tableWidth = cntentWidth - contentPadding.Size.Width;
-            int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
+            int contentPieceWidth = (tableWidth - boxMargin * (_columnCount + 1)) / _columnCount;
             foreach (Control control in _tablePanel.Controls) {
                 if (control.Visible) {
                     int currentRowIndex = _tablePanel.GetPositionFromControl(control).Row;
@@ -242,7 +296,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     continue;
                 } else {
                     control.Margin = new(boxMargin);
-                    control.Size = new(contentPieceWidth, boxHeight);
+
+                    int columnSpan = _tablePanel.GetColumnSpan(control);
+                    if (columnSpan > 1) {
+                        control.Size = new(contentPieceWidth * columnSpan + boxMargin * (columnSpan - 1), boxHeight);
+                    } else {
+                        control.Size = new(contentPieceWidth, boxHeight);
+                    }
                 }
             }
 

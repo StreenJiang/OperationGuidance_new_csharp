@@ -10,7 +10,6 @@
             return type;
         }
 
-        public static DeviceCategory DEVICE_TYPE = DeviceCategories.COMMUNICATION;
         public static CommunicationOpenProtocol OpenProtocol { get; } = AddNew<CommunicationOpenProtocol>();
         public static CommunicationModBus ModBus { get; } = AddNew<CommunicationModBus>();
 

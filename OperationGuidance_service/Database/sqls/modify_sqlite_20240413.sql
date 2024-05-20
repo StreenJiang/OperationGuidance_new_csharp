@@ -1,6 +1,6 @@
-ALTER TABLE "main"."product_mission" RENAME TO "_product_mission_old_20240413";
+ALTER TABLE "product_mission" RENAME TO "_product_mission_old_20240413";
 
-CREATE TABLE "main"."product_mission" (
+CREATE TABLE "product_mission" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "name" text(128),
   "pn_code" text(64),
@@ -18,6 +18,6 @@ CREATE TABLE "main"."product_mission" (
   "modify_time" text(64) NOT NULL
 );
 
-INSERT INTO "main"."product_mission" ("id", "name", "pn_code", "max_ng_num", "password_need_time", "enabled", "macs_id", "predecessor_mission_id", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time") SELECT "id", "name", "pn_code", "max_ng_num", "password_need_time", "enabled", "macs_id", "predecessor_mission_id", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time" FROM "main"."_product_mission_old_20240413";
+INSERT INTO "product_mission" ("id", "name", "pn_code", "max_ng_num", "password_need_time", "enabled", "macs_id", "predecessor_mission_id", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time") SELECT "id", "name", "pn_code", "max_ng_num", "password_need_time", "enabled", "macs_id", "predecessor_mission_id", "user_id", "deleted", "creator", "modifier", "create_time", "modify_time" FROM "_product_mission_old_20240413";
 
-DROP TABLE "main"."_product_mission_old_20240413";
+DROP TABLE "_product_mission_old_20240413";
