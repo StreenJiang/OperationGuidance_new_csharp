@@ -74,7 +74,8 @@ namespace OperationGuidance_new {
                 /* others */
                 || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E4B2F12")
                 /* SCII */
-                || macs.Contains("E43A6E7936B1") || macs.Contains("E43A6E567F30")
+                || macs.Contains("E43A6E7936B1") || macs.Contains("E43A6E567F30") || macs.Contains("E43A6E793807") || macs.Contains("E43A6E793727") || macs.Contains("44456F0DDFF5")
+                || macs.Contains("E43A6E793891") || macs.Contains("E43A6E793743") || macs.Contains("E43A6E567F30")
                 /* GLB */
                 || macs.Contains("E43A6E77B047") || macs.Contains("E43A6E77BO46") || macs.Contains("E43A6E5CC03B") || macs.Contains("E43A6E77AFCC") || macs.Contains("E43A6E77AFCD")
                 || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBDE8") || macs.Contains("E43A6E5CBE6A")

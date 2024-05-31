@@ -155,9 +155,57 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for outer_database_config
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS `outer_database_config`;
+        ///CREATE TABLE `outer_database_config`  (
+        ///  `id` int(11) NOT NULL AUTO_INCREMENT,
+        ///  `host` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+        ///  `port` int(8) NULL DEFAULT NULL,
+        ///  `database_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+        ///  `username` varchar(255) CHARACTER SET utf8m [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20240515 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240515", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for device_io
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS `device_io`;
+        ///CREATE TABLE `device_io`  (
+        ///  `id` int(11) NOT NULL AUTO_INCREMENT,
+        ///  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+        ///  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+        ///  `ip` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+        ///  `port` int(8) NULL DEFAULT N [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20240517 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240517", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_bolt` 
+        ///  ADD COLUMN `arranger_id` int(11) NULL AFTER `name`,
+        ///  ADD COLUMN `setter_selector_id` int(11) NULL AFTER `location_y_percent`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240521 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240521", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
-        ///CREATE TABLE &quot;main&quot;.&quot;product_mission&quot; (
+        ///CREATE TABLE &quot;product_mission&quot; (
         ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
         ///  &quot;name&quot; text(128),
         ///  &quot;pn_code&quot; text(64),
@@ -170,7 +218,7 @@ namespace OperationGuidance_service.Database {
         ///  &quot;deleted&quot; integer(1) NOT NULL,
         ///  &quot;creator&quot; text(128) NOT NULL,
         ///  &quot;modifier&quot; text(128) NOT NULL,
-        ///  &quot;create_ti [rest of string was truncated]&quot;;.
+        ///  &quot;create_time&quot; text(64) N [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_sqlite_20240407 {
             get {
@@ -179,9 +227,9 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240413&quot;;
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240413&quot;;
         ///
-        ///CREATE TABLE &quot;main&quot;.&quot;product_mission&quot; (
+        ///CREATE TABLE &quot;product_mission&quot; (
         ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
         ///  &quot;name&quot; text(128),
         ///  &quot;pn_code&quot; text(64),
@@ -194,7 +242,7 @@ namespace OperationGuidance_service.Database {
         ///  &quot;user_id&quot; integer NOT NULL,
         ///  &quot;deleted&quot; integer(1) NOT NULL,
         ///  &quot;creator&quot; text(128) NOT NULL,
-        ///  &quot; [rest of string was truncated]&quot;;.
+        ///  &quot;modifier&quot; text [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_sqlite_20240413 {
             get {
@@ -203,9 +251,9 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;product_side&quot; RENAME TO &quot;_product_side_old_20240510&quot;;
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_side&quot; RENAME TO &quot;_product_side_old_20240510&quot;;
         ///
-        ///CREATE TABLE &quot;main&quot;.&quot;product_side&quot; (
+        ///CREATE TABLE &quot;product_side&quot; (
         ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
         ///  &quot;name&quot; text(128),
         ///  &quot;mission_id&quot; integer,
@@ -218,11 +266,84 @@ namespace OperationGuidance_service.Database {
         ///  &quot;location_offset_moving&quot; text(32),
         ///  &quot;zooming_ratio&quot; real(8),
         ///  &quot;zooming_ratio_extra&quot; real(8),
-        /// [rest of string was truncated]&quot;;.
+        ///  &quot;rotate_angl [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_sqlite_20240510 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240510", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for outer_database_config
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS &quot;outer_database_config&quot;;
+        ///CREATE TABLE &quot;outer_database_config&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;host&quot; text(64),
+        ///  &quot;port&quot; integer(8),
+        ///  &quot;database_name&quot; text(255),
+        ///  &quot;username&quot; text(255),
+        ///  &quot;password&quot; text(255),
+        ///  &quot;database_type&quot; integer(2),
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifie [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240515 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240515", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for device_io
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS &quot;device_io&quot;;
+        ///CREATE TABLE &quot;device_io&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;description&quot; text(512),
+        ///  &quot;ip&quot; text(16),
+        ///  &quot;port&quot; integer(8),
+        ///  &quot;type&quot; integer(4),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        ///  &quot;create_time&quot; text(64) NOT NUL [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240517 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240517", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_bolt&quot; RENAME TO &quot;_product_bolt_old_20240521&quot;;
+        ///
+        ///CREATE TABLE &quot;product_bolt&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;side_id&quot; integer NOT NULL,
+        ///  &quot;serial_num&quot; integer NOT NULL,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;arranger_id&quot; integer,
+        ///  &quot;specification&quot; real(16),
+        ///  &quot;workstation_id&quot; integer,
+        ///  &quot;position&quot; text(32),
+        ///  &quot;location_x_percent&quot; real(8) NOT NULL,
+        ///  &quot;location_y_percent&quot; real(8) NOT NULL,
+        ///  &quot;setter_selector_id&quot; integer,
+        ///  &quot;bit_specification&quot; real(16),
+        ///  &quot;parameters_s [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240521 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240521", resourceCulture);
             }
         }
     }
