@@ -1,3 +1,4 @@
+using log4net;
 using OperationGuidance_service.Configurations;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Exceptions;
@@ -6,6 +7,7 @@ using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
     public static class DbConnector {
+        private static ILog logger = SystemUtils.GetLogger(typeof(DbConnector));
         private static readonly ADbConnector connector;
 
         static DbConnector() {
@@ -24,6 +26,23 @@ namespace OperationGuidance_service.Database {
 
         public static DbConnection GetConnection() {
             DbConnection? dbConnection = connector.GetDbConnection();
+
+            int tryMaxTimes = 3;
+            int tryTimes = 0;
+            while (tryTimes <= tryMaxTimes) {
+                try {
+                    dbConnection = connector.GetDbConnection();
+                    if (dbConnection != null) {
+                        break;
+                    }
+                } catch (DatabaseException de) {
+                    logger.Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
+                    continue;
+                } finally {
+                    tryTimes++;
+                }
+            }
+
             if (dbConnection == null) {
                 throw new DatabaseException("数据库连接失败，请检查配置与数据库信息是否匹配");
             }

@@ -20,6 +20,7 @@ using CustomLibrary.Forms;
 using OperationGuidance_new.Constants;
 using CustomLibrary.ComboBoxes;
 using log4net;
+using Newtonsoft.Json;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView_SCII: CustomContentPanel {
@@ -201,26 +202,6 @@ namespace OperationGuidance_new.Views {
                         Modified = true;
                     }
                 };
-                // // PN码输入框
-                // _missionPnCode = new("PN码") {
-                //     Parent = _top,
-                //     BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                //     ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                //     BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                //     BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                //     NameAlignment = HorizontalAlignment.Left,
-                //     NumberOnly = true,
-                //     Visible = false,
-                // };
-                // CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
-                // missionPnCodeBox.Text = _missionDTO.pn_code;
-                // missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
-                // missionPnCodeBox.TextChanged += (sender, eventArgs) => {
-                //     if (!_missionPnCode.HasError) {
-                //         _missionDTO.pn_code = missionPnCodeBox.Text;
-                //         Modified = true;
-                //     }
-                // };
 
                 _buttonsOuter = new() {
                     Parent = _top,
@@ -267,6 +248,75 @@ namespace OperationGuidance_new.Views {
                             warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
                         }
 
+                        if (_detialPopUpForm.PredecessorPartMissionMaps.Count > 0) {
+                            List<int> ids = new();
+                            bool flag = false;
+                            foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
+                                if (map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
+                                    flag = true;
+                                    map.BarCodeRuleId.SetError(true);
+                                } else {
+                                    map.BarCodeRuleId.SetError(false);
+                                }
+
+                                if (!map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
+                                    flag = true;
+                                    map.MissionId.SetError(true);
+                                } else {
+                                    map.MissionId.SetError(false);
+                                }
+
+                                if (map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
+                                    map.BarCodeRuleId.SetError(false);
+                                    map.MissionId.SetError(false);
+                                }
+                            }
+
+                            if (flag) {
+                                check = false;
+                                warningMsg += $"{warningIndex++}. 物料前置任务需要选择要限制的物料匹配规则ID\r\n";
+                            }
+
+                            List<int> missionIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.MissionId.IsDefaultValue()).Select(map => map.MissionId.Value).ToList();
+                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                                missionIds.Add(_detialPopUpForm.PredecessorMission.Value);
+                            }
+
+                            Dictionary<int, int> idsDict = missionIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+                            List<int> idKeys = idsDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
+                            if (idKeys.Count > 0) {
+                                check = false;
+                                _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
+                                    if (idKeys.Contains(map.MissionId.Value)) {
+                                        map.MissionId.SetError(true);
+                                    } else if (!map.MissionId.IsError) {
+                                        map.MissionId.SetError(false);
+                                    }
+                                });
+                                if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                                    _detialPopUpForm.PredecessorMission.SetError(true);
+                                }
+                                warningMsg += $"{warningIndex++}. 任务的“前置任务”与“物料前置任务”无法选择重复的任务\r\n";
+                            } else {
+                                _detialPopUpForm.PredecessorMission.SetError(false);
+                            }
+
+                            List<int> barCodeRuleIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.BarCodeRuleId.IsDefaultValue()).Select(map => map.BarCodeRuleId.Value).ToList();
+                            Dictionary<int, int> barCodeRulesDict = barCodeRuleIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+                            List<int> ruleKeys = barCodeRulesDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
+                            if (ruleKeys.Count > 0) {
+                                check = false;
+                                _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
+                                    if (ruleKeys.Contains(map.BarCodeRuleId.Value)) {
+                                        map.BarCodeRuleId.SetError(true);
+                                    } else if (!map.BarCodeRuleId.IsError) {
+                                        map.BarCodeRuleId.SetError(false);
+                                    }
+                                });
+                                warningMsg += $"{warningIndex++}. 物料条码规则不能重复设置\r\n";
+                            }
+                        }
+
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                         } else {
@@ -278,6 +328,18 @@ namespace OperationGuidance_new.Views {
                                 _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
                             } else {
                                 _missionDTO.predecessor_mission_id = null;
+                            }
+                            Dictionary<int, int> idsDict = new();
+                            foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
+                                if (!map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
+                                    idsDict.Add(map.BarCodeRuleId.Value, map.MissionId.Value);
+                                }
+                            }
+
+                            if (idsDict.Count > 0) {
+                                _missionDTO.predecessor_part_mission_ids = JsonConvert.SerializeObject(idsDict);
+                            } else {
+                                _missionDTO.predecessor_part_mission_ids = null;
                             }
                             _detialPopUpForm.Hide();
 
@@ -1174,70 +1236,81 @@ namespace OperationGuidance_new.Views {
         }
 
         public class MissionDetailPopUpForm: CustomPopUpForm {
-            private int _tableColumns = 2;
+            private readonly int _columnCount = 2;
+            private readonly double _boxRatioOneLine = 7.9;
+            private readonly double _boxRatio = 5.75;
             private ProductMissionDTO _missionDTO;
             private TableLayoutPanel _tablePanel;
             private CustomTextBoxGroup _missionName;
-            private CustomComboBoxGroup<int> _predecessorMission;
             private CustomTextBoxGroup _maxNGNum;
             private CustomTextBoxGroup _passwordNeedTime;
             private CustomTextBoxGroup _productsBarCodeNum;
+            private CustomComboBoxGroup<int> _predecessorMission;
             private CustomTextBoxGroup _partsBarCodeNum;
+            private List<ProductMissionDTO> _allOtherMissions;
+            private List<PredecessorPartMissionMap> _predecessorPartMissionMaps;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public CustomTextBoxGroup MissionName { get => _missionName; set => _missionName = value; }
-            public CustomComboBoxGroup<int> PredecessorMission { get => _predecessorMission; set => _predecessorMission = value; }
             public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
             public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
+            public CustomComboBoxGroup<int> PredecessorMission { get => _predecessorMission; set => _predecessorMission = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
+            public List<PredecessorPartMissionMap> PredecessorPartMissionMaps { get => _predecessorPartMissionMaps; set => _predecessorPartMissionMaps = value; }
 
-            public MissionDetailPopUpForm(ProductMissionDTO missionDTO,
-                    List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
+            public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
                 _missionDTO = missionDTO;
+                _allOtherMissions = allOtherMissions;
                 _tablePanel = new() {
                     Parent = ContentPanel,
-                    ColumnCount = _tableColumns,
+                    ColumnCount = _columnCount,
                 };
 
                 _missionName = new("任务名称") {
                     Parent = _tablePanel,
-                    Ratio = 6.75,
+                    Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                 };
-                _predecessorMission = new("前置任务") {
-                    Parent = _tablePanel,
-                    Ratio = 6.75,
-                    NameAlignment = HorizontalAlignment.Right,
-                };
-                allOtherMissions.ForEach(m => {
-                    _predecessorMission.AddItem(m.name, m.id);
-                });
                 _maxNGNum = new("最大NG数") {
                     Parent = _tablePanel,
-                    Ratio = 6.75,
+                    Ratio = _boxRatio,
                     NameAlignment = HorizontalAlignment.Right,
                     PositiveIntOnly = true,
                 };
                 _passwordNeedTime = new("第几次起需密码") {
                     Parent = _tablePanel,
-                    Ratio = 6.75,
+                    Ratio = _boxRatio,
                     NameAlignment = HorizontalAlignment.Right,
                     PositiveIntOnly = true,
                 };
                 _productsBarCodeNum = new("产品条码") {
                     Parent = _tablePanel,
-                    Ratio = 6.75,
+                    Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
+                _predecessorMission = new("前置任务") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                _allOtherMissions.ForEach(m => {
+                    _predecessorMission.AddItem(m.name, m.id);
+                });
+                _predecessorMission.ItemSelected += () => _predecessorMission.SetError(false);
                 _partsBarCodeNum = new("物料条码") {
                     Parent = _tablePanel,
-                    Ratio = 6.75,
+                    Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
+
+                _tablePanel.SetColumnSpan(_missionName, _columnCount);
+                _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
+                _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
+                _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1248,15 +1321,97 @@ namespace OperationGuidance_new.Views {
                 }
                 int productsBarCodeNum = 0;
                 int partsBarCodeNum = 0;
+                List<int> partBarCodeIds = new();
                 foreach (BarCodeMatchingRuleDTO rule in barCodeMatchingRuleDTOs) {
                     if (rule.type == BarCodeTypes.PRODUCT.Id) {
                         productsBarCodeNum++;
                     } else {
                         partsBarCodeNum++;
+                        partBarCodeIds.Add(rule.id);
                     }
                 }
-                _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
-                _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
+
+                // Show combo box if product bar code is set
+                if (productsBarCodeNum > 0) {
+                    _predecessorMission.Show();
+                    _productsBarCodeNum.SetValue(0, "已配置");
+                } else {
+                    _predecessorMission.Hide();
+                    _productsBarCodeNum.SetValue(0, "未配置");
+                }
+
+                // Show same number of combo boxes as the numbers of part bar code
+                _predecessorPartMissionMaps = new();
+                if (partsBarCodeNum > 0) {
+                    _partsBarCodeNum.SetValue(0, $"已配置{partsBarCodeNum}个");
+                    AddPredecessorPartMissions(partBarCodeIds);
+
+                    if (missionDTO.predecessor_part_mission_ids != null) {
+                        Dictionary<int, int>? idsDict = JsonConvert.DeserializeObject<Dictionary<int, int>>(missionDTO.predecessor_part_mission_ids);
+                        if (idsDict != null) {
+                            int index = 0;
+                            int errorIndex = 1;
+                            string barCodeRuleOrMissionIdNotFound = "";
+                            foreach (KeyValuePair<int, int> pair in idsDict) {
+                                CustomComboBoxGroup<int> barCodeRuleId = _predecessorPartMissionMaps[index].BarCodeRuleId;
+                                int ruleIdIndex = barCodeRuleId.IndexOf(pair.Key);
+                                if (ruleIdIndex >= 0) {
+                                    barCodeRuleId.SetCurrent(ruleIdIndex);
+                                } else {
+                                    barCodeRuleId.SetError(true);
+                                    barCodeRuleOrMissionIdNotFound += $"{errorIndex++}. 条码匹配规则ID[{pair.Key}]，不存在或被删除\r\n";
+                                }
+
+                                CustomComboBoxGroup<int> missionId = _predecessorPartMissionMaps[index].MissionId;
+                                int missionIdIndex = missionId.IndexOf(pair.Value);
+                                if (missionIdIndex >= 0) {
+                                    missionId.SetCurrent(missionIdIndex);
+                                } else {
+                                    missionId.SetError(true);
+                                    barCodeRuleOrMissionIdNotFound += $"{errorIndex++}. 条码匹配规则ID[{pair.Key}]对应的任务不存在或被删除\r\n";
+                                }
+
+                                index++;
+                            }
+
+                            ShowWarningIfHasAsync(barCodeRuleOrMissionIdNotFound);
+                        }
+                    }
+                } else {
+                    _partsBarCodeNum.SetValue(0, "未配置");
+                }
+
+                async void ShowWarningIfHasAsync(string errorMsg) {
+                    if (!string.IsNullOrEmpty(errorMsg)) {
+                        await Task.Run(() => {
+                            WidgetUtils.MainForm.BeginInvoke(async () => {
+                                await Task.Delay(500);
+                                WidgetUtils.ShowWarningPopUp($"物料前置任务配置有误：\r\n{errorMsg}");
+                            });
+                        });
+                    }
+                }
+            }
+
+            public void AddPredecessorPartMissions(List<int> partBarCodeIds) {
+                for (int i = 0; i < partBarCodeIds.Count; i++) {
+
+                    CustomComboBoxGroup<int> idBox = new("条码规则ID" + (i + 1)) {
+                        Parent = _tablePanel,
+                        Ratio = _boxRatio,
+                        NameAlignment = HorizontalAlignment.Right,
+                    };
+                    partBarCodeIds.ForEach(id => idBox.AddItem(id + "", id));
+
+                    CustomComboBoxGroup<int> missionBox = new("前置物料任务" + (i + 1)) {
+                        Parent = _tablePanel,
+                        Ratio = _boxRatio,
+                        NameAlignment = HorizontalAlignment.Right,
+                    };
+                    _allOtherMissions.ForEach(m => missionBox.AddItem(m.name, m.id));
+
+                    _predecessorPartMissionMaps.Add(new(i, idBox, missionBox));
+                }
             }
 
             public void ResizeSelf() {
@@ -1274,9 +1429,9 @@ namespace OperationGuidance_new.Views {
                 int subTitleMargin = subTitleHeight / 5;
                 int tableHeight = 0;
                 int previousRowIndex = -1;
-                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .825);
+                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .5);
                 int tableWidth = cntentWidth - contentPadding.Size.Width;
-                int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
+                int contentPieceWidth = (tableWidth - boxMargin * (_columnCount + 1)) / _columnCount;
                 foreach (Control control in _tablePanel.Controls) {
                     if (control.Visible) {
                         int currentRowIndex = _tablePanel.GetPositionFromControl(control).Row;
@@ -1308,12 +1463,37 @@ namespace OperationGuidance_new.Views {
                     } else if (control is PictureBoxGroup pictureBox) {
                         continue;
                     } else {
-                        control.Margin = new(boxMargin);
-                        control.Size = new(contentPieceWidth, boxHeight);
+                        control.Margin = new(boxMargin, boxMargin, 0, boxMargin);
+
+                        int columnSpan = _tablePanel.GetColumnSpan(control);
+                        if (columnSpan > 1) {
+                            control.Size = new(contentPieceWidth * columnSpan + boxMargin * (columnSpan - 1), boxHeight);
+                        } else {
+                            control.Size = new(contentPieceWidth, boxHeight);
+                        }
                     }
                 }
 
                 SetContentSizeAndSelfSize(contentSize);
+            }
+        }
+
+        public class PredecessorPartMissionMap {
+            private int _index;
+            private CustomComboBoxGroup<int> _barCodeRuleId;
+            private CustomComboBoxGroup<int> _missionId;
+
+            public int Index { get => _index; set => _index = value; }
+            public CustomComboBoxGroup<int> BarCodeRuleId { get => _barCodeRuleId; set => _barCodeRuleId = value; }
+            public CustomComboBoxGroup<int> MissionId { get => _missionId; set => _missionId = value; }
+
+            public PredecessorPartMissionMap(int index, CustomComboBoxGroup<int> barCodeRuleId, CustomComboBoxGroup<int> missionId) {
+                _index = index;
+                _barCodeRuleId = barCodeRuleId;
+                _missionId = missionId;
+
+                _barCodeRuleId.ItemSelected += () => _barCodeRuleId.SetError(false);
+                _missionId.ItemSelected += () => _missionId.SetError(false);
             }
         }
 

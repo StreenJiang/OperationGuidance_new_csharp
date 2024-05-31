@@ -614,7 +614,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 } else if (control is PictureBoxGroup pictureBox) {
                     continue;
                 } else {
-                    control.Margin = new(boxMargin);
+                    control.Margin = new(boxMargin, boxMargin, 0, boxMargin);
 
                     int columnSpan = _tablePanel.GetColumnSpan(control);
                     if (columnSpan > 1) {

@@ -203,6 +203,17 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `predecessor_part_mission_ids` int(11) NULL AFTER `predecessor_mission_id`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240531 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240531", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -344,6 +355,30 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20240521 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240521", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240531&quot;;
+        ///
+        ///CREATE TABLE &quot;product_mission&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;pn_code&quot; text(64),
+        ///  &quot;max_ng_num&quot; integer(4),
+        ///  &quot;password_need_time&quot; integer(4),
+        ///  &quot;enabled&quot; integer(1),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;predecessor_mission_id&quot; integer,
+        ///  &quot;predecessor_part_mission_ids&quot; integer,
+        ///  &quot;multi_device_independence&quot; integer(1),
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;crea [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240531 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240531", resourceCulture);
             }
         }
     }

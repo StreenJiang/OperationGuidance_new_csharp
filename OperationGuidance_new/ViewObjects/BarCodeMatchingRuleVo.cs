@@ -4,6 +4,8 @@ using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.ViewObjects {
     public class BarCodeMatchingRuleVO: AVOBase {
+        [GridColumn("ID")]
+        public override int? id { get; set; }
         [GridColumn("长度")]
         public int? length { get; set; }
         [GridColumn("结束符")]
@@ -15,8 +17,8 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("条码类型")]
         public string? str_type { get; set; }
         private int? _type;
-        public int? type { 
-            get => _type; 
+        public int? type {
+            get => _type;
             set {
                 _type = value;
                 if (value != null) {

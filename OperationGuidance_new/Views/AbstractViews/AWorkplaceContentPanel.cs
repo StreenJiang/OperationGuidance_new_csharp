@@ -7,6 +7,7 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
@@ -610,11 +611,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (deviceBlock.Category == DeviceCategories.ARM) {
                                 List<IoBoxTask> tasks = _ioBoxTasks.Values.ToList().Where(task => task.ArmType != null).ToList();
                                 if (tasks.Count > 0) {
-                                    deviceBlock.BlockHoverUp = false;
-                                    deviceBlock.BlockHoverDown = false;
-                                    deviceBlock.FloatingForm = new ArmDetailFloatingForm(deviceBlock.CategoryName, tasks, panelHeight);
-                                    contentSize.Height = panelHeight * tasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
-
                                     SetArmRetrieve(true);
                                     deviceBlock.PopUpForm = new ArmDetailPopUpForm(deviceBlock.CategoryName, _workstationsDTOs, tasks, panelHeight);
                                     deviceBlock.PopUpForm.HandleDestroyed += (sender, eventArgs) => {
@@ -866,7 +862,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Reset io box status
         protected virtual void ReseetIoBox() {
-            if (_ioBoxTasks.Count > 0) {
+            if (_ioBoxTasks != null && _ioBoxTasks.Count > 0) {
                 foreach (IoBoxTask task in _ioBoxTasks.Values) {
                     if (task.ArmType != null) {
                         task.ArmType.ActionAfterCoordinatesReceived = null;
@@ -1853,18 +1849,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
 
-            foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                tool.Value.ActionAfterAnalysis = null;
-                // Lock all tools
-                tool.Value.SendLock();
+            if (_toolTasks != null && _toolTasks.Count > 0) {
+                foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
+                    // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                    tool.Value.ActionAfterAnalysis = null;
+                    // Lock all tools
+                    tool.Value.SendLock();
+                }
             }
             // Clear all delegates once this workplace handle has been destroyed to ensure running performance
             ReseetIoBox();
 
-            foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
-                pair.Value.ActionAfterDataReceived = null;
+            if (_serialPortTasks != null && _serialPortTasks.Count > 0) {
+                foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
+                    // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
+                    pair.Value.ActionAfterDataReceived = null;
+                }
             }
 
             // Dispose all bolt buttons to stop all task they have
@@ -2163,6 +2163,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             // 所有检查完毕，回填、或切换任务后再回填
             if (checkPassed) {
+
                 // 存入缓存并回填到主界面
                 _workplace.BarCodeObj.ProductBarCode = barCode;
                 WriteBackBarCodes();
@@ -2218,8 +2219,26 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             // 物料条码校验通过
             else {
+                // 如果存在前置物料任务，则先查询前置物料任务是否完成
+                bool checkPassed = true;
+                if (_mission.predecessor_part_mission_ids != null) {
+                    Dictionary<int, int>? idsDict = JsonConvert.DeserializeObject<Dictionary<int, int>>(_mission.predecessor_part_mission_ids);
+                    if (idsDict != null) {
+                        foreach (KeyValuePair<int, int> pair in idsDict) {
+                            if (pair.Key == ruleId) {
+                                bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
+                                if (!yes) {
+                                    WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
+                                    checkPassed = false;
+                                }
+                            }
+                        }
+
+                    }
+                }
+
                 // 物料码返工确认
-                if (_workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
                     bool needRedo;
                     if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                         // 需要管理员密码弹窗
@@ -2234,29 +2253,33 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         // 由于追溯码也有这个校验，因此如果不需要返工，则不动已经校验过的状态
                         _workplace.IsRedo = (int) YesOrNo.YES;
                     } else {
-                        box.GetTextBox(0).IsError = true;
-                        return;
+                        checkPassed = false;
                     }
                 }
-                // 存入缓存并回填到主界面
-                _workplace.BarCodeObj.PartsBarCodes.Add(barCode);
-                _workplace.BarCodeObj.PartsMatchingRulesCached.Add(ruleId);
-                WriteBackBarCodes();
-                // 禁用当前输入框
-                box.Enabled = false;
-                // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
-                if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
-                    CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
-                    nextBox.Enabled = true;
-                    nextBox.GetTextBox(0).Box.Focus();
-                    ActiveControl = nextBox.GetTextBox(0).Box;
-                }
-                // 检查是否可以激活任务
-                if (CheckCanActivateMission()) {
-                    // 激活任务
-                    _workplace.ActivateMission();
-                    await Task.Delay(1000);
-                    Hide();
+
+                if (checkPassed) {
+                    // 存入缓存并回填到主界面
+                    _workplace.BarCodeObj.PartsBarCodes.Add(barCode);
+                    _workplace.BarCodeObj.PartsMatchingRulesCached.Add(ruleId);
+                    WriteBackBarCodes();
+                    // 禁用当前输入框
+                    box.Enabled = false;
+                    // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
+                    if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
+                        CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
+                        nextBox.Enabled = true;
+                        nextBox.GetTextBox(0).Box.Focus();
+                        ActiveControl = nextBox.GetTextBox(0).Box;
+                    }
+                    // 检查是否可以激活任务
+                    if (CheckCanActivateMission()) {
+                        // 激活任务
+                        _workplace.ActivateMission();
+                        await Task.Delay(1000);
+                        Hide();
+                    }
+                } else {
+                    box.GetTextBox(0).IsError = true;
                 }
             }
         }
