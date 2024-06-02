@@ -185,15 +185,20 @@ namespace OperationGuidance_new.Constants {
 
         public override void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis) {
             if (_sendingPosition > 0) {
-                string high = string.Join("", dataMessage.Skip(8).Take(1));
-                String reversedBinaryStr = new(MainUtils.ToBinaryString(high).Reverse().ToArray());
-                _currentStatus = int.Parse(reversedBinaryStr[_sendingPosition - 1].ToString());
+                try {
+                    string high = string.Join("", dataMessage.Skip(8).Take(1));
+                    String reversedBinaryStr = new(MainUtils.ToBinaryString(high).Reverse().ToArray());
+                    _currentStatus = int.Parse(reversedBinaryStr[_sendingPosition - 1].ToString());
 
-                if (_ioBoxActionAfterAnalysis != null) {
-                    if (_currentStatus == 0) {
-                        _ioBoxActionAfterAnalysis(_sendingPosition);
-                        _sendingPosition = 0;
+                    if (_ioBoxActionAfterAnalysis != null) {
+                        if (_currentStatus == 0) {
+                            _ioBoxActionAfterAnalysis(_sendingPosition);
+                            _sendingPosition = 0;
+                        }
                     }
+                } catch (Exception e) {
+                    logger.Error($"Error while analyzing data from arranger, _sendingPosition = {_sendingPosition}, e = {e}");
+                    throw e;
                 }
             }
         }

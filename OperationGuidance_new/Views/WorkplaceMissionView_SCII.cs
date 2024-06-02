@@ -1011,201 +1011,205 @@ namespace OperationGuidance_new.Views {
                         return;
                     }
 
-                    ToolTask toolTask = _toolTasks[deviceId];
-                    if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
-                        int workstationId = toolTask.WorkstationId.Value;
+                    try {
+                        ToolTask toolTask = _toolTasks[deviceId];
+                        if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
+                            int workstationId = toolTask.WorkstationId.Value;
 
-                        List<int> workstationIds = new();
-                        foreach (List<BoltButton> bolts in _allBolts.Values) {
-                            workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
-                        }
-                        workstationIds = workstationIds.Distinct().ToList();
-                        List<WorkstationDTO> workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
-                        List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
+                            List<int> workstationIds = new();
+                            foreach (List<BoltButton> bolts in _allBolts.Values) {
+                                workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
+                            }
+                            workstationIds = workstationIds.Distinct().ToList();
+                            List<WorkstationDTO> workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
+                            List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
 
-                        // Main display
-                        _torque.Text = data.torque + "";
-                        _angle.Text = data.angle + "";
+                            // Main display
+                            _torque.Text = data.torque + "";
+                            _angle.Text = data.angle + "";
 
-                        // Get current bolt
-                        BoltButton currentBolt = _currentWorkingBolt;
-                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-                        OperationDataDTO dataDTO = new();
-                        CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
+                            // Get current bolt
+                            BoltButton currentBolt = _currentWorkingBolt;
+                            ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                            OperationDataDTO dataDTO = new();
+                            CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
 
-                        WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
-                        dataDTO.workstation_id = workstationDTO.id;
-                        dataDTO.workstation_name = workstationDTO.name;
+                            WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
+                            dataDTO.workstation_id = workstationDTO.id;
+                            dataDTO.workstation_name = workstationDTO.name;
 
-                        DeviceToolDTO toolDTO = _tools.Single(t => t.id == deviceId);
-                        dataDTO.tool_name = toolDTO.name;
-                        dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
-                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
-                        dataDTO.product_sied_id = _sides[_currentSideIndex].id;
-                        dataDTO.bolt_serial_num = boltDTO.serial_num;
-                        MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
-                        dataDTO.mission_record_id = missionRecord.id;
-                        dataDTO.vin_number = missionRecord.product_bar_code;
-                        if (_realTimeArmCoordinates != null) {
-                            dataDTO.arm_position = _realTimeArmCoordinates.ToString();
-                        }
+                            DeviceToolDTO toolDTO = _tools.Single(t => t.id == deviceId);
+                            dataDTO.tool_name = toolDTO.name;
+                            dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
+                            dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
+                            dataDTO.product_sied_id = _sides[_currentSideIndex].id;
+                            dataDTO.bolt_serial_num = boltDTO.serial_num;
+                            MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
+                            dataDTO.mission_record_id = missionRecord.id;
+                            dataDTO.vin_number = missionRecord.product_bar_code;
+                            if (_realTimeArmCoordinates != null) {
+                                dataDTO.arm_position = _realTimeArmCoordinates.ToString();
+                            }
 
-                        // If result type is tightening
-                        if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
-                            bool tighteningOK = true;
-                            string errorMsg = "";
-                            // Initialize color to ok
-                            _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
-                            _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+                            // If result type is tightening
+                            if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
+                                bool tighteningOK = true;
+                                string errorMsg = "";
+                                // Initialize color to ok
+                                _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+                                _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
 
-                            // Check tightening status
-                            if (data.tightening_status != (int) TighteningStatus.OK) {
-                                tighteningOK = false;
-                                if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                // Check tightening status
+                                if (data.tightening_status != (int) TighteningStatus.OK) {
+                                    tighteningOK = false;
+                                    if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                        _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                        if (!string.IsNullOrEmpty(errorMsg)) {
+                                            errorMsg += "\r\n";
+                                        }
+                                        errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                    }
+                                    if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                        _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                        if (!string.IsNullOrEmpty(errorMsg)) {
+                                            errorMsg += "\r\n";
+                                        }
+                                        errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                    }
+                                }
+
+                                // Check torque
+                                if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
+                                    tighteningOK = false;
                                     _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
-                                    errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                    errorMsg += "扭矩与配置范围不符";
                                 }
-                                if (data.angle_status != (int) TighteningCommonStatus.OK) {
+
+                                // Check angle
+                                if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
+                                    tighteningOK = false;
                                     _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
-                                    errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                    errorMsg += "角度与配置范围不符";
                                 }
-                            }
 
-                            // Check torque
-                            if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
-                                tighteningOK = false;
-                                _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                if (!string.IsNullOrEmpty(errorMsg)) {
-                                    errorMsg += "\r\n";
+                                // Switch to next bolt
+                                if (tighteningOK) {
+                                    // Reset tightening type to tightening in case somewhere did some changes
+                                    _needLoosening = false;
+                                    RemoveInformationMsg(_workingProcessPanel.NGReasons);
+                                    _workingProcessPanel.NGReasons = null;
+
+                                    // Lock the device
+                                    if (_locating_enabled) {
+                                        toolTask.SendLock();
+                                    }
+
+                                    currentBolt.BoltStatus = BoltStatus.DONE;
+                                    currentBolt.Label = data.torque.ToString("0.00");
+
+                                    // Check next index
+                                    List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
+                                    int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
+                                    // 检查是否存在跳点的情况
+                                    while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
+                                        nextIndex++;
+                                    }
+
+                                    if (nextIndex < currentSideBolts.Count) {
+                                        _currentWorkingBolt = SwitchBolt(nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                    } else {
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+
+                                        // Update mission result to ok
+                                        _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                        _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+                                        // 重置任务信息
+                                        ResetMissionDetails();
+                                    }
+
+                                    // Store data
+                                    dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                    StoreTighteningData(dataDTO);
+                                } else {
+                                    // Lock first
+                                    if (_locating_enabled) {
+                                        // Lock all tools here
+                                        _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
+                                    }
+
+                                    // Change bolt status
+                                    currentBolt.BoltStatus = BoltStatus.ERROR;
+
+                                    // Count ng times
+                                    currentBolt.NgTimes++;
+
+                                    // Mission failed
+                                    if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
+                                        // Set custom error message
+                                        _workingProcessPanel.NGReasons = errorMsg;
+
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+
+                                        // 重置任务信息
+                                        ResetMissionDetails();
+
+                                        // 记录数据
+                                        StoreTighteningData(dataDTO);
+
+                                        // 先记录数据再弹出提示
+                                        WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                    } else {
+                                        // // 扭矩角度数据颜色改成红色
+                                        // _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                        // _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+
+                                        _workingProcessPanel.NGReasons = errorMsg;
+                                        AddInformationMsg(_workingProcessPanel.NGReasons);
+
+                                        _needLoosening = true;
+                                        _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+
+                                        // 记录数据
+                                        StoreTighteningData(dataDTO);
+
+                                        // 需要管理员密码弹窗
+                                        if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
+                                            AddLockMsg(WorkingProcessPanel.AdminConfirmation);
+                                            _adminConfirmed = false;
+
+                                            // 先记录数据再打开弹窗
+                                            NGConfirmPopUp();
+                                        }
+                                    }
+                                    dataDTO.tightening_status = (int) TighteningStatus.NG;
                                 }
-                                errorMsg += "扭矩与配置范围不符";
-                            }
-
-                            // Check angle
-                            if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
-                                tighteningOK = false;
-                                _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                if (!string.IsNullOrEmpty(errorMsg)) {
-                                    errorMsg += "\r\n";
-                                }
-                                errorMsg += "角度与配置范围不符";
-                            }
-
-                            // Switch to next bolt
-                            if (tighteningOK) {
-                                // Reset tightening type to tightening in case somewhere did some changes
+                            } else {
                                 _needLoosening = false;
-                                RemoveInformationMsg(_workingProcessPanel.NGReasons);
+
+                                // 反松结束后把扭矩角度改回黑色
+                                _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+                                _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+
+                                // Remove error message
+                                RemoveLockMsg(_workingProcessPanel.NGReasons);
                                 _workingProcessPanel.NGReasons = null;
 
-                                // Lock the device
-                                if (_locating_enabled) {
-                                    toolTask.SendLock();
-                                }
-
-                                currentBolt.BoltStatus = BoltStatus.DONE;
-                                currentBolt.Label = data.torque.ToString("0.00");
-
-                                // Check next index
-                                List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
-                                int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
-                                // 检查是否存在跳点的情况
-                                while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
-                                    nextIndex++;
-                                }
-
-                                if (nextIndex < currentSideBolts.Count) {
-                                    _currentWorkingBolt = SwitchBolt(nextIndex);
-                                    ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                } else {
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
-
-                                    // Update mission result to ok
-                                    _missionRecord.mission_result = (int) TighteningStatus.OK;
-                                    _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-
-                                    // 重置任务信息
-                                    ResetMissionDetails();
-                                }
-
-                                // Store data
-                                dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                StoreTighteningData(dataDTO);
-                            } else {
-                                // Lock first
-                                if (_locating_enabled) {
-                                    // Lock all tools here
-                                    _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
-                                }
-
-                                // Change bolt status
-                                currentBolt.BoltStatus = BoltStatus.ERROR;
-
-                                // Count ng times
-                                currentBolt.NgTimes++;
-
-                                // Mission failed
-                                if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
-                                    // Set custom error message
-                                    _workingProcessPanel.NGReasons = errorMsg;
-
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
-                                    // 重置任务信息
-                                    ResetMissionDetails();
-
+                                if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
                                     StoreTighteningData(dataDTO);
-
-                                    // 先记录数据再弹出提示
-                                    WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
-                                } else {
-                                    // // 扭矩角度数据颜色改成红色
-                                    // _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                    // _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-
-                                    _workingProcessPanel.NGReasons = errorMsg;
-                                    AddInformationMsg(_workingProcessPanel.NGReasons);
-
-                                    _needLoosening = true;
-                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-
-                                    // 记录数据
-                                    StoreTighteningData(dataDTO);
-
-                                    // 需要管理员密码弹窗
-                                    if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
-                                        AddLockMsg(WorkingProcessPanel.AdminConfirmation);
-                                        _adminConfirmed = false;
-
-                                        // 先记录数据再打开弹窗
-                                        NGConfirmPopUp();
-                                    }
                                 }
-                                dataDTO.tightening_status = (int) TighteningStatus.NG;
-                            }
-                        } else {
-                            _needLoosening = false;
-
-                            // 反松结束后把扭矩角度改回黑色
-                            _torque.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
-                            _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
-
-                            // Remove error message
-                            RemoveLockMsg(_workingProcessPanel.NGReasons);
-                            _workingProcessPanel.NGReasons = null;
-
-                            if (MainUtils.GetStoreLooseningData()) {
-                                // 记录数据
-                                StoreTighteningData(dataDTO);
                             }
                         }
+                    } catch (Exception e) {
+                        logger.Error($"Error occurred while handling tightening data, e: {e}");
                     }
                 });
             });

@@ -169,7 +169,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } else {
                 ProductMissionDTO? mission = _apis.QueryProductMissionDetail(new(missionId.Value)).ProductMissionDTO;
                 if (mission == null) {
-                    logger.Debug($"Can not find mission from database by mission_id = {missionId}");
                     _mission = new ProductMissionDTO() {
                         name = "未选择任务",
                         ProductSides = new() {

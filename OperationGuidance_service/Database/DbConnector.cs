@@ -35,11 +35,11 @@ namespace OperationGuidance_service.Database {
                     if (dbConnection != null) {
                         break;
                     }
+                    tryTimes++;
+                    logger.Warn($"Can not connect to DB, reconnecting... tryTimes = {tryTimes}");
                 } catch (DatabaseException de) {
                     logger.Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
                     continue;
-                } finally {
-                    tryTimes++;
                 }
             }
 

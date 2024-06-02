@@ -17,9 +17,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         private readonly int _flikerInterval = 500;
         private readonly float _opacity = .75F;
-        private readonly int _arranger_send_delay = 50;
+        private readonly int _arranger_send_delay = 100;
         private readonly int _arranger_pulse_delay = 500;
-        private readonly int _arranger_time_out = 3000;
+        private readonly int _arranger_time_out = 5000;
         private readonly int _setter_selector_delay = 50;
         private readonly int _setter_selector_time_out = 10000;
         private int _borderSize;

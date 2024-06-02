@@ -819,6 +819,11 @@ namespace OperationGuidance_new.Views {
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
                 BeginInvoke(() => {
+                    // Nonactivated or finished will not handle any received data
+                    if (!_activated) {
+                        return;
+                    }
+
                     try {
                         ToolTask toolTask = _toolTasks[deviceId];
                         if (toolTask.WorkstationId != null) {
