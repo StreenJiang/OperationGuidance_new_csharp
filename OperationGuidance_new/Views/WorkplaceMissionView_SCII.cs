@@ -1,11 +1,9 @@
 ﻿using CustomLibrary.Configs;
-using CustomLibrary.Constants;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
-using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
@@ -15,122 +13,17 @@ using System.Reflection;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 
-namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView_SCII: CustomContentPanel {
-        private MissionListPanel? _missionListPanel;
-        private List<ProductMissionDTO>? _productMissionDTOs;
-        private OperationGuidanceApis? apis;
-        private bool _operatorOpenning = false;
-
-        private CustomTabPanel? _pagePanel;
-        private TopBar? _topBar;
-        private AWorkplaceContentPanel? _workplacePanel;
-
-        public WorkplaceMissionView_SCII() : base() => OpenMissionListView();
-        public WorkplaceMissionView_SCII(bool operatorOpenning) : base() {
-            _operatorOpenning = operatorOpenning;
-            // 如果是操作员登录，则直接打开工作台
-            if (operatorOpenning) {
-                OpenWorkplaceViewDirectly();
-            } else {
-                OpenMissionListView();
-            }
-        }
-
-        private void OpenMissionListView() {
-            // Get apis
-            apis = SystemUtils.GetApis();
-            // Initialize
-            _missionListPanel = new("选择任务", "直接进入工作台", (s, e) => OpenWorkplaceViewDirectly()) {
-                Margin = new Padding(0),
-                Parent = this,
-            };
-        }
-        private void OpenWorkplaceViewDirectly() => OpenWorkplaceView(null);
-
-        private void CheckAndDisplay() {
-            if (_missionListPanel != null) {
-                // Fetch data
-                FetchData();
-                // If there is no any mission, so show the big button
-                if (_productMissionDTOs != null) {
-                    _missionListPanel.RefreshMissionBlocks(_productMissionDTOs, OpenWorkplaceView);
-                }
-            }
-        }
-
-        public override void VisibleToTrue() {
-            if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
-                System.Console.WriteLine($"_workplacePanel.Activated: {_workplacePanel.Activated}");
-                // TODO: 这里或许可以做一个“任务中断”的效果，即不是每次进入都打开一个新的任务
-            }
-            // Check and display view
-            CheckAndDisplay();
-            // Invoke base, it will resize all children
-            base.VisibleToTrue();
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            // Resize mission list panel
-            if (_missionListPanel != null) {
-                _missionListPanel.Size = new(Width, Height);
-                _missionListPanel.ResizeChildren(eventArgs);
-                if (_missionListPanel.Visible) {
-                    _missionListPanel.Invalidate();
-                }
-            }
-        }
-
-        private void OpenWorkplaceView(int? missionId) {
-            if (_pagePanel != null && !_pagePanel.IsDisposed) {
-                _pagePanel.Dispose();
-            }
-            if (_topBar != null && !_topBar.IsDisposed) {
-                _topBar.Dispose();
-            }
-            if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
-                _workplacePanel.Dispose();
-            }
-            // Create a new view
-            _pagePanel = new() {
-                Parent = WidgetUtils.MainForm,
-                Size = WidgetUtils.MainForm.ClientSize,
-            };
-            _topBar = new(_operatorOpenning) {
-                Parent = _pagePanel,
-                BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
-                MainMenuLogo = Properties.Resources.logo,
-                Margin = new Padding(0),
-                PanelDirection = MenuPanelDirection.TOP,
-                TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
-            };
-            _workplacePanel = new WorkplaceContentPanel_SCII(missionId, missionName => {
-                _topBar.Title = missionName;
+namespace OperationGuidance_new.Views
+{
+    public class WorkplaceMissionView_SCII: AWorkplaceMissionView<WorkplaceContentPanel_SCII> {
+        protected override WorkplaceContentPanel_SCII GetWrokplacePanel(int? missionId, WorkplaceTopBar topBar) {
+            return new(missionId, missionName => {
+                topBar.Title = missionName;
             }) {
-                Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
                 Margin = new Padding(0),
                 PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
             };
-            _topBar.Workplace = _workplacePanel;
-            _pagePanel.ResizeChildren();
-            // Hide main panel
-            if (WidgetUtils.MainPanel != null) {
-                WidgetUtils.MainPanel.Visible = false;
-            }
-            if (_operatorOpenning) {
-                WidgetUtils.MainForm.SizeChanged += (s, e) => {
-                    _pagePanel.Size = WidgetUtils.MainSize;
-                };
-            }
-            _pagePanel.Size = new(WidgetUtils.MainSize.Width - 2, WidgetUtils.MainSize.Height - 2);
-            _pagePanel.Location = new(1, 1);
-        }
-
-        private void FetchData() {
-            if (apis != null) {
-                _productMissionDTOs = apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
-            }
         }
     }
 
@@ -173,7 +66,7 @@ namespace OperationGuidance_new.Views {
         // private PageSwitchButton _last;
         // private Label _pageInfo;
 
-
+        public WorkplaceContentPanel_SCII() { }
         public WorkplaceContentPanel_SCII(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             _actionAfterSendingPset = SetPset;
 
@@ -421,43 +314,44 @@ namespace OperationGuidance_new.Views {
             _missionSelectedName.SetValue(0, _mission.name);
             ResetMissionDetails();
 
-            await Task.Run(async () => {
-                while (!IsHandleCreated) {
-                    await Task.Delay(200);
-                }
-                BeginInvoke(() => {
-                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-                    // 存在可以回填的数据
-                    if (missionRecordDTO != null) {
-                        // 刚登录
-                        if (MainUtils.LoginFlag) {
-                            // 需要回填确认
-                            if (MainUtils.IsProductBatchNoticeEnabled()) {
-                                // 弹出提示确认是否回填
-                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                                } else {
-                                    MainUtils.LastProductBatch = null;
-                                }
-                            }
-                            // 不需要提示则直接回填
-                            else {
-                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                            }
-                        }
-                        // 最新查到的批次信息与缓存的不一致，则换掉
-                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                        }
-                        // 不管是否回填，登录标识都要改
-                        MainUtils.LoginFlag = false;
-                        // 不为空就回填
-                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
-                        }
-                    }
-                });
-            });
+            // Don't need this anymore
+            // await Task.Run(async () => {
+            //     while (!IsHandleCreated) {
+            //         await Task.Delay(200);
+            //     }
+            //     BeginInvoke(() => {
+            //         MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
+            //         // 存在可以回填的数据
+            //         if (missionRecordDTO != null) {
+            //             // 刚登录
+            //             if (MainUtils.LoginFlag) {
+            //                 // 需要回填确认
+            //                 if (MainUtils.IsProductBatchNoticeEnabled()) {
+            //                     // 弹出提示确认是否回填
+            //                     if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
+            //                         MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //                     } else {
+            //                         MainUtils.LastProductBatch = null;
+            //                     }
+            //                 }
+            //                 // 不需要提示则直接回填
+            //                 else {
+            //                     MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //                 }
+            //             }
+            //             // 最新查到的批次信息与缓存的不一致，则换掉
+            //             else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
+            //                 MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //             }
+            //             // 不管是否回填，登录标识都要改
+            //             MainUtils.LoginFlag = false;
+            //             // 不为空就回填
+            //             if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
+            //                 _productBatch.SetValue(0, MainUtils.LastProductBatch);
+            //             }
+            //         }
+            //     });
+            // });
         }
 
         protected override void ActionAfterArmDataReceived(Coordinates3D armCoordinates) {
@@ -475,6 +369,9 @@ namespace OperationGuidance_new.Views {
                             bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
                             bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
 
+                            // Can't lock/unlock tools manually while arm is running (Only for SCII)
+                            RemoveLockMsg(WorkingProcessPanel.UnlockedManually);
+                            RemoveLockMsg(WorkingProcessPanel.LockedManually);
                             if (xOk && yOk && zOk) {
                                 // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
@@ -495,7 +392,7 @@ namespace OperationGuidance_new.Views {
                                     AddLockMsg(WorkingProcessPanel.AdminConfirmation);
                                     if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                         _adminConfirmed = false;
-                                        NGConfirmPopUp();
+                                        BoltNGConfirmPopUp();
                                     }
                                 }
                             } else {
@@ -868,6 +765,21 @@ namespace OperationGuidance_new.Views {
         //     }
         // }
 
+        protected override void ToolOperationPopUpFormExtraActions(ToolOperationPopUpForm popUpForm) {
+            if (_activated) {
+                popUpForm.BtnLock.Enabled = false;
+                popUpForm.BtnUnlock.Enabled = false;
+            }
+        }
+
+        protected override void AdminPopUpExtraActions() {
+            if (_adminPasswordPopUpForm != null && !_adminPasswordPopUpForm.IsDisposed) {
+                _adminPasswordPopUpForm.CloseButton.Enabled = false;
+            }
+        }
+
+        protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
+
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
                 lock (DataStorageLockObj) {
@@ -1165,7 +1077,8 @@ namespace OperationGuidance_new.Views {
                                         StoreTighteningData(dataDTO);
 
                                         // 先记录数据再弹出提示
-                                        WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                        // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                        MissionNGConfirmPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败。请输入管理员密码");
                                     } else {
                                         // // 扭矩角度数据颜色改成红色
                                         // _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
@@ -1186,7 +1099,7 @@ namespace OperationGuidance_new.Views {
                                             _adminConfirmed = false;
 
                                             // 先记录数据再打开弹窗
-                                            NGConfirmPopUp();
+                                            BoltNGConfirmPopUp();
                                         }
                                     }
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;

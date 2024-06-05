@@ -27,9 +27,9 @@ namespace OperationGuidance_service.Database {
         public static DbConnection GetConnection() {
             DbConnection? dbConnection = connector.GetDbConnection();
 
-            int tryMaxTimes = 3;
+            int tryMaxTimes = 2;
             int tryTimes = 0;
-            while (tryTimes <= tryMaxTimes) {
+            while (tryTimes < tryMaxTimes) {
                 try {
                     dbConnection = connector.GetDbConnection();
                     if (dbConnection != null) {

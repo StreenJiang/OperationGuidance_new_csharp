@@ -126,7 +126,7 @@ namespace OperationGuidance_service.Utils {
             return apis ?? throw new NullReferenceException("Apis can not be null, please check the Dependency Injector.");
         }
 
-        // MD5加密
+        // MD4加密
         public static string ToMD5String(string originalString) {
             return BitConverter.ToString(MD5.HashData(Encoding.UTF8.GetBytes(originalString))).Replace("-", "");
         }

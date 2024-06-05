@@ -33,8 +33,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected Action<string> _resetMissionName;
         protected bool _activated;
         public Image _defaultImage;
-        protected readonly int _lockCheckingTaskDelay = 500;
-        protected readonly int _checkDevicesConnectionDelay = 2500;
+        protected readonly int _lockCheckingTaskDelay = 50;
+        protected readonly int _checkDevicesConnectionDelay = 500;
         protected readonly int _resendPsetMaxTimes = 5;
         protected readonly int _resendSignalToArrangerMaxTimes = 5;
         protected readonly int _resendSignalToSetterSelectorMaxTimes = 5;
@@ -152,6 +152,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         #endregion
 
+        public AWorkplaceContentPanel() { }
         public AWorkplaceContentPanel(int? missionId, Action<string> resetMissionName) : base() {
             logger = MainUtils.GetLogger(GetType());
             logger.Info($"Open workplace with mission_id = {missionId}");
@@ -582,7 +583,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
                                         _adminConfirmed = false;
-                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码");
+                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
                                         if (!_adminConfirmed.Value) {
                                             _adminConfirmed = null;
                                             return;
@@ -591,8 +592,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     }
 
                                     int? currentWorkstationId = null;
-                                    deviceBlock.PopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, _currentWorkingBoltIndependence, CheckIfIsMultiDeviceIndependenceMode(),
+                                    ToolOperationPopUpForm toolOperationPopUpForm = new ToolOperationPopUpForm(_currentWorkingBolt, _currentWorkingBoltIndependence, CheckIfIsMultiDeviceIndependenceMode(),
                                             deviceBlock.CategoryName, this, _workstationsDTOs, _toolTasks, currentWorkstationId, _actionAfterSendingPset);
+                                    deviceBlock.PopUpForm = toolOperationPopUpForm;
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
                                     ToolOperationPopUpForm popUpForm = (ToolOperationPopUpForm) deviceBlock.PopUpForm;
@@ -606,6 +608,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     popUpForm.BoxHeight = boxHeight;
                                     popUpForm.BoxMargin = boxMargin;
                                     popUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+
+                                    ToolOperationPopUpFormExtraActions(toolOperationPopUpForm);
                                 }
                             } else if (deviceBlock.Category == DeviceCategories.ARM) {
                                 List<IoBoxTask> tasks = _ioBoxTasks.Values.ToList().Where(task => task.ArmType != null).ToList();
@@ -672,6 +676,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _deviceBlocks.Add(deviceBlock);
             }
         }
+
+        protected virtual void ToolOperationPopUpFormExtraActions(ToolOperationPopUpForm popUpForm) { }
 
         private void InitializeTimeDisplayer() {
             // Time displayer
@@ -868,11 +874,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                     if (task.ArrangerType != null) {
                         task.ArrangerType.Reset();
-                        task.ArrangerType.ActionAfterCoordinatesReceived = null;
+                        task.ArrangerType.ActionAfterIoSignalReceived = null;
                     }
                     if (task.SetterSelectorType != null) {
                         task.SetterSelectorType.Reset();
-                        task.SetterSelectorType.ActionAfterCoordinatesReceived = null;
+                        task.SetterSelectorType.ActionAfterIoSignalReceived = null;
                     }
                 }
             }
@@ -1350,6 +1356,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 informationMsgs.Add(msg);
             }
         }
+        public bool CheckLockMsg(string? msg) => !string.IsNullOrEmpty(msg) && lockMsgs.Contains(msg);
+        public bool CheckInformationMsg(string? msg) => !string.IsNullOrEmpty(msg) && informationMsgs.Contains(msg);
         public void RemoveLockMsg(string? msg) {
             if (!string.IsNullOrEmpty(msg) && lockMsgs.Contains(msg)) {
                 lockMsgs.Remove(msg);
@@ -1506,8 +1514,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 // }
                                 // 所有检查正常
                             } else {
-                                // Location because of position
-                                AddLockMsg(WorkingProcessPanel.LockedArmPosition);
+                                if (CheckInformationMsg(WorkingProcessPanel.UnlockedManually)) {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
+                                } else {
+                                    AddLockMsg(WorkingProcessPanel.LockedArmPosition);
+                                }
                             }
 
                             // 需要管理员输入密码并确认
@@ -1522,7 +1533,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     AddLockMsg(WorkingProcessPanel.AdminConfirmation);
                                     if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                         _adminConfirmed = false;
-                                        NGConfirmPopUp();
+                                        BoltNGConfirmPopUp();
                                     }
                                 }
                             } else {
@@ -1560,6 +1571,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Change status of bolt
         protected virtual void ChangeBoltStatusToWorking(BoltButton boltButton) {
+            // Send signal to arrager if specification is not null and grater than 0
+            SendSignalToArrager(boltButton);
+
+            // Send signal to setter selector if bit_specification is not null and grater than 0
+            SendSignalToSetterSelector(boltButton);
+
+            // Clear all messages
+            ClearLockMsgs();
+            ClearInformationMsgs();
+
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value;
             boltButton.CurrentParameterSet = null;
@@ -1569,12 +1590,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Send pset of current working bolt to controller
             SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
-
-            // Send signal to arrager if specification is not null and grater than 0
-            SendSignalToArrager(boltButton);
-
-            // Send signal to setter selector if bit_specification is not null and grater than 0
-            SendSignalToSetterSelector(boltButton);
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
@@ -1681,7 +1696,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 打开管理员密码输入弹框
-        public void OpenAdminPasswordPopUpForm(string title) {
+        public void OpenAdminPasswordPopUpForm(string title, bool needExctraActions) {
             _adminPasswordPopUpForm = new() {
                 Title = title,
             };
@@ -1712,8 +1727,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _adminPasswordBox.Size = new(contentWidth - contentPadding.Size.Width - boxMargin * 2, boxHeight);
             _adminPasswordBox.Margin = new(boxMargin);
             int contentHeight = boxHeight + boxMargin * 2 + contentPadding.Size.Height;
-
             _adminPasswordPopUpForm.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
+
+            // Extra actions
+            if (needExctraActions) {
+                AdminPopUpExtraActions();
+            }
+
             _adminPasswordPopUpForm.Show();
 
             void Confirm() {
@@ -1728,6 +1748,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             }
         }
+
+        protected virtual void AdminPopUpExtraActions() { }
+
+        // 螺栓拧紧NG时，如果需要管理员输入密码，则调用此方法
+        protected void BoltNGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。", false);
 
         // 读取到控制器传回的数据后进行处理
         protected abstract void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId);
@@ -1769,7 +1794,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _barCodeObj.Reset();
         }
 
-        protected void LockAllTools() => _toolTasks.Values.ToList().ForEach(toolTask => toolTask.SendLock());
+        protected void LockAllTools() {
+            Task.Run(async () => {
+                // Lock multiple times to ensure lock correctly
+                int lockTimesSum = 3;
+                int lockTimes = 0;
+                while (lockTimes < lockTimesSum) {
+                    _toolTasks.Values.ToList().ForEach(toolTask => toolTask.SendLock());
+                    lockTimes++;
+                    await Task.Delay(200);
+                }
+            });
+        }
 
         protected void ClearAndResetAllCurrentBolts(bool resetToDefault) {
             if (CheckIfIsMultiDeviceIndependenceMode()) {
@@ -1829,9 +1865,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 });
             }
         }
-
-        // 螺栓拧紧NG时，如果需要管理员输入密码，则调用此方法
-        protected void NGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。");
 
         protected virtual void InitializeAfterHandelCreated() { }
         #endregion
@@ -1959,38 +1992,38 @@ namespace OperationGuidance_new.Views.AbstractViews {
             FillExistingData();
         }
         // 一、没选任务
-        // 	1. 手动点击打开弹窗：
-        // 		1.1. 手动输入，输入后点击确定进行校验
-        // 			1.1.1. 没有匹配到任何任务，直接提示“未检测到对应任务”
-        // 			1.1.2. 匹配到某一任务，直接切换到对应的任务，并且将输入框设置为不可输入，但“确定”按钮改为“修改”按钮，可供修改。
-        // 				   同时自动根据配置到该任务的物料码的数量提前添加所有的物料码输入口，且除了第一个物料输入框为可输入，其他的均先
-        // 				   设定为不可输入
-        // 				1.1.2.1. 如果当前条码已经存在于任务记录中，则弹出确认框“是否进行返工？”，是则进行【1.1.2.2】，否则回到【1.1】
-        // 				1.1.2.2. 如果点击修改“产品码/追溯码”，则输入框改为可输入，并且物料码输入框设置为不可输入。重新输入产品码后从【1.1】处逻辑开始判定
-        // 				1.1.2.3. 如果输入物料码并点击确定，则进行物料码校验
-        // 					1.1.2.3.1. 输入的物料码与任务配置的物料码不匹配，直接提示“该物料码与任务配置不符”
-        // 					1.1.2.3.2. 输入的物料码能匹配上，则禁用当前物料码，“确定”按钮改为“修改”按钮，可供修改。
-        // 							   随后判断当前物料码是否是该任务配置的最后一个物料码
-        // 						1.1.2.3.2.1. 不是最后一个物料码，， 并将下一个物料码输入框启用，且再次输入进入【1.1.2.2】的流程
-        // 						1.1.2.3.2.2. 是最后一个物料码，则弹出确认框“所有条码扫描完毕，是否激活任务？”
-        // 							1.1.2.3.2.2.1. 确认则激活任务
-        // 							1.1.2.3.2.2.2. 不确认则可以随意进行任意输入框的“修改”操作
-        // 		1.2. 扫码自动填入，不需要点击“确定”按钮，直接进入【1.1】的后续流程
-        // 		*1.3. 所有输入框均可进行“手动输入”或“扫描自动填入”，“手动输入”需要手动点击“确认”按钮进行确认，“扫描自动填入”则会自动进行验证
-        // 		      “修改”按钮是为了防止扫码枪扫描的条码值虽然符合任务配置的匹配规则，但是某些字符扫描错误，此时需要重新扫描
-        // 	2. 直接扫码自动打开弹窗：
-        // 		2.1. 自动回填扫到的码，并立即校验，然后走【1.1】的后续流程
-        // 		
+        //  1. 手动点击打开弹窗：
+        //      1.1. 手动输入，输入后点击确定进行校验
+        //          1.1.1. 没有匹配到任何任务，直接提示“未检测到对应任务”
+        //          1.1.2. 匹配到某一任务，直接切换到对应的任务，并且将输入框设置为不可输入，但“确定”按钮改为“修改”按钮，可供修改。
+        //                 同时自动根据配置到该任务的物料码的数量提前添加所有的物料码输入口，且除了第一个物料输入框为可输入，其他的均先
+        //                 设定为不可输入
+        //              1.1.2.1. 如果当前条码已经存在于任务记录中，则弹出确认框“是否进行返工？”，是则进行【1.1.2.2】，否则回到【1.1】
+        //              1.1.2.2. 如果点击修改“产品码/追溯码”，则输入框改为可输入，并且物料码输入框设置为不可输入。重新输入产品码后从【1.1】处逻辑开始判定
+        //              1.1.2.3. 如果输入物料码并点击确定，则进行物料码校验
+        //                  1.1.2.3.1. 输入的物料码与任务配置的物料码不匹配，直接提示“该物料码与任务配置不符”
+        //                  1.1.2.3.2. 输入的物料码能匹配上，则禁用当前物料码，“确定”按钮改为“修改”按钮，可供修改。
+        //                             随后判断当前物料码是否是该任务配置的最后一个物料码
+        //                      1.1.2.3.2.1. 不是最后一个物料码，， 并将下一个物料码输入框启用，且再次输入进入【1.1.2.2】的流程
+        //                      1.1.2.3.2.2. 是最后一个物料码，则弹出确认框“所有条码扫描完毕，是否激活任务？”
+        //                          1.1.2.3.2.2.1. 确认则激活任务
+        //                          1.1.2.3.2.2.2. 不确认则可以随意进行任意输入框的“修改”操作
+        //      1.2. 扫码自动填入，不需要点击“确定”按钮，直接进入【1.1】的后续流程
+        //      *1.3. 所有输入框均可进行“手动输入”或“扫描自动填入”，“手动输入”需要手动点击“确认”按钮进行确认，“扫描自动填入”则会自动进行验证
+        //            “修改”按钮是为了防止扫码枪扫描的条码值虽然符合任务配置的匹配规则，但是某些字符扫描错误，此时需要重新扫描
+        //  2. 直接扫码自动打开弹窗：
+        //      2.1. 自动回填扫到的码，并立即校验，然后走【1.1】的后续流程
+        //      
         // 二、已选择任务
-        // 	1. 手动点击打开弹窗：
-        // 		1.1. 手动输入并点击“确定”进行校验：
-        // 			1.1.1. 没有匹配到任何任务（也包括当前已经选择的任务），直接提示“校验不通过”
-        // 			1.1.2. 匹配到了非当前任务，提示“当前条码匹配到另一任务，是否切换？”
-        // 				1.1.2.1. 确认切换，则切换后进入【一 - 1.1.2】的流程
-        // 				1.1.2.1. 不切换，则流程回到【1.1】
-        // 			1.1.3. 与当前任务的“产品码/追溯码”校验通过，则也进入【一 - 1.1.2】的流程
-        // 	2. 直接扫码自动打开弹窗：
-        // 		2.1. 自动回填扫到的码，并立即校验，然后走【二 - 1.1】的后续流程
+        //  1. 手动点击打开弹窗：
+        //      1.1. 手动输入并点击“确定”进行校验：
+        //          1.1.1. 没有匹配到任何任务（也包括当前已经选择的任务），直接提示“校验不通过”
+        //          1.1.2. 匹配到了非当前任务，提示“当前条码匹配到另一任务，是否切换？”
+        //              1.1.2.1. 确认切换，则切换后进入【一 - 1.1.2】的流程
+        //              1.1.2.1. 不切换，则流程回到【1.1】
+        //          1.1.3. 与当前任务的“产品码/追溯码”校验通过，则也进入【一 - 1.1.2】的流程
+        //  2. 直接扫码自动打开弹窗：
+        //      2.1. 自动回填扫到的码，并立即校验，然后走【二 - 1.1】的后续流程
 
         // 根据任务ID找到其对应的物料码匹配规则，并根据此规则添加相应的输入框
         private void AddPartsBoxes(int missionId) {
@@ -2145,7 +2178,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
                         // 需要管理员密码弹窗
                         _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁");
+                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
                         needRedo = _workplace.AdminConfirmed.Value;
                     } else {
                         needRedo = false;
@@ -2242,7 +2275,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                         // 需要管理员密码弹窗
                         _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。");
+                        _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
                         needRedo = _workplace.AdminConfirmed.Value;
                     } else {
                         needRedo = false;
@@ -2994,11 +3027,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private int _boxMargin;
         private CustomComboBoxGroup<int> _stationComboBox;
         private CustomTextBoxGroup _parameterSetTextBox;
+        private FunctionButton _btnLock;
+        private FunctionButton _btnUnlock;
 
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         public Action? SetPset { get => _setPset; set => _setPset = value; }
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
+        public FunctionButton BtnLock { get => _btnLock; set => _btnLock = value; }
+        public FunctionButton BtnUnlock { get => _btnUnlock; set => _btnUnlock = value; }
 
         public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
                 bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
@@ -3042,8 +3079,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
             _parameterSetTextBox.SetValue(0, "1");
 
-            CommonButton btnLock = AddButton("锁枪");
-            btnLock.Click += (s, e) => {
+            _btnLock = AddButton("锁枪");
+            _btnLock.Click += (s, e) => {
                 SendCommand(async toolTask => {
                     if (await toolTask.SendLockAsync()) {
                         _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
@@ -3054,8 +3091,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 });
             };
             bool canUnlock = true;
-            CommonButton btnUnlock = AddButton("解锁");
-            btnUnlock.Click += (s, e) => {
+            _btnUnlock = AddButton("解锁");
+            _btnUnlock.Click += (s, e) => {
                 SendCommand(async toolTask => {
                     if (await toolTask.SendUnlockAsync() && canUnlock) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");

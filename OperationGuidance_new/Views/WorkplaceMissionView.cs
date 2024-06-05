@@ -1,12 +1,9 @@
-﻿using CustomLibrary.Buttons;
-using CustomLibrary.Configs;
-using CustomLibrary.Constants;
+﻿using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
-using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
@@ -17,240 +14,16 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
-namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView: CustomContentPanel {
-        private MissionListPanel? _missionListPanel;
-        private List<ProductMissionDTO>? _productMissionDTOs;
-        private OperationGuidanceApis? apis;
-        private bool _operatorOpenning = false;
-
-        private CustomTabPanel? _pagePanel;
-        private TopBar? _topBar;
-        private WorkplaceContentPanel? _workplacePanel;
-
-        public WorkplaceMissionView() : base() => OpenMissionListView();
-        public WorkplaceMissionView(bool operatorOpenning) : base() {
-            _operatorOpenning = operatorOpenning;
-            // 如果是操作员登录，则直接打开工作台
-            if (operatorOpenning) {
-                OpenWorkplaceViewDirectly();
-            } else {
-                OpenMissionListView();
-            }
-        }
-
-        private void OpenMissionListView() {
-            // Get apis
-            apis = SystemUtils.GetApis();
-            // Initialize
-            _missionListPanel = new("选择任务", "直接进入工作台", (s, e) => OpenWorkplaceViewDirectly()) {
-                Margin = new Padding(0),
-                Parent = this,
-            };
-        }
-        private void OpenWorkplaceViewDirectly() => OpenWorkplaceView(null);
-
-        private void CheckAndDisplay() {
-            if (_missionListPanel != null) {
-                // Fetch data
-                FetchData();
-                // If there is no any mission, so show the big button
-                if (_productMissionDTOs != null) {
-                    _missionListPanel.RefreshMissionBlocks(_productMissionDTOs, OpenWorkplaceView);
-                }
-            }
-        }
-
-        public override void VisibleToTrue() {
-            if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
-                System.Console.WriteLine($"_workplacePanel.Activated: {_workplacePanel.Activated}");
-                // TODO: 这里或许可以做一个“任务中断”的效果，即不是每次进入都打开一个新的任务
-            }
-            // Check and display view
-            CheckAndDisplay();
-            // Invoke base, it will resize all children
-            base.VisibleToTrue();
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            // Resize mission list panel
-            if (_missionListPanel != null) {
-                _missionListPanel.Size = new(Width, Height);
-                _missionListPanel.ResizeChildren(eventArgs);
-                if (_missionListPanel.Visible) {
-                    _missionListPanel.Invalidate();
-                }
-            }
-        }
-
-        private void OpenWorkplaceView(int? missionId) {
-            if (_pagePanel != null && !_pagePanel.IsDisposed) {
-                _pagePanel.Dispose();
-            }
-            if (_topBar != null && !_topBar.IsDisposed) {
-                _topBar.Dispose();
-            }
-            if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
-                _workplacePanel.Dispose();
-            }
-            // Create a new view
-            _pagePanel = new() {
-                Parent = WidgetUtils.MainForm,
-                Size = WidgetUtils.MainForm.ClientSize,
-            };
-            _topBar = new(_operatorOpenning) {
-                Parent = _pagePanel,
-                BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
-                MainMenuLogo = Properties.Resources.logo,
-                Margin = new Padding(0),
-                PanelDirection = MenuPanelDirection.TOP,
-                TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
-            };
-            _workplacePanel = new(missionId, missionName => {
-                _topBar.Title = missionName;
+namespace OperationGuidance_new.Views
+{
+    public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel> {
+        protected override WorkplaceContentPanel GetWrokplacePanel(int? missionId, WorkplaceTopBar topBar) {
+            return new(missionId, missionName => {
+                topBar.Title = missionName;
             }) {
-                Parent = _pagePanel,
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND_2,
                 Margin = new Padding(0),
             };
-            _topBar.Workplace = _workplacePanel;
-            _pagePanel.ResizeChildren();
-            // Hide main panel
-            if (WidgetUtils.MainPanel != null) {
-                WidgetUtils.MainPanel.Visible = false;
-            }
-            if (_operatorOpenning) {
-                WidgetUtils.MainForm.SizeChanged += (s, e) => {
-                    _pagePanel.Size = WidgetUtils.MainSize;
-                };
-            }
-            _pagePanel.Size = new(WidgetUtils.MainSize.Width - 2, WidgetUtils.MainSize.Height - 2);
-            _pagePanel.Location = new(1, 1);
-        }
-
-        private void FetchData() {
-            if (apis != null) {
-                _productMissionDTOs = apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id)).ProductMissionDTOs;
-            }
-        }
-    }
-
-    public class TopBar: CustomMainMenuPanel {
-        private AWorkplaceContentPanel? _workplace;
-        private BackCommonButton _backButton;
-        private string _title;
-        private Color _titleColor;
-        private int _titleX;
-        private int _titleY;
-        private bool _operatorOpenning;
-
-        public BackCommonButton BackButton {
-            get => _backButton;
-            set => _backButton = value;
-        }
-        public string Title {
-            get => _title;
-            set {
-                _title = value;
-                Invalidate();
-            }
-        }
-        public Color TitleColor {
-            get => _titleColor;
-            set => _titleColor = value;
-        }
-        public AWorkplaceContentPanel? Workplace { get => _workplace; set => _workplace = value; }
-
-        public TopBar(bool operatorOpenning) : base() {
-            _title = "";
-            _operatorOpenning = operatorOpenning;
-            _backButton = new() {
-                Parent = this,
-            };
-            if (!_operatorOpenning) {
-                _backButton.Label = "返回";
-            } else {
-                _backButton.Label = "退出登录";
-            }
-            _backButton.Click += (sender, eventArgs) => {
-                if (_workplace != null && _workplace.Activated) {
-                    bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务，返回主界面将终止任务，确认返回？");
-                    if (yes) {
-                        if (_operatorOpenning) {
-                            if (WidgetUtils.BackToLoginView != null) {
-                                MainUtils.ActionAfterLogout = CloseWorkplace;
-                                WidgetUtils.BackToLoginView(true);
-                            }
-                        } else {
-                            CloseWorkplace();
-                        }
-                    }
-                } else {
-                    if (_operatorOpenning) {
-                        if (WidgetUtils.BackToLoginView != null) {
-                            MainUtils.ActionAfterLogout = CloseWorkplace;
-                            WidgetUtils.BackToLoginView(true);
-                        }
-                    } else {
-                        CloseWorkplace();
-                    }
-                }
-            };
-
-            void CloseWorkplace() {
-                if (_workplace != null) {
-                    _workplace.Activated = false;
-                    if (WidgetUtils.MainPanel != null) {
-                        WidgetUtils.MainPanel.Visible = true;
-                    }
-                    Parent.Visible = false;
-                    _workplace.Dispose();
-                }
-            }
-        }
-
-        protected override void OnPaint(PaintEventArgs e) {
-            base.OnPaint(e);
-            if (_title != null) {
-                // Recalculate the font of title
-                Font = new(WidgetsConfigs.SystemFontFamily, Height * .425f, FontStyle.Bold, GraphicsUnit.Pixel);
-                Size titleSize = WidgetUtils.MeasureString(_title, Font);
-                _titleX = (Width - titleSize.Width) / 2;
-                _titleY = (Height - titleSize.Height) / 2;
-                e.Graphics.DrawString(_title, Font, new SolidBrush(_titleColor), new Point(_titleX, _titleY));
-            }
-        }
-
-        protected override void ResizeButtons() {
-            int newHeight = (int) (Height * .5);
-            // 先设定高度，则font就会重设
-            _backButton.Height = newHeight;
-            int newWidth = WidgetUtils.MeasureString(_backButton.Label, _backButton.Font).Width + newHeight * 2;
-            _backButton.Width = newWidth;
-            _backButton.Margin = new(0, (Height - newHeight) / 2, 0, 0);
-        }
-
-        protected override float GetResizeRatio() => WidgetUtils.WorkplaceTopBarHeightRatio();
-
-        protected override float GetLogoZoomingRatio() => .7F;
-
-        protected override Point GetLogoLocation(Size logoSize) {
-            return new(
-                Width - logoSize.Width - (int) Math.Ceiling(Width / 400D),
-                (int) Math.Ceiling((Height - logoSize.Height) / 2D)
-            );
-        }
-
-        public class BackCommonButton: CommonButton {
-            protected override void ResizeTextLabel() {
-                if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
-                    using (Graphics g = CreateGraphics()) {
-                        LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
-                    }
-                    LabelY = (Height - Font.Height) / 2;
-                }
-            }
         }
     }
 
@@ -290,6 +63,7 @@ namespace OperationGuidance_new.Views {
         // private PageSwitchButton _last;
         // private Label _pageInfo;
 
+        public WorkplaceContentPanel() { }
         public WorkplaceContentPanel(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             // 初始化所有组件
             // 上方
