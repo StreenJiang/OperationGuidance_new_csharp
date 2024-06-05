@@ -1,5 +1,4 @@
-﻿using log4net;
-using OperationGuidance_new.Utils;
+﻿using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
@@ -44,12 +43,10 @@ namespace OperationGuidance_new.Constants {
     }
 
     public abstract class DeviceTypeTool: DeviceTypeBase {
-        protected ILog logger;
-
         public Command? COMMAND_DATA_ASCII;
-        public Command? COMMAND_LOCK_ASCII;
-        public Command? COMMAND_UNLOCK_ASCII;
-        public Command? COMMAND_PSET_ASCII;
+        public Command COMMAND_LOCK_ASCII;
+        public Command COMMAND_UNLOCK_ASCII;
+        public Command COMMAND_PSET_ASCII;
         public Command? COMMAND_SEND_BARCODE_ASCII;
         public DeviceTypeTool(int id, string name) : base(id, name) {
             logger = MainUtils.GetLogger(GetType());
@@ -60,11 +57,18 @@ namespace OperationGuidance_new.Constants {
 
     public abstract class ToolPFSeries: DeviceTypeTool {
         public Command? COMMAND_CONNECT_ASCII;
-        public Command? COMMAND_HEART_ASCII;
+        public Command COMMAND_HEART_ASCII;
 
-        public ToolPFSeries(int id, string name) : base(id, name) { }
+        public ToolPFSeries(int id, string name) : base(id, name) {
+            COMMAND_HEART_ASCII = new("00209999001         \x00");
+            COMMAND_DATA_ASCII = new("002000600031        \x00");
+            COMMAND_LOCK_ASCII = new("00200042001         \x00");
+            COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
+            COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
+            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
+        }
 
-        public virtual string GetMidFromResult(string result) {
+        public virtual string GetMid(string result) {
             string mid = "";
             try {
                 mid = result.Substring(4, 4);
@@ -76,7 +80,7 @@ namespace OperationGuidance_new.Constants {
 
         public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
             string? result = null;
-            string mid = GetMidFromResult(dataMessage);
+            string mid = GetMid(dataMessage);
 
             if (mid == "0061") {
                 result = null;
@@ -161,24 +165,12 @@ namespace OperationGuidance_new.Constants {
     public class ToolPF4000: ToolPFSeries {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII = new("00200001003         \x00");
-            COMMAND_HEART_ASCII = new("00209999001         \x00");
-            COMMAND_DATA_ASCII = new("002000600031        \x00");
-            COMMAND_LOCK_ASCII = new("00200042001         \x00");
-            COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
-            COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
-            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
         }
     }
 
     public class ToolPF6000OP: ToolPFSeries {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII = new("00200001006         \x00");
-            COMMAND_HEART_ASCII = new("00209999001         \x00");
-            COMMAND_DATA_ASCII = new("002000600031        \x00");
-            COMMAND_LOCK_ASCII = new("00200042001         \x00");
-            COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
-            COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
-            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
         }
     }
 

@@ -65,7 +65,10 @@ namespace OperationGuidance_new {
             // TODO: 判断mac地址（这段后面要用许可证来做）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
             List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
-            if (!(macs.Contains("002B677C56BC") || macs.Contains("BC542FD57669") || macs.Contains("BE542FD57668") || macs.Contains("BC542FD57668") || macs.Contains("BC542FD5766C")
+            if (
+                !(macs.Contains("002B677C56BC") || macs.Contains("BC542FD57669") || macs.Contains("BE542FD57668") || macs.Contains("BC542FD57668") || macs.Contains("BC542FD5766C")
+                /* New HP device */
+                || macs.Contains("8CE9EED88F7E")
                 /* living room */
                 || macs.Contains("A4B1C1C841E1") || macs.Contains("A4B1C1C841E5") || macs.Contains("B42E9954DB93")
                 || macs.Contains("A4B1C1C841E2") || macs.Contains("A6B1C1C841E1")

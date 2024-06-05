@@ -26,7 +26,6 @@ namespace OperationGuidance_new.Utils {
     public static class MainUtils {
         public static ILog logger = GetLogger(typeof(MainUtils));
 
-        public static readonly int DBRetryTimes = 2;
         public static AppVersion Version { get; set; } = AppVersion.STANDARD;
 
         public static bool AppRunning { get; internal set; } = true;
@@ -98,21 +97,10 @@ namespace OperationGuidance_new.Utils {
 
             // Begin async task
             DbConnection? dbConnection = null;
-            int tryTimes = 0;
-            formPopup.BeginInvoke(() => {
-                while (tryTimes <= DBRetryTimes) {
-                    try {
-                        dbConnection = DbConnector.GetConnection();
-                        if (dbConnection != null) {
-                            break;
-                        }
-                    } catch (DatabaseException de) {
-                        GetLogger(typeof(MainUtils)).Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
-                        continue;
-                    } finally {
-                        tryTimes++;
-                    }
-                }
+            formPopup.BeginInvoke(async () => {
+                await Task.Run(() => {
+                    dbConnection = DbConnector.GetConnection();
+                });
                 timer.Stop();
                 formPopup.Dispose();
             });
@@ -397,24 +385,6 @@ namespace OperationGuidance_new.Utils {
             return false;
         }
 
-        // Register TCP client
-        public static void RegisterTCPClient(string ip, int port, Socket client) {
-            string key = GetTCPClientKey(ip, port);
-            if (!TCPClients.ContainsKey(key)) {
-                TCPClients.Add(key, client);
-                logger.Info($"Register tcp client [{key}]");
-            }
-        }
-        // Deregister TCP client
-        public static void DeregisterTCPClient(string ip, int port) {
-            string key = GetTCPClientKey(ip, port);
-            if (TCPClients.ContainsKey(key)) {
-                TCPClients.Remove(key);
-                logger.Info($"Deregister tcp client [{key}]");
-            }
-        }
-        // Get registerd TCP client
-        public static Socket? GetTCPClient(string ip, int port) => TCPClients.GetValueOrDefault(ip + port);
         public static string GetTCPClientKey(string ip, int port) => $"{ip}: {port}";
         public static Tuple<string, int> GetHostFromTCPClientKey(string key) {
             string[] strings = key.Split(":");
@@ -716,7 +686,7 @@ namespace OperationGuidance_new.Utils {
                             if (!char.IsDigit(keyPosition[prevIndex])) {
                                 break;
                             }
-                            prev += keyPosition[prevIndex].ToString();
+                            prev = keyPosition[prevIndex].ToString() + prev;
                         }
                         int prevNum = int.Parse(prev);
 
@@ -732,7 +702,7 @@ namespace OperationGuidance_new.Utils {
                         int followNum = int.Parse(follow);
 
                         if (prevNum >= followNum) {
-                            errorMsg += "符号'-'前面的数字必须小于后面的数字";
+                            errorMsg += $"符号'-'前面的数字[{prevNum}]必须小于后面的数字[{followNum}]";
                             break;
                         }
                     }

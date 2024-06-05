@@ -17,8 +17,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         private readonly int _flikerInterval = 500;
         private readonly float _opacity = .75F;
-        private readonly int _arranger_send_delay = 100;
-        private readonly int _arranger_pulse_delay = 500;
+        private readonly int _arranger_pulse_delay = 200;
+        private readonly int _arranger_wait_result_delay = 300;
         private readonly int _arranger_time_out = 5000;
         private readonly int _setter_selector_delay = 50;
         private readonly int _setter_selector_time_out = 10000;
@@ -174,7 +174,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Task.Run(async () => {
                     // Start retrieve result from io box - arranger
                     arrangerType.RetrieveResult = true;
-                    arrangerType.ActionAfterCoordinatesReceived += DoArrangerActionAfterAnalysis;
+                    arrangerType.ActionAfterIoSignalReceived += DoArrangerActionAfterAnalysis;
 
                     // Reset if disposed
                     HandleDestroyed += (s, e) => {
@@ -182,8 +182,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         _specificationOk = true;
 
                         arrangerType.RetrieveResult = false;
-                        if (arrangerType.ActionAfterCoordinatesReceived != null && arrangerType.ActionAfterCoordinatesReceived.GetInvocationList().Contains(DoArrangerActionAfterAnalysis)) {
-                            arrangerType.ActionAfterCoordinatesReceived -= DoArrangerActionAfterAnalysis;
+                        if (arrangerType.ActionAfterIoSignalReceived != null && arrangerType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoArrangerActionAfterAnalysis)) {
+                            arrangerType.ActionAfterIoSignalReceived -= DoArrangerActionAfterAnalysis;
                         }
 
                         // Reset again to ensure status of arranger is right
@@ -191,18 +191,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     };
 
                     // Waiting for finish signal from arranger
-                    while (!_specificationOk && _arranger_time_count < _arranger_time_out) {
-                        // Start sending signal
-                        string result = arrangerType.WritePosition((int) specification);
-                        if (!arrangerType.DeviceType.WriteOk(result)) {
-                            await WaitAndCountAsync(_arranger_send_delay);
-                            continue;
+                    while (_arranger_time_count < _arranger_time_out) {
+                        if (_specificationOk) {
+                            break;
                         }
+                        // Start sending signal
+                        arrangerType.WritePosition((int) specification);
                         await WaitAndCountAsync(_arranger_pulse_delay);
 
                         // Reset signal
                         arrangerType.Reset();
-                        await WaitAndCountAsync(_arranger_pulse_delay);
+                        await WaitAndCountAsync(_arranger_wait_result_delay);
                     }
 
                     // Reset again to ensure status of arranger is right
@@ -212,7 +211,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                     // Stop retrieve result
                     arrangerType.RetrieveResult = false;
-                    arrangerType.ActionAfterCoordinatesReceived -= DoArrangerActionAfterAnalysis;
+                    arrangerType.ActionAfterIoSignalReceived -= DoArrangerActionAfterAnalysis;
 
                     // Reset variables
                     _specification = null;
@@ -248,7 +247,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Task.Run(async () => {
                     // Start retrieve result from io box - arranger
                     setterSelectorType.RetrieveResult = true;
-                    setterSelectorType.ActionAfterCoordinatesReceived += DoSetterSelectorActionAfterAnalysis;
+                    setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorActionAfterAnalysis;
 
                     // Reset if disposed
                     HandleDestroyed += (s, e) => {
@@ -256,8 +255,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         _bitSpecificationOk = true;
 
                         setterSelectorType.RetrieveResult = false;
-                        if (setterSelectorType.ActionAfterCoordinatesReceived != null && setterSelectorType.ActionAfterCoordinatesReceived.GetInvocationList().Contains(DoSetterSelectorActionAfterAnalysis)) {
-                            setterSelectorType.ActionAfterCoordinatesReceived -= DoSetterSelectorActionAfterAnalysis;
+                        if (setterSelectorType.ActionAfterIoSignalReceived != null && setterSelectorType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoSetterSelectorActionAfterAnalysis)) {
+                            setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
                         }
 
                         // Send reset command
@@ -281,7 +280,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                     // Stop retrieve result
                     setterSelectorType.RetrieveResult = false;
-                    setterSelectorType.ActionAfterCoordinatesReceived -= DoSetterSelectorActionAfterAnalysis;
+                    setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
 
                     // Reset variables
                     _bitSpecification = null;

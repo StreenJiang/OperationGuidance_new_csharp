@@ -4,7 +4,6 @@ using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class CommunicationTask: ATaskBase {
@@ -51,8 +50,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
-        protected void RegisterTCPClient() => MainUtils.RegisterTCPClient(_ip, _port, CommonUtils.CannotBeNull(socketClient));
-        protected void DeregisterTCPClient() => MainUtils.DeregisterTCPClient(_ip, _port);
         protected override void RunTask() {
             Task.Run(async () => {
                 try {
@@ -90,7 +87,6 @@ namespace OperationGuidance_new.Tasks {
             while (!Connected && !CloseConnectionManually) {
                 Status = CONNECTING;
                 if (ConnectToServer()) {
-                    RegisterTCPClient();
                     RunTask();
                     Status = CONNECTED;
                     break;
@@ -103,7 +99,6 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
                 socketClient.Close();
-                DeregisterTCPClient();
             }
             CloseConnectionManually = true;
             Command.Clear();
@@ -122,14 +117,6 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
-
-            // 0. Check if socket already registerd
-            Socket? socket = MainUtils.GetTCPClient(_ip, _port);
-            if (socket != null) {
-                socketClient = socket;
-                logger.Info($"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
-                return true;
-            }
 
             // 1. check ping
             pingSuccess = MainUtils.PingHost(_ip);

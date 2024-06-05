@@ -421,43 +421,44 @@ namespace OperationGuidance_new.Views {
             _missionSelectedName.SetValue(0, _mission.name);
             ResetMissionDetails();
 
-            await Task.Run(async () => {
-                while (!IsHandleCreated) {
-                    await Task.Delay(200);
-                }
-                BeginInvoke(() => {
-                    MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-                    // 存在可以回填的数据
-                    if (missionRecordDTO != null) {
-                        // 刚登录
-                        if (MainUtils.LoginFlag) {
-                            // 需要回填确认
-                            if (MainUtils.IsProductBatchNoticeEnabled()) {
-                                // 弹出提示确认是否回填
-                                if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-                                    MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                                } else {
-                                    MainUtils.LastProductBatch = null;
-                                }
-                            }
-                            // 不需要提示则直接回填
-                            else {
-                                MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                            }
-                        }
-                        // 最新查到的批次信息与缓存的不一致，则换掉
-                        else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-                            MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-                        }
-                        // 不管是否回填，登录标识都要改
-                        MainUtils.LoginFlag = false;
-                        // 不为空就回填
-                        if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-                            _productBatch.SetValue(0, MainUtils.LastProductBatch);
-                        }
-                    }
-                });
-            });
+            // Don't need this anymore
+            // await Task.Run(async () => {
+            //     while (!IsHandleCreated) {
+            //         await Task.Delay(200);
+            //     }
+            //     BeginInvoke(() => {
+            //         MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
+            //         // 存在可以回填的数据
+            //         if (missionRecordDTO != null) {
+            //             // 刚登录
+            //             if (MainUtils.LoginFlag) {
+            //                 // 需要回填确认
+            //                 if (MainUtils.IsProductBatchNoticeEnabled()) {
+            //                     // 弹出提示确认是否回填
+            //                     if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
+            //                         MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //                     } else {
+            //                         MainUtils.LastProductBatch = null;
+            //                     }
+            //                 }
+            //                 // 不需要提示则直接回填
+            //                 else {
+            //                     MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //                 }
+            //             }
+            //             // 最新查到的批次信息与缓存的不一致，则换掉
+            //             else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
+            //                 MainUtils.LastProductBatch = missionRecordDTO.product_batch;
+            //             }
+            //             // 不管是否回填，登录标识都要改
+            //             MainUtils.LoginFlag = false;
+            //             // 不为空就回填
+            //             if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
+            //                 _productBatch.SetValue(0, MainUtils.LastProductBatch);
+            //             }
+            //         }
+            //     });
+            // });
         }
 
         protected override void ActionAfterArmDataReceived(Coordinates3D armCoordinates) {
@@ -475,6 +476,9 @@ namespace OperationGuidance_new.Views {
                             bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
                             bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
 
+                            // Can't lock/unlock tools manually while arm is running (Only for SCII)
+                            RemoveLockMsg(WorkingProcessPanel.UnlockedManually);
+                            RemoveLockMsg(WorkingProcessPanel.LockedManually);
                             if (xOk && yOk && zOk) {
                                 // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
@@ -495,7 +499,7 @@ namespace OperationGuidance_new.Views {
                                     AddLockMsg(WorkingProcessPanel.AdminConfirmation);
                                     if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                         _adminConfirmed = false;
-                                        NGConfirmPopUp();
+                                        BoltNGConfirmPopUp();
                                     }
                                 }
                             } else {
@@ -868,6 +872,21 @@ namespace OperationGuidance_new.Views {
         //     }
         // }
 
+        protected override void ToolOperationPopUpFormExtraActions(ToolOperationPopUpForm popUpForm) {
+            if (_activated) {
+                popUpForm.BtnLock.Enabled = false;
+                popUpForm.BtnUnlock.Enabled = false;
+            }
+        }
+
+        protected override void AdminPopUpExtraActions() {
+            if (_adminPasswordPopUpForm != null && !_adminPasswordPopUpForm.IsDisposed) {
+                _adminPasswordPopUpForm.CloseButton.Enabled = false;
+            }
+        }
+
+        protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
+
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
                 lock (DataStorageLockObj) {
@@ -1165,7 +1184,8 @@ namespace OperationGuidance_new.Views {
                                         StoreTighteningData(dataDTO);
 
                                         // 先记录数据再弹出提示
-                                        WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                        // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
+                                        MissionNGConfirmPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败。请输入管理员密码");
                                     } else {
                                         // // 扭矩角度数据颜色改成红色
                                         // _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
@@ -1186,7 +1206,7 @@ namespace OperationGuidance_new.Views {
                                             _adminConfirmed = false;
 
                                             // 先记录数据再打开弹窗
-                                            NGConfirmPopUp();
+                                            BoltNGConfirmPopUp();
                                         }
                                     }
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;

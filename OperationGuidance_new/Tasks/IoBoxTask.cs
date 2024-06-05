@@ -4,15 +4,13 @@ using log4net;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class IoBoxTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(IoBoxTask));
 
         #region Fields
-        private static readonly object SendSyncRoot = new();
-        private static readonly object ReceiveSyncRoot = new();
+        private static readonly object SocketSyncRoot = new();
         private readonly int ReceiveTimeout = 2000;
         private Socket? socketClient = null;
         private string _ip;
@@ -42,8 +40,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
-        protected void RegisterTCPClient() => MainUtils.RegisterTCPClient(_ip, _port, CommonUtils.CannotBeNull(socketClient));
-        protected void DeregisterTCPClient() => MainUtils.DeregisterTCPClient(_ip, _port);
         protected override void RunTask() {
             Task.Run(async () => {
                 try {
@@ -71,13 +67,13 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check arranger
                         if (ArrangerType != null && ArrangerType.RetrieveResult) {
-                            if (ArrangerType.ActionAfterCoordinatesReceived != null) {
+                            if (ArrangerType.ActionAfterIoSignalReceived != null) {
                                 try {
                                     string readResult = SendCommand(ArrangerType.DeviceType.COMMAND_READ.GetMessage());
-                                    logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
+                                    // logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
 
                                     // Analyze data
-                                    ArrangerType.DeviceType.AnalyzeData(readResult, ArrangerType.ActionAfterCoordinatesReceived);
+                                    ArrangerType.DeviceType.AnalyzeData(readResult, ArrangerType.ActionAfterIoSignalReceived);
                                 } catch (Exception e) {
                                     logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], e = {e}");
                                 }
@@ -86,13 +82,13 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check setter selector
                         if (SetterSelectorType != null && SetterSelectorType.RetrieveResult) {
-                            if (SetterSelectorType.ActionAfterCoordinatesReceived != null) {
+                            if (SetterSelectorType.ActionAfterIoSignalReceived != null) {
                                 try {
                                     string readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
-                                    logger.Debug($"[_ioBoxType.Name:{SetterSelectorType.DeviceType.Name}] result: readResult = {readResult}");
+                                    // logger.Debug($"[_ioBoxType.Name:{SetterSelectorType.DeviceType.Name}] result: readResult = {readResult}");
 
                                     // Analyze data
-                                    SetterSelectorType.DeviceType.AnalyzeData(readResult, SetterSelectorType.ActionAfterCoordinatesReceived);
+                                    SetterSelectorType.DeviceType.AnalyzeData(readResult, SetterSelectorType.ActionAfterIoSignalReceived);
                                 } catch (Exception e) {
                                     logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{SetterSelectorType.DeviceType.Name}], e = {e}");
                                 }
@@ -120,7 +116,6 @@ namespace OperationGuidance_new.Tasks {
             while (!Connected && !CloseConnectionManually) {
                 Status = CONNECTING;
                 if (ConnectToServer()) {
-                    RegisterTCPClient();
                     RunTask();
                     Status = CONNECTED;
                     break;
@@ -133,7 +128,6 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Close connection<IOBOX[ {_ip}: {_port}]> manually...");
             if (Connected) {
                 socketClient.Close();
-                DeregisterTCPClient();
             }
             CloseConnectionManually = true;
         }
@@ -150,14 +144,6 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"Connecting to IOBOX[ {_ip}: {_port}]");
             bool pingSuccess = false;
             bool connectSuccess = false;
-
-            // 0. Check if socket already registerd
-            Socket? socket = MainUtils.GetTCPClient(_ip, _port);
-            if (socket != null) {
-                socketClient = socket;
-                MainUtils.Info(logger, $"Successfully connect to IOBOX[ {_ip}: {_port}]");
-                return true;
-            }
 
             // 1. check ping
             pingSuccess = MainUtils.PingHost(_ip);
@@ -180,17 +166,14 @@ namespace OperationGuidance_new.Tasks {
         public string SendCommand(string command) {
             if (Connected) {
                 try {
-                    lock (SendSyncRoot) {
+                    lock (SocketSyncRoot) {
                         // Send command to controller
                         socketClient.Send(MainUtils.ToBytes(command));
 
                         // Receive data
-                        lock (ReceiveSyncRoot) {
-                            byte[] msgBytes = new byte[1024 * 1024];
-                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            string result = MainUtils.ToHexString(msgBytes.Take(msgLen).ToArray());
-                            return result;
-                        }
+                        byte[] msgBytes = new byte[1024 * 1024];
+                        int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                        return MainUtils.ToHexString(msgBytes.Take(msgLen).ToArray());
                     }
                 } catch (Exception e) {
                     logger.Error($"Error while sending command[{command}] to IOBOX[ {_ip}: {_port}], e: {e}");

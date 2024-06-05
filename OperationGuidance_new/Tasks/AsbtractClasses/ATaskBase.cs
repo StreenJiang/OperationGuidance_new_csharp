@@ -4,7 +4,7 @@ namespace OperationGuidance_new.Tasks.AsbtractClasses {
         private int _deviceId;
         private int? _workstationId;
         protected string? _device_name = "";
-        protected readonly int LoopingInterval = 50;
+        protected readonly int LoopingInterval = 100;
         public readonly int AutoReconnectingTrialDelay = 500; // 断线重连尝试间隔
         public static readonly int DISCONNECTED = 0;
         public static readonly int CONNECTING = 1;

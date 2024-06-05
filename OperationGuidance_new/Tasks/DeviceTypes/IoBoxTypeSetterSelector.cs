@@ -4,7 +4,7 @@ using OperationGuidance_new.Tasks.AsbtractClasses;
 namespace OperationGuidance_new.Tasks.DeviceTypes {
     public class IoBoxTypeSetterSelector: AIoBoxDevice<IoBoxSetterSelector> {
         private IoBoxTask _task;
-        public Action<int>? ActionAfterCoordinatesReceived { get; set; } = null;
+        public Action<int>? ActionAfterIoSignalReceived { get; set; } = null;
 
         public IoBoxTypeSetterSelector(IoBoxTask task, IoBoxSetterSelector deviceType, int deviceId) : base(deviceType, deviceId) => _task = task;
 
