@@ -15,9 +15,10 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
-namespace OperationGuidance_new.Views
-{
+namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_YF: AWorkplaceMissionView<WorkplaceContentPanel_YF> {
+        public WorkplaceMissionView_YF(bool operatorOpenning) : base(operatorOpenning) { }
+
         protected override WorkplaceContentPanel_YF GetWrokplacePanel(int? missionId, WorkplaceTopBar topBar) {
             return new(missionId, missionName => {
                 topBar.Title = missionName;

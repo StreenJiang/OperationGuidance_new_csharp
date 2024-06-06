@@ -13,9 +13,10 @@ using System.Reflection;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 
-namespace OperationGuidance_new.Views
-{
+namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_SCII: AWorkplaceMissionView<WorkplaceContentPanel_SCII> {
+        public WorkplaceMissionView_SCII(bool operatorOpenning) : base(operatorOpenning) { }
+
         protected override WorkplaceContentPanel_SCII GetWrokplacePanel(int? missionId, WorkplaceTopBar topBar) {
             return new(missionId, missionName => {
                 topBar.Title = missionName;

@@ -55,13 +55,17 @@ namespace OperationGuidance_new.Views {
                     ClickLogin();
                 }
             };
-            _loginForm.FormClosing += (s, e) => e.Cancel = true;
-            _loginForm.AddButton("登录").Click += (s, e) => ClickLogin();
-            _loginForm.AddButton("退出").Click += (s, e) => {
-                if (WidgetUtils.ShowConfirmPopUp("确认退出？")) {
-                    Process.GetCurrentProcess().Kill();
+            _loginForm.FormClosing += (s, e) => {
+                if (!_loginForm.IsDisposed) {
+                    if (WidgetUtils.ShowConfirmPopUp("确认退出？")) {
+                        Process.GetCurrentProcess().Kill();
+                    } else {
+                        e.Cancel = true;
+                    }
                 }
             };
+            _loginForm.AddButton("登录").Click += (s, e) => ClickLogin();
+            _loginForm.AddButton("退出").Click += (s, e) => _loginForm.Close();
 
             _loginForm.PretendToShowToCreateHandlesForChildren();
             _loginForm.ResizeSelf();

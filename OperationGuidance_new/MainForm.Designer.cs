@@ -87,7 +87,7 @@ namespace OperationGuidance_new {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            // MainUtils.Version = AppVersion.SCII;
+            MainUtils.Version = AppVersion.SCII;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
@@ -263,6 +263,10 @@ namespace OperationGuidance_new {
                 // TODO: 根据许可证权限过滤菜单
                 for (int i = 0; i < menuCongfigs.Count; i++) {
                     MenuConfig mainMenuConfig = menuCongfigs[i];
+                    if (MainUtils.Version != AppVersion.STANDARD
+                            && mainMenuConfig.Versions != null && !mainMenuConfig.Versions.Contains(MainUtils.Version)) {
+                        continue;
+                    }
                     CustomMainMenuButton mainMenuButton = new(ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_UP, ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_DOWN);
                     mainMenuButton.Name = "mainMenuButton_" + mainMenuConfig.Id;
                     mainMenuButton.Icon = mainMenuConfig.Icon;

@@ -13,15 +13,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private List<ProductMissionDTO>? _productMissionDTOs;
         private OperationGuidanceApis? apis;
         private T? _workplacePanel;
-        private bool? _operatorOpenning = false;
+        private bool _operatorOpenning = false;
 
-        public AWorkplaceMissionView(bool? operatorOpenning = false) : base() {
+        public AWorkplaceMissionView() => Initialize(false);
+        public AWorkplaceMissionView(bool operatorOpenning) : base() {
+            Initialize(operatorOpenning);
+        }
+        private void Initialize(bool operatorOpenning) {
             // Get apis
             apis = SystemUtils.GetApis();
 
             _operatorOpenning = operatorOpenning;
             // Open workplace directly if this is opened by operators
-            if (_operatorOpenning != null && _operatorOpenning.Value) {
+            if (_operatorOpenning) {
                 OpenWorkplaceViewDirectly();
             } else {
                 OpenMissionListView();
@@ -98,7 +102,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 WidgetUtils.MainPanel.Visible = false;
             }
 
-            if (_operatorOpenning != null && _operatorOpenning.Value) {
+            if (_operatorOpenning) {
                 WidgetUtils.MainForm.SizeChanged += (s, e) => {
                     pagePanel.Size = WidgetUtils.MainSize;
                 };
