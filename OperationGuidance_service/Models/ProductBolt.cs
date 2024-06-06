@@ -9,6 +9,7 @@ namespace OperationGuidance_service.Models {
         public string? name { get; set; }
         public int? workstation_id { get; set; }
         public float? specification { get; set; }
+        public float? specification2 { get; set; }
         public int? arranger_id { get; set; }
         public string? position { get; set; }
         public float location_x_percent { get; set; }

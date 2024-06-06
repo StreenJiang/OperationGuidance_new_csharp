@@ -204,12 +204,23 @@ namespace OperationGuidance_service.Database {
         
         /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
-        ///  ADD COLUMN `predecessor_part_mission_ids` int(11) NULL AFTER `predecessor_mission_id`;
+        ///  ADD COLUMN `predecessor_part_mission_ids` varchar(256) NULL AFTER `predecessor_mission_id`;
         ///.
         /// </summary>
         internal static string modify_mysql_20240531 {
             get {
                 return ResourceManager.GetString("modify_mysql_20240531", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_bolt` 
+        ///  ADD COLUMN `specification2` double NULL AFTER `specification`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240606 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240606", resourceCulture);
             }
         }
         
@@ -370,15 +381,39 @@ namespace OperationGuidance_service.Database {
         ///  &quot;enabled&quot; integer(1),
         ///  &quot;macs_id&quot; integer,
         ///  &quot;predecessor_mission_id&quot; integer,
-        ///  &quot;predecessor_part_mission_ids&quot; integer,
+        ///  &quot;predecessor_part_mission_ids&quot; text(256),
         ///  &quot;multi_device_independence&quot; integer(1),
         ///  &quot;user_id&quot; integer NOT NULL,
         ///  &quot;deleted&quot; integer(1) NOT NULL,
-        ///  &quot;crea [rest of string was truncated]&quot;;.
+        ///  &quot;cr [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_sqlite_20240531 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240531", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_bolt&quot; RENAME TO &quot;_product_bolt_old_20240606&quot;;
+        ///
+        ///CREATE TABLE &quot;product_bolt&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;side_id&quot; integer NOT NULL,
+        ///  &quot;serial_num&quot; integer NOT NULL,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;arranger_id&quot; integer,
+        ///  &quot;specification&quot; real(16),
+        ///  &quot;specification2&quot; real(16),
+        ///  &quot;workstation_id&quot; integer,
+        ///  &quot;position&quot; text(32),
+        ///  &quot;location_x_percent&quot; real(8) NOT NULL,
+        ///  &quot;location_y_percent&quot; real(8) NOT NULL,
+        ///  &quot;setter_selector_id&quot; integer,
+        ///  &quot;bit_specificati [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240606 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240606", resourceCulture);
             }
         }
     }
