@@ -18,7 +18,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private readonly int _flikerInterval = 500;
         private readonly float _opacity = .75F;
         private readonly int _arranger_pulse_delay = 200;
-        private readonly int _arranger_wait_result_delay = 300;
+        private readonly int _arranger_wait_result_delay = 200;
         private readonly int _arranger_time_out = 5000;
         private readonly int _setter_selector_delay = 50;
         private readonly int _setter_selector_time_out = 10000;
@@ -33,8 +33,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int? _currentParameterSet;
         private string? _label;
         private int? _upperNum;
-        private float? _specification;
-        private bool _specificationOk;
+        private int?[] _specifications = new int?[] { null, null, null, null };
+        private bool?[] _specificationsOk = new bool?[] { null, null, null, null };
         private int _arranger_time_count = 0;
         private int _setter_selector_time_count = 0;
         private float? _bitSpecification;
@@ -85,10 +85,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public bool ShowingWhileWorking { get => _showingWhileWorking; set => _showingWhileWorking = value; }
         public int NgTimes { get => _ngTimes; set => _ngTimes = value; }
         public int? CurrentParameterSet { get => _currentParameterSet; set => _currentParameterSet = value; }
-        public float? Specification { get => _specification; set => _specification = value; }
-        public bool SpecificationOk { get => _specificationOk; set => _specificationOk = value; }
-        public float? BitSpecification { get => _bitSpecification; set => _bitSpecification = value; }
-        public bool BitSpecificationOk { get => _bitSpecificationOk; set => _bitSpecificationOk = value; }
         public new string? Label {
             get => base.Label;
             set {
@@ -163,10 +159,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
-        public void SendSignalToArragner(float specification, IoBoxTypeArranger arrangerType, Action<bool, bool> callBack) {
+        public void SendSignalToArragner(List<float> specifications, IoBoxTypeArranger arrangerType, Action<bool?[], bool> callBack) {
             // Initialize variables
-            _specification = specification;
-            _specificationOk = false;
+            _specifications = new int?[] { null, null, null, null };
+            _specificationsOk = new bool?[] { null, null, null, null };
+            foreach (float specification in specifications) {
+                int index = (int) specification - 1;
+                _specifications[index] = 1;
+                _specificationsOk[index] = false;
+            }
             _arranger_time_count = 0;
 
             // Start task
@@ -179,7 +180,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     // Reset if disposed
                     HandleDestroyed += (s, e) => {
                         // Set to true to break from loop
-                        _specificationOk = true;
+                        foreach (float specification in specifications) {
+                            _specificationsOk[(int) specification - 1] = true;
+                        }
 
                         arrangerType.RetrieveResult = false;
                         if (arrangerType.ActionAfterIoSignalReceived != null && arrangerType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoArrangerActionAfterAnalysis)) {
@@ -192,11 +195,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                     // Waiting for finish signal from arranger
                     while (_arranger_time_count < _arranger_time_out) {
-                        if (_specificationOk) {
+                        // check if all tasks were done
+                        if (_specificationsOk.ToList().Count(sOk => sOk != null && !sOk.Value) == 0) {
                             break;
                         }
+
+                        // Check which ones are not done yet, and clear the ones were done
+                        for (int i = 0; i < _specificationsOk.Length; i++) {
+                            bool? ok = _specificationsOk[i];
+                            if (ok != null && ok.Value) {
+                                _specifications[i] = null;
+                            }
+                        }
+
                         // Start sending signal
-                        arrangerType.WritePosition((int) specification);
+                        arrangerType.WritePosition(_specifications);
                         await WaitAndCountAsync(_arranger_pulse_delay);
 
                         // Reset signal
@@ -207,15 +220,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     // Reset again to ensure status of arranger is right
                     arrangerType.Reset();
 
-                    callBack(_specificationOk, _arranger_time_count >= _arranger_time_out);
+                    callBack(_specificationsOk, _arranger_time_count >= _arranger_time_out);
 
                     // Stop retrieve result
                     arrangerType.RetrieveResult = false;
                     arrangerType.ActionAfterIoSignalReceived -= DoArrangerActionAfterAnalysis;
 
                     // Reset variables
-                    _specification = null;
-                    _specificationOk = false;
+                    _specifications = new int?[] { null, null, null, null };
+                    _specificationsOk = new bool?[] { null, null, null, null };
                     _arranger_time_count = 0;
                 });
             });
@@ -227,11 +240,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _arranger_time_count += delay;
             }
         }
-        private void DoArrangerActionAfterAnalysis(int position) {
+        private void DoArrangerActionAfterAnalysis(int?[] positions) {
             BeginInvoke(() => {
-                if (position > 0) {
-                    if (!_specificationOk && _specification == position) {
-                        _specificationOk = true;
+                for (int i = 0; i < positions.Length; i++) {
+                    int? position = positions[i];
+                    if (position != null) {
+                        bool? flag = _specificationsOk[position.Value];
+                        if (flag != null && !flag.Value) {
+                            _specificationsOk[position.Value] = true;
+                        }
                     }
                 }
             });

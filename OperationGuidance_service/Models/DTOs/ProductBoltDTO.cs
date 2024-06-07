@@ -5,9 +5,10 @@ namespace OperationGuidance_service.Models.DTOs {
         public int side_id { get; set; }
         public int serial_num { get; set; }
         public string? name { get; set; } = string.Empty;
-        public float? specification { get; set; }
-        public float? specification2 { get; set; }
         public int? arranger_id { get; set; }
+        public float? specification { get; set; }
+        public int? arranger_id2 { get; set; }
+        public float? specification2 { get; set; }
         public int workstation_id { get; set; }
         public string? workstation_name { get; set; }
         public string? workstation_description { get; set; }

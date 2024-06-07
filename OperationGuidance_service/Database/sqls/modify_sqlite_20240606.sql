@@ -7,6 +7,7 @@ CREATE TABLE "product_bolt" (
   "name" text(128),
   "arranger_id" integer,
   "specification" real(16),
+  "arranger_id2" integer,
   "specification2" real(16),
   "workstation_id" integer,
   "position" text(32),
