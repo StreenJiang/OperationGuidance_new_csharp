@@ -215,7 +215,8 @@ namespace OperationGuidance_service.Database {
         
         /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE `product_bolt` 
-        ///  ADD COLUMN `specification2` double NULL AFTER `specification`;
+        ///  ADD COLUMN `arranger_id2` int NULL AFTER `specification`,
+        ///  ADD COLUMN `specification2` double NULL AFTER `arranger_id2`;
         ///.
         /// </summary>
         internal static string modify_mysql_20240606 {
@@ -403,13 +404,13 @@ namespace OperationGuidance_service.Database {
         ///  &quot;name&quot; text(128),
         ///  &quot;arranger_id&quot; integer,
         ///  &quot;specification&quot; real(16),
+        ///  &quot;arranger_id2&quot; integer,
         ///  &quot;specification2&quot; real(16),
         ///  &quot;workstation_id&quot; integer,
         ///  &quot;position&quot; text(32),
         ///  &quot;location_x_percent&quot; real(8) NOT NULL,
         ///  &quot;location_y_percent&quot; real(8) NOT NULL,
-        ///  &quot;setter_selector_id&quot; integer,
-        ///  &quot;bit_specificati [rest of string was truncated]&quot;;.
+        ///  &quot;setter_selector_id&quot; i [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_sqlite_20240606 {
             get {
