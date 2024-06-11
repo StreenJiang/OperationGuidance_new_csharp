@@ -42,6 +42,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private ToggleButton _specificationToggle;
         private CustomComboBoxGroup<DeviceIoDTO> _arrangerType;
         private CustomTextBoxGroup _specificationBox;
+        private CustomComboBoxGroup<DeviceIoDTO> _arrangerType2;
+        private CustomTextBoxGroup _specificationBox2;
         private SubPanel<ProductBoltDTO> _bitSpecificationSubPanel;
         private ToggleButton _bitSpecificationToggle;
         private CustomComboBoxGroup<DeviceIoDTO> _setterSelectorType;
@@ -69,6 +71,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public CustomTextBoxGroup ParameterSetBox { get => _parameterSetBox; set => _parameterSetBox = value; }
         public CustomComboBoxGroup<DeviceIoDTO> ArrangerType { get => _arrangerType; set => _arrangerType = value; }
         public CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
+        public CustomComboBoxGroup<DeviceIoDTO> ArrangerType2 { get => _arrangerType2; set => _arrangerType2 = value; }
+        public CustomTextBoxGroup SpecificationBox2 { get => _specificationBox2; set => _specificationBox2 = value; }
         public CustomComboBoxGroup<DeviceIoDTO> SetterSelectorType { get => _setterSelectorType; set => _setterSelectorType = value; }
         public CustomTextBoxGroup BitSpecificationBox { get => _bitSpecificationBox; set => _bitSpecificationBox = value; }
         public CustomTextBoxGroup TorqueBox { get => _torqueBox; set => _torqueBox = value; }
@@ -240,8 +244,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _specificationSubPanel = AddSubPanel("螺钉序号");
             _specificationSubPanel.TablePanel.ColumnCount = _columnCount;
             _specificationToggle = _specificationSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            _specificationToggle.Checked = boltDTO.specification != null;
-            _arrangerType = new("排列机组") {
+            _specificationToggle.Checked = boltDTO.specification != null || boltDTO.specification2 != null;
+            _arrangerType = new("排列机组1") {
+                Parent = _specificationSubPanel.TablePanel,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+            };
+            _specificationBox = new("螺钉序号1") {
+                Parent = _specificationSubPanel.TablePanel,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+                PositiveIntOnly = true,
+            };
+            _arrangerType2 = new("排列机组2") {
                 Parent = _specificationSubPanel.TablePanel,
                 Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
@@ -249,9 +264,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             foreach (DeviceIoDTO dto in _deviceIoDTOs) {
                 if (dto.type == DeviceType_IoBox.Arranger.Id) {
                     _arrangerType.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+                    _arrangerType2.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
                 }
             }
-            _specificationBox = new("螺钉序号") {
+            _specificationBox2 = new("螺钉序号2") {
                 Parent = _specificationSubPanel.TablePanel,
                 Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
@@ -266,13 +282,22 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     } else {
                         _specificationBox.SetValue(0, "0");
                     }
+                    if (boltDTO.specification2 != null) {
+                        _arrangerType2.SetCurrent(_arrangerType2.IndexOf(_deviceIoDTOs.Single(dto => dto.id == boltDTO.arranger_id2)));
+                        _specificationBox2.SetValue(0, boltDTO.specification2 + "");
+                    } else {
+                        _specificationBox2.SetValue(0, "0");
+                    }
                 } else {
                     _specificationSubPanel.TablePanel.Hide();
                     _specificationBox.SetValue(0, null);
+                    _specificationBox2.SetValue(0, null);
                 }
                 ResizeSelf();
                 _arrangerType.ResizeChildren();
                 _specificationBox.ResizeChildren();
+                _arrangerType2.ResizeChildren();
+                _specificationBox2.ResizeChildren();
             };
             // 套筒位数
             _bitSpecificationSubPanel = AddSubPanel("套筒位数");
@@ -401,15 +426,30 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 _parameterSetSubPanel.TablePanel.Hide();
             }
-            if (boltDTO.specification != null) {
+            if (boltDTO.specification != null || boltDTO.specification2 != null) {
                 _specificationSubPanel.TablePanel.Show();
-                DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.arranger_id);
-                if (deviceIoDTO != null) {
-                    _arrangerType.SetCurrent(_arrangerType.IndexOf(deviceIoDTO));
+                if (boltDTO.specification != null) {
+                    DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.arranger_id);
+                    if (deviceIoDTO != null) {
+                        _arrangerType.SetCurrent(_arrangerType.IndexOf(deviceIoDTO));
+                    } else {
+                        _arrangerType.SetError(true);
+                    }
+                    _specificationBox.SetValue(0, boltDTO.specification + "");
                 } else {
-                    _arrangerType.SetError(true);
+                    _specificationBox.SetValue(0, "0");
                 }
-                _specificationBox.SetValue(0, boltDTO.specification + "");
+                if (boltDTO.specification2 != null) {
+                    DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.arranger_id2);
+                    if (deviceIoDTO != null) {
+                        _arrangerType2.SetCurrent(_arrangerType2.IndexOf(deviceIoDTO));
+                    } else {
+                        _arrangerType2.SetError(true);
+                    }
+                    _specificationBox2.SetValue(0, boltDTO.specification2 + "");
+                } else {
+                    _specificationBox2.SetValue(0, "0");
+                }
             } else {
                 _specificationSubPanel.TablePanel.Hide();
             }
@@ -501,14 +541,28 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _modifiedBoltDTO.arranger_id = _arrangerType.Value.id;
                     _arrangerType.SetError(false);
                 } else {
-                    _arrangerType.SetError(true);
+                    _modifiedBoltDTO.arranger_id = null;
                 }
             };
             TextBox specificationBox = SpecificationBox.GetTextBox(0).Box;
             SpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 if (!SpecificationBox.HasError)
-                    if (!string.IsNullOrEmpty(specificationBox.Text)) ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
+                    if (!string.IsNullOrEmpty(specificationBox.Text) && int.Parse(specificationBox.Text) > 0) ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
                     else ModifiedBoltDTO.specification = null;
+            };
+            _arrangerType2.ItemSelected += () => {
+                if (!_arrangerType2.IsDefaultValue() && _arrangerType2.Value != null) {
+                    _modifiedBoltDTO.arranger_id2 = _arrangerType2.Value.id;
+                    _arrangerType2.SetError(false);
+                } else {
+                    _modifiedBoltDTO.arranger_id2 = null;
+                }
+            };
+            TextBox specificationBox2 = SpecificationBox2.GetTextBox(0).Box;
+            SpecificationBox2.GetTextBox(0).TextChanged += (sender, eventArgs) => {
+                if (!SpecificationBox2.HasError)
+                    if (!string.IsNullOrEmpty(specificationBox2.Text) && int.Parse(specificationBox2.Text) > 0) ModifiedBoltDTO.specification2 = float.Parse(specificationBox2.Text);
+                    else ModifiedBoltDTO.specification2 = null;
             };
             // 套筒位数
             _setterSelectorType.ItemSelected += () => {

@@ -263,9 +263,9 @@ namespace OperationGuidance_new.Tasks {
                     string? result = await SendCommandAsync(command);
 
                     bool isOk;
-                    if (result != null && _toolType is ToolPFSeries toolPF) {
+                    if (!string.IsNullOrEmpty(result) && _toolType is ToolPFSeries toolPF) {
                         isOk = toolPF.GetMid(result) == "0005";
-                    } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+                    } else if (!string.IsNullOrEmpty(result) && _toolType is ToolSudongX7 toolSDX7) {
                         isOk = toolSDX7.SendPsetOk(result);
                     } else {
                         isOk = false;
@@ -284,9 +284,9 @@ namespace OperationGuidance_new.Tasks {
             string? result = SendCommand(command);
 
             bool isOk;
-            if (result != null && _toolType is ToolPFSeries toolPF) {
+            if (!string.IsNullOrEmpty(result) && _toolType is ToolPFSeries toolPF) {
                 isOk = toolPF.GetMid(result) == "0005";
-            } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+            } else if (!string.IsNullOrEmpty(result) && _toolType is ToolSudongX7 toolSDX7) {
                 isOk = true;
             } else {
                 isOk = false;
@@ -309,9 +309,9 @@ namespace OperationGuidance_new.Tasks {
             string? result = SendCommand(command);
 
             bool isOk;
-            if (result != null && _toolType is ToolPFSeries toolPF) {
+            if (!string.IsNullOrEmpty(result) && _toolType is ToolPFSeries toolPF) {
                 isOk = toolPF.GetMid(result) == "0005";
-            } else if (result != null && _toolType is ToolSudongX7 toolSDX7) {
+            } else if (!string.IsNullOrEmpty(result) && _toolType is ToolSudongX7 toolSDX7) {
                 isOk = true;
             } else {
                 isOk = false;

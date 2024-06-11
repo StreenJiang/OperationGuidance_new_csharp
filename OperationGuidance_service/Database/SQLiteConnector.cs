@@ -88,7 +88,7 @@ namespace OperationGuidance_service.Database {
             using (SQLiteCommand command = conn.CreateCommand()) {
                 try {
                     conn.Open();
-                    command.CommandText = ConnectionUtils.GetInitializationSql("init_sqlite", "modify_sqlite");
+                    command.CommandText = Resource.init_sqlite;
                     command.ExecuteNonQuery();
                     return true;
                 } catch (Exception e) {

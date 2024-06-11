@@ -31,6 +31,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private List<DeviceIoDTO> _deviceIoDTOs;
         private CustomComboBoxGroup<DeviceIoDTO> _arrangerType;
         private CustomTextBoxGroup _specificationBox;
+        private CustomComboBoxGroup<DeviceIoDTO> _arrangerType2;
+        private CustomTextBoxGroup _specificationBox2;
         private CustomComboBoxGroup<DeviceIoDTO> _setterSelectorType;
         private CustomTextBoxGroup _bitSpecificationBox;
         private CustomTextBoxGroup _torqueBox;
@@ -49,7 +51,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public CustomComboBoxGroup<WorkstationDTO> Workstation { get => _workstation; set => _workstation = value; }
         public CustomTextBoxButtonGroup Position { get => _position; set => _position = value; }
         public CustomTextBoxGroup ParameterSetBox { get => _parameterSetBox; set => _parameterSetBox = value; }
+        public CustomComboBoxGroup<DeviceIoDTO> ArrangerType { get => _arrangerType; set => _arrangerType = value; }
         public CustomTextBoxGroup SpecificationBox { get => _specificationBox; set => _specificationBox = value; }
+        public CustomComboBoxGroup<DeviceIoDTO> ArrangerType2 { get => _arrangerType2; set => _arrangerType2 = value; }
+        public CustomTextBoxGroup SpecificationBox2 { get => _specificationBox2; set => _specificationBox2 = value; }
         public CustomTextBoxGroup BitSpecificationBox { get => _bitSpecificationBox; set => _bitSpecificationBox = value; }
         public CustomTextBoxGroup TorqueBox { get => _torqueBox; set => _torqueBox = value; }
         public CustomTextBoxGroup AngleBox { get => _angleBox; set => _angleBox = value; }
@@ -117,7 +122,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _tablePanel.SetColumnSpan(_parameterSetBox, _columnCount);
             _deviceIoDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id)).DeviceIoDTOs;
             // 排列机组
-            _arrangerType = new("排列机组") {
+            // 螺钉序号
+            _arrangerType = new("排列机组1") {
+                Parent = _tablePanel,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+                Enabled = false,
+            };
+            _specificationBox = new("螺钉序号1") {
+                Parent = _tablePanel,
+                Ratio = _boxRatio,
+                NameAlignment = HorizontalAlignment.Right,
+                NumberOnly = true,
+                Enabled = false,
+            };
+            _arrangerType2 = new("排列机组2") {
                 Parent = _tablePanel,
                 Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
@@ -126,14 +145,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             foreach (DeviceIoDTO dto in _deviceIoDTOs) {
                 if (dto.type == DeviceType_IoBox.Arranger.Id) {
                     _arrangerType.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+                    _arrangerType2.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
                 }
             }
-            // 螺钉序号
-            _specificationBox = new("螺钉序号") {
+            _specificationBox2 = new("螺钉序号2") {
                 Parent = _tablePanel,
                 Ratio = _boxRatio,
                 NameAlignment = HorizontalAlignment.Right,
-                NumberOnly = true,
+                PositiveIntOnly = true,
                 Enabled = false,
             };
             // 套筒选择器
@@ -215,6 +234,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 _arrangerType.Hide();
                 _specificationBox.Hide();
+            }
+            if (boltDTO.specification2 != null) {
+                _arrangerType2.Show();
+                _specificationBox2.Show();
+                DeviceIoDTO? deviceIoDTO = _deviceIoDTOs.SingleOrDefault(dto => dto.id == boltDTO.arranger_id2);
+                if (deviceIoDTO != null) {
+                    _arrangerType2.SetCurrent(_arrangerType2.IndexOf(deviceIoDTO));
+                } else {
+                    _arrangerType2.SetError(true);
+                }
+                _specificationBox2.SetValue(0, boltDTO.specification2 + "");
+            } else {
+                _arrangerType2.Hide();
+                _specificationBox2.Hide();
             }
             if (boltDTO.bit_specification != null) {
                 _setterSelectorType.Show();

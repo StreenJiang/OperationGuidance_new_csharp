@@ -64,7 +64,7 @@ namespace OperationGuidance_service.Utils {
                 || string.IsNullOrEmpty(password)
             ) {
                 MySqlConnector.Server = "localhost";
-                MySqlConnector.Port = "3307";
+                MySqlConnector.Port = "3306";
                 MySqlConnector.Database = "aneng";
                 MySqlConnector.User = "aneng";
                 MySqlConnector.Password = "aneng123";

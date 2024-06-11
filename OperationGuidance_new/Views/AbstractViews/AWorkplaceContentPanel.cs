@@ -127,16 +127,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected BoltButton? _currentWorkingBolt;
         protected Dictionary<int, BoltButton> _currentWorkingBoltIndependence = new();
         protected BoltPopUpForm _boltPopUpForm; // 如果以后要支持软件尺寸可拖拽改变，则需要在打开时动态改变
+        // Specification
         private bool _arrangerNeeded = false;
-        protected bool? _arrangerPositionOk;
-        protected bool _bitPositionTimedOut = false;
-        protected int _resendSignalToArragerTimes = 0;
+        protected Dictionary<float, bool>? _arrangerPositionOk = null;
+        protected bool _arrangerPositionTimedOut = false;
+        private int _resendSignalToArrangerTimes = 0;
+        private List<float> _specifications;
+        private List<int> _arrangerIds;
+        // BitSpecification
         private bool _setterSelectorNeeded = false;
         protected bool? _bitPositionOk;
-        protected bool _arrangerPositionTimedOut = false;
+        protected bool _bitPositionTimedOut = false;
         protected int _resendSignalToSetterSelectorTimes = 0;
-        private int _resendSignalToArrangerTimes;
-        private int _resendSignalToArragerMaxTimes;
 
         // 任务相关
         private List<String> lockMsgs = new();
@@ -1142,65 +1144,52 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Check io box related issues
             // Use try-catch to return earlier if can not activate mission
             try {
+                _arrangerNeeded = false;
+                _setterSelectorNeeded = false;
+
                 if (CheckIfIsMultiDeviceIndependenceMode()) {
                     // If bit specification of any is not null and grater than 0, need to receive data from io box and keep checking the status of setter selector
                     foreach (Dictionary<int, List<BoltButton>> pair in _allBoltsIndependence.Values) {
-                        foreach (List<BoltButton> bolts in pair.Values) {
-                            BoltButton? bolt1 = bolts.Find(b => b.BoltDTO.specification != null && b.BoltDTO.specification > 0);
-                            if (!_arrangerNeeded && bolt1 != null) {
-                                NeedArrager(CheckArranger(bolt1.BoltDTO));
-                            }
-                            BoltButton? bolt2 = bolts.Find(b => b.BoltDTO.bit_specification != null && b.BoltDTO.bit_specification > 0);
-                            if (!_setterSelectorNeeded && bolt2 != null) {
-                                NeedSetterSelector(CheckSetterSelector(bolt2.BoltDTO));
-                            }
-                            if (_arrangerNeeded && _setterSelectorNeeded) {
-                                break;
-                            }
-                        }
-                        if (_arrangerNeeded && _setterSelectorNeeded) {
-                            break;
-                        }
+                        CheckBoltList(pair.Values.ToList());
                     }
                 } else {
-                    List<int> workstationIds = new();
-                    foreach (List<BoltButton> bolts in _allBolts.Values) {
-                        BoltButton? bolt1 = bolts.Find(b => b.BoltDTO.specification != null && b.BoltDTO.specification > 0);
-                        if (!_arrangerNeeded && bolt1 != null) {
-                            NeedArrager(CheckArranger(bolt1.BoltDTO));
-                        }
-                        BoltButton? bolt2 = bolts.Find(b => b.BoltDTO.bit_specification != null && b.BoltDTO.bit_specification > 0);
-                        if (!_setterSelectorNeeded && bolt2 != null) {
-                            NeedSetterSelector(CheckSetterSelector(bolt2.BoltDTO));
-                        }
-                        if (_arrangerNeeded && _setterSelectorNeeded) {
-                            break;
+                    CheckBoltList(_allBolts.Values.ToList());
+                }
+
+                void CheckBoltList(List<List<BoltButton>> allBolts) {
+                    foreach (List<BoltButton> bolts in allBolts) {
+                        foreach (BoltButton bolt in bolts) {
+                            ProductBoltDTO dto = bolt.BoltDTO;
+                            if (dto.specification != null && dto.specification > 0) {
+                                CheckArranger(dto.arranger_id);
+                            }
+                            if (dto.specification2 != null && dto.specification2 > 0) {
+                                CheckArranger(dto.arranger_id2);
+                            }
+                            if (dto.bit_specification != null && dto.bit_specification > 0) {
+                                CheckSetterSelector(dto.setter_selector_id);
+                            }
                         }
                     }
                 }
-                int CheckArranger(ProductBoltDTO boltDTO) {
-                    if (boltDTO.arranger_id == null || boltDTO.arranger_id <= 0) {
+
+                void CheckArranger(int? arranger_id) {
+                    if (arranger_id == null || arranger_id <= 0) {
                         WidgetUtils.ShowErrorPopUp($"存在点位的排列机组配置出错，无法激活任务");
                         throw new Exception();
                     }
-                    return boltDTO.arranger_id.Value;
-                }
-                int CheckSetterSelector(ProductBoltDTO boltDTO) {
-                    if (boltDTO.setter_selector_id == null || boltDTO.setter_selector_id <= 0) {
-                        WidgetUtils.ShowErrorPopUp($"存在点位的套筒选择器配置出错，无法激活任务");
-                        throw new Exception();
-                    }
-                    return boltDTO.setter_selector_id.Value;
-                }
-                void NeedArrager(int arrangerId) {
-                    if (_ioBoxTasks.Values.ToList().Find(box => box.ArrangerType != null && box.ArrangerType.DeviceId == arrangerId) == null) {
+                    if (_ioBoxTasks.Values.ToList().Find(box => box.ArrangerType != null && box.ArrangerType.DeviceId == arranger_id) == null) {
                         WidgetUtils.ShowErrorPopUp($"存在点位所选择的排列机组找不到配置或被删除，无法激活任务");
                         throw new Exception();
                     }
                     _arrangerNeeded = true;
                 }
-                void NeedSetterSelector(int setterSelectorId) {
-                    if (_ioBoxTasks.Values.ToList().Find(box => box.SetterSelectorType != null && box.SetterSelectorType.DeviceId == setterSelectorId) == null) {
+                void CheckSetterSelector(int? setter_selector_id) {
+                    if (setter_selector_id == null || setter_selector_id <= 0) {
+                        WidgetUtils.ShowErrorPopUp($"存在点位的套筒选择器配置出错，无法激活任务");
+                        throw new Exception();
+                    }
+                    if (_ioBoxTasks.Values.ToList().Find(box => box.SetterSelectorType != null && box.SetterSelectorType.DeviceId == setter_selector_id) == null) {
                         WidgetUtils.ShowErrorPopUp($"存在点位所选择的套筒选择器找不到配置或被删除，无法激活任务");
                         throw new Exception();
                     }
@@ -1379,7 +1368,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
-                        if (!_arrangerPositionOk.Value) {
+                        if (_arrangerPositionOk.Values.ToList().Count(ok => !ok) > 0) {
                             if (!_arrangerPositionTimedOut) {
                                 AddLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
                             } else {
@@ -1650,26 +1639,75 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Send bit position to arranger
         protected virtual void SendSignalToArrager(BoltButton boltButton) {
-            BeginInvoke(() => {
+            BeginInvoke((Delegate) (() => {
                 Task.Run(() => {
+                    // Prepare all variables
                     ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                    _specifications = new List<float>();
+                    _arrangerIds = new List<int>();
                     if (boltDTO.specification != null && boltDTO.specification > 0) {
-                        DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.arranger_id);
-                        IoBoxTypeArranger? arrangerType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].ArrangerType;
-                        if (arrangerType != null) {
-                            _arrangerPositionOk = false;
-                            _arrangerPositionTimedOut = false;
-                            boltButton.SendSignalToArragner(boltDTO.specification.Value, arrangerType, (isOk, isTimedOut) => {
-                                _arrangerPositionOk = isOk;
-                                _arrangerPositionTimedOut = isTimedOut;
-                            });
+                        _specifications.Add(boltDTO.specification.Value);
+                        _arrangerIds.Add(boltDTO.arranger_id.Value);
+                    }
+                    if (boltDTO.specification2 != null && boltDTO.specification2 > 0) {
+                        _specifications.Add(boltDTO.specification2.Value);
+                        _arrangerIds.Add(boltDTO.arranger_id2.Value);
+                    }
+
+                    // Do action if specifications is not equal to 0
+                    if (_specifications.Count > 0) {
+                        // Initialize variables
+                        if (_arrangerPositionOk == null) {
+                            _arrangerPositionOk = new();
+                            foreach (float specification in _specifications) {
+                                _arrangerPositionOk.Add(specification, false);
+                            }
+                        } else {
+                            List<float>.Enumerator enumerator = _specifications.GetEnumerator();
+                            while (enumerator.MoveNext()) {
+                                float specification = enumerator.Current;
+                                if (_arrangerPositionOk.ContainsKey(specification)) {
+                                    if (_arrangerPositionOk[specification]) {
+                                        _arrangerIds.RemoveAt(_specifications.IndexOf(specification));
+                                        _specifications.Remove(specification);
+                                        continue;
+                                    }
+                                }
+                                _arrangerPositionOk.Add(specification, false);
+                            }
+                        }
+
+                        // Do send signal
+                        if (_arrangerIds.Distinct().Count() == 1) {
+                            SendSignal(_arrangerIds[0], _specifications);
+                        } else {
+                            for (int i = 0; i < _arrangerIds.Count; i++) {
+                                SendSignal(_arrangerIds[i], _specifications.Skip(i).Take(1).ToList());
+                            }
                         }
                     } else {
                         _arrangerPositionOk = null;
                         _arrangerPositionTimedOut = false;
                     }
                 });
-            });
+            }));
+
+            // Action of sending signal
+            void SendSignal(int arrangerId, List<float> specifications) {
+                DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == arrangerId);
+                IoBoxTypeArranger? arrangerType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].ArrangerType;
+                if (arrangerType != null) {
+                    boltButton.SendSignalToArragner(specifications, arrangerType, (isOks, isTimedOut) => {
+                        foreach (float position in _arrangerPositionOk.Keys) {
+                            bool? ok = isOks[(int) position - 1];
+                            if (ok != null) {
+                                _arrangerPositionOk[position] = ok.Value;
+                            }
+                        }
+                        _arrangerPositionTimedOut = isTimedOut;
+                    });
+                }
+            }
         }
 
         // Send bit position to setter selector

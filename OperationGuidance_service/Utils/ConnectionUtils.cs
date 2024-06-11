@@ -35,22 +35,6 @@ namespace OperationGuidance_service.Utils {
             return exists;
         }
 
-        public static string GetInitializationSql(string creatScriptName, string modifyNamePrefix) {
-            string commandText = CommonUtils.CannotBeNull(Resource.ResourceManager.GetString(creatScriptName));
-
-            List<string> fileNames = GetResourcesFileNames();
-            foreach (string fileName in fileNames) {
-                if (fileName.Contains(modifyNamePrefix)) {
-                    string? fileText = Resource.ResourceManager.GetString(fileName);
-                    if (!string.IsNullOrEmpty(fileText)) {
-                        commandText += $"\r\n{fileText}";
-                    }
-                }
-            }
-
-            return commandText;
-        }
-
         public static List<String> GetResourcesFileNames() {
             List<String> fileNames = new();
 

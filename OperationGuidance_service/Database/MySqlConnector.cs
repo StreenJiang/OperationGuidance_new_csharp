@@ -23,7 +23,7 @@ namespace OperationGuidance_service.Database {
                 string sqlScriptPrefix = "modify_mysql";
                 if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
                     using (MySqlCommand command = conn.CreateCommand()) {
-                        command.CommandText = ConnectionUtils.GetInitializationSql("init_mysql", sqlScriptPrefix);
+                        command.CommandText = Resource.init_mysql;
                         command.ExecuteNonQuery();
                     }
                 } else {

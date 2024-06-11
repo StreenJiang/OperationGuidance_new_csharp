@@ -8,8 +8,10 @@ namespace OperationGuidance_service.Models {
         public int serial_num { get; set; }
         public string? name { get; set; }
         public int? workstation_id { get; set; }
-        public float? specification { get; set; }
         public int? arranger_id { get; set; }
+        public float? specification { get; set; }
+        public int? arranger_id2 { get; set; }
+        public float? specification2 { get; set; }
         public string? position { get; set; }
         public float location_x_percent { get; set; }
         public float location_y_percent { get; set; }

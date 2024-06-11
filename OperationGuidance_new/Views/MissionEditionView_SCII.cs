@@ -872,20 +872,67 @@ namespace OperationGuidance_new.Views {
                     boltDTO.parameters_set = null;
                 }
                 if (_boltPopUpForm.SpecificationToggle.Checked) {
+                    // Check arrangers
                     DeviceIoDTO? ioDTO = _boltPopUpForm.ArrangerType.Value;
-                    if (ioDTO == null) {
+                    DeviceIoDTO? ioDTO2 = _boltPopUpForm.ArrangerType2.Value;
+                    if (ioDTO == null && ioDTO2 == null) {
                         check = false;
                         _boltPopUpForm.ArrangerType.SetError(true);
-                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，排列机组不能为空\r\n";
+                        _boltPopUpForm.ArrangerType2.SetError(true);
+                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，排列机组至少填一个\r\n";
                     }
+
+                    // Check specifications
                     string specification = _boltPopUpForm.SpecificationBox.GetTextBox(0).Box.Text;
-                    if (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0) {
+                    string specification2 = _boltPopUpForm.SpecificationBox2.GetTextBox(0).Box.Text;
+                    bool specificationIsNull = (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0);
+                    bool specificationIsNull2 = (string.IsNullOrEmpty(specification2) || int.Parse(specification2) <= 0);
+                    if (specificationIsNull && specificationIsNull2) {
                         check = false;
                         _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
-                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，不能为空且必须大于0\r\n";
+                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，螺钉序号至少有一个不能为空且必须大于0\r\n";
+                    }
+
+                    // Check if them matches
+                    if (ioDTO != null && specificationIsNull) {
+                        check = false;
+                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 排列机组1有选中的值时，螺钉序号1不能为空且必须大于0\r\n";
+                    }
+                    if (ioDTO2 != null && specificationIsNull2) {
+                        check = false;
+                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 排列机组2有选中的值时，螺钉序号2不能为空且必须大于0\r\n";
+                    }
+                    if (ioDTO == null && !specificationIsNull) {
+                        check = false;
+                        _boltPopUpForm.ArrangerType.SetError(true);
+                        warningMsg += $"{warningIndex++}. 螺钉序号1不为空且大于0时，排列机组1不能为空\r\n";
+                    }
+                    if (ioDTO2 == null && !specificationIsNull2) {
+                        check = false;
+                        _boltPopUpForm.ArrangerType2.SetError(true);
+                        warningMsg += $"{warningIndex++}. 螺钉序号2不为空且大于0时，排列机组2不能为空\r\n";
+                    }
+                    if (ioDTO != null && ioDTO2 != null && ioDTO.id == ioDTO2.id && specification == specification2) {
+                        check = false;
+                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 选择同一个排列机组时，螺钉序号不能重复\r\n";
+                    }
+
+                    if (check) {
+                        _boltPopUpForm.ArrangerType.SetError(false);
+                        _boltPopUpForm.ArrangerType2.SetError(false);
+                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = false;
+                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = false;
                     }
                 } else {
+                    boltDTO.arranger_id = null;
+                    boltDTO.arranger_id2 = null;
                     boltDTO.specification = null;
+                    boltDTO.specification2 = null;
                 }
                 if (_boltPopUpForm.BitSpecificationToggle.Checked) {
                     DeviceIoDTO? ioDTO = _boltPopUpForm.SetterSelectorType.Value;
@@ -901,6 +948,7 @@ namespace OperationGuidance_new.Views {
                         warningMsg += $"{warningIndex++}. 套筒位数字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
+                    boltDTO.setter_selector_id = null;
                     boltDTO.bit_specification = null;
                 }
                 if (_boltPopUpForm.TorqueToggle.Checked) {
