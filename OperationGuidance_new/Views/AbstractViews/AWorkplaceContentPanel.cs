@@ -1697,7 +1697,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 IoBoxTypeArranger? arrangerType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].ArrangerType;
                 if (arrangerType != null) {
                     boltButton.SendSignalToArragner(specifications, arrangerType, (isOks, isTimedOut) => {
-                        logger.Debug($"_arrangerPositionOk = {string.Join(", ", _arrangerPositionOk)}");
                         foreach (float position in _arrangerPositionOk.Keys) {
                             bool? ok = isOks[(int) position - 1];
                             if (ok != null) {

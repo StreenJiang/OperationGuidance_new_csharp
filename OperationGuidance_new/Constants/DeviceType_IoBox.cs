@@ -207,7 +207,6 @@ namespace OperationGuidance_new.Constants {
                     }
 
                     if (_ioBoxActionAfterAnalysis != null) {
-                        logger.Debug($"_currentStatuses = {string.Join(", ", _currentStatuses)}");
                         _ioBoxActionAfterAnalysis(_currentStatuses);
                     }
                 } catch (Exception e) {
