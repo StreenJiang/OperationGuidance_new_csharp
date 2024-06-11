@@ -16,6 +16,7 @@ using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel> {
+        public WorkplaceMissionView() { }
         public WorkplaceMissionView(bool operatorOpenning) : base(operatorOpenning) { }
 
         protected override WorkplaceContentPanel GetWrokplacePanel(int? missionId, WorkplaceTopBar topBar) {
