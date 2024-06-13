@@ -6,7 +6,7 @@ using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
-    public class IoBoxTask: ATaskBase {
+    public class IoBoxTask : ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(IoBoxTask));
 
         #region Fields

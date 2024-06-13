@@ -87,7 +87,7 @@ namespace OperationGuidance_new {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            MainUtils.Version = AppVersion.SCII;
+            // MainUtils.Version = AppVersion.SCII;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
@@ -151,7 +151,7 @@ namespace OperationGuidance_new {
                         }
                         MinimumSize = new Size(400, 300);
                         MaximumSize = screenSize;
-                        if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
+                        if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
                             if (_operatorView != null) {
                                 _operatorView.Dispose();
                             }
@@ -210,7 +210,7 @@ namespace OperationGuidance_new {
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
-            if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
+            if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
                 OperatorOpenning();
             } else {
                 // mainPanel
@@ -283,7 +283,7 @@ namespace OperationGuidance_new {
                         }
                         object instance = type.Assembly.CreateInstance(type.FullName);
                         if (instance is CustomContentPanel) {
-                            CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
+                            CustomContentPanel contentPanelTemp = (CustomContentPanel)instance;
                             //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
                             contentPanelTemp.Name = "mainContentPanel_" + i;
                             if (contentPanelTemp.Controls.Count == 0) {
@@ -297,7 +297,7 @@ namespace OperationGuidance_new {
                             };
                             WidgetUtils.AddView(contentPanelTemp);
                         } else {
-                            CustomTabPanel childTapPanel = (CustomTabPanel) instance;
+                            CustomTabPanel childTapPanel = (CustomTabPanel)instance;
                             CustomChildMenuFirstPanel childMenuPanel = new();
                             CustomContentPanelBase childContentPanel = new();
                             // childMenuPanel
@@ -336,7 +336,7 @@ namespace OperationGuidance_new {
                                     }
                                     object childInstance = childType.Assembly.CreateInstance(childType.FullName);
                                     if (childInstance is CustomContentPanel) {
-                                        CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
+                                        CustomContentPanel childContentPanelTemp = (CustomContentPanel)childInstance;
                                         //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
                                         childContentPanelTemp.Name = "childContentPanel_" + j;
                                         if (childContentPanelTemp.Controls.Count == 0) {

@@ -6,10 +6,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class MissionManagementView_SCII: CustomContentPanel {
-        private readonly int _tableColumns = 4;
-        private readonly float _cellGapRatio = 0.02F;
-        private readonly float _cellHightRatio = 0.21F;
+    public class MissionManagementView_SCII : CustomContentPanel {
         private MissionListPanel _missionListPanel;
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;

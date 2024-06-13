@@ -1,7 +1,7 @@
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
-    public class ModBusBool: AModBusValue {
+    public class ModBusBool : AModBusValue {
         public int ValuePosition { get; set; } = -1;
 
         public override byte[] BytesValue {

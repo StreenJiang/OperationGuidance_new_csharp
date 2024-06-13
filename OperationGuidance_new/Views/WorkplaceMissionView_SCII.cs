@@ -14,7 +14,7 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView_SCII: AWorkplaceMissionView<WorkplaceContentPanel_SCII> {
+    public class WorkplaceMissionView_SCII : AWorkplaceMissionView<WorkplaceContentPanel_SCII> {
         public WorkplaceMissionView_SCII() { }
         public WorkplaceMissionView_SCII(bool operatorOpenning) : base(operatorOpenning) { }
 
@@ -29,7 +29,7 @@ namespace OperationGuidance_new.Views {
         }
     }
 
-    public class WorkplaceContentPanel_SCII: AWorkplaceContentPanel {
+    public class WorkplaceContentPanel_SCII : AWorkplaceContentPanel {
         // 上方
         private CustomContentPanel _top;
         // 上方左边
@@ -244,12 +244,12 @@ namespace OperationGuidance_new.Views {
         private void SetTodayData() {
             List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() { UserId = SystemUtils.LoggedUserId, Date = DateTime.Now }).MissionRecordDTOs;
             int sum = missionRecordDTOs.Count;
-            int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
+            int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int)TighteningStatus.OK).Count();
             double ngRate;
             if (sum == 0) {
                 ngRate = 0;
             } else {
-                ngRate = Math.Round((sum - okSum) / (double) sum, 4) * 100;
+                ngRate = Math.Round((sum - okSum) / (double)sum, 4) * 100;
             }
 
             _productSumPerDay.SetValue(0, sum + "");
@@ -425,8 +425,8 @@ namespace OperationGuidance_new.Views {
             base.ResizeChildren(sender, eventArgs);
             if (IsHandleCreated && !IsDisposed) {
                 int boxHeight = WidgetUtils.WorkplaceBoxOrButtonHeightRatio();
-                int titleHeight = (int) (boxHeight * 1.1);
-                int contentVPadding = (int) (boxHeight * .35);
+                int titleHeight = (int)(boxHeight * 1.1);
+                int contentVPadding = (int)(boxHeight * .35);
                 int contentHPadding = contentVPadding;
                 Font titleFont = new Font(WidgetsConfigs.SystemFontFamily, titleHeight * .55f, FontStyle.Bold, GraphicsUnit.Pixel);
 
@@ -448,17 +448,17 @@ namespace OperationGuidance_new.Views {
             int padding = Padding.Left / 2;
             int workplaceWidth = Width - Padding.Left * 2;
             int workplaceHeight = Height - Padding.Top * 2;
-            int barCodeHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
-            int imagePanelHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
+            int barCodeHeight = (int)(workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
+            int imagePanelHeight = (int)(workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
             int topHeight = barCodeHeight + imagePanelHeight + padding;
-            int bottomHeight = (int) (workplaceHeight * .045);
+            int bottomHeight = (int)(workplaceHeight * .045);
             int middleHeight = workplaceHeight - topHeight - bottomHeight - padding * 2; // 为了取整
-            int topLeftWidth = (int) (workplaceWidth * WidgetUtils.WorkplaceLeftWidthRatio());
+            int topLeftWidth = (int)(workplaceWidth * WidgetUtils.WorkplaceLeftWidthRatio());
             int topRightWidth = workplaceWidth - topLeftWidth - padding;
             int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
             int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
-            int topRightMiddleLeftWidth = (int) (topRightWidth * .55);
+            int topRightMiddleLeftWidth = (int)(topRightWidth * .55);
             int topRightMiddleRightWidth = topRightWidth - topRightMiddleLeftWidth - padding;
 
             // 上方
@@ -500,14 +500,14 @@ namespace OperationGuidance_new.Views {
         // 计算尺寸： 条码框
         private void ResizeTopLeftTop() {
             // icon的边长
-            int side = (int) (_barCodePictureBox.Parent.Height * .675);
+            int side = (int)(_barCodePictureBox.Parent.Height * .675);
             // 重设icon
             _barCodePictureBox.Image = WidgetUtils.ResizeImage(_barCodeImage, side, side);
             _barCodePictureBox.Margin = new((_barCodePictureBox.Parent.Height - side) / 2);
             _barCodePictureBox.Size = new(side, side);
 
             // 重设输入框
-            int newH = (int) (_barCodePictureBox.Parent.Height * .875);
+            int newH = (int)(_barCodePictureBox.Parent.Height * .875);
             _barCodeTextBox.Size = new(_barCodePictureBox.Parent.Width - side * 2, newH);
             _barCodeTextBox.Margin = new(0, (_barCodePictureBox.Parent.Height - newH) / 2, 0, 0);
 
@@ -520,8 +520,8 @@ namespace OperationGuidance_new.Views {
 
                 Control mainForm = WidgetUtils.MainForm;
                 Padding contentPadding = _barCodePopUpForm.ContentPanel.Padding;
-                int boxHeight = (int) (mainForm.Height * .05);
-                Size contentSize = new((int) (mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
+                int boxHeight = (int)(mainForm.Height * .05);
+                Size contentSize = new((int)(mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
                 int boxWidth = contentSize.Width - contentPadding.Size.Width;
                 // _barCodePopUpForm.TextBox.Size = new(boxWidth, boxHeight);
                 _barCodePopUpForm.ResizeSelf();
@@ -543,18 +543,18 @@ namespace OperationGuidance_new.Views {
             Rectangle? imageRange = _productImageFiles[_currentSideIndex].ImageRange;
 
             // 重新计算螺栓点位按钮的大小和位置
-            int btnSide = (int) (newPanelSize.Height * .085) + (int) (Math.Abs(newPanelSize.Width - newPanelSize.Height) * .02);
+            int btnSide = (int)(newPanelSize.Height * .085) + (int)(Math.Abs(newPanelSize.Width - newPanelSize.Height) * .02);
             foreach (KeyValuePair<int, List<BoltButton>> pair in _allBolts) {
                 foreach (BoltButton boltButton in pair.Value) {
                     boltButton.Size = new(btnSide, btnSide);
                     int newX;
                     int newY;
                     if (imageRange != null) {
-                        newX = imageRange.Value.Location.X + (int) (imageRange.Value.Width * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
-                        newY = imageRange.Value.Y + (int) (imageRange.Value.Height * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                        newX = imageRange.Value.Location.X + (int)(imageRange.Value.Width * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = imageRange.Value.Y + (int)(imageRange.Value.Height * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
                     } else {
-                        newX = _productImageDisplayPanel.MaxRectLocation.X + (int) (_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
-                        newY = _productImageDisplayPanel.MaxRectLocation.Y + (int) (_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                        newX = _productImageDisplayPanel.MaxRectLocation.X + (int)(_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = _productImageDisplayPanel.MaxRectLocation.Y + (int)(_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
                     }
                     boltButton.Location = new(newX, newY);
                 }
@@ -586,7 +586,7 @@ namespace OperationGuidance_new.Views {
         // 计算尺寸： 实时扭矩、角度框
         private void ResizeTopRightMiddleRight() {
             // Resize titles
-            _torqueTitle.Size = new(_torqueTitle.Parent.Width - 2, (int) (_torqueTitle.Parent.Height * .225));
+            _torqueTitle.Size = new(_torqueTitle.Parent.Width - 2, (int)(_torqueTitle.Parent.Height * .225));
             _angleTitle.Size = _torqueTitle.Size;
             // Reset font size
             _torqueTitle.Font = new Font(WidgetsConfigs.SystemFontFamily, _torqueTitle.Height * .55f, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -594,7 +594,7 @@ namespace OperationGuidance_new.Views {
             // Resize data text
             int heightRemain = _torqueTitle.Parent.Height - _torqueTitle.Height - _angleTitle.Height - 6; // 2 vertical border, 2 vertical margin of each title
             if (heightRemain > 0) {
-                _torque.Size = new(_torqueTitle.Parent.Width - 2, (int) (heightRemain * .6) - 2);
+                _torque.Size = new(_torqueTitle.Parent.Width - 2, (int)(heightRemain * .6) - 2);
                 _angle.Size = new(_torqueTitle.Parent.Width - 2, heightRemain - _torque.Height - 2);
                 // Reset font size depends on theirs height
                 _torque.Font = new(WidgetsConfigs.SystemFontFamily, _torque.Height * .8F, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -867,56 +867,6 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        // 下发程序号，失败时持续尝试
-        protected override async void SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
-            // Initialize pset text box first
-            SetPset();
-
-            // If pset is null, show error message in working proccess panel
-            if (pset == null) {
-                AddLockMsg(WorkingProcessPanel.LockedPsetNull);
-                return;
-            }
-
-            // Do send pset to controller
-            await Task.Run(() => {
-                BeginInvoke(async () => {
-                    int sendTimes = 0;
-                    while (!IsDisposed && !(await task.SendPSetAsync(pset.Value))) {
-                        if (boltButton.CurrentParameterSet != null) {
-                            return;
-                        }
-
-                        // Count failure times
-                        sendTimes++;
-
-                        // If sending times reaches maximun, show pop up form
-                        if (_resendPsetMaxTimes > 0 && sendTimes >= _resendPsetMaxTimes) {
-                            WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，请检查任务配置");
-                            return;
-                        }
-
-                        // Show reason of sending failure
-                        AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-
-                        // 实时显示pset到任务信息框
-                        SetPset("程序号下发失败");
-
-                        // Confirm if retry needed
-                        if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
-                            return;
-                        }
-                    }
-
-                    // Send successfully if step to here
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                    boltButton.CurrentParameterSet = pset;
-
-                    SetPset();
-                });
-            });
-        }
-
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
                 BeginInvoke(() => {
@@ -966,7 +916,7 @@ namespace OperationGuidance_new.Views {
                             }
 
                             // If result type is tightening
-                            if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
+                            if (data.result_type == (int)TightenOrLoosen.TIGHTENING) {
                                 bool tighteningOK = true;
                                 string errorMsg = "";
                                 // Initialize color to ok
@@ -974,16 +924,16 @@ namespace OperationGuidance_new.Views {
                                 _angle.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
 
                                 // Check tightening status
-                                if (data.tightening_status != (int) TighteningStatus.OK) {
+                                if (data.tightening_status != (int)TighteningStatus.OK) {
                                     tighteningOK = false;
-                                    if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                    if (data.torque_status != (int)TighteningCommonStatus.OK) {
                                         _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                         if (!string.IsNullOrEmpty(errorMsg)) {
                                             errorMsg += "\r\n";
                                         }
                                         errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
                                     }
-                                    if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                    if (data.angle_status != (int)TighteningCommonStatus.OK) {
                                         _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
                                         if (!string.IsNullOrEmpty(errorMsg)) {
                                             errorMsg += "\r\n";
@@ -1042,7 +992,7 @@ namespace OperationGuidance_new.Views {
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
 
                                         // Update mission result to ok
-                                        _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                        _missionRecord.mission_result = (int)TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
                                         // 重置任务信息
@@ -1050,7 +1000,7 @@ namespace OperationGuidance_new.Views {
                                     }
 
                                     // Store data
-                                    dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                    dataDTO.tightening_status = (int)TighteningStatus.OK;
                                     StoreTighteningData(dataDTO);
                                 } else {
                                     // Lock first
@@ -1104,7 +1054,7 @@ namespace OperationGuidance_new.Views {
                                             BoltNGConfirmPopUp();
                                         }
                                     }
-                                    dataDTO.tightening_status = (int) TighteningStatus.NG;
+                                    dataDTO.tightening_status = (int)TighteningStatus.NG;
                                 }
                             } else {
                                 _needLoosening = false;

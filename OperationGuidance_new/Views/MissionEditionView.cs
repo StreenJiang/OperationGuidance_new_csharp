@@ -22,7 +22,7 @@ using CustomLibrary.ComboBoxes;
 using log4net;
 
 namespace OperationGuidance_new.Views {
-    public partial class MissionEditionView: CustomContentPanel {
+    public partial class MissionEditionView : CustomContentPanel {
         private readonly OperationGuidanceApis apis;
         private ProductMissionDTO? _missionDTO;
         private MissionEditionPage? _editionPage;
@@ -77,13 +77,13 @@ namespace OperationGuidance_new.Views {
 
         public override void VisibleToTrue() {
             if ((_editionPage != null && _editionPage.IsDisposed)
-                || (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES)) {
+                || (_missionDTO.id > 0 && _missionDTO.deleted == (int)YesOrNo.YES)) {
                 CreateANewOne();
             }
         }
 
         // Class: inner page panel
-        public class MissionEditionPage: CustomContentPanel {
+        public class MissionEditionPage : CustomContentPanel {
             protected ILog logger = MainUtils.GetLogger(typeof(MissionEditionPage));
 
             private OperationGuidanceApis _apis;
@@ -323,9 +323,9 @@ namespace OperationGuidance_new.Views {
                         if (result == DialogResult.Yes) {
                             DeleteProductMissionReq req = new(_missionDTO);
                             DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
-                            if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
+                            if (rsp.RsponseCode == (int)HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
+                                _parentView.MissionDTO.deleted = (int)YesOrNo.YES;
                                 Modified = false;
                                 // 删除后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
@@ -406,12 +406,6 @@ namespace OperationGuidance_new.Views {
                     Padding = new(0),
                     BackColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_TITLE_PANEL_BACK,
                 };
-                // _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "（请确保所有螺栓点位在最小范围内，以免分辨率很小时显示不全）") {
-                //     Parent = _bottomLeft,
-                //     Margin = new(1, 0, 0, 0),
-                //     Padding = new(0),
-                //     BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
-                // };
                 _leftBottomContentPanel = new(Properties.Resources.image_choose, "点击添加产品图片", "工作台界面以虚线框内的显示部分为准。可使用裁剪功能裁剪掉虚线外的部分。") {
                     Parent = _bottomLeft,
                     Margin = new(1, 0, 0, 0),
@@ -450,12 +444,12 @@ namespace OperationGuidance_new.Views {
                         };
                         // Calculate the location of new bolt
                         Rectangle maxRect = _leftBottomContentPanel.MaxRect;
-                        boltDTO.location_x_percent = (float) (eventArgs.Location.X - maxRect.X) / _leftBottomContentPanel.MaxRectWidth * 100;
-                        boltDTO.location_y_percent = (float) (eventArgs.Location.Y - maxRect.Y) / _leftBottomContentPanel.MaxRectHeight * 100;
+                        boltDTO.location_x_percent = (float)(eventArgs.Location.X - maxRect.X) / _leftBottomContentPanel.MaxRectWidth * 100;
+                        boltDTO.location_y_percent = (float)(eventArgs.Location.Y - maxRect.Y) / _leftBottomContentPanel.MaxRectHeight * 100;
                         // Set serial number, if deleted serial number(s) exit(s), dequeue a serial number from queue and use it
                         int serialNumTemp = 0;
 
-                        if (_missionDTO.multi_device_independence != null && _missionDTO.multi_device_independence == (int) YesOrNo.YES) {
+                        if (_missionDTO.multi_device_independence != null && _missionDTO.multi_device_independence == (int)YesOrNo.YES) {
                             boltDTO.serial_num = 1;
                             boltDTO.name = "BOLT";
                         } else {
@@ -484,7 +478,7 @@ namespace OperationGuidance_new.Views {
                             _currentSideButton.BoltButtons[workstationId].Add(boltButton);
                             _currentSideButton.BoltEditionButtons[workstationId].Add(boltEditionButton);
 
-                            if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                            if ((int)YesOrNo.YES == _missionDTO.multi_device_independence) {
                                 int upperNum = _currentSideButton.BoltButtons.IndexOfKey(workstationId) + 1;
                                 boltButton.UpperNum = upperNum;
                                 boltEditionButton.UpperNum = upperNum;
@@ -644,10 +638,10 @@ namespace OperationGuidance_new.Views {
                     BackColor = Color.Transparent,
                     ForeColor = ColorConfigs.COLOR_MISSION_EDITION_TEXT,
                     ToggleBarColor = ColorConfigs.COLOR_MISSION_EDITION_IMAGE_SIDE_BUTTON_TOGGLED,
-                    BoltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio),
+                    BoltButtonRadius = (int)(_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio),
                 };
                 sideButton.Deleted += () => {
-                    sideDTO.deleted = (int) YesOrNo.YES;
+                    sideDTO.deleted = (int)YesOrNo.YES;
                     if (sideDTO.id == -1) {
                         // 将没有存入数据库的数据直接从缓存中去掉，已存入数据库的数据需要修改deleted字段使其变成已删除
                         CommonUtils.CannotBeNull(_missionDTO.ProductSides).Remove(sideDTO);
@@ -677,7 +671,7 @@ namespace OperationGuidance_new.Views {
                         Text = sideButton.Label,
                         ImeMode = ImeMode.On,
                     };
-                    box.Location = new((sideButton.Width - box.Width) / 2, (int) (((sideButton.Height - box.Height) / 2) * .9));
+                    box.Location = new((sideButton.Width - box.Width) / 2, (int)(((sideButton.Height - box.Height) / 2) * .9));
                     box.KeyUp += (sender, eventArgs) => {
                         if (eventArgs.KeyCode == Keys.Enter) {
                             RenameAndResizeCurrent();
@@ -697,8 +691,8 @@ namespace OperationGuidance_new.Views {
                             sideButton.Label = box.Text;
                             sideDTO.name = box.Text;
                             using (Graphics g = CreateGraphics()) {
-                                int btnLabelWidth = (int) g.MeasureString(sideButton.Label, sideButton.Font).Width;
-                                sideButton.Width = (int) (btnLabelWidth + sideButton.Height * _sideButtonWidthRatio);
+                                int btnLabelWidth = (int)g.MeasureString(sideButton.Label, sideButton.Font).Width;
+                                sideButton.Width = (int)(btnLabelWidth + sideButton.Height * _sideButtonWidthRatio);
                             }
                         }
                         Modified = true;
@@ -740,8 +734,8 @@ namespace OperationGuidance_new.Views {
 
                         // Recalculate bolt location
                         Rectangle maxRect = _leftBottomContentPanel.MaxRect;
-                        boltDTO.location_x_percent = (float) (location.X - maxRect.X + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectWidth * 100;
-                        boltDTO.location_y_percent = (float) (location.Y - maxRect.Y + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectHeight * 100;
+                        boltDTO.location_x_percent = (float)(location.X - maxRect.X + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectWidth * 100;
+                        boltDTO.location_y_percent = (float)(location.Y - maxRect.Y + _currentSideButton.BoltButtonRadius) / _leftBottomContentPanel.MaxRectHeight * 100;
 
                         boltButton.Moved = true;
                     }
@@ -797,7 +791,7 @@ namespace OperationGuidance_new.Views {
             }
 
             private void CheckMultiDeviceFlag() {
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                if ((int)YesOrNo.YES == _missionDTO.multi_device_independence) {
                     _boltPopUpForm.Workstation.ItemSelected += () => {
                         // Set serial num after workstation changed
                         if (_boltPopUpForm.Workstation.Value != null && _currentSideButton.BoltButtons.ContainsKey(_boltPopUpForm.Workstation.Value.id)) {
@@ -825,7 +819,7 @@ namespace OperationGuidance_new.Views {
                     warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
                 } else {
                     foreach (KeyValuePair<int, List<BoltButton>> pair in _currentSideButton.BoltButtons) {
-                        if ((int) YesOrNo.YES == _missionDTO.multi_device_independence && pair.Key != _boltPopUpForm.Workstation.Value.id) {
+                        if ((int)YesOrNo.YES == _missionDTO.multi_device_independence && pair.Key != _boltPopUpForm.Workstation.Value.id) {
                             continue;
                         }
                         BoltButton? boltButton = pair.Value.Find(btn => btn.BoltDTO.serial_num == int.Parse(serialNum));
@@ -1019,7 +1013,7 @@ namespace OperationGuidance_new.Views {
                 }
 
                 // Two kinds of bolt buttons all set, check if multi_device_independence is on
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                if ((int)YesOrNo.YES == _missionDTO.multi_device_independence) {
                     int upperNum = 1;
                     foreach (SideButton sideButton in _sideButtons) {
                         foreach (KeyValuePair<int, List<BoltButton>> pair in sideButton.BoltButtons) {
@@ -1081,7 +1075,7 @@ namespace OperationGuidance_new.Views {
                     return;
                 }
                 if (Parent != null && Parent.IsHandleCreated) {
-                    CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView) Parent).OuterVScrollPanel;
+                    CustomVScrollingContentPanel? outerVScrollPanel = ((MissionEditionView)Parent).OuterVScrollPanel;
                     if (outerVScrollPanel != null) {
                         ResizeContent(outerVScrollPanel.OuterPanel.Padding);
                         ResizeSideButtons();
@@ -1093,9 +1087,9 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ResizeContent(Padding outerPadding) {
-                int topHeight = (int) (Height * .1625);
+                int topHeight = (int)(Height * .1625);
                 int bottomHeight = Height - topHeight;
-                int bottomLeftWidth = (int) (Width * .8);
+                int bottomLeftWidth = (int)(Width * .8);
 
                 _top.Size = new(_bottom.Width, topHeight);
 
@@ -1112,20 +1106,20 @@ namespace OperationGuidance_new.Views {
                     // Height must be set first then ResizeTextLabel can be invoked, then the Font can be set
                     sideButton.Height = newHeight;
                     using (Graphics g = CreateGraphics()) {
-                        int btnLabelWidth = (int) g.MeasureString(sideButton.Label, sideButton.Font).Width;
-                        sideButton.Width = (int) (btnLabelWidth + newHeight * _sideButtonWidthRatio);
+                        int btnLabelWidth = (int)g.MeasureString(sideButton.Label, sideButton.Font).Width;
+                        sideButton.Width = (int)(btnLabelWidth + newHeight * _sideButtonWidthRatio);
                     }
                 }
-                _addNewSideButton.Size = new((int) (_sideTitlePanel.Width * .08), newHeight);
+                _addNewSideButton.Size = new((int)(_sideTitlePanel.Width * .08), newHeight);
             }
 
             private void ResizeTop() {
                 // Recalculate some variables
-                int textBoxWidth = (int) (_top.Width / 2.75);
+                int textBoxWidth = (int)(_top.Width / 2.75);
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
-                int boxGap = (int) (textBoxHeight * .5);
+                int boxGap = (int)(textBoxHeight * .5);
                 int buttonsHeight = WidgetUtils.CommonButtonHeight();
-                int buttonGap = (int) (buttonsHeight * .5);
+                int buttonGap = (int)(buttonsHeight * .5);
 
                 // Resize mission name box
                 _missionName.Size = new(textBoxWidth, textBoxHeight);
@@ -1146,7 +1140,7 @@ namespace OperationGuidance_new.Views {
 
                 // Resize image buttons
                 int imageButtonSide = _top.Height - buttonsHeight;
-                int imageMargin = (int) (imageButtonSide * .1);
+                int imageMargin = (int)(imageButtonSide * .1);
                 Size imageButtonSize = new(imageButtonSide - imageMargin * 2, imageButtonSide - imageMargin * 2);
                 HandleImageButton(_imageButtonChoose);
                 HandleImageButton(_imageButtonZoomOut);
@@ -1169,14 +1163,14 @@ namespace OperationGuidance_new.Views {
             }
 
             private void ResizeBottomLeft() {
-                _littleTitleHeight = (int) (WidgetUtils.TextOrComboBoxHeight() * 1.1);
+                _littleTitleHeight = (int)(WidgetUtils.TextOrComboBoxHeight() * 1.1);
                 _sideTitlePanel.Size = new(_bottomLeft.Width - 2, _littleTitleHeight);
                 _leftBottomContentPanel.Size = new(_bottomLeft.Width - 2, _bottomLeft.Height - _littleTitleHeight - 2);
                 Image? productImage = _leftBottomContentPanel.ProductImage;
                 Point? imageLocation = _leftBottomContentPanel.ImageLocation;
 
                 // Resize bolt buttons
-                int boltButtonRadius = (int) (_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio);
+                int boltButtonRadius = (int)(_leftBottomContentPanel.MaxRectHeight * _boltButtonRadiusRatio);
                 foreach (SideButton sideButton in _sideButtons) {
                     sideButton.BoltButtonRadius = boltButtonRadius;
                     sideButton.ReCalculateProductImageRatio();
@@ -1187,11 +1181,11 @@ namespace OperationGuidance_new.Views {
                             int newX;
                             int newY;
                             if (productImage != null && imageLocation != null) {
-                                newX = imageLocation.Value.X + (int) (productImage.Width * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
-                                newY = imageLocation.Value.Y + (int) (productImage.Height * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                                newX = imageLocation.Value.X + (int)(productImage.Width * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                                newY = imageLocation.Value.Y + (int)(productImage.Height * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
                             } else {
-                                newX = _leftBottomContentPanel.MaxRectLocation.X + (int) (_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
-                                newY = _leftBottomContentPanel.MaxRectLocation.Y + (int) (_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
+                                newX = _leftBottomContentPanel.MaxRectLocation.X + (int)(_leftBottomContentPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - boltButtonRadius;
+                                newY = _leftBottomContentPanel.MaxRectLocation.Y + (int)(_leftBottomContentPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - boltButtonRadius;
                             }
                             boltButton.Location = new(newX, newY);
                         }
@@ -1235,13 +1229,13 @@ namespace OperationGuidance_new.Views {
                 _boltTitleLabel.Font = new Font(WidgetsConfigs.SystemFontFamily, _boltTitleLabel.Height * .425F, FontStyle.Bold, GraphicsUnit.Pixel);
 
                 int contentHeight = _bottomRight.Height - _boltTitlePanel.Height - 2;
-                int boltBtnHeight = (int) (contentHeight * .055);
+                int boltBtnHeight = (int)(contentHeight * .055);
                 int boltBtnMargin = boltBtnHeight / 7;
                 _rightContentPanel.BoltSize = new(controlWidth - boltBtnMargin * 2, boltBtnHeight);
                 _rightContentPanel.BoltMargin = boltBtnMargin;
 
                 if (_currentSideButton != null && _currentSideButton.SideDTO != null) {
-                    _rightContentPanel.CalNewHeightAdnResizeChildren(_currentSideButton.SideDTO.id, (int) YesOrNo.YES == _missionDTO.multi_device_independence, contentHeight);
+                    _rightContentPanel.CalNewHeightAdnResizeChildren(_currentSideButton.SideDTO.id, (int)YesOrNo.YES == _missionDTO.multi_device_independence, contentHeight);
                 }
 
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
@@ -1253,7 +1247,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class MissionDetailPopUpForm: CustomPopUpForm {
+        public class MissionDetailPopUpForm : CustomPopUpForm {
             private int _tableColumns = 2;
             private ProductMissionDTO _missionDTO;
             private TableLayoutPanel _tablePanel;
@@ -1336,7 +1330,7 @@ namespace OperationGuidance_new.Views {
                 int subTitleMargin = subTitleHeight / 5;
                 int tableHeight = 0;
                 int previousRowIndex = -1;
-                int cntentWidth = (int) (WidgetUtils.MainSize.Width * .825);
+                int cntentWidth = (int)(WidgetUtils.MainSize.Width * .825);
                 int tableWidth = cntentWidth - contentPadding.Size.Width;
                 int contentPieceWidth = tableWidth / _tablePanel.ColumnCount - boxMargin * 2;
                 foreach (Control control in _tablePanel.Controls) {
@@ -1379,7 +1373,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class ImageButton: CustomImageTextButtonBase {
+        public class ImageButton : CustomImageTextButtonBase {
             private const float _imageSideRatio = 0.4F;
             private int _gapBetweenImageAndText;
 
@@ -1388,13 +1382,13 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void OnSizeChanged(EventArgs e) {
-                _gapBetweenImageAndText = (int) (this.Height * .1);
+                _gapBetweenImageAndText = (int)(this.Height * .1);
                 base.OnSizeChanged(e);
             }
 
             protected override void ResizeIconImage() {
                 if (this.Icon != null) {
-                    int newImageSide = (int) (Height * _imageSideRatio);
+                    int newImageSide = (int)(Height * _imageSideRatio);
                     this.ImageShowing = WidgetUtils.ResizeImage(this.Icon, newImageSide, newImageSide);
                     // Recalculate image location
                     this.ImageX = (this.Width - newImageSide) / 2;
@@ -1406,9 +1400,9 @@ namespace OperationGuidance_new.Views {
                 if (this.Label != null) {
                     this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Height * .225F, FontStyle.Bold, GraphicsUnit.Pixel);
                     // Recalculate label location
-                    int newImageSide = (int) (Height * _imageSideRatio);
+                    int newImageSide = (int)(Height * _imageSideRatio);
                     using (Graphics g = CreateGraphics()) {
-                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
+                        this.LabelX = (int)((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
                     }
                     this.LabelY = (this.Height - this.Font.Height - newImageSide) / 2 + newImageSide;
                 }
@@ -1416,7 +1410,7 @@ namespace OperationGuidance_new.Views {
         }
 
 
-        public class AddNewSideButton: CommonButton {
+        public class AddNewSideButton : CommonButton {
             public AddNewSideButton(string buttonName) {
                 Label = buttonName;
                 ConerRadius = 0;
@@ -1427,15 +1421,15 @@ namespace OperationGuidance_new.Views {
             }
             protected override void ResizeTextLabel() {
                 if (this.Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .4), FontStyle.Regular, GraphicsUnit.Pixel);
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int)(Height * .4), FontStyle.Regular, GraphicsUnit.Pixel);
                     using (Graphics g = CreateGraphics()) {
-                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
+                        this.LabelX = (int)((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
                     }
-                    this.LabelY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
+                    this.LabelY = (int)((this.Height - this.Font.Height * 1.1) / 2);
                 }
             }
         }
-        public class SideButton: DeletableButton {
+        public class SideButton : DeletableButton {
             private ILog logger = MainUtils.GetLogger(typeof(SideButton));
 
             private Color? _originalBackColor;
@@ -1596,7 +1590,7 @@ namespace OperationGuidance_new.Views {
                 BoltEditionButton boltEditionButton = _boltEditionButtons[_currentWorkstationId.Value].Single(b => b.BoltDTO.serial_num == _currentSerialNum.Value);
 
                 // Delete boltDto from sideDto
-                boltButton.BoltDTO.deleted = (int) (YesOrNo.YES);
+                boltButton.BoltDTO.deleted = (int)(YesOrNo.YES);
 
                 // Do deletion
                 _boltButtons[_currentWorkstationId.Value].Remove(boltButton);
@@ -1622,7 +1616,7 @@ namespace OperationGuidance_new.Views {
                 }
 
                 // Reorder buttons and reset serial numbers
-                if ((int) YesOrNo.YES == _missionDTO.multi_device_independence) {
+                if ((int)YesOrNo.YES == _missionDTO.multi_device_independence) {
                     int upperNum = 1;
                     foreach (KeyValuePair<int, List<BoltButton>> pair in _boltButtons) {
                         for (int i = 0; i < pair.Value.Count; i++) {
@@ -1671,14 +1665,14 @@ namespace OperationGuidance_new.Views {
                 if (this.Label != null) {
                     ChangeFontStyle();
                     using (Graphics g = CreateGraphics()) {
-                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
+                        this.LabelX = (int)((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .01);
                     }
-                    this.LabelY = (int) ((this.Height - this.Font.Height * 1.1) / 2);
+                    this.LabelY = (int)((this.Height - this.Font.Height * 1.1) / 2);
                 }
             }
 
             private void ChangeFontStyle() {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .4), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int)(Height * .4), Toggled ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
             }
             protected override void OnMouseUp(MouseEventArgs mevent) {
                 base.OnMouseUp(mevent);
@@ -1694,7 +1688,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class LeftBottomContentPanel: AProductImageDisplayPanel {
+        public class LeftBottomContentPanel : AProductImageDisplayPanel {
             private string _defaultText;
             private List<Color> _rectColors;
             private List<string> _ratioInfos;
@@ -1759,8 +1753,8 @@ namespace OperationGuidance_new.Views {
                 int mainFormHeight = WidgetUtils.MainForm.Height;
                 int workPlacePadding = WidgetUtils.ContentInnerBorderMargin() * 2 + 1;
                 int workPlaceWidth = mainFormWidth - workPlacePadding * 2;
-                int workPlaceHeight = mainFormHeight - (int) (mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
-                Size workPlaceImageDisplayPanelSize = new((int) (workPlaceWidth * WidgetUtils.WorkplaceLeftWidthRatio()), (int) (workPlaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio()));
+                int workPlaceHeight = mainFormHeight - (int)(mainFormHeight * WidgetUtils.WorkplaceTopBarHeightRatio()) - workPlacePadding * 2;
+                Size workPlaceImageDisplayPanelSize = new((int)(workPlaceWidth * WidgetUtils.WorkplaceLeftWidthRatio()), (int)(workPlaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio()));
 
                 MaxRectSize = MainUtils.GetProperSizeAccordingToSizeRatio((Size * .95F).ToSize(), workPlaceImageDisplayPanelSize);
                 MaxRectWidth = MaxRectSize.Width;
@@ -1804,7 +1798,7 @@ namespace OperationGuidance_new.Views {
                     int gapBetweenImageAndText = newImageSide / 4;
 
                     Font = new(WidgetsConfigs.SystemFontFamily, newImageSide * .6F, FontStyle.Regular, GraphicsUnit.Pixel);
-                    int textWidth = (int) (g.MeasureString(_defaultText, Font).Width);
+                    int textWidth = (int)(g.MeasureString(_defaultText, Font).Width);
                     int imageX = (Width - ProductDefaultImageShowing.Width - textWidth - gapBetweenImageAndText) / 2;
                     g.DrawImage(ProductDefaultImageShowing, new Point(imageX, (Height - newImageSide) / 2));
 
@@ -1846,7 +1840,7 @@ namespace OperationGuidance_new.Views {
                     };
                     g.DrawRectangle(pen, MaxRect);
                     Font noticeFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .025F, FontStyle.Regular, GraphicsUnit.Pixel);
-                    Point p = new Point(noticeFont.Height / 3, (int) (Height - noticeFont.Height * 1.1));
+                    Point p = new Point(noticeFont.Height / 3, (int)(Height - noticeFont.Height * 1.1));
                     g.DrawString(_notice, noticeFont, new SolidBrush(Color.Red), p);
                 }
             }
@@ -1863,7 +1857,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class RightContentPanel: CustomContentPanel {
+        public class RightContentPanel : CustomContentPanel {
             protected ILog logger = MainUtils.GetLogger(typeof(RightContentPanel));
 
             private Size _boltSize;
@@ -1931,7 +1925,7 @@ namespace OperationGuidance_new.Views {
                             Text = boltDTO.name,
                             ImeMode = ImeMode.On,
                         };
-                        box.Location = new((boltEditionButton.Width - box.Width) / 2, (int) (((boltEditionButton.Height - box.Height) / 2) * .9));
+                        box.Location = new((boltEditionButton.Width - box.Width) / 2, (int)(((boltEditionButton.Height - box.Height) / 2) * .9));
                         box.KeyUp += (sender, eventArgs) => {
                             if (eventArgs.KeyCode == Keys.Enter) {
                                 RenameAndResize();
@@ -2033,7 +2027,7 @@ namespace OperationGuidance_new.Views {
                 return NewHeight > parentNewHeight;
             }
 
-            public class SideButtonsPanel: CustomContentPanel {
+            public class SideButtonsPanel : CustomContentPanel {
                 private SideButton _sideBtn;
                 private Dictionary<int, WorkstationButtonsPanel> _btnPanels = new();
 
@@ -2043,7 +2037,7 @@ namespace OperationGuidance_new.Views {
                 public SideButtonsPanel(SideButton sideBtn) => _sideBtn = sideBtn;
             }
 
-            public class WorkstationButtonsPanel: CustomContentPanel {
+            public class WorkstationButtonsPanel : CustomContentPanel {
                 private int _workstationId;
                 private List<BoltEditionButton> _btns = new();
 
@@ -2059,7 +2053,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        public class BoltEditionButton: DeletableButton {
+        public class BoltEditionButton : DeletableButton {
             private ProductBoltDTO _boltDTO;
             private string? _label;
             private int? _upperNum;
@@ -2144,11 +2138,11 @@ namespace OperationGuidance_new.Views {
 
             protected override void ResizeTextLabel() {
                 if (this.Label != null && Height > 0) {
-                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .45), FontStyle.Regular, GraphicsUnit.Pixel);
+                    this.Font = new Font(WidgetsConfigs.SystemFontFamily, (int)(Height * .45), FontStyle.Regular, GraphicsUnit.Pixel);
                     using (Graphics g = CreateGraphics()) {
-                        this.LabelX = (int) ((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
+                        this.LabelX = (int)((this.Width - g.MeasureString(this.Label, this.Font).Width) / 2 + this.Width * .02);
                     }
-                    this.LabelY = (int) ((this.Height - this.Font.Height) / 2);
+                    this.LabelY = (int)((this.Height - this.Font.Height) / 2);
                 }
             }
 

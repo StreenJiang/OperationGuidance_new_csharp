@@ -6,10 +6,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class MissionManagementView: CustomContentPanel {
-        private readonly int _tableColumns = 4;
-        private readonly float _cellGapRatio = 0.02F;
-        private readonly float _cellHightRatio = 0.21F;
+    public class MissionManagementView : CustomContentPanel {
         private MissionListPanel _missionListPanel;
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;
@@ -20,7 +17,7 @@ namespace OperationGuidance_new.Views {
                 if (_editionView == null) {
                     _editionView = WidgetUtils.GetView<MissionEditionView>();
                 }
-                return _editionView; 
+                return _editionView;
             }
         }
 
@@ -29,8 +26,8 @@ namespace OperationGuidance_new.Views {
             apis = SystemUtils.GetApis();
             // Initialize
             _missionListPanel = new(
-                "任务列表", 
-                "新建任务", 
+                "任务列表",
+                "新建任务",
                 (sender, eventArgs) => OpenEditionPageView(null)
             ) {
                 Margin = new Padding(0),

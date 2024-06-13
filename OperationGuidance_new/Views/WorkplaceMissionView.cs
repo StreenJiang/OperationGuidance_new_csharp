@@ -15,7 +15,7 @@ using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel> {
+    public class WorkplaceMissionView : AWorkplaceMissionView<WorkplaceContentPanel> {
         public WorkplaceMissionView() { }
         public WorkplaceMissionView(bool operatorOpenning) : base(operatorOpenning) { }
 
@@ -29,7 +29,7 @@ namespace OperationGuidance_new.Views {
         }
     }
 
-    public class WorkplaceContentPanel: AWorkplaceContentPanel {
+    public class WorkplaceContentPanel : AWorkplaceContentPanel {
         // 上方
         private CustomContentPanel _top;
         // 上方左边
@@ -184,9 +184,9 @@ namespace OperationGuidance_new.Views {
                 Padding contentPadding = WidgetUtils.ContentPadding();
                 int panelPadding = WidgetUtils.ContentInnerBorderMargin() * 2;
 
-                int boxHeight = (int) (WidgetUtils.MainSize.Height * .038);
-                int titleHeight = (int) (boxHeight * 1.2);
-                int contentVPadding = (int) (boxHeight * .4);
+                int boxHeight = (int)(WidgetUtils.MainSize.Height * .038);
+                int titleHeight = (int)(boxHeight * 1.2);
+                int contentVPadding = (int)(boxHeight * .4);
                 int contentHPadding = contentVPadding;
                 Font titleFont = new Font(WidgetsConfigs.SystemFontFamily, titleHeight * .45f, FontStyle.Bold, GraphicsUnit.Pixel);
 
@@ -206,17 +206,17 @@ namespace OperationGuidance_new.Views {
         private void ResizeOuters(int panelPadding, int boxHeight, int titleHeight, int contentVPadding) {
             int workplaceWidth = Width - panelPadding * 2;
             int workplaceHeight = Height - panelPadding; // Bottom panel has to dock at bottom
-            int bottomHeight = (int) (workplaceHeight * .055);
+            int bottomHeight = (int)(workplaceHeight * .055);
             int topHeight = workplaceHeight - bottomHeight - panelPadding;
-            int barCodeHeight = (int) (workplaceHeight * .06);
+            int barCodeHeight = (int)(workplaceHeight * .06);
             int imagePanelHeight = topHeight - barCodeHeight - panelPadding;
-            int topLeftWidth = (int) (workplaceWidth * .65) + (int) (Math.Abs(workplaceWidth - workplaceHeight) * .25);
+            int topLeftWidth = (int)(workplaceWidth * .65) + (int)(Math.Abs(workplaceWidth - workplaceHeight) * .25);
             int topRightWidth = workplaceWidth - topLeftWidth - panelPadding;
 
             int topRightTopHeight = titleHeight + boxHeight * (_topRightTop.Controls.Count - 1) + contentVPadding * (_topRightTop.Controls.Count + 1);
             int topRightBottomHeight = titleHeight + boxHeight * (_topRightBottom.Controls.Count - 1) + contentVPadding * (_topRightBottom.Controls.Count + 1);
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - panelPadding * 2;
-            int topRightMiddleTopHeight = (int) (topRightMiddleHeight * .7);
+            int topRightMiddleTopHeight = (int)(topRightMiddleHeight * .7);
             int topRightMiddleBottomHeight = topRightMiddleHeight - topRightMiddleTopHeight - panelPadding;
 
             // 上方
@@ -254,10 +254,10 @@ namespace OperationGuidance_new.Views {
         // 计算尺寸： 条码框
         private void ResizeTopLeftTop() {
             // icon的边长
-            int side = (int) (_barCodePictureBox.Parent.Height * .5);
+            int side = (int)(_barCodePictureBox.Parent.Height * .5);
             Padding iconMargin = new(side, (_barCodePictureBox.Parent.Height - side) / 2, 0, 0);
             // Size of text box
-            int newH = (int) (_barCodePictureBox.Parent.Height * .875);
+            int newH = (int)(_barCodePictureBox.Parent.Height * .875);
             Size textBoxSize = new(_barCodePictureBox.Parent.Width - side * 2 - iconMargin.Left, newH);
             Padding textBoxMargin = new(0, (_barCodePictureBox.Parent.Height - newH) / 2, 0, 0);
 
@@ -288,8 +288,8 @@ namespace OperationGuidance_new.Views {
 
                 Control mainForm = WidgetUtils.MainForm;
                 Padding contentPadding = _barCodePopUpForm.ContentPanel.Padding;
-                int boxHeight = (int) (mainForm.Height * .05);
-                Size contentSize = new((int) (mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
+                int boxHeight = (int)(mainForm.Height * .05);
+                Size contentSize = new((int)(mainForm.Width * .75), boxHeight + contentPadding.Size.Height);
                 int boxWidth = contentSize.Width - contentPadding.Size.Width;
                 // _barCodePopUpForm.TextBox.Size = new(boxWidth, boxHeight);
                 _barCodePopUpForm.ResizeSelf();
@@ -311,18 +311,18 @@ namespace OperationGuidance_new.Views {
             Rectangle? imageRange = _productImageFiles[_currentSideIndex].ImageRange;
 
             // 重新计算螺栓点位按钮的大小和位置
-            int btnSide = (int) (newPanelSize.Height * .085) + (int) (Math.Abs(newPanelSize.Width - newPanelSize.Height) * .02);
+            int btnSide = (int)(newPanelSize.Height * .085) + (int)(Math.Abs(newPanelSize.Width - newPanelSize.Height) * .02);
             foreach (KeyValuePair<int, List<BoltButton>> pair in _allBolts) {
                 foreach (BoltButton boltButton in pair.Value) {
                     boltButton.Size = new(btnSide, btnSide);
                     int newX;
                     int newY;
                     if (imageRange != null) {
-                        newX = imageRange.Value.Location.X + (int) (imageRange.Value.Width * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
-                        newY = imageRange.Value.Y + (int) (imageRange.Value.Height * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                        newX = imageRange.Value.Location.X + (int)(imageRange.Value.Width * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = imageRange.Value.Y + (int)(imageRange.Value.Height * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
                     } else {
-                        newX = _productImageDisplayPanel.MaxRectLocation.X + (int) (_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
-                        newY = _productImageDisplayPanel.MaxRectLocation.Y + (int) (_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
+                        newX = _productImageDisplayPanel.MaxRectLocation.X + (int)(_productImageDisplayPanel.MaxRectWidth * boltButton.BoltDTO.location_x_percent / 100) - btnSide / 2;
+                        newY = _productImageDisplayPanel.MaxRectLocation.Y + (int)(_productImageDisplayPanel.MaxRectHeight * boltButton.BoltDTO.location_y_percent / 100) - btnSide / 2;
                     }
                     boltButton.Location = new(newX, newY);
                 }
@@ -380,7 +380,7 @@ namespace OperationGuidance_new.Views {
         // 计算尺寸： 底部横框
         private void ResizeBottom() {
             int blocksWidth = 0;
-            int blockSide = (int) (_bottom.Height * .85);
+            int blockSide = (int)(_bottom.Height * .85);
             int padding = (_bottom.Height - blockSide) / 2;
             int blockCount = 0;
             foreach (Control control in _bottom.Controls) {
@@ -397,129 +397,6 @@ namespace OperationGuidance_new.Views {
             _timeDisplayer.Font = new Font(WidgetsConfigs.SystemFontFamily, _bottom.Height * .325f, FontStyle.Regular, GraphicsUnit.Pixel);
             _timeDisplayer.Margin = new(_timeDisplayer.Height / 3, (_timeDisplayerOuter.Height - _timeDisplayer.Height) / 2, 0, 0);
         }
-
-
-        // private void InitializeMiddleBottom() {
-        //     _productSideTitle = new() {
-        //         Parent = _middleBottom,
-        //         Margin = new(1),
-        //         Padding = new(0),
-        //         TextAlign = ContentAlignment.MiddleCenter,
-        //         ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_TEXT,
-        //         BackColor = ColorConfigs.COLOR_WORKPLACE_SIDE_TITLE_BACK,
-        //     };
-        //     _smallSideImage = new() {
-        //         Parent = _middleBottom,
-        //         Margin = new(0),
-        //         Padding = new(0),
-        //     };
-        //     int totalPages = 0;
-        //     List<ProductSideDTO>? productSides = _mission.ProductSides;
-        //     if (productSides != null) {
-        //         _productSideTitle.Text = productSides[0].name;
-        //         totalPages = productSides.Count;
-        //     }
-        //     if (_missionImages.Count > 0) {
-        //         _smallSideImagesForShowing = new();
-        //         foreach (Image? image in _missionImages) {
-        //             if (image == null) {
-        //                 _smallSideImagesForShowing.Add(_defaultImage);
-        //             } else {
-        //                 _smallSideImagesForShowing.Add(image);
-        //             }
-        //         }
-        //     }
-        //     int currentPage = _currentSideIndex + 1;
-        //     _first = new() {
-        //         Icon = Properties.Resources.page_btn_backward_fast,
-        //         TotalPages = totalPages,
-        //         CurrentPage = currentPage,
-        //     };
-        //     _backward = new() {
-        //         Icon = Properties.Resources.page_btn_backward,
-        //         TotalPages = totalPages,
-        //         CurrentPage = currentPage,
-        //     };
-        //     _forward = new() {
-        //         Icon = Properties.Resources.page_btn_forward,
-        //         TotalPages = totalPages,
-        //         CurrentPage = currentPage,
-        //     };
-        //     _last = new() {
-        //         Icon = Properties.Resources.page_btn_forward_fast,
-        //         TotalPages = totalPages,
-        //         CurrentPage = currentPage,
-        //     };
-        //     _pageInfo = new() {
-        //         Margin = new(0),
-        //         Padding = new(0),
-        //         TextAlign = ContentAlignment.MiddleCenter,
-        //         ForeColor = ColorConfigs.COLOR_WORKPLACE_SIDE_PAGE_TEXT,
-        //     };
-        //     _pageInfo.Text = currentPage + "/" + totalPages;
-        //     _buttonPanel = new() {
-        //         Parent = _middleBottom,
-        //         Margin = new(1),
-        //         Padding = new(0),
-        //         ColumnCount = 5,
-        //     };
-        //     _buttonPanel.Controls.Add(_first);
-        //     _buttonPanel.Controls.Add(_backward);
-        //     _buttonPanel.Controls.Add(_pageInfo);
-        //     _buttonPanel.Controls.Add(_forward);
-        //     _buttonPanel.Controls.Add(_last);
-        //
-        //     _first.Click += (sender, eventArgs) => {
-        //         _currentSideIndex = 0;
-        //         changeCurrentPageAndInvalidate();
-        //     };
-        //     _backward.Click += (sender, eventArgs) => {
-        //         if (_currentSideIndex <= 0) {
-        //             _currentSideIndex = 0;
-        //         } else {
-        //             _currentSideIndex -= 1;
-        //         }
-        //         changeCurrentPageAndInvalidate();
-        //     };
-        //     _forward.Click += (sender, eventArgs) => {
-        //         if (_currentSideIndex >= _missionImages.Count - 1) {
-        //             _currentSideIndex = _missionImages.Count - 1;
-        //         } else {
-        //             _currentSideIndex += 1;
-        //         }
-        //         changeCurrentPageAndInvalidate();
-        //     };
-        //     _last.Click += (sender, eventArgs) => {
-        //         _currentSideIndex = _missionImages.Count - 1;
-        //         changeCurrentPageAndInvalidate();
-        //     };
-        //     void changeCurrentPageAndInvalidate() {
-        //         if (_currentWorkingBolt != null) {
-        //             if (_currentWorkingBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
-        //                 _currentWorkingBolt.ShowingWhileWorking = false;
-        //             } else {
-        //                 _currentWorkingBolt.ShowingWhileWorking = true;
-        //             }
-        //         }
-        //         int newCurrentPage = _currentSideIndex + 1;
-        //         _first.CurrentPage = newCurrentPage;
-        //         _backward.CurrentPage = newCurrentPage;
-        //         _forward.CurrentPage = newCurrentPage;
-        //         _last.CurrentPage = newCurrentPage;
-        //         // 切换side后也切换点位
-        //         _showingBoltButtons.ForEach(btn => btn.Visible = false);
-        //         _showingBoltButtons = _allBolts.Where(btn => btn.BoltDTO.side_id == _sides[_currentSideIndex].id).ToList();
-        //         _showingBoltButtons.ForEach(btn => btn.Visible = true);
-        //         // 切换产品图片
-        //         _productImageDisplayPanel.SetImage(_productImageFiles[_currentSideIndex].Image, _productImageFiles[_currentSideIndex].CenterLocation);
-        //         _productImageFiles[_currentSideIndex].RefreshImage();
-        //         ResizeSmallSideImageBox(_smallSideImagesForShowing[_currentSideIndex]);
-        //         _pageInfo.Text = newCurrentPage + "/" + totalPages;
-        //         _productSideTitle.Text = _productImageFiles[_currentSideIndex].SideDTO.name;
-        //         ResetRightBottomTitleFont();
-        //     }
-        // }
-
 
         private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
@@ -661,7 +538,7 @@ namespace OperationGuidance_new.Views {
                             }
 
                             // If result type is tightening
-                            if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
+                            if (data.result_type == (int)TightenOrLoosen.TIGHTENING) {
                                 bool tighteningOK = true;
                                 string errorMsg = "";
                                 // Initialize color to ok
@@ -669,16 +546,16 @@ namespace OperationGuidance_new.Views {
                                 _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
 
                                 // Check tightening status
-                                if (data.tightening_status != (int) TighteningStatus.OK) {
+                                if (data.tightening_status != (int)TighteningStatus.OK) {
                                     tighteningOK = false;
-                                    if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                    if (data.torque_status != (int)TighteningCommonStatus.OK) {
                                         _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                         if (!string.IsNullOrEmpty(errorMsg)) {
                                             errorMsg += "\r\n";
                                         }
                                         errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
                                     }
-                                    if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                    if (data.angle_status != (int)TighteningCommonStatus.OK) {
                                         _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                         if (!string.IsNullOrEmpty(errorMsg)) {
                                             errorMsg += "\r\n";
@@ -768,13 +645,13 @@ namespace OperationGuidance_new.Views {
                                             TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
 
                                             // Update mission result to ok
-                                            _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                            _missionRecord.mission_result = (int)TighteningStatus.OK;
                                             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
                                         }
                                     }
 
                                     // Store data
-                                    dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                    dataDTO.tightening_status = (int)TighteningStatus.OK;
                                     StoreTighteningData(dataDTO);
                                 } else {
                                     // Lock first
@@ -797,7 +674,7 @@ namespace OperationGuidance_new.Views {
                                     StoreTighteningData(dataDTO);
 
                                     // Set status of data to ng
-                                    dataDTO.tightening_status = (int) TighteningStatus.NG;
+                                    dataDTO.tightening_status = (int)TighteningStatus.NG;
                                 }
                             } else {
                                 _needLoosening = false;

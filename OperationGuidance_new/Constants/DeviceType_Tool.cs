@@ -1,4 +1,5 @@
-﻿using OperationGuidance_new.Utils;
+﻿using System.Text;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
@@ -42,8 +43,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class DeviceTypeTool: DeviceTypeBase {
-        public Command? COMMAND_DATA_ASCII;
+    public abstract class DeviceTypeTool : DeviceTypeBase {
         public Command COMMAND_LOCK_ASCII;
         public Command COMMAND_UNLOCK_ASCII;
         public Command COMMAND_PSET_ASCII;
@@ -52,16 +52,23 @@ namespace OperationGuidance_new.Constants {
             logger = MainUtils.GetLogger(GetType());
         }
 
-        public abstract string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null);
+        public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null);
     }
 
-    public abstract class ToolPFSeries: DeviceTypeTool {
+    public abstract class ToolPFSeries : DeviceTypeTool {
         public Command? COMMAND_CONNECT_ASCII;
         public Command COMMAND_HEART_ASCII;
+        public Command COMMAND_DATA_ASCII;
+        public Command COMMAND_DATA_ACK_ASCII;
+        public Command COMMAND_CURVE_ASCII;
+        public Command COMMAND_CURVE_ACK_ASCII;
 
         public ToolPFSeries(int id, string name) : base(id, name) {
             COMMAND_HEART_ASCII = new("00209999001         \x00");
             COMMAND_DATA_ASCII = new("002000600031        \x00");
+            COMMAND_DATA_ACK_ASCII = new("00200062001         \x00");
+            COMMAND_CURVE_ASCII = new("006700080010    00  09000013800000000000000000000000000000002002001\x00");
+            COMMAND_CURVE_ACK_ASCII = new("002400050010    00  0900\x00");
             COMMAND_LOCK_ASCII = new("00200042001         \x00");
             COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
             COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
@@ -78,12 +85,33 @@ namespace OperationGuidance_new.Constants {
             return mid;
         }
 
-        public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
-            string? result = null;
+        public string GetTail(string result) {
+            string tail = "";
+            try {
+                tail = new string(result.Skip(result.Length - 5).Take(4).ToArray());
+            } catch (Exception e) {
+                logger.Warn($"Get tail failed from result message = {result}, e = {e}");
+            }
+            return tail;
+        }
+
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
+            string dataMessage = Encoding.ASCII.GetString(msgBytes);
             string mid = GetMid(dataMessage);
 
-            if (mid == "0061") {
-                result = null;
+            if (mid == "9999") {
+                toolAction(true, null, null, null, null);
+            } else if (mid == "0005") {
+                string tail = GetTail(dataMessage);
+                if (tail == "0018") {
+                    toolAction(null, true, null, null, null);
+                } else if (tail == "0042") {
+                    toolAction(null, null, true, null, null);
+                } else if (tail == "0043") {
+                    toolAction(null, null, false, null, null);
+                }
+            } else if (mid == "0061") {
+                toolAction(null, null, null, true, null);
                 TighteningData tighteningData = new() {
                     cell_id = int.Parse(dataMessage.Substring(22, 4)),
                     channel_id = int.Parse(dataMessage.Substring(28, 2)),
@@ -151,36 +179,72 @@ namespace OperationGuidance_new.Constants {
                     if (deviceId == null) {
                         string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
                         logger.Error(errorMsg);
-                        throw new NullReferenceException();
+                        throw new NullReferenceException(errorMsg);
                     }
                     actionAfterAnalysis(tighteningData, deviceId.Value);
                 }
-            } else {
-                result = dataMessage;
+            } else if (mid == "0900") {
+                toolAction(null, null, null, null, true);
+                string header = Encoding.ASCII.GetString(msgBytes.Take(msgBytes.ToList().IndexOf(0)).ToArray());
+                string id = new string(header.Skip(20).Take(10).ToArray());
+                string time = $"{new string(header.Skip(30).Take(10).ToArray())} {new string(header.Skip(41).Take(8).ToArray())}";
+                string dataType = new string(header.Skip(53).Take(3).ToArray());
+                byte[] dataBytes = msgBytes.Skip(header.Length + 1).ToArray();
+                double coefficient = double.Parse(new string(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
+                int decimals = int.Parse(dataType) == (int)CurveDataType.TORQUE ? 2 : 0;
+                double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);
+                System.Console.WriteLine($"Curve data received, header = {header}");
+                System.Console.WriteLine($"dataType = {dataType} - {Enum.ToObject(typeof(CurveDataType), int.Parse(dataType))}");
+                System.Console.WriteLine($"values count = {values.Count()}");
+                System.Console.WriteLine($"values = {string.Join(", ", values)}");
             }
-            return result;
+        }
+
+        double[] AnalyseCurveData(byte[] dataBytes, double coefficient, int decimals) {
+            List<double> results = new();
+
+            int singleDataLength = 2;
+            for (int i = 0; i < dataBytes.Length; i += singleDataLength) {
+                // Take value
+                byte[] bytes = dataBytes.Skip(i).Take(singleDataLength).ToArray();
+                double value = MainUtils.ToIntByHexString(MainUtils.ToHexString(bytes));
+
+                // Check if is negative value
+                if (value > Math.Pow(2, 15) - 1) {
+                    double valueTemp = (int)Math.Pow(2, 16) - value;
+                    value = 0 - valueTemp;
+                }
+
+                // Calculate to accurate value
+                value = Math.Round(value * coefficient, decimals);
+                if (value == 0) {
+                    value = 0;
+                }
+
+                // Add to list
+                results.Add(value);
+            }
+
+            return results.ToArray();
         }
     }
 
-    public class ToolPF4000: ToolPFSeries {
+    public class ToolPF4000 : ToolPFSeries {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII = new("00200001003         \x00");
         }
     }
 
-    public class ToolPF6000OP: ToolPFSeries {
+    public class ToolPF6000OP : ToolPFSeries {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII = new("00200001006         \x00");
         }
     }
 
-    public class ToolSudongX7: DeviceTypeTool {
+    public class ToolSudongX7 : DeviceTypeTool {
         public ToolSudongX7() : base(3, "SudongX7") { }
 
-        public override string? AnalyzeData(string dataMessage, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) {
-            string? result = null;
-            return result;
-        }
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, int? deviceId = null) { }
 
         public bool SendPsetOk(string result) {
             return false;
