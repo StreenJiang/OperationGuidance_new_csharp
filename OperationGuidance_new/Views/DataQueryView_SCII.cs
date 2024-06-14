@@ -5,7 +5,9 @@ using CustomLibrary.DateTimePickers;
 using CustomLibrary.Forms;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -16,6 +18,8 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
     public class DataQueryView_SCII: CustomDataGridViewOuterPanel<MissionRecordDTO, MissionRecordVO> {
+        private ILog logger = MainUtils.GetLogger(typeof(DataQueryView_SCII));
+
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -66,7 +70,7 @@ namespace OperationGuidance_new.Views {
                 }
             }, new());
             RefreshWorkstationOptions();
-            CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
+            CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~",
                     (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_max = value);
             CustomDatePicker date_min = dateFitler.GetPicker(0);
@@ -178,6 +182,12 @@ namespace OperationGuidance_new.Views {
             }) {
                 Parent = form.ContentPanel,
             };
+            gridViewGroup.VoGridView.GridView.CellDoubleClick += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    OperationDataVO record = (OperationDataVO) gridViewGroup.VoGridView.GridView.Rows[e.RowIndex].DataBoundItem;
+                    CheckCurveData(record.id.Value);
+                }
+            };
 
             // 按钮逻辑
             gridViewGroup.QueryData = (vo) => OperationDataFiltering(vos, vo);
@@ -187,6 +197,17 @@ namespace OperationGuidance_new.Views {
             gridViewGroup.AddNewButtonVisible = false;
             gridViewGroup.ModifyButtonVisible = false;
             gridViewGroup.DeleteButtonVisible = false;
+
+            gridViewGroup.AddExtraButton("查看曲线").Click += (s, e) => {
+                List<int> ids = gridViewGroup.GetSelectedIds();
+                if (ids.Count <= 0) {
+                    WidgetUtils.ShowNoticePopUp("请选择要查看曲线的数据。");
+                } else if (ids.Count > 1) {
+                    WidgetUtils.ShowNoticePopUp("每次只能查看一条数据的曲线信息。");
+                } else {
+                    CheckCurveData(ids[0]);
+                }
+            };
 
             int contentWidth = (int) (WidgetUtils.MainSize.Width * .85);
             int gridViewHeight = (int) (WidgetUtils.MainSize.Height * .65);
@@ -198,6 +219,31 @@ namespace OperationGuidance_new.Views {
             List<OperationDataVO> OperationDataFiltering(List<OperationDataVO> vos, OperationDataVO vo) {
                 return vos;
             }
+
+            void CheckCurveData(int operationDataId) {
+                OperationDataDTO? operationDataDTO = apis.FindOperationDataById(new(operationDataId)).OperationDataDTO;
+                if (operationDataDTO != null) {
+                    List<CurveDataDTO> curveDataDTOs = apis.FindCurveDataByOperationDataId(new(operationDataId)).CurveDataDTOs;
+                    CurveDataDTO? angleCurve = curveDataDTOs.Find(c => c.data_type == (int) CurveDataType.ANGLE);
+                    CurveDataDTO? torqueCurve = curveDataDTOs.Find(c => c.data_type == (int) CurveDataType.TORQUE);
+                    OpenOperationDataDetailsPopUpForm(operationDataDTO.bolt_serial_num.Value, angleCurve, torqueCurve);
+                } else {
+                    string errorMsg = $"Can't find operation data by id = {operationDataId}, please check";
+                    logger.Error(errorMsg);
+                    throw new NullReferenceException(errorMsg);
+                }
+            }
+        }
+        private void OpenOperationDataDetailsPopUpForm(int boltSerialNum, CurveDataDTO? angleCurve, CurveDataDTO? torqueCurve) {
+            CurvePopUpForm curveForm = new(boltSerialNum, angleCurve, torqueCurve);
+
+            curveForm.PretendToShowToCreateHandlesForChildren();
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .85);
+            int gridViewHeight = (int) (WidgetUtils.MainSize.Height * .65);
+            // 感觉关闭按钮上面太空了，加一点高度
+            curveForm.Chart.Size = new(contentWidth - curveForm.ContentPanel.Padding.Size.Width, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height / 4);
+            curveForm.SetContentSizeAndSelfSize(new(contentWidth, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height));
+            curveForm.Show();
         }
         #endregion
 

@@ -10,6 +10,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
 using log4net;
+using Org.BouncyCastle.Ocsp;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -44,6 +45,8 @@ namespace OperationGuidance_service.Controllers {
         private MissionRecordService _missionRecordService;
         [Autowired]
         private MacAddressesService _macAddressesService;
+        [Autowired]
+        private CurveDataService _curveDataService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -285,7 +288,7 @@ namespace OperationGuidance_service.Controllers {
 
             string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted";
             Dictionary<string, object> parameters = new();
-            parameters.Add("deleted", (int) YesOrNo.NO);
+            parameters.Add("deleted", (int)YesOrNo.NO);
 
             if (req.Role != null && req.Role != Roles.DEVELOPER) {
                 sql += " and macs_id = @macs_id";
@@ -310,7 +313,7 @@ namespace OperationGuidance_service.Controllers {
             if (role != null && role != Roles.DEVELOPER) {
                 string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
                 Dictionary<string, object> parameters = new();
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 parameters.Add("macs_id", req.MacsId);
                 missions = _productMissionService.FindBySql(sql, parameters);
             } else {
@@ -384,11 +387,11 @@ namespace OperationGuidance_service.Controllers {
                 CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(productMission, productMissionDTO);
 
                 List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new() { { "@mission_id", req.MissionId } }).ToList();
-                sides = sides.Where(s => s.deleted != (int) YesOrNo.YES).ToList();
+                sides = sides.Where(s => s.deleted != (int)YesOrNo.YES).ToList();
                 List<ProductBolt> bolts = new();
                 if (sides.Count > 0) {
                     bolts = _productBoltService.FindBySql($"select * from {_productBoltService.TableName} where side_id in @side_ids", new() { { "@side_ids", sides.Select(s => s.id).ToList() } }).ToList();
-                    bolts = bolts.Where(b => b.deleted != (int) YesOrNo.YES).ToList();
+                    bolts = bolts.Where(b => b.deleted != (int)YesOrNo.YES).ToList();
                 }
 
                 // 将 sides, bolts 组装到 mission 中
@@ -534,7 +537,7 @@ namespace OperationGuidance_service.Controllers {
             if (role != null && role != Roles.DEVELOPER) {
                 string sql = $"select * from {_workstationService.TableName} where deleted = @deleted and macs_id = @macs_id";
                 Dictionary<string, object> parameters = new();
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 parameters.Add("macs_id", req.MacsId);
                 workstations = _workstationService.FindBySql(sql, parameters);
             } else {
@@ -742,7 +745,16 @@ namespace OperationGuidance_service.Controllers {
 
             return new(operationDataDTOs);
         }
-        // 批量数据插入
+        public AddOrUpdateOperationDataRsp AddOrUpdateOperationData(AddOrUpdateOperationDataReq req) {
+            OperationData operationData = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationData>(req.OperationDataDTO, operationData);
+
+            operationData = _operationDataService.InsertOrUpdate(operationData);
+            OperationDataDTO curveDataDTO = new();
+            CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationData, curveDataDTO);
+
+            return new AddOrUpdateOperationDataRsp(curveDataDTO);
+        }
         public BatchAddOperationDataRsp BatchAddOperationData(BatchAddOperationDataReq req) {
             List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
             List<OperationData> operationDatas = new();
@@ -752,6 +764,37 @@ namespace OperationGuidance_service.Controllers {
             return new() {
                 Num = num,
             };
+        }
+        public FindOperationDataByIdRsp FindOperationDataById(FindOperationDataByIdReq req) {
+            OperationData? operationData = _operationDataService.FindById(req.Id);
+            OperationDataDTO? operationDataDTO = null;
+
+            if (operationData != null) {
+                operationDataDTO = new();
+                CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationData, operationDataDTO);
+            }
+
+            return new FindOperationDataByIdRsp(operationDataDTO);
+        }
+        #endregion
+
+        #region 曲线数据相关
+        public AddOrUpdateCurveDataRsp AddOrUpdateCurveData(AddOrUpdateCurveDataReq req) {
+            CurveData curveData = new();
+            CommonUtils.ObjectConverter<CurveDataDTO, CurveData>(req.CurveDataDTO, curveData);
+
+            curveData = _curveDataService.InsertOrUpdate(curveData);
+            CurveDataDTO curveDataDTO = new();
+            CommonUtils.ObjectConverter<CurveData, CurveDataDTO>(curveData, curveDataDTO);
+
+            return new AddOrUpdateCurveDataRsp(curveDataDTO);
+        }
+        public FindCurveDataByOperationDataIdRsp FindCurveDataByOperationDataId(FindCurveDataByOperationDataIdReq req) {
+            List<CurveData> curveDatas = _curveDataService.QueryDataByOperationDataId(req.OperationDataId);
+            List<CurveDataDTO> curveDataDTOs = new();
+            CommonUtils.ObjectConverter<CurveData, CurveDataDTO>(curveDatas, curveDataDTOs);
+
+            return new FindCurveDataByOperationDataIdRsp(curveDataDTOs);
         }
         #endregion
 
@@ -771,7 +814,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -830,7 +873,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -889,7 +932,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -948,7 +991,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -1007,7 +1050,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int) YesOrNo.NO);
+                parameters.Add("deleted", (int)YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -1058,7 +1101,7 @@ namespace OperationGuidance_service.Controllers {
             Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
             string sql = $"select * from {_barCodeMatchingRuleService.TableName} where deleted = @deleted";
             Dictionary<string, object> parameters = new();
-            parameters.Add("deleted", (int) YesOrNo.NO);
+            parameters.Add("deleted", (int)YesOrNo.NO);
             if (role != null && role != Roles.DEVELOPER) {
                 sql += " and macs_id = @macs_id";
                 parameters.Add("macs_id", req.MacsId);

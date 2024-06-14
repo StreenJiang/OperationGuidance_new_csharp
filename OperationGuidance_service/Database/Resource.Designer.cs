@@ -226,6 +226,25 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for curve_data
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS `curve_data`;
+        ///CREATE TABLE `curve_data`  (
+        ///  `id` int NOT NULL AUTO_INCREMENT,
+        ///  `operation_data_id` int NOT NULL,
+        ///  `result_data_identifier` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+        ///  `time_stamp` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+        ///  `data_type` int NOT NULL,
+        ///  `data_samples` longtext CHARACTER SET utf8mb4 COLLATE  [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20240614 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240614", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -415,6 +434,29 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20240606 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240606", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for curve_data
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS &quot;curve_data&quot;;
+        ///CREATE TABLE &quot;curve_data&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;operation_data_id&quot; integer NOT NULL,
+        ///  &quot;result_data_identifier&quot; text(64) NOT NULL,
+        ///  &quot;time_stamp&quot; text(64) NOT NULL,
+        ///  &quot;data_type&quot; integer(2) NOT NULL,
+        ///  &quot;data_samples&quot; text NOT NULL,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;m [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240614 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240614", resourceCulture);
             }
         }
     }

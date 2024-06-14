@@ -7,7 +7,7 @@ using CustomLibrary.Utils;
 namespace CustomLibrary.Forms {
 
     [System.ComponentModel.DesignerCategory("Code")] // This makes it directly open the code window except design mode window
-    public class CustomPopUpForm: Form {
+    public class CustomPopUpForm : Form {
         private Form _popUpFormBackboard;
         private Color? _borderColor;
         private Rectangle? _borderRect;
@@ -72,7 +72,7 @@ namespace CustomLibrary.Forms {
             Control mainParent = WidgetUtils.MainForm;
             // Initialize backboard
             _popUpFormBackboard = new() {
-                Owner = (Form) mainParent,
+                Owner = (Form)mainParent,
                 Size = mainParent.ClientSize,
                 StartPosition = FormStartPosition.Manual,
                 FormBorderStyle = FormBorderStyle.None,
@@ -99,14 +99,14 @@ namespace CustomLibrary.Forms {
             _closeButton.Click += (sender, eventArgs) => Hide();
             _titlePanel.SizeChanged += (sender, eventArgs) => {
                 _titleFont = new Font(WidgetsConfigs.SystemFontFamily, _titlePanel.Height * .425F, FontStyle.Regular, GraphicsUnit.Pixel);
-                _closeButton.Size = new((int) (_titlePanel.Height * 1.25), _titlePanel.Height - _borderThickness);
+                _closeButton.Size = new((int)(_titlePanel.Height * 1.25), _titlePanel.Height - _borderThickness);
                 _closeButton.Location = new(_titlePanel.Width - _closeButton.Width, 0);
             };
             _titlePanel.Paint += (sender, eventArgs) => {
                 if (_titleFont != null) {
                     Graphics g = eventArgs.Graphics;
                     int titleHeight = _titlePanel.Height;
-                    g.DrawString(_title, _titleFont, new SolidBrush(Color.Black), new Point(_titleFont.Height / 4, (int) (titleHeight - _titleFont.Height) / 2));
+                    g.DrawString(_title, _titleFont, new SolidBrush(Color.Black), new Point(_titleFont.Height / 4, (int)(titleHeight - _titleFont.Height) / 2));
                     Pen pen = new Pen(_borderColor != null ? _borderColor.Value : Color.Black, _borderThickness);
                     Point point1 = new(0, titleHeight - _borderThickness);
                     Point point2 = new Point(_titlePanel.Width, titleHeight - _borderThickness);
@@ -302,11 +302,11 @@ namespace CustomLibrary.Forms {
         }
     }
 
-    public class FunctionButton: CommonButton {
+    public class FunctionButton : CommonButton {
         protected override void ResizeTextLabel() {
             if (!IsDisposed) {
                 if (Label != null) {
-                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int)(Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
                     // using (Graphics g = CreateGraphics()) {
                     //     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
                     // }

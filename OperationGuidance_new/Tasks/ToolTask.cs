@@ -5,7 +5,6 @@ using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask : ATaskBase {
@@ -29,6 +28,7 @@ namespace OperationGuidance_new.Tasks {
         private int HeartBeatCounter;
         private Queue<string> _commands = new();
         private Action<TighteningData, int>? _actionAfterAnalysis;
+        private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
         #endregion
 
         #region Properties
@@ -38,8 +38,9 @@ namespace OperationGuidance_new.Tasks {
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
-        public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public Queue<string> Commands { get => _commands; set => _commands = value; }
+        public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
+        public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
         #endregion
 
         #region Constructors
@@ -115,7 +116,7 @@ namespace OperationGuidance_new.Tasks {
                                             socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
                                             WaitCurveTimesCount--;
                                         }
-                                    }, _actionAfterAnalysis, DeviceId);
+                                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                                 }
                             }
                         } catch (SocketException se) {

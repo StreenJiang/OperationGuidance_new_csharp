@@ -34,7 +34,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.ConditionWithoutUserId()}");
         }
 
-        public T? AddEntity(T entity) {
+        public T AddEntity(T entity) {
             return this.Wrapper.Add(entity);
         }
 
@@ -42,7 +42,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return this.Wrapper.AddBatch(entities);
         }
 
-        public T? UpdateEntity(T entity) {
+        public T UpdateEntity(T entity) {
             return this.Wrapper.Update(entity);
         }
 
@@ -52,13 +52,13 @@ namespace OperationGuidance_service.Services.AbstractClasses {
 
         public T? FindById(int id) {
             T? t = this.Wrapper.FindById(id);
-            if (t == null || t.deleted == (int) YesOrNo.YES) {
+            if (t == null || t.deleted == (int)YesOrNo.YES) {
                 return null;
             }
             return t;
         }
 
-        public T? InsertOrUpdate(T entity) {
+        public T InsertOrUpdate(T entity) {
             if (entity.id > 0) {
                 return UpdateEntity(entity);
             } else {
