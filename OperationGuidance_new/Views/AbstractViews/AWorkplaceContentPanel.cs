@@ -10,6 +10,7 @@ using log4net;
 using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Tasks.DeviceTypes;
@@ -22,6 +23,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using System.Collections;
 using System.Drawing.Drawing2D;
+using System.Reflection;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AWorkplaceContentPanel : CustomContentPanel {
@@ -143,6 +145,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 任务相关
         private List<String> lockMsgs = new();
         private List<String> informationMsgs = new();
+        protected OperationDataDTO? currentOperationData;
         #endregion
 
         #region Properties
@@ -760,6 +763,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     ToolTask toolTask = pair.Value;
                     // 绑定数据处理代理
                     toolTask.ActionAfterAnalysis = DoAfterRecevingTighteningDataAsync;
+                    toolTask.ActionAfterCurveDataReceived = DoAfterRecevingCurveDataAsync;
                     // 进入工作台先把所有工具都锁住
                     if (toolTask.Connected) {
                         toolTask.SendLock();
@@ -1224,6 +1228,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Cache it
                 _currentWorkingBolt = boltButton;
             }
+
+            // Reset current operation data
+            currentOperationData = null;
         }
 
         protected virtual async void ActionAfterActivatingMission() {
@@ -1794,6 +1801,101 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // 读取到控制器传回的数据后进行处理
         protected abstract void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId);
+        protected virtual void DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
+            BeginInvoke(async () => {
+                try {
+                    int max = 50;
+                    int count = 0;
+                    while (currentOperationData == null && count < max) {
+                        await Task.Delay(100);
+                    }
+
+                    if (currentOperationData != null) {
+                        CurveDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
+
+                        dataDTO.operation_data_id = currentOperationData.id;
+                        _apis.AddOrUpdateCurveData(new(dataDTO));
+                    } else {
+                        string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
+                        logger.Error(errorMsg);
+                        throw new InvalidDataException(errorMsg);
+                    }
+                } catch (Exception e) {
+                    logger.Error($"Error occurred while handling curve data, e: {e}");
+                }
+            });
+        }
+
+
+        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            lock (DataStorageLockObj) {
+                List<string>? headers = null;
+                string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                // 检查当前文件是否存在
+                bool textFileExists = File.Exists(textFilePath);
+                bool excelFileExists = File.Exists(excelFilePath);
+                // 从配置文件读取配置
+                List<int> sortConfig = MainUtils.GetSortConfig();
+                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                // 检查当前是否存在正在使用的字段配置
+                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                    sortConfigCurr = sortConfig;
+                    MainUtils.SetSortConfigCurr(sortConfigCurr);
+                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
+                }
+                // 组装数据
+                List<Dictionary<int, object?>> dataWithConfigFields = new();
+                OperationDataVO dataFormatted = new();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                Dictionary<int, object?> record = new();
+                for (int i = 0; i < propertyNames.Count; i++) {
+                    string pName = propertyNames[i];
+                    PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
+                    if (propertyInfo != null) {
+                        record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+                    }
+                }
+                dataWithConfigFields.Add(record);
+                // 组装最终数据
+                List<List<object?>> finalData = new();
+                dataWithConfigFields.ForEach(dict => {
+                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                });
+                // 写入数据
+                // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
+                // if (succeed) {
+                //     _apis.BatchAddOperationData(new(data));
+                //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                // } else {
+                //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
+                // }
+
+                // 先将组装好的VOs加入到实时显示数据列表中
+                _tighteningDataVOs.Add(dataFormatted);
+                RefreshTighteningDataPanel();
+                // 显示完后立马存入数据库
+                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+
+                // 最后再存进本地文件
+                Task.Run(() => {
+                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                });
+            }
+        }
+
+        protected void RefreshTighteningDataPanel() {
+            _tighteningDataPanel.DataSource = _tighteningDataVOs;
+        }
 
         protected void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
@@ -1830,6 +1932,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Clear all cached bar codes
             _barCodeObj.Reset();
+
+            // Reset current operation data
+            currentOperationData = null;
         }
 
         protected void LockAllTools() {

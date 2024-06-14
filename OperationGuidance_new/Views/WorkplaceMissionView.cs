@@ -398,305 +398,233 @@ namespace OperationGuidance_new.Views {
             _timeDisplayer.Margin = new(_timeDisplayer.Height / 3, (_timeDisplayerOuter.Height - _timeDisplayer.Height) / 2, 0, 0);
         }
 
-        private async void StoreTighteningData(OperationDataDTO operationDataDTO) {
-            await Task.Run(() => {
-                lock (DataStorageLockObj) {
-                    List<OperationDataDTO> data = new() { operationDataDTO };
-                    List<string>? headers = null;
-                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                    // 检查当前文件是否存在
-                    bool textFileExists = File.Exists(textFilePath);
-                    bool excelFileExists = File.Exists(excelFilePath);
-                    // 从配置文件读取配置
-                    List<int> sortConfig = MainUtils.GetSortConfig();
-                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                    // 检查当前是否存在正在使用的字段配置
-                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                        sortConfigCurr = sortConfig;
-                        MainUtils.SetSortConfigCurr(sortConfigCurr);
-                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                    }
-                    // 组装数据
-                    List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    List<OperationDataVO> dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(data, dataFormatted);
-                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                    dataFormatted.ForEach(dto => {
-                        Dictionary<int, object?> record = new();
-                        for (int i = 0; i < propertyNames.Count; i++) {
-                            string pName = propertyNames[i];
-                            PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
-                            if (propertyInfo != null) {
-                                record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+        // 读取到控制器传回的数据后进行处理
+        protected override void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
+            BeginInvoke(() => {
+                // Nonactivated or finished will not handle any received data
+                if (!_activated) {
+                    return;
+                }
+
+                try {
+                    ToolTask toolTask = _toolTasks[deviceId];
+                    if (toolTask.WorkstationId != null) {
+                        int workstationId = toolTask.WorkstationId.Value;
+
+                        List<WorkstationDTO> workstationDTOs;
+                        if (CheckIfIsMultiDeviceIndependenceMode()) {
+                            workstationDTOs = _workstationsDTOs.Where(dto => _currentWorkingBoltIndependence.Keys.Contains(dto.id)).ToList();
+                        } else {
+                            List<int> workstationIds = new();
+                            foreach (List<BoltButton> bolts in _allBolts.Values) {
+                                workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
+                            }
+                            workstationIds = workstationIds.Distinct().ToList();
+                            workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
+                        }
+                        List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
+
+                        // Main display
+                        _torquePanel.Data = data.torque + "";
+                        _anglePanel.Data = data.angle + "";
+
+                        // Get current bolt
+                        BoltButton currentBolt;
+                        if (CheckIfIsMultiDeviceIndependenceMode()) {
+                            currentBolt = _currentWorkingBoltIndependence[workstationId];
+                        } else {
+                            currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
+                        }
+
+                        // Check if current showing side is equal to side of working bolt, if no then switch to the right side
+                        if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
+                            ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
+                            if (sideTemp != null) {
+                                _currentSideIndex = _sides.IndexOf(sideTemp);
+                                ChangeSideAndInvalidate();
                             }
                         }
-                        dataWithConfigFields.Add(record);
-                    });
-                    // 组装最终数据
-                    List<List<object?>> finalData = new();
-                    dataWithConfigFields.ForEach(dict => {
-                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                    });
-                    // 写入数据
-                    // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
-                    // if (succeed) {
-                    //     _apis.BatchAddOperationData(new(data));
-                    //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    // } else {
-                    //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
-                    // }
 
-                    // 先将组装好的VOs加入到实时显示数据列表中
-                    _tighteningDataVOs.AddRange(dataFormatted);
-                    RefreshTighteningDataPanel();
-                    // 显示完后立马存入数据库
-                    _apis.BatchAddOperationData(new(data));
-                    // 最后再存进本地文件
-                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                }
-            });
-        }
-        private void RefreshTighteningDataPanel() {
-            _tighteningDataPanel.DataSource = _tighteningDataVOs;
-        }
+                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                        OperationDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
 
-        // 读取到控制器传回的数据后进行处理
-        protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
-            await Task.Run(() => {
-                BeginInvoke(() => {
-                    // Nonactivated or finished will not handle any received data
-                    if (!_activated) {
-                        return;
-                    }
+                        WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
+                        dataDTO.workstation_id = workstationDTO.id;
+                        dataDTO.workstation_name = workstationDTO.name;
 
-                    try {
-                        ToolTask toolTask = _toolTasks[deviceId];
-                        if (toolTask.WorkstationId != null) {
-                            int workstationId = toolTask.WorkstationId.Value;
+                        DeviceToolDTO toolDTO = _tools.Single(t => t.id == deviceId);
+                        dataDTO.tool_name = toolDTO.name;
+                        dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
+                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
+                        dataDTO.product_sied_id = _sides[_currentSideIndex].id;
+                        dataDTO.bolt_serial_num = boltDTO.serial_num;
+                        MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
+                        dataDTO.mission_record_id = missionRecord.id;
+                        dataDTO.vin_number = missionRecord.product_bar_code;
+                        if (_realTimeArmCoordinates != null) {
+                            dataDTO.arm_position = _realTimeArmCoordinates.ToString();
+                        }
 
-                            List<WorkstationDTO> workstationDTOs;
-                            if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                workstationDTOs = _workstationsDTOs.Where(dto => _currentWorkingBoltIndependence.Keys.Contains(dto.id)).ToList();
-                            } else {
-                                List<int> workstationIds = new();
-                                foreach (List<BoltButton> bolts in _allBolts.Values) {
-                                    workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
-                                }
-                                workstationIds = workstationIds.Distinct().ToList();
-                                workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
-                            }
-                            List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
+                        // If result type is tightening
+                        if (data.result_type == (int)TightenOrLoosen.TIGHTENING) {
+                            bool tighteningOK = true;
+                            string errorMsg = "";
+                            // Initialize color to ok
+                            _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+                            _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
 
-                            // Main display
-                            _torquePanel.Data = data.torque + "";
-                            _anglePanel.Data = data.angle + "";
-
-                            // Get current bolt
-                            BoltButton currentBolt;
-                            if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                currentBolt = _currentWorkingBoltIndependence[workstationId];
-                            } else {
-                                currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
-                            }
-
-                            // Check if current showing side is equal to side of working bolt, if no then switch to the right side
-                            if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
-                                ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
-                                if (sideTemp != null) {
-                                    _currentSideIndex = _sides.IndexOf(sideTemp);
-                                    ChangeSideAndInvalidate();
-                                }
-                            }
-
-                            ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-                            OperationDataDTO dataDTO = new();
-                            CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
-
-                            WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
-                            dataDTO.workstation_id = workstationDTO.id;
-                            dataDTO.workstation_name = workstationDTO.name;
-
-                            DeviceToolDTO toolDTO = _tools.Single(t => t.id == deviceId);
-                            dataDTO.tool_name = toolDTO.name;
-                            dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
-                            dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
-                            dataDTO.product_sied_id = _sides[_currentSideIndex].id;
-                            dataDTO.bolt_serial_num = boltDTO.serial_num;
-                            MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
-                            dataDTO.mission_record_id = missionRecord.id;
-                            dataDTO.vin_number = missionRecord.product_bar_code;
-                            if (_realTimeArmCoordinates != null) {
-                                dataDTO.arm_position = _realTimeArmCoordinates.ToString();
-                            }
-
-                            // If result type is tightening
-                            if (data.result_type == (int)TightenOrLoosen.TIGHTENING) {
-                                bool tighteningOK = true;
-                                string errorMsg = "";
-                                // Initialize color to ok
-                                _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
-                                _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
-
-                                // Check tightening status
-                                if (data.tightening_status != (int)TighteningStatus.OK) {
-                                    tighteningOK = false;
-                                    if (data.torque_status != (int)TighteningCommonStatus.OK) {
-                                        _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
-                                    }
-                                    if (data.angle_status != (int)TighteningCommonStatus.OK) {
-                                        _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
-                                    }
-                                }
-
-                                // Check torque
-                                if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
-                                    tighteningOK = false;
+                            // Check tightening status
+                            if (data.tightening_status != (int)TighteningStatus.OK) {
+                                tighteningOK = false;
+                                if (data.torque_status != (int)TighteningCommonStatus.OK) {
                                     _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
-                                    errorMsg += "扭矩与配置范围不符";
+                                    errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
                                 }
-
-                                // Check angle
-                                if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
-                                    tighteningOK = false;
+                                if (data.angle_status != (int)TighteningCommonStatus.OK) {
                                     _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     if (!string.IsNullOrEmpty(errorMsg)) {
                                         errorMsg += "\r\n";
                                     }
-                                    errorMsg += "角度与配置范围不符";
-                                }
-
-                                // Switch to next bolt
-                                if (tighteningOK) {
-                                    // Reset tightening type to tightening in case somewhere did some changes
-                                    _needLoosening = false;
-                                    RemoveInformationMsg(_workingProcessPanel.NGReasons);
-                                    _workingProcessPanel.NGReasons = null;
-
-                                    // Lock the device
-                                    if (_locating_enabled) {
-                                        toolTask.SendLock();
-                                    }
-
-                                    currentBolt.BoltStatus = BoltStatus.DONE;
-
-                                    // Check next index
-                                    List<BoltButton> currentSideBolts;
-                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                        currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
-                                    } else {
-                                        currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
-                                    }
-                                    int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
-                                    // 检查是否存在跳点的情况
-                                    while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
-                                        nextIndex++;
-                                    }
-
-                                    if (nextIndex < currentSideBolts.Count) {
-                                        if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                            _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
-                                            ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
-                                        } else {
-                                            _currentWorkingBolt = SwitchBolt(nextIndex);
-                                            ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                        }
-                                    } else {
-                                        bool allDone = true;
-                                        if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                            foreach (int id in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
-                                                if (id != workstationId) {
-                                                    BoltButton? boltButton = _allBoltsIndependence[_sides[_currentSideIndex].id][id].Find(b => b.BoltStatus != BoltStatus.DONE);
-                                                    if (boltButton != null) {
-                                                        allDone = false;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            if (_currentSideIndex < _sides.Count - 1) {
-                                                _currentSideIndex++;
-                                                _currentWorkingBolt = SwitchBolt(0);
-                                                ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                                ChangeSideAndInvalidate();
-                                                allDone = false;
-                                            }
-                                        }
-
-                                        if (allDone) {
-                                            TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
-
-                                            // Update mission result to ok
-                                            _missionRecord.mission_result = (int)TighteningStatus.OK;
-                                            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-                                        }
-                                    }
-
-                                    // Store data
-                                    dataDTO.tightening_status = (int)TighteningStatus.OK;
-                                    StoreTighteningData(dataDTO);
-                                } else {
-                                    // Lock first
-                                    if (_locating_enabled) {
-                                        // Lock all tools here
-                                        _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
-                                    }
-
-                                    // Change bolt status
-                                    currentBolt.BoltStatus = BoltStatus.ERROR;
-
-                                    // Count ng times
-                                    currentBolt.NgTimes++;
-
-                                    // Set error message
-                                    _workingProcessPanel.NGReasons = errorMsg;
-                                    AddInformationMsg(_workingProcessPanel.NGReasons);
-
-                                    // 记录数据
-                                    StoreTighteningData(dataDTO);
-
-                                    // Set status of data to ng
-                                    dataDTO.tightening_status = (int)TighteningStatus.NG;
-                                }
-                            } else {
-                                _needLoosening = false;
-
-                                // 反松结束后把扭矩角度改回黑色
-                                _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
-                                _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
-
-                                // Remove error message
-                                RemoveLockMsg(_workingProcessPanel.NGReasons);
-                                _workingProcessPanel.NGReasons = null;
-
-                                if (MainUtils.GetStoreLooseningData()) {
-                                    // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
                                 }
                             }
+
+                            // Check torque
+                            if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
+                                tighteningOK = false;
+                                _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                if (!string.IsNullOrEmpty(errorMsg)) {
+                                    errorMsg += "\r\n";
+                                }
+                                errorMsg += "扭矩与配置范围不符";
+                            }
+
+                            // Check angle
+                            if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
+                                tighteningOK = false;
+                                _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                if (!string.IsNullOrEmpty(errorMsg)) {
+                                    errorMsg += "\r\n";
+                                }
+                                errorMsg += "角度与配置范围不符";
+                            }
+
+                            // Switch to next bolt
+                            if (tighteningOK) {
+                                // Reset tightening type to tightening in case somewhere did some changes
+                                _needLoosening = false;
+                                RemoveInformationMsg(_workingProcessPanel.NGReasons);
+                                _workingProcessPanel.NGReasons = null;
+
+                                // Lock the device
+                                if (_locating_enabled) {
+                                    toolTask.SendLock();
+                                }
+
+                                currentBolt.BoltStatus = BoltStatus.DONE;
+
+                                // Check next index
+                                List<BoltButton> currentSideBolts;
+                                if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                    currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
+                                } else {
+                                    currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
+                                }
+                                int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
+                                // 检查是否存在跳点的情况
+                                while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    nextIndex++;
+                                }
+
+                                if (nextIndex < currentSideBolts.Count) {
+                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                        _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
+                                    } else {
+                                        _currentWorkingBolt = SwitchBolt(nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                    }
+                                } else {
+                                    bool allDone = true;
+                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                        foreach (int id in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
+                                            if (id != workstationId) {
+                                                BoltButton? boltButton = _allBoltsIndependence[_sides[_currentSideIndex].id][id].Find(b => b.BoltStatus != BoltStatus.DONE);
+                                                if (boltButton != null) {
+                                                    allDone = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        if (_currentSideIndex < _sides.Count - 1) {
+                                            _currentSideIndex++;
+                                            _currentWorkingBolt = SwitchBolt(0);
+                                            ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                            ChangeSideAndInvalidate();
+                                            allDone = false;
+                                        }
+                                    }
+
+                                    if (allDone) {
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+
+                                        // Update mission result to ok
+                                        _missionRecord.mission_result = (int)TighteningStatus.OK;
+                                        _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+                                    }
+                                }
+
+                                // Store data
+                                dataDTO.tightening_status = (int)TighteningStatus.OK;
+                                StoreTighteningData(dataDTO);
+                            } else {
+                                // Lock first
+                                if (_locating_enabled) {
+                                    // Lock all tools here
+                                    _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
+                                }
+
+                                // Change bolt status
+                                currentBolt.BoltStatus = BoltStatus.ERROR;
+
+                                // Count ng times
+                                currentBolt.NgTimes++;
+
+                                // Set error message
+                                _workingProcessPanel.NGReasons = errorMsg;
+                                AddInformationMsg(_workingProcessPanel.NGReasons);
+
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
+
+                                // Set status of data to ng
+                                dataDTO.tightening_status = (int)TighteningStatus.NG;
+                            }
+                        } else {
+                            _needLoosening = false;
+
+                            // 反松结束后把扭矩角度改回黑色
+                            _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+                            _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+
+                            // Remove error message
+                            RemoveLockMsg(_workingProcessPanel.NGReasons);
+                            _workingProcessPanel.NGReasons = null;
+
+                            if (MainUtils.GetStoreLooseningData()) {
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
+                            }
                         }
-                    } catch (Exception e) {
-                        logger.Error($"Error occurred while handling tightening data, e: {e}");
                     }
-                });
+                } catch (Exception e) {
+                    logger.Error($"Error occurred while handling tightening data, e: {e}");
+                }
             });
         }
 

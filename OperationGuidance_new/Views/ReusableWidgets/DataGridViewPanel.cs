@@ -7,9 +7,14 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 using CustomLibrary.TextBoxes;
+using log4net.Repository.Hierarchy;
+using log4net;
+using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
+    public class DataGridViewPanel<T> : CustomContentPanel where T : AVOBase {
+        private ILog logger = MainUtils.GetLogger(typeof(DataGridViewPanel<T>));
+
         #region Feilds 
         private Panel _gridViewPanel;
         private int _headerHeight = WidgetUtils.GridViewHeaderHeight();
@@ -66,7 +71,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => _dataSource;
             set {
                 _dataSource = value;
-                _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
+                _totalPages = (int)Math.Ceiling(value.Count / (double)_pageSize);
                 if (_totalPages == 0) {
                     _totalPages = 1;
                 }
@@ -214,12 +219,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                     if (column is DataGridViewToggleButtonColumn) {
                         // DataGridViewRow row = _gridView.Rows[eventArgs.RowIndex];
-                        T vo = (T) row.DataBoundItem;
+                        T vo = (T)row.DataBoundItem;
                         // If vo'id is null, then this row is just a blank row for displaying
                         if (vo != null && vo.id != null && row.Cells[column.Index] is DataGridViewToggleButtonCell cell && cell.Value != null) {
                             // Set toggle state to button in case they're not matched
-                            if (cell.ToggleButton.Checked != (bool) cell.Value) {
-                                cell.ToggleButton.Checked = (bool) cell.Value;
+                            if (cell.ToggleButton.Checked != (bool)cell.Value) {
+                                cell.ToggleButton.Checked = (bool)cell.Value;
                             }
                             // Show cell in case it's Hiden
                             if (!cell.ToggleButtonParentPanel.Visible) {
@@ -227,7 +232,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             }
                             // Resize
                             Size cellSize = cell.Size;
-                            int panelHeight = (int) (cellSize.Height * .65);
+                            int panelHeight = (int)(cellSize.Height * .65);
                             int panelWidth = panelHeight * 3;
                             if (cell.ToggleButtonParentPanel.Size != cellSize) {
                                 cell.ToggleButtonParentPanel.Size = new(panelWidth, panelHeight);
@@ -243,26 +248,26 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             float paddingRatio = .05F;
                             switch (headerAlignment) {
                                 case DataGridViewContentAlignment.TopLeft:
-                                    cellPoint.X += (int) (column.Width * paddingRatio);
+                                    cellPoint.X += (int)(column.Width * paddingRatio);
                                     break;
                                 default:
                                 case DataGridViewContentAlignment.MiddleLeft:
-                                    cellPoint.X += (int) (column.Width * paddingRatio);
+                                    cellPoint.X += (int)(column.Width * paddingRatio);
                                     cellPoint.Y += (cellSize.Height - panelHeight) / 2;
                                     break;
                                 case DataGridViewContentAlignment.BottomLeft:
-                                    cellPoint.X += (int) (column.Width * paddingRatio);
+                                    cellPoint.X += (int)(column.Width * paddingRatio);
                                     cellPoint.Y += cellSize.Height - panelHeight;
                                     break;
                                 case DataGridViewContentAlignment.TopRight:
-                                    cellPoint.X += cellSize.Width - panelWidth - (int) (column.Width * paddingRatio);
+                                    cellPoint.X += cellSize.Width - panelWidth - (int)(column.Width * paddingRatio);
                                     break;
                                 case DataGridViewContentAlignment.MiddleRight:
-                                    cellPoint.X += (cellSize.Width - panelWidth) / 2 - (int) (column.Width * paddingRatio);
+                                    cellPoint.X += (cellSize.Width - panelWidth) / 2 - (int)(column.Width * paddingRatio);
                                     cellPoint.Y += (cellSize.Height - panelHeight) / 2;
                                     break;
                                 case DataGridViewContentAlignment.BottomRight:
-                                    cellPoint.X += cellSize.Width - panelWidth - (int) (column.Width * paddingRatio);
+                                    cellPoint.X += cellSize.Width - panelWidth - (int)(column.Width * paddingRatio);
                                     cellPoint.Y += cellSize.Height - panelHeight;
                                     break;
                                 case DataGridViewContentAlignment.TopCenter:
@@ -393,11 +398,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _gridView.SelectionChanged += (sender, eventArgs) => {
                 if (_gridView.Focused) {
                     DataGridViewSelectedRowCollection selectedRows = _gridView.SelectedRows;
-                    foreach (DataGridViewRow row in selectedRows) {
-                        T vo = (T) row.DataBoundItem;
-                        if (vo.id == null) {
-                            row.Selected = false;
+                    try {
+                        foreach (DataGridViewRow row in selectedRows) {
+                            T vo = (T)row.DataBoundItem;
+                            if (vo.id == null) {
+                                row.Selected = false;
+                            }
                         }
+                    } catch (Exception e) {
+                        logger.Error($"Error occurred while mouse move event firing, e = {e}");
                     }
                 }
             };
@@ -602,7 +611,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             }
             int columnMaxWidth = WidgetUtils.GridViewContentColumnMaxWidth();
-            int padding = (int) (newHeaderHeight * _columnsPaddingRatio);
+            int padding = (int)(newHeaderHeight * _columnsPaddingRatio);
             _gridView.ColumnHeadersDefaultCellStyle.Padding = new(padding, 0, padding, 0);
             _gridView.DefaultCellStyle.Padding = new(padding, 0, padding, 0);
             // Grid content height
@@ -624,20 +633,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ResizePageInfoContent(_jumpToText, newPageInfoHeight);
                 ResizePageInfoContent(_jumpToTextRight, newPageInfoHeight);
                 // All buttons
-                int buttonSide = (int) (newPageInfoHeight * .7);
+                int buttonSide = (int)(newPageInfoHeight * .7);
                 _first.Size = new(buttonSide, buttonSide);
                 _forward.Size = new(buttonSide, buttonSide);
                 _backward.Size = new(buttonSide, buttonSide);
                 _last.Size = new(buttonSide, buttonSide);
-                int buttonOuterHMargin = (int) (buttonSide * .8);
-                int buttonInnerHMargin = (int) (buttonSide * .35);
+                int buttonOuterHMargin = (int)(buttonSide * .8);
+                int buttonInnerHMargin = (int)(buttonSide * .35);
                 int buttonMarginTop = (newPageInfoHeight - buttonSide) / 2;
                 _first.Margin = new(buttonOuterHMargin, buttonMarginTop, 0, 0);
                 _forward.Margin = new(buttonInnerHMargin, buttonMarginTop, buttonInnerHMargin, 0);
                 _backward.Margin = new(buttonInnerHMargin, buttonMarginTop, buttonInnerHMargin, 0);
                 _last.Margin = new(0, buttonMarginTop, buttonOuterHMargin, 0);
                 // Text box
-                _jumpToBox.Size = new((int) (newPageInfoHeight * 1.8), (int) (newPageInfoHeight * .95));
+                _jumpToBox.Size = new((int)(newPageInfoHeight * 1.8), (int)(newPageInfoHeight * .95));
                 _jumpToBox.Margin = new(0, (newPageInfoHeight - _jumpToBox.Height) / 2, 0, 0);
                 // All part width
                 int sumWidth = 0;

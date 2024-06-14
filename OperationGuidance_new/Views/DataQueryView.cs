@@ -1,10 +1,11 @@
-﻿using System.Reflection;
-using CustomLibrary.Buttons;
+﻿using CustomLibrary.Buttons;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
@@ -13,9 +14,12 @@ using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
+using System.Reflection;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView: CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
+    public class DataQueryView : CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
+        private ILog logger = MainUtils.GetLogger(typeof(DataQueryView));
+
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -46,7 +50,7 @@ namespace OperationGuidance_new.Views {
         private void InitializeGridView() {
             _operationDataFields = MainUtils.GetOperationDataFields();
             _dataGridView = new(gridView => {
-                DataGridViewColumn[] columnRange = {};
+                DataGridViewColumn[] columnRange = { };
                 foreach (OperationDataField field in _operationDataFields) {
                     if (field.Visible) {
                         DataGridViewTextBoxColumn column = new() {
@@ -55,7 +59,7 @@ namespace OperationGuidance_new.Views {
                             ReadOnly = true,
                         };
                         columnRange = columnRange.Append(column).ToArray();
-                    } 
+                    }
                 }
                 gridView.Columns.Clear();
                 gridView.Columns.AddRange(columnRange);
@@ -63,8 +67,15 @@ namespace OperationGuidance_new.Views {
             }) {
                 Parent = this,
             };
+            _dataGridView.VoGridView.GridView.CellDoubleClick += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    OperationDataVO record = (OperationDataVO)_dataGridView.VoGridView.GridView.Rows[e.RowIndex].DataBoundItem;
+                    CheckCurveData(record.id.Value);
+                }
+            };
+
             // 搜索条件
-            CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~", 
+            CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~",
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_max = value);
             CustomDatePicker date_min = dateFitler.GetPicker(0);
@@ -135,6 +146,31 @@ namespace OperationGuidance_new.Views {
             _dataGridView.AddNewButtonVisible = false;
             _dataGridView.ModifyButtonVisible = false;
             _dataGridView.DeleteButtonVisible = false;
+
+            _dataGridView.AddExtraButton("查看曲线").Click += (s, e) => {
+                List<int> ids = _dataGridView.GetSelectedIds();
+                if (ids.Count <= 0) {
+                    WidgetUtils.ShowNoticePopUp("请选择要查看曲线的数据。");
+                } else if (ids.Count > 1) {
+                    WidgetUtils.ShowNoticePopUp("每次只能查看一条数据的曲线信息。");
+                } else {
+                    CheckCurveData(ids[0]);
+                }
+            };
+
+            void CheckCurveData(int operationDataId) {
+                OperationDataDTO? operationDataDTO = apis.FindOperationDataById(new(operationDataId)).OperationDataDTO;
+                if (operationDataDTO != null) {
+                    List<CurveDataDTO> curveDataDTOs = apis.FindCurveDataByOperationDataId(new(operationDataId)).CurveDataDTOs;
+                    CurveDataDTO? angleCurve = curveDataDTOs.Find(c => c.data_type == (int)CurveDataType.ANGLE);
+                    CurveDataDTO? torqueCurve = curveDataDTOs.Find(c => c.data_type == (int)CurveDataType.TORQUE);
+                    OpenOperationDataDetailsPopUpForm(operationDataDTO.bolt_serial_num.Value, angleCurve, torqueCurve);
+                } else {
+                    string errorMsg = $"Can't find operation data by id = {operationDataId}, please check";
+                    logger.Error(errorMsg);
+                    throw new NullReferenceException(errorMsg);
+                }
+            }
         }
         #endregion
 
@@ -187,6 +223,17 @@ namespace OperationGuidance_new.Views {
             }
             return localFilePath;
         }
+        private void OpenOperationDataDetailsPopUpForm(int boltSerialNum, CurveDataDTO? angleCurve, CurveDataDTO? torqueCurve) {
+            CurvePopUpForm curveForm = new(boltSerialNum, angleCurve, torqueCurve);
+
+            curveForm.PretendToShowToCreateHandlesForChildren();
+            int contentWidth = (int)(WidgetUtils.MainSize.Width * .85);
+            int gridViewHeight = (int)(WidgetUtils.MainSize.Height * .65);
+            // 感觉关闭按钮上面太空了，加一点高度
+            curveForm.Chart.Size = new(contentWidth - curveForm.ContentPanel.Padding.Size.Width, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height / 4);
+            curveForm.SetContentSizeAndSelfSize(new(contentWidth, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height));
+            curveForm.Show();
+        }
         #endregion
 
         #region Override methods
@@ -202,8 +249,8 @@ namespace OperationGuidance_new.Views {
             // }
             return vos;
         }
-        protected override void AddOrUpdate(OperationDataDTO dto, Action action) {}
-        protected override void Delete(List<int> ids) {}
+        protected override void AddOrUpdate(OperationDataDTO dto, Action action) { }
+        protected override void Delete(List<int> ids) { }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             _dataGridView.Size = contentSize;
