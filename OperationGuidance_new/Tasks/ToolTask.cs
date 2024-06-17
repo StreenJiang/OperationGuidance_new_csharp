@@ -7,7 +7,7 @@ using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Tasks {
-    public class ToolTask : ATaskBase {
+    public class ToolTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
@@ -66,7 +66,11 @@ namespace OperationGuidance_new.Tasks {
 
                                 // Send command
                                 string command = _commands.Dequeue();
-                                socketClient.Send(Encoding.ASCII.GetBytes(command));
+                                if (_toolType is ToolPFSeries toolPF2) {
+                                    socketClient.Send(Encoding.ASCII.GetBytes(command));
+                                } else if (_toolType is ToolSudongX7 toolX7) {
+                                    socketClient.Send(MainUtils.ToBytes(command));
+                                }
 
                                 // Wait for a little bit
                                 await Task.Delay(ReceiveTimeout);
@@ -117,10 +121,25 @@ namespace OperationGuidance_new.Tasks {
                                             WaitCurveTimesCount--;
                                         }
                                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                                } else if (_toolType is ToolSudongX7 toolX7) {
+                                    toolX7.AnalyzeData(msgBytes.Take(msgLen).ToArray(), (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                                        if (pSetSendingOk != null) {
+                                            PSetOk = pSetSendingOk.Value;
+                                        }
+                                        if (locked != null) {
+                                            Locked = locked.Value;
+                                        }
+                                        if (dataReceived != null && dataReceived.Value) {
+                                            // WaitCurveTimesCount = WaitCurveTimes;
+                                        }
+                                        if (curveReceived != null && curveReceived.Value) {
+                                            WaitCurveTimesCount--;
+                                        }
+                                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                                 }
                             }
                         } catch (SocketException se) {
-                            if (se.ErrorCode == (int)SocketError.TimedOut) {
+                            if (se.ErrorCode == (int) SocketError.TimedOut) {
                                 HeartBeatCounter += ReceiveTimeout;
                                 Console.WriteLine($"No data received... ");
                             } else {
@@ -229,6 +248,7 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         sendConnectMsgSuceess = true;
                         dataEnableMsgSuccess = true;
+                        curveEnableMsgSuccess = true;
                     }
                 } catch (Exception e) {
                     logger.Warn($"Connect error while connecting to TOOL[{_device_name} - {_ip}: {_port}], e: {e}");
@@ -272,7 +292,12 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 await Task.Run(async () => {
                     // _commands.Enqueue(_toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000")));
-                    SendCommand(_toolType.COMMAND_PSET_ASCII.GetMessage($"{pSetNumber:000}"));
+                    if (_toolType is ToolPFSeries toolPF) {
+                        SendCommand(toolPF.GetPSetCommand(pSetNumber));
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        SendCommand(toolX7.GetPSetCommand(pSetNumber));
+                    } else {
+                    }
 
                     int waitTimesMax = 15;
                     int waitTimes = 0;
@@ -288,12 +313,24 @@ namespace OperationGuidance_new.Tasks {
 
         public void SendLock() {
             if (Connected && !Locked) {
-                SendCommand(_toolType.COMMAND_LOCK_ASCII.GetMessage());
+                if (_toolType is ToolPFSeries toolPF) {
+                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                    Locked = true;
+                } else {
+                }
             }
         }
         public void SendUnlock() {
             if (Connected && Locked) {
-                SendCommand(_toolType.COMMAND_UNLOCK_ASCII.GetMessage());
+                if (_toolType is ToolPFSeries toolPF) {
+                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    Locked = false;
+                } else {
+                }
             }
         }
         public bool IsLocked() => Locked;

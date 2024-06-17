@@ -43,19 +43,21 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class DeviceTypeTool : DeviceTypeBase {
+    public abstract class DeviceTypeTool: DeviceTypeBase {
         public Command COMMAND_LOCK_ASCII;
         public Command COMMAND_UNLOCK_ASCII;
-        public Command COMMAND_PSET_ASCII;
+        protected Command COMMAND_PSET_ASCII;
         public Command? COMMAND_SEND_BARCODE_ASCII;
         public DeviceTypeTool(int id, string name) : base(id, name) {
             logger = MainUtils.GetLogger(GetType());
         }
 
+        public abstract string GetPSetCommand(int pSetNumber);
+
         public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null);
     }
 
-    public abstract class ToolPFSeries : DeviceTypeTool {
+    public abstract class ToolPFSeries: DeviceTypeTool {
         public Command? COMMAND_CONNECT_ASCII;
         public Command COMMAND_HEART_ASCII;
         public Command COMMAND_DATA_ASCII;
@@ -74,6 +76,8 @@ namespace OperationGuidance_new.Constants {
             COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
             COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
         }
+
+        public override string GetPSetCommand(int pSetNumber) => COMMAND_PSET_ASCII.GetMessage($"{pSetNumber:000}");
 
         public virtual string GetMid(string result) {
             string mid = "";
@@ -200,7 +204,7 @@ namespace OperationGuidance_new.Constants {
                     string dataType = new(header.Skip(52).Take(2).ToArray());
                     byte[] dataBytes = msgBytes.Skip(header.Length + 1).ToArray();
                     double coefficient = double.Parse(new(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
-                    int decimals = int.Parse(dataType) == (int)CurveDataType.TORQUE ? 2 : 0;
+                    int decimals = int.Parse(dataType) == (int) CurveDataType.TORQUE ? 2 : 0;
                     double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);
 
                     CurveDataTemp curveData = new(id, time, int.Parse(dataType), string.Join(",", values));
@@ -221,7 +225,7 @@ namespace OperationGuidance_new.Constants {
 
                 // Check if is negative value
                 if (value > Math.Pow(2, 15) - 1) {
-                    double valueTemp = (int)Math.Pow(2, 16) - value;
+                    double valueTemp = (int) Math.Pow(2, 16) - value;
                     value = 0 - valueTemp;
                 }
 
@@ -239,25 +243,160 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class ToolPF4000 : ToolPFSeries {
+    public class ToolPF4000: ToolPFSeries {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII = new("00200001003         \x00");
         }
     }
 
-    public class ToolPF6000OP : ToolPFSeries {
+    public class ToolPF6000OP: ToolPFSeries {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII = new("00200001006         \x00");
         }
     }
 
-    public class ToolSudongX7 : DeviceTypeTool {
-        public ToolSudongX7() : base(3, "SudongX7") { }
+    public class ToolSudongX7: DeviceTypeTool {
+        public string PSET_OK = "55AA058205B9760D0A";
 
-        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) { }
+        public ToolSudongX7() : base(3, "SudongX7") {
+            COMMAND_LOCK_ASCII = new("55AA070100020000000D0A");
+            COMMAND_UNLOCK_ASCII = new("55AA070100000000000D0A");
+            COMMAND_PSET_ASCII = new("55AA070205{0}");
+        }
 
-        public bool SendPsetOk(string result) {
-            return false;
+        public override string GetPSetCommand(int pSetNumber) {
+            string psetCommand = COMMAND_PSET_ASCII.GetMessage($"{pSetNumber:0000}");
+            String CrcStr = MainUtils.Crc16ToString(MainUtils.ToBytes(psetCommand));
+            return psetCommand + CrcStr + "0D0A";
+        }
+
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+            string dataMessage = MainUtils.ToHexString(msgBytes);
+            string head = GetHead(dataMessage);
+
+            if (dataMessage == PSET_OK) {
+                toolAction(null, true, null, null, null);
+            } else if (head == "55AA2781") {
+                toolAction(null, null, null, true, null);
+                if (actionAfterAnalysis != null) {
+                    if (deviceId == null) {
+                        string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
+                        logger.Error(errorMsg);
+                        throw new NullReferenceException(errorMsg);
+                    }
+
+                    float torque = (float) GetIntData(GetData(dataMessage, 14, 4)) / 1000;
+                    float torqueMin = (float) GetIntData(GetData(dataMessage, 52, 4)) / 1000;
+                    float torqueMax = (float) GetIntData(GetData(dataMessage, 48, 4)) / 1000;
+                    int torqueStatus = (int) TighteningCommonStatus.OK;
+                    if (torque < torqueMin) {
+                        torqueStatus = (int) TighteningCommonStatus.LOW;
+                    } else if (torque > torqueMax) {
+                        torqueStatus = (int) TighteningCommonStatus.NG;
+                    }
+
+                    int angle = GetIntData(GetData(dataMessage, 22, 4));
+                    int angleMin = GetIntData(GetData(dataMessage, 68, 4));
+                    int angleMax = GetIntData(GetData(dataMessage, 64, 4));
+                    int angleStatus = (int) TighteningCommonStatus.OK;
+                    if (angle < angleMin) {
+                        angleStatus = (int) TighteningCommonStatus.LOW;
+                    } else if (angle > angleMax) {
+                        angleStatus = (int) TighteningCommonStatus.NG;
+                    }
+
+                    int rundownAngle = GetIntData(GetData(dataMessage, 26, 4));
+                    int rundownAngleMin = GetIntData(GetData(dataMessage, 60, 4));
+                    int rundownAngleMax = GetIntData(GetData(dataMessage, 56, 4));
+                    int rundownAngleStatus = (int) TighteningCommonStatus.OK;
+                    if (rundownAngle < rundownAngleMin) {
+                        rundownAngleStatus = (int) TighteningCommonStatus.LOW;
+                    } else if (rundownAngle > rundownAngleMax) {
+                        rundownAngleStatus = (int) TighteningCommonStatus.NG;
+                    }
+
+                    string tighteningStatusTemp = GetData(dataMessage, 42, 2);
+                    int tighteningStatus;
+                    if (tighteningStatusTemp == "01" || tighteningStatusTemp == "04") {
+                        // 04 equals to CCW, so it's ok to be OK
+                        tighteningStatus = (int) TighteningStatus.OK;
+                    } else {
+                        tighteningStatus = (int) TighteningStatus.NG;
+                    }
+
+                    string resultTypeTemp = GetData(dataMessage, 34, 2);
+                    int resultType;
+                    if (resultTypeTemp == "00") {
+                        resultType = (int) TightenOrLoosen.TIGHTENING;
+                    } else {
+                        resultType = (int) TightenOrLoosen.LOOSENING;
+                    }
+
+
+                    TighteningData tighteningData = new() {
+                        tightening_status = tighteningStatus,
+                        torque_status = torqueStatus,
+                        angle_status = angleStatus,
+                        rundown_status = rundownAngleStatus,
+
+                        torque_min_limit = torqueMin,
+                        torque_max_limit = torqueMax,
+                        torque = torque,
+
+                        angle_min = angleMin,
+                        angle_max = angleMax,
+                        angle = angle,
+
+                        rundown_angle_min = rundownAngleMin,
+                        rundown_angle_max = rundownAngleMax,
+                        rundown_angle = rundownAngle,
+
+                        result_type = resultType,
+                    };
+
+                    actionAfterAnalysis(tighteningData, deviceId.Value);
+                }
+
+                // } else if (head == "0900") {
+                //     toolAction(null, null, null, null, true);
+                //     if (_actionAfterCurveDataReceived != null) {
+                //         if (deviceId == null) {
+                //             string errorMsg = $"[Device] id can not be null while [actionAfterCurveDataReceived] is not null.";
+                //             logger.Error(errorMsg);
+                //             throw new NullReferenceException(errorMsg);
+                //         }
+                //
+                //         string header = Encoding.ASCII.GetString(msgBytes.Take(msgBytes.ToList().IndexOf(0)).ToArray());
+                //         string id = new(header.Skip(20).Take(10).ToArray());
+                //         string time = $"{new(header.Skip(30).Take(10).ToArray())} {new(header.Skip(41).Take(8).ToArray())}";
+                //         string dataType = new(header.Skip(52).Take(2).ToArray());
+                //         byte[] dataBytes = msgBytes.Skip(header.Length + 1).ToArray();
+                //         double coefficient = double.Parse(new(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
+                //         int decimals = int.Parse(dataType) == (int) CurveDataType.TORQUE ? 2 : 0;
+                //         double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);
+                //
+                //         CurveDataTemp curveData = new(id, time, int.Parse(dataType), string.Join(",", values));
+                //
+                //         _actionAfterCurveDataReceived(curveData, deviceId.Value);
+                //     }
+            }
+
+            string GetData(string dataMessage, int start, int len) => new(dataMessage.Skip(start).Take(len).ToArray());
+            int GetIntData(string dataStr) {
+                string low = new(dataStr.Take(2).ToArray());
+                string high = new(dataStr.Skip(2).Take(2).ToArray());
+                return MainUtils.ToIntByHexString(high + low);
+            }
+        }
+
+        public virtual string GetHead(string result) {
+            string head = "";
+            try {
+                head = new(result.Take(8).ToArray());
+            } catch (Exception e) {
+                logger.Warn($"Get head failed from result message = {result}, e = {e}");
+            }
+            return head;
         }
     }
 }
