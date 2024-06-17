@@ -10,11 +10,11 @@ using OperationGuidance_service.Models.DTOs;
 using SkiaSharp;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class CurvePopUpForm : CustomPopUpForm {
+    public class CurvePopUpForm: CustomPopUpForm {
         private CartesianChart _chart;
         private CurveDataDTO? _angleCurveData;
         private CurveDataDTO? _torqueCurveData;
-        private List<int> _angleData;
+        private List<string> _angleData;
         private List<double> _torqueData;
 
         public CartesianChart Chart { get => _chart; set => _chart = value; }
@@ -30,8 +30,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.X,
             };
 
-            AddButton("角度曲线").Click += (s, e) => ShowAngleCurve();
-            AddButton("扭矩曲线").Click += (s, e) => ShowTorqueCurve();
             AddButton("关闭").Click += (s, e) => Dispose();
 
             _angleCurveData = angleCurveData;
@@ -39,10 +37,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             if (_angleCurveData != null) {
                 List<string> dataStrs = _angleCurveData.data_samples.Split(",").ToList();
-                _angleData = dataStrs.Select(str => {
-                    str = str.Trim();
-                    return int.Parse(str);
-                }).ToList();
+                _angleData = dataStrs.Select(str => str.Trim()).ToList();
+                _chart.XAxes = new Axis[] {
+                    new Axis {
+                        Name = "ANGLE (°)",
+                        NameTextSize = 15,
+                        NamePaint = new SolidColorPaint(SKColors.Green),
+                        LabelsPaint = new SolidColorPaint(SKColors.Green),
+                        TextSize = 15,
+                        Labels = _angleData,
+                    },
+                };
             } else {
                 _angleData = new();
             }
@@ -56,39 +61,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _torqueData = new();
             }
 
-            ShowAngleCurve();
-        }
-
-        private void ShowAngleCurve() {
-            _chart.Series = new ObservableCollection<ISeries> {
-                new LineSeries<int>() {
-                Name = "ANGLE (°)",
-                GeometrySize = 0,
-                LineSmoothness = 1,
-                Fill = null,
-                Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 1 },
-                Values = _angleData,
-            },
-            };
-            _chart.YAxes = new Axis[] {
-                new Axis {
-                    Name = "ANGLE",
-                    NameTextSize = 15,
-                    NamePaint = new SolidColorPaint(SKColors.Green),
-                    LabelsPaint = new SolidColorPaint(SKColors.Green),
-                    TextSize = 15,
-                    SeparatorsPaint = new SolidColorPaint(SKColors.LightSlateGray) {
-                        StrokeThickness = 1,
-                        PathEffect = new DashEffect(new float[] { 15, 15 })
-                    }
-                },
-            };
-        }
-
-        private void ShowTorqueCurve() {
             _chart.Series = new ObservableCollection<ISeries> {
                 new LineSeries<double>() {
-                Name = "TORQUE (N*m)",
+                    Name = "TORQUE",
                 GeometrySize = 0,
                 LineSmoothness = 1,
                 Fill = null,
@@ -96,9 +71,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Values = _torqueData,
             },
             };
+            if (_angleCurveData != null) {
+                List<string> dataStrs = _angleCurveData.data_samples.Split(",").ToList();
+                dataStrs = dataStrs.Select(s => s.Trim()).ToList();
+            };
             _chart.YAxes = new Axis[] {
                 new Axis {
-                    Name = "TORQUE",
+                    Name = "TORQUE (N*m)",
                     NameTextSize = 15,
                     NamePaint = new SolidColorPaint(SKColors.Green),
                     LabelsPaint = new SolidColorPaint(SKColors.Green),
@@ -110,5 +89,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 },
             };
         }
+
     }
 }
