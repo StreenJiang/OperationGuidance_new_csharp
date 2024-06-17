@@ -151,7 +151,7 @@ namespace OperationGuidance_new {
                         }
                         MinimumSize = new Size(400, 300);
                         MaximumSize = screenSize;
-                        if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
+                        if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                             if (_operatorView != null) {
                                 _operatorView.Dispose();
                             }
@@ -210,7 +210,7 @@ namespace OperationGuidance_new {
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
-            if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
+            if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                 OperatorOpenning();
             } else {
                 // mainPanel
@@ -260,7 +260,6 @@ namespace OperationGuidance_new {
                 // WidgetUtils.ClearMainMenus();
                 // WidgetUtils.ClearChildMenus();
                 List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
-                // TODO: 根据许可证权限过滤菜单
                 for (int i = 0; i < menuCongfigs.Count; i++) {
                     MenuConfig mainMenuConfig = menuCongfigs[i];
                     if (MainUtils.Version != AppVersion.STANDARD
@@ -281,13 +280,16 @@ namespace OperationGuidance_new {
                         } else {
                             type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
                         }
+                        // TODO: License checking here
                         object instance = type.Assembly.CreateInstance(type.FullName);
                         if (instance is CustomContentPanel) {
-                            CustomContentPanel contentPanelTemp = (CustomContentPanel)instance;
+                            CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
                             //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
-                            contentPanelTemp.Name = "mainContentPanel_" + i;
+                            contentPanelTemp.Name = "mainContentPanel_" + mainMenuConfig.Id;
                             if (contentPanelTemp.Controls.Count == 0) {
-                                contentPanelTemp.Controls.Add(new TextBox() { Text = contentPanelTemp.Name, Width = 150, Margin = new(0) });
+                                int hPadding = contentPanelTemp.Width / 2;
+                                int vPadding = contentPanelTemp.Height / 2;
+                                contentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                             }
                             contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
                             mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
@@ -297,7 +299,7 @@ namespace OperationGuidance_new {
                             };
                             WidgetUtils.AddView(contentPanelTemp);
                         } else {
-                            CustomTabPanel childTapPanel = (CustomTabPanel)instance;
+                            CustomTabPanel childTapPanel = (CustomTabPanel) instance;
                             CustomChildMenuFirstPanel childMenuPanel = new();
                             CustomContentPanelBase childContentPanel = new();
                             // childMenuPanel
@@ -334,13 +336,16 @@ namespace OperationGuidance_new {
                                     } else {
                                         childType = childMenuConfig.ViewTypes[AppVersion.STANDARD];
                                     }
+                                    // TODO: License checking here
                                     object childInstance = childType.Assembly.CreateInstance(childType.FullName);
                                     if (childInstance is CustomContentPanel) {
-                                        CustomContentPanel childContentPanelTemp = (CustomContentPanel)childInstance;
+                                        CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
                                         //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
                                         childContentPanelTemp.Name = "childContentPanel_" + j;
                                         if (childContentPanelTemp.Controls.Count == 0) {
-                                            childContentPanelTemp.Controls.Add(new TextBox() { Text = childContentPanelTemp.Name, Width = 150, Margin = new(0) });
+                                            int hPadding = childContentPanelTemp.Width / 2;
+                                            int vPadding = childContentPanelTemp.Height / 2;
+                                            childContentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                                         }
                                         childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
                                         childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(

@@ -14,7 +14,7 @@ using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
-    public class DeviceIoView: CustomDataGridViewOuterPanel<DeviceIoDTO, ViewObjects.DeviceIoVO> {
+    public class DeviceIoView : CustomDataGridViewOuterPanel<DeviceIoDTO, DeviceIoVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -29,7 +29,7 @@ namespace OperationGuidance_new.Views {
         public DeviceIoView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
-            
+
             // Get Apis
             apis = SystemUtils.GetApis();
 
@@ -49,7 +49,7 @@ namespace OperationGuidance_new.Views {
             foreach (DeviceTypeBase type in DeviceType_IoBox.Elements) {
                 toolTypeComboBox.AddItem(type.Name, type.Id);
             }
-            
+
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
                 List<DeviceIoVO> workstationVOs = QueryList();
@@ -91,7 +91,7 @@ namespace OperationGuidance_new.Views {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             // 添加字段
-            CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("IO设备名称", false, 
+            CustomTextBoxGroup name = _editEntityPopUpForm.AddTextBox("IO设备名称", false,
                 (DeviceIoDTO dto, string? value) => dto.name = value ?? "");
             if (dto.name != null) {
                 name.SetValue(0, dto.name);
@@ -99,12 +99,12 @@ namespace OperationGuidance_new.Views {
             name.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 name.GetTextBox(0).IsError = string.IsNullOrEmpty(name.GetTextBox(0).Box.Text);
             };
-            CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("IO设备描述", false, 
+            CustomTextBoxGroup description = _editEntityPopUpForm.AddTextBox("IO设备描述", false,
                 (DeviceIoDTO dto, string? value) => dto.description = value ?? "");
             if (dto.description != null) {
                 description.SetValue(0, dto.description);
             }
-            CustomTextBoxGroup ip = _editEntityPopUpForm.AddTextBox("IP地址", false, 
+            CustomTextBoxGroup ip = _editEntityPopUpForm.AddTextBox("IP地址", false,
                 (DeviceIoDTO dto, string? value) => dto.ip = value ?? "");
             CustomTextBox ipBox = ip.GetTextBox(0);
             ipBox.TextChanged += async (sender, eventArgs) => {
@@ -116,7 +116,7 @@ namespace OperationGuidance_new.Views {
             if (dto.ip != null) {
                 ip.SetValue(0, dto.ip);
             }
-            CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false, 
+            CustomTextBoxGroup port = _editEntityPopUpForm.AddTextBox("端口号", false,
                 (DeviceIoDTO dto, int? value) => dto.port = value ?? 0);
             CustomTextBox portBox = port.GetTextBox(0);
             portBox.PositiveIntOnly = true;
@@ -130,7 +130,7 @@ namespace OperationGuidance_new.Views {
                 port.SetValue(0, dto.port + "");
             }
             Dictionary<string, int> ioTypes = DeviceType_IoBox.Elements.ToDictionary(e => e.Name, e => e.Id);
-            CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("IO设备类型", 
+            CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("IO设备类型",
                 (DeviceIoDTO dto, int value) => dto.type = value, ioTypes);
             type.SetCurrent(type.IndexOf(dto.type));
             type.ItemSelected += () => {
@@ -213,7 +213,7 @@ namespace OperationGuidance_new.Views {
         #region Override methods
         protected override List<DeviceIoVO> QueryList() {
             QueryDeviceIoListRsp rsp = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id));
-            _dataDTOList = rsp.DeviceIoDTOs.Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+            _dataDTOList = rsp.DeviceIoDTOs.Where(dto => dto.deleted == (int)YesOrNo.NO).ToList();
             List<DeviceIoVO> vos = new();
             CommonUtils.ObjectConverter<DeviceIoDTO, DeviceIoVO>(_dataDTOList, vos);
             // TODO: can use BackgroundWorker to do this
