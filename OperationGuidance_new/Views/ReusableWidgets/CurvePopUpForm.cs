@@ -64,12 +64,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _chart.Series = new ObservableCollection<ISeries> {
                 new LineSeries<double>() {
                     Name = "TORQUE",
-                    GeometrySize = 0,
-                    LineSmoothness = 1,
-                    Fill = null,
-                    Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 1 },
-                    Values = _torqueData,
-                },
+                GeometrySize = 0,
+                LineSmoothness = 1,
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 1 },
+                Values = _torqueData,
+            },
             };
             if (_angleCurveData != null) {
                 List<string> dataStrs = _angleCurveData.data_samples.Split(",").ToList();
