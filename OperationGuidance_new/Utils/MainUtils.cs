@@ -20,6 +20,7 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
+using IniFileKeys = OperationGuidance_new.Configs.IniFileKeys;
 using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Utils {
@@ -114,6 +115,9 @@ namespace OperationGuidance_new.Utils {
             if (dbConnection == null) {
                 throw new DatabaseException("数据库连接失败，请检查数据库配置或网络连接状态");
             }
+
+            // Release connection because this is just for testing
+            dbConnection.Close();
         }
 
         private static IniFileUtil Settings { get; } = new();
@@ -308,14 +312,14 @@ namespace OperationGuidance_new.Utils {
                 SetStoreLooseningData(flag);
                 return flag;
             }
-            return int.Parse(storeLooseningData) == (int)YesOrNo.YES;
+            return int.Parse(storeLooseningData) == (int) YesOrNo.YES;
         }
         public static bool GetDefaultStoreLooseningData() => true;
         public static void SetStoreLooseningData(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int)YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int)YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.NO + "");
             }
         }
         // Arm locating enabled
@@ -326,14 +330,14 @@ namespace OperationGuidance_new.Utils {
                 SetArmLocatingEnabled(flag);
                 return flag;
             }
-            return int.Parse(armLocatingEnabled) == (int)YesOrNo.YES;
+            return int.Parse(armLocatingEnabled) == (int) YesOrNo.YES;
         }
         public static bool DefaultIsArmLocatingEnabled() => true;
         public static void SetArmLocatingEnabled(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int)YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int)YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.NO + "");
             }
         }
         // Arm locating accuracy
@@ -356,14 +360,14 @@ namespace OperationGuidance_new.Utils {
                 SetProductBatchNoticeEnabled(flag);
                 return flag;
             }
-            return int.Parse(productBatchNoticeEnabled) == (int)YesOrNo.YES;
+            return int.Parse(productBatchNoticeEnabled) == (int) YesOrNo.YES;
         }
         public static bool DefaultIsProductBatchNoticeEnabled() => true;
         public static void SetProductBatchNoticeEnabled(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int)YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int)YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.NO + "");
             }
         }
 
@@ -531,16 +535,16 @@ namespace OperationGuidance_new.Utils {
             }
         }
         public static void Info(ILog logger, string message, bool printToView = true) {
-            Log(message, printToView);
+            Log("[INFO]" + message, printToView);
             logger.Info(message);
         }
         public static void Warn(ILog logger, string message, bool printToView = true) {
-            Log(message, printToView);
-            logger.Info(message);
+            Log("[WARN]" + message, printToView);
+            logger.Warn(message);
         }
         public static void Error(ILog logger, string message, bool printToView = true) {
-            Log(message, printToView);
-            logger.Info(message);
+            Log("[ERROR]" + message, printToView);
+            logger.Error(message);
         }
 
         /// <summary>
@@ -551,12 +555,12 @@ namespace OperationGuidance_new.Utils {
         /// <returns>Zooming ratio float value.</returns>        
         public static float GetZoomingRatio(Size imageSize, Size size) {
             int newWidth = size.Width;
-            float originalRatio = (float)newWidth / imageSize.Width;
-            int newHeight = (int)(imageSize.Height * originalRatio);
+            float originalRatio = (float) newWidth / imageSize.Width;
+            int newHeight = (int) (imageSize.Height * originalRatio);
             if (newHeight > size.Height) {
                 newHeight = size.Height;
-                originalRatio = (float)newHeight / imageSize.Height;
-                newWidth = (int)(imageSize.Width * originalRatio);
+                originalRatio = (float) newHeight / imageSize.Height;
+                newWidth = (int) (imageSize.Width * originalRatio);
             }
             return originalRatio;
         }
@@ -640,7 +644,7 @@ namespace OperationGuidance_new.Utils {
             GetMaxSizeOfSizeRatio(out maxWidthRatio, out maxHeightRatio);
 
             int maxWidth = contentWidth;
-            int maxHeight = (int)(maxWidth / (decimal)maxWidthRatio * maxHeightRatio);
+            int maxHeight = (int) (maxWidth / (decimal) maxWidthRatio * maxHeightRatio);
             return new(maxWidth, maxHeight);
         }
         public static Size GetMaxSizeOfSizeRatioByHeight(int contentHeight) {
@@ -648,17 +652,17 @@ namespace OperationGuidance_new.Utils {
             int maxHeightRatio = 0;
             GetMaxSizeOfSizeRatio(out maxWidthRatio, out maxHeightRatio);
 
-            int maxWidth = (int)(contentHeight / (decimal)maxHeightRatio * maxWidthRatio);
+            int maxWidth = (int) (contentHeight / (decimal) maxHeightRatio * maxWidthRatio);
             return new(maxWidth, contentHeight);
         }
         public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, Size size)
             => GetProperSizeAccordingToSizeRatio(contentSize, size.Width, size.Height);
         public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, int width, int height) {
             int newWidth = contentSize.Width;
-            int newHeight = (int)(height / ((decimal)width / newWidth));
+            int newHeight = (int) (height / ((decimal) width / newWidth));
             if (newHeight > contentSize.Height) {
                 newHeight = contentSize.Height;
-                newWidth = (int)(width / ((decimal)height / newHeight));
+                newWidth = (int) (width / ((decimal) height / newHeight));
             }
             return new(newWidth, newHeight);
         }
@@ -862,7 +866,7 @@ namespace OperationGuidance_new.Utils {
         public static string ToHexString(string binaryString) => ToHexString(ToBytesByBinaryString(binaryString));
 
         public static string ToBinaryString(int intValue) {
-            int maxToOneByte = (int)Math.Pow(16, 2) - 1;
+            int maxToOneByte = (int) Math.Pow(16, 2) - 1;
             if (intValue > maxToOneByte) {
                 string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not greater than {maxToOneByte}.";
                 logger.Error(errorMsg);

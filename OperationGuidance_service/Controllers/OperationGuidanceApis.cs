@@ -10,7 +10,6 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
 using log4net;
-using Org.BouncyCastle.Ocsp;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -47,6 +46,10 @@ namespace OperationGuidance_service.Controllers {
         private MacAddressesService _macAddressesService;
         [Autowired]
         private CurveDataService _curveDataService;
+        [Autowired]
+        private OuterDatabaseConfigGlbService _outerDatabaseConfigGlbService;
+        [Autowired]
+        private DapperDBService _dapperDBService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -288,7 +291,7 @@ namespace OperationGuidance_service.Controllers {
 
             string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted";
             Dictionary<string, object> parameters = new();
-            parameters.Add("deleted", (int)YesOrNo.NO);
+            parameters.Add("deleted", (int) YesOrNo.NO);
 
             if (req.Role != null && req.Role != Roles.DEVELOPER) {
                 sql += " and macs_id = @macs_id";
@@ -313,7 +316,7 @@ namespace OperationGuidance_service.Controllers {
             if (role != null && role != Roles.DEVELOPER) {
                 string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
                 Dictionary<string, object> parameters = new();
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 parameters.Add("macs_id", req.MacsId);
                 missions = _productMissionService.FindBySql(sql, parameters);
             } else {
@@ -387,11 +390,11 @@ namespace OperationGuidance_service.Controllers {
                 CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(productMission, productMissionDTO);
 
                 List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new() { { "@mission_id", req.MissionId } }).ToList();
-                sides = sides.Where(s => s.deleted != (int)YesOrNo.YES).ToList();
+                sides = sides.Where(s => s.deleted != (int) YesOrNo.YES).ToList();
                 List<ProductBolt> bolts = new();
                 if (sides.Count > 0) {
                     bolts = _productBoltService.FindBySql($"select * from {_productBoltService.TableName} where side_id in @side_ids", new() { { "@side_ids", sides.Select(s => s.id).ToList() } }).ToList();
-                    bolts = bolts.Where(b => b.deleted != (int)YesOrNo.YES).ToList();
+                    bolts = bolts.Where(b => b.deleted != (int) YesOrNo.YES).ToList();
                 }
 
                 // 将 sides, bolts 组装到 mission 中
@@ -537,7 +540,7 @@ namespace OperationGuidance_service.Controllers {
             if (role != null && role != Roles.DEVELOPER) {
                 string sql = $"select * from {_workstationService.TableName} where deleted = @deleted and macs_id = @macs_id";
                 Dictionary<string, object> parameters = new();
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 parameters.Add("macs_id", req.MacsId);
                 workstations = _workstationService.FindBySql(sql, parameters);
             } else {
@@ -814,7 +817,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -873,7 +876,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -932,7 +935,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -991,7 +994,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -1050,7 +1053,7 @@ namespace OperationGuidance_service.Controllers {
             // 不是为了线程查询，则需要考虑权限，并且不查询已被删除的数据
             else {
                 sql += " and deleted = @deleted";
-                parameters.Add("deleted", (int)YesOrNo.NO);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 // 不是管理员就需要检查mac地址
                 if (role != null && role != Roles.DEVELOPER) {
                     sql += " and macs_id = @macs_id";
@@ -1101,7 +1104,7 @@ namespace OperationGuidance_service.Controllers {
             Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
             string sql = $"select * from {_barCodeMatchingRuleService.TableName} where deleted = @deleted";
             Dictionary<string, object> parameters = new();
-            parameters.Add("deleted", (int)YesOrNo.NO);
+            parameters.Add("deleted", (int) YesOrNo.NO);
             if (role != null && role != Roles.DEVELOPER) {
                 sql += " and macs_id = @macs_id";
                 parameters.Add("macs_id", req.MacsId);
@@ -1161,6 +1164,142 @@ namespace OperationGuidance_service.Controllers {
             return new() {
                 BarCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs,
             };
+        }
+        #endregion
+
+        #region Outer database config related
+        // Query list
+        public QueryOuterDatabaseConfigGlbListRsp QueryOuterDatabaseConfigGlbList(QueryOuterDatabaseConfigGlbListReq req) {
+            List<OuterDatabaseConfigGlb> deviceCategories;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_outerDatabaseConfigGlbService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            sql += " and deleted = @deleted";
+            parameters.Add("deleted", (int) YesOrNo.NO);
+            // Should check macs_id if user is not Developer
+            if (role != null && role != Roles.DEVELOPER) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
+            }
+            deviceCategories = _outerDatabaseConfigGlbService.FindBySql(sql, parameters);
+
+            List<OuterDatabaseConfigGlbDTO> outerDatabaseConfigGlbDTOs = new();
+            CommonUtils.ObjectConverter<OuterDatabaseConfigGlb, OuterDatabaseConfigGlbDTO>(deviceCategories, outerDatabaseConfigGlbDTOs);
+
+            return new() {
+                OuterDatabaseConfigGlbDTOs = outerDatabaseConfigGlbDTOs,
+            };
+        }
+        // Add or update
+        public AddOrUpdateOuterDatabaseConfigGlbRsp AddOrUpdateOuterDatabaseConfigGlb(AddOrUpdateOuterDatabaseConfigGlbReq req) {
+            OuterDatabaseConfigGlbDTO outerDatabaseConfigGlbDTO = req.OuterDatabaseConfigGlbDTO;
+            OuterDatabaseConfigGlb outerDatabaseConfigGlb = new();
+            CommonUtils.ObjectConverter<OuterDatabaseConfigGlbDTO, OuterDatabaseConfigGlb>(outerDatabaseConfigGlbDTO, outerDatabaseConfigGlb);
+            OuterDatabaseConfigGlb? outerDatabaseConfigGlbNew = _outerDatabaseConfigGlbService.InsertOrUpdate(outerDatabaseConfigGlb);
+            if (outerDatabaseConfigGlbNew != null) {
+                outerDatabaseConfigGlbDTO.id = outerDatabaseConfigGlbNew.id;
+            }
+
+            return new() {
+                OuterDatabaseConfigGlbDTO = outerDatabaseConfigGlbDTO,
+            };
+        }
+        // Delete by ids
+        public DeleteOuterDatabaseConfigGlbByIdsRsp DeleteOuterDatabaseConfigGlb(DeleteOuterDatabaseConfigGlbByIdsReq req) {
+            int deletedRows = _outerDatabaseConfigGlbService.DeleteByIds(req.Ids);
+
+            DeleteOuterDatabaseConfigGlbByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        // Find one for checking
+        public FindOuterDatabaseConfigGlbForCheckingRsp FindOuterDatabaseConfigGlbForChecking(FindOuterDatabaseConfigGlbForCheckingReq req) {
+            string sql = $"select * from {_outerDatabaseConfigGlbService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            sql += " and deleted = @deleted and id <> @id";
+            parameters.Add("deleted", (int) YesOrNo.NO);
+            parameters.Add("id", req.Id);
+
+            sql += " and ((host = @host and port = @port and database_name = @database_name and database_type = @database_type) or workstation_name = @workstation_name)";
+            parameters.Add("host", req.host);
+            parameters.Add("port", req.port);
+            parameters.Add("database_name", req.database_name);
+            parameters.Add("database_type", req.database_type);
+            parameters.Add("workstation_name", req.workstation_name);
+
+            List<OuterDatabaseConfigGlb> outerDatabaseConfigGlbs = _outerDatabaseConfigGlbService.FindBySql(sql, parameters);
+            List<OuterDatabaseConfigGlbDTO> dtos = new();
+            CommonUtils.ObjectConverter<OuterDatabaseConfigGlb, OuterDatabaseConfigGlbDTO>(outerDatabaseConfigGlbs, dtos);
+
+            FindOuterDatabaseConfigGlbForCheckingRsp rsp = new();
+            rsp.outerDTOs.AddRange(dtos);
+            return rsp;
+        }
+
+        // Outer database actions
+        public AddDataToOuterDatabaseGlbRsp AddDataToOuterDatabaseGlb(AddDataToOuterDatabaseGlbReq req) {
+            OuterDatabaseConfigGlbDTO configDto = req.OuterDatabaseConfigGlbDTO;
+            MissionRecordDTO missionRecord = req.MissionRecordDTO;
+
+            DbConnection? conn = DbConnector.GetOuterConnection(configDto);
+            if (conn != null) {
+                string tableName = $"tightening_data_glb_{configDto.workstation_name}";
+                if (!ConnectionUtils.CheckTableExists(conn, tableName)) {
+                    string fieldSql = "";
+                    for (int i = 0; i < 50; i++) {
+                        fieldSql += $"torque{i + 1} float NULL, angle{i + 1} float NULL, ";
+                    }
+                    string sqlCreate = @$"CREATE TABLE [{tableName}] (
+                        [id] int IDENTITY(1,1) NOT NULL, 
+                        Serial_Number nvarchar(255) NULL,
+                        SoftwareVersion nvarchar(255) NULL,
+                        Test_Date nvarchar(255) NULL,
+                        Test_Time nvarchar(255) NULL,
+                        Operator_Number nvarchar(255) NULL,
+                        Model nvarchar(255) NULL,
+                        Collect int DEFAULT 0 NULL,
+                        Test_Result int NULL,
+                        {fieldSql}
+                        PRIMARY KEY CLUSTERED ([id])
+                        WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
+                    );";
+                    _dapperDBService.ExecuteSql(conn, sqlCreate);
+                }
+
+                string sql = $"insert into {tableName}";
+                Dictionary<string, object> parameters = new();
+                parameters.Add("Serial_Number", missionRecord.product_bar_code);
+                parameters.Add("Test_Date", missionRecord.create_time.ToString("yyyy-MM-dd"));
+                parameters.Add("Test_Time", missionRecord.create_time.ToString("HH:mm:ss"));
+                parameters.Add("Test_Result", missionRecord.mission_result);
+
+                List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
+                string dataSql = "";
+                string paramNamesSql = "";
+                for (int i = 0; i < operationDataDTOs.Count; i++) {
+                    OperationDataDTO data = operationDataDTOs[i];
+
+                    // Torque
+                    dataSql += $", torque{i + 1}";
+                    paramNamesSql += $", @torque{i + 1}";
+                    parameters.Add($"torque{i + 1}", data.torque.Value);
+
+                    // Angle
+                    dataSql += $", angle{i + 1}";
+                    paramNamesSql += $", @angle{i + 1}";
+                    parameters.Add($"angle{i + 1}", data.angle.Value);
+                }
+
+                sql += $"(Serial_Number, Test_Date, Test_Time, Test_Result{dataSql}) values (@Serial_Number, @Test_Date, @Test_Time, @Test_Result{paramNamesSql})";
+
+                return new(_dapperDBService.ExecuteSql(conn, sql, parameters));
+            }
+
+            return new(0);
         }
         #endregion
     }

@@ -87,7 +87,8 @@ namespace OperationGuidance_new {
                 throw new Exception("当前设备未授权");
             }
             // TODO: 检查软件版本（这个也是许可证）
-            MainUtils.Version = AppVersion.SCII;
+            // MainUtils.Version = AppVersion.SCII;
+            MainUtils.Version = AppVersion.GLB;
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
@@ -322,6 +323,10 @@ namespace OperationGuidance_new {
                             List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
                             for (int j = 0; j < childMenuConfigs.Count; j++) {
                                 MenuConfig childMenuConfig = childMenuConfigs[j];
+                                if (MainUtils.Version != AppVersion.STANDARD
+                                        && childMenuConfig.Versions != null && !childMenuConfig.Versions.Contains(MainUtils.Version)) {
+                                    continue;
+                                }
                                 CustomChildMenuFirstButton childMenuFirstButton = new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
                                 childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
                                 childMenuFirstButton.Icon = childMenuConfig.Icon;

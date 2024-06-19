@@ -91,7 +91,7 @@ namespace OperationGuidance_new.Tasks {
                                     // toolTask.Connect();
                                     MainUtils.NewToolTask(dto.id, dto.name, dto.ip, dto.port, deviceTool);
                                 } else {
-                                    MainUtils.Info(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
+                                    MainUtils.Warn(logger, $"TOOL[{dto.name} - {dto.ip}: {dto.port}] removed, can't find tool type [{dto.type}].");
                                 }
                             } else if (!toolTask.Connected && toolTask.Status != ATaskBase.CONNECTING) {
                                 Reconnect(toolTask, $"TOOL[{dto.name} - {dto.ip}: {dto.port} - {toolTask.ToolType.Name}]");
@@ -140,7 +140,7 @@ namespace OperationGuidance_new.Tasks {
                                     communicationTask.Connect();
                                 } else {
                                     MainUtils.CommunicationTasks.Remove(dto.id);
-                                    MainUtils.Info(logger, $"Communication device[{dto.name} - {dto.ip}: {dto.port}] removed, can't find Communication device type [{dto.type}].");
+                                    MainUtils.Warn(logger, $"Communication device[{dto.name} - {dto.ip}: {dto.port}] removed, can't find Communication device type [{dto.type}].");
                                 }
                             } else if (!communicationTask.Connected && communicationTask.Status != ATaskBase.CONNECTING) {
                                 Reconnect(communicationTask, $"Communication device[{dto.name} - {dto.ip}: {dto.port} - {communicationTask.CommunicationType.Name}]");
@@ -199,7 +199,7 @@ namespace OperationGuidance_new.Tasks {
                                     serialPortTask.Connect();
                                 } else {
                                     MainUtils.SerialPortTasks.Remove(dto.id);
-                                    MainUtils.Info(logger, $"SerialPort device[{dto.name}] removed, can't find SerialPort device type [{dto.type}].");
+                                    MainUtils.Warn(logger, $"SerialPort device[{dto.name}] removed, can't find SerialPort device type [{dto.type}].");
                                 }
 
                                 //
@@ -309,7 +309,7 @@ namespace OperationGuidance_new.Tasks {
 
                 async void Reconnect(ATaskBase task, string deviceInfo) {
                     await Task.Run(async () => {
-                        MainUtils.Info(logger, $"Disconnected to {deviceInfo}, trying to reconnect...");
+                        MainUtils.Warn(logger, $"Disconnected to {deviceInfo}, trying to reconnect...");
                         await task.ConnectAsync();
                         MainUtils.Info(logger, $"Reconnected to {deviceInfo}");
                     });

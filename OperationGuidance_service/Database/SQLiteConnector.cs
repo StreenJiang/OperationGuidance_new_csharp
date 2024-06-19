@@ -99,5 +99,16 @@ namespace OperationGuidance_service.Database {
                 return false;
             }
         }
+
+        public override DbConnection? GetOuterDbConnection(string host, int port, string databaseName, string? username = null, string? password = null) {
+            try {
+                SQLiteConnection conn = new($"Data source = {host}; UseUTF16Encoding = True; Connection Timeout=2;");
+                conn.Open();
+                return conn;
+            } catch (Exception e) {
+                logger.Error($"Connect to outer sqlite for Data source = {host}: {e}");
+            }
+            return null;
+        }
     }
 }

@@ -33,6 +33,7 @@ namespace OperationGuidance_new.Configs {
                     {AppVersion.STANDARD, typeof(WorkplaceMissionView)},
                     {AppVersion.SCII, typeof(WorkplaceMissionView_SCII)},
                     {AppVersion.YF, typeof(WorkplaceMissionView_YF)},
+                    {AppVersion.GLB, typeof(WorkplaceMissionView_GLB)},
                 },
                 OpenFirst = true,
             },
@@ -88,10 +89,10 @@ namespace OperationGuidance_new.Configs {
                             {AppVersion.STANDARD, typeof(DeviceIoView)},
                         },
                     },
-                    new(id: 511, name: "外部数据库管理", icon: Properties.Resources.device_io_box) {
+                    new(id: 511, name: "外部数据库管理", icon: Properties.Resources.database) {
                         Versions = new AppVersion[] { AppVersion.GLB },
                         ViewTypes = new() {
-                            {AppVersion.STANDARD, typeof(DeviceIoView)},
+                            {AppVersion.STANDARD, typeof(OuterDatabaseConfigGlbView)},
                         },
                     },
                     new(id: 507, name: "条码匹配管理", icon: Properties.Resources.bar_code) {

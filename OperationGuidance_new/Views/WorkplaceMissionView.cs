@@ -1,16 +1,12 @@
 ﻿using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
-using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Extensions;
-using System.Reflection;
-using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
@@ -544,6 +540,10 @@ namespace OperationGuidance_new.Views {
                                     nextIndex++;
                                 }
 
+                                // Store data
+                                dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                StoreTighteningData(dataDTO);
+
                                 if (nextIndex < currentSideBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
                                         _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
@@ -575,17 +575,13 @@ namespace OperationGuidance_new.Views {
                                     }
 
                                     if (allDone) {
-                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
-
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 }
-
-                                // Store data
-                                dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                StoreTighteningData(dataDTO);
                             } else {
                                 // Lock first
                                 if (_locating_enabled) {

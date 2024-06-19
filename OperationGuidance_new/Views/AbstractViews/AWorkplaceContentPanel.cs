@@ -1906,9 +1906,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _tighteningDataPanel.DataSource = _tighteningDataVOs;
         }
 
-        protected void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
+        protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
-        protected async void TerminateMission(WorkplaceProcessStatus status) {
+        protected virtual async void TerminateMission(WorkplaceProcessStatus status) {
             bool resetToDefault = status == WorkplaceProcessStatus.UNACTIVATED;
 
             // Reset variables

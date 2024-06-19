@@ -1,8 +1,8 @@
 -- ----------------------------
--- Table structure for outer_database_config_glb
+-- Table structure for outer_database_config
 -- ----------------------------
-DROP TABLE IF EXISTS `outer_database_config_glb`;
-CREATE TABLE `outer_database_config_glb`  (
+DROP TABLE IF EXISTS `outer_database_config`;
+CREATE TABLE `outer_database_config`  (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `host` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `port` int(8) NULL DEFAULT NULL,
@@ -10,7 +10,6 @@ CREATE TABLE `outer_database_config_glb`  (
   `username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `database_type` int(2) NULL DEFAULT NULL,
-  `workstation_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `deleted` int(1) NOT NULL,
   `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,

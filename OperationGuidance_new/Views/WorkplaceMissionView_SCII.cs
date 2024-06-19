@@ -912,23 +912,23 @@ namespace OperationGuidance_new.Views {
                                         nextIndex++;
                                     }
 
+                                    // Store data
+                                    dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                    StoreTighteningData(dataDTO);
+
                                     if (nextIndex < currentSideBolts.Count) {
                                         _currentWorkingBolt = SwitchBolt(nextIndex);
                                         ChangeBoltStatusToWorking(_currentWorkingBolt);
                                     } else {
-                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
-
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
                                         // 重置任务信息
                                         ResetMissionDetails();
-                                    }
 
-                                    // Store data
-                                    dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                    StoreTighteningData(dataDTO);
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+                                    }
                                 } else {
                                     // Lock first
                                     if (_locating_enabled) {
@@ -947,13 +947,13 @@ namespace OperationGuidance_new.Views {
                                         // Set custom error message
                                         _workingProcessPanel.NGReasons = errorMsg;
 
-                                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
                                         // 重置任务信息
                                         ResetMissionDetails();
 
                                         // 记录数据
                                         StoreTighteningData(dataDTO);
+
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
 
                                         // 先记录数据再弹出提示
                                         // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");

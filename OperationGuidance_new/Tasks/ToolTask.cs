@@ -240,7 +240,6 @@ namespace OperationGuidance_new.Tasks {
                                     if (result3 != null) {
                                         string mid3 = toolPF.GetMid(result3);
                                         curveEnableMsgSuccess = mid3 == "0005";
-                                        MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
                                     }
                                 }
                             }
@@ -261,7 +260,11 @@ namespace OperationGuidance_new.Tasks {
                     socketClient.Close();
                 }
             }
-            return pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess && curveEnableMsgSuccess;
+            bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess && curveEnableMsgSuccess;
+            if (isConnected) {
+                MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+            }
+            return isConnected;
         }
         private void SendCommand(string command) {
             if (!_commands.Contains(command)) {

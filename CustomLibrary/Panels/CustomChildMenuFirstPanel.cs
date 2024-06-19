@@ -2,8 +2,7 @@
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 
-namespace CustomLibrary.Panels
-{
+namespace CustomLibrary.Panels {
     public class CustomChildMenuFirstPanel: CustomMenuPanelBase {
         #region Fields
         private const float _childFirstButtonHeightRatio = 0.07F;
@@ -124,7 +123,7 @@ namespace CustomLibrary.Panels
         // Ratio of height of main menu panel in main form
         protected override float GetResizeRatio() {
             if (!this.OnlyIconMode) {
-                return 0.13F;
+                return 0.165F;
             } else {
                 return 0.05F;
             }

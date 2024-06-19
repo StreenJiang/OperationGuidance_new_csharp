@@ -151,6 +151,9 @@
   <data name="modify_mysql_20240614" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_mysql_20240614.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
+  <data name="modify_mysql_20240618" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20240618.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+  </data>
   <data name="modify_sqlite_20240407" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlite_20240407.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
@@ -177,5 +180,8 @@
   </data>
   <data name="modify_sqlite_20240614" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlite_20240614.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+  </data>
+  <data name="modify_sqlite_20240618" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20240618.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
 </root>

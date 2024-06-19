@@ -2,8 +2,7 @@
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
 
-namespace CustomLibrary.Panels.AbstractClasses
-{
+namespace CustomLibrary.Panels.AbstractClasses {
     public abstract class AbstractCustomMenuPanel<T>: AbstractCustomPanel where T : CustomMenuButton {
         private MenuPanelDirection? _panelDirection;
         private T? _currentButton;
@@ -14,7 +13,7 @@ namespace CustomLibrary.Panels.AbstractClasses
         private int _newWidth;
         private List<int>.Enumerator _enumerator;
 
-        
+
         public MenuPanelDirection? PanelDirection {
             get => _panelDirection;
             set => _panelDirection = value;
@@ -105,7 +104,7 @@ namespace CustomLibrary.Panels.AbstractClasses
                         break;
                     case MenuPanelDirection.LEFT:
                     case MenuPanelDirection.RIGHT:
-                        int newWidth = (int) (parentSize.Width * GetResizeRatio());
+                        int newWidth = (int) (parentSize.Width * GetResizeRatio()) - (int) (Math.Abs(parentSize.Width - parentSize.Height) * .08);
                         Size = new Size(newWidth, parentSize.Height);
                         // if (this.Height != parentSize.Height) {
                         //     Size = new Size(newWidth, parentSize.Height);

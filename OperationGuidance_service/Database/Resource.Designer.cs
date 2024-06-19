@@ -245,6 +245,19 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `outer_database_config` 
+        ///  RENAME `outer_database_config_glb`,
+        ///  ADD COLUMN `workstation_name` varchar(128) NULL AFTER `database_type`,
+        ///  ADD COLUMN `macs_id` int(11) NULL AFTER `workstation_name`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240618 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240618", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -457,6 +470,29 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20240614 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240614", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE outer_database_config RENAME TO outer_database_config_glb;
+        ///ALTER TABLE &quot;outer_database_config_glb&quot; RENAME TO &quot;_outer_database_config_glb_old_20240618&quot;;
+        ///
+        ///CREATE TABLE &quot;outer_database_config_glb&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;host&quot; text(64),
+        ///  &quot;port&quot; integer(8),
+        ///  &quot;database_name&quot; text(255),
+        ///  &quot;username&quot; text(255),
+        ///  &quot;password&quot; text(255),
+        ///  &quot;database_type&quot; integer(2),
+        ///  &quot;workstation_name&quot; text(128),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;delete [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240618 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240618", resourceCulture);
             }
         }
     }
