@@ -82,7 +82,9 @@ namespace OperationGuidance_new {
                 /* GLB */
                 || macs.Contains("E43A6E77B047") || macs.Contains("E43A6E77BO46") || macs.Contains("E43A6E5CC03B") || macs.Contains("E43A6E77AFCC") || macs.Contains("E43A6E77AFCD")
                 || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBDE8") || macs.Contains("E43A6E5CBE6A")
-                || macs.Contains("E43A6E5CBF48") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A")
+                || macs.Contains("E43A6E5CBF48") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("02285816D889") || macs.Contains("04285816D8D8")
+                || macs.Contains("04285816D891") || macs.Contains("04285816D9BB") || macs.Contains("04285816D803") || macs.Contains("04285816D98F") || macs.Contains("04285816D80D")
+                || macs.Contains("60BEB4097C11") || macs.Contains("60BEB4097C2B") || macs.Contains("788A8651588C") || macs.Contains("FEFCFE3E43E8") || macs.Contains("3448EDF5783D")
             )) {
                 throw new Exception("当前设备未授权");
             }
