@@ -140,7 +140,7 @@ namespace OperationGuidance_service.Controllers {
                     sql += " and id <> @id";
                     parameters.Add("id", id);
                 }
-                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySql(sql + " limit 1", parameters);
+                List<UserAccountInfo> userAccountInfos = _userAccountInfoService.FindBySql(sql, parameters);
                 if (userAccountInfos.Count > 0) {
                     userAccountInfoDTO = new();
                     CommonUtils.ObjectConverter<UserAccountInfo, UserAccountInfoDTO>(userAccountInfos[0], userAccountInfoDTO);
@@ -156,7 +156,7 @@ namespace OperationGuidance_service.Controllers {
             string failedReason = string.Empty;
             UserAccountInfoDTO? userDTO = null;
             string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and account = @account limit 1", new() { { "@account", req.Account } });
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and account = @account", new() { { "@account", req.Account } });
             if (users.Count <= 0) {
                 succeed = false;
                 failedReason = "账户名不存在";
@@ -193,7 +193,7 @@ namespace OperationGuidance_service.Controllers {
         public AdminPasswordValidateRsp AdminPasswordValidate(AdminPasswordValidateReq req) {
             bool succeed = true;
             string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId}";
-            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password limit 1",
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql($"{sql} and operation_password = @operation_password",
                     new() { { "@operation_password", SystemUtils.ToMD5String(req.AdminPassword) } });
             if (users.Count <= 0) {
                 succeed = false;
@@ -231,7 +231,7 @@ namespace OperationGuidance_service.Controllers {
                     sql += $"macs like @mac{i}";
                     parameters.Add($"mac{i}", $"%{mac}%");
                 }
-                sql += ") limit 1";
+                sql += ")";
 
                 List<MacAddresses> macAddresses = _macAddressesService.FindBySql(sql, parameters);
                 if (macAddresses.Count > 0) {
@@ -419,49 +419,49 @@ namespace OperationGuidance_service.Controllers {
             // 使用同一个connection确保当前所有操作都在同一个事务下
             using DbConnection conn = DbConnector.GetConnection();
             // 开启事务
-            using (DbTransaction transaction = conn.BeginTransaction()) {
-                _productMissionService.UseConnection(conn);
-                _productSideService.UseConnection(conn);
-                _productBoltService.UseConnection(conn);
-                try {
-                    ProductMissionDTO missionDTOReq = req.ProductMissionDTO;
-                    ProductMission? mission = _productMissionService.FindById(missionDTOReq.id);
-                    if (mission == null) {
-                        mission = new();
-                    }
-                    // 将请求中的数据转移到entity中
-                    CommonUtils.ObjectConverter<ProductMissionDTO, ProductMission>(missionDTOReq, mission);
-                    // 执行插入或者更新操作
-                    mission = _productMissionService.InsertOrUpdate(mission);
-
-                    // 判断是否成功保存到数据库
-                    if (mission != null) {
-                        ProductMissionDTO missionDTORsp = new();
-                        // 将保存好的数据放到rsp中
-                        CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(mission, missionDTORsp);
-
-                        // 如果有产品面信息，则存起来
-                        if (missionDTOReq.ProductSides != null) {
-                            missionDTORsp.ProductSides = AddOrUpdateProductSides(mission.id, missionDTOReq.ProductSides);
-                        }
-                        rsp.ProductMissionDTO = missionDTORsp;
-                    } else {
-                        throw new DataException("Insert or Update ProductMission failed, please check.");
-                    }
-
-                    // 保存数据，结束事务
-                    transaction.Commit();
-                } catch (Exception e) {
-                    logger.Error("AddProductMission error: " + e);
-                    rsp.RsponseCode = HttpResponseCode.ERROR;
-                    rsp.RsponseMessage = e.Message;
-
-                    transaction.Rollback();
-                } finally {
-                    _productMissionService.ReleaseConnection();
-                    _productSideService.ReleaseConnection();
-                    _productBoltService.ReleaseConnection();
+            DbTransaction transaction = conn.BeginTransaction();
+            // Set connection and transaction into every service
+            _productMissionService.UseConnection(conn, transaction);
+            _productSideService.UseConnection(conn, transaction);
+            _productBoltService.UseConnection(conn, transaction);
+            try {
+                ProductMissionDTO missionDTOReq = req.ProductMissionDTO;
+                ProductMission? mission = _productMissionService.FindById(missionDTOReq.id);
+                if (mission == null) {
+                    mission = new();
                 }
+                // 将请求中的数据转移到entity中
+                CommonUtils.ObjectConverter<ProductMissionDTO, ProductMission>(missionDTOReq, mission);
+                // 执行插入或者更新操作
+                mission = _productMissionService.InsertOrUpdate(mission);
+
+                // 判断是否成功保存到数据库
+                if (mission != null) {
+                    ProductMissionDTO missionDTORsp = new();
+                    // 将保存好的数据放到rsp中
+                    CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(mission, missionDTORsp);
+
+                    // 如果有产品面信息，则存起来
+                    if (missionDTOReq.ProductSides != null) {
+                        missionDTORsp.ProductSides = AddOrUpdateProductSides(mission.id, missionDTOReq.ProductSides);
+                    }
+                    rsp.ProductMissionDTO = missionDTORsp;
+                } else {
+                    throw new DataException("Insert or Update ProductMission failed, please check.");
+                }
+
+                // 保存数据，结束事务
+                transaction.Commit();
+            } catch (Exception e) {
+                logger.Error("AddProductMission error: " + e);
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = e.Message;
+
+                transaction.Rollback();
+            } finally {
+                _productMissionService.ReleaseConnection();
+                _productSideService.ReleaseConnection();
+                _productBoltService.ReleaseConnection();
             }
             return rsp;
         }
@@ -709,7 +709,6 @@ namespace OperationGuidance_service.Controllers {
                 sql += " and parts_bar_code like @parts_bar_code";
                 parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
             }
-            sql += " limit 1";
 
 
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, parameters);
@@ -723,7 +722,7 @@ namespace OperationGuidance_service.Controllers {
         }
         // 查询最新一条任务记录，用于获取其产品批次，作回填使用
         public QueryLatestMissionRecordRsp QueryLatestMissionRecord(QueryLatestMissionRecordReq req) {
-            string sql = $"select * from {_missionRecordService.TableName} order by id desc limit 1";
+            string sql = $"select * from {_missionRecordService.TableName} order by id desc";
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql);
             QueryLatestMissionRecordRsp rsp = new();
             if (missionRecords.Count > 0) {

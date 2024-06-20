@@ -1,4 +1,3 @@
-using Dapper;
 using log4net;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Models;
@@ -23,9 +22,13 @@ namespace OperationGuidance_service.Database {
 
                 string sqlScriptPrefix = "modify_sqlserver";
                 if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
-                    using (SqlCommand command = conn.CreateCommand()) {
-                        command.CommandText = Resource.init_mysql;
-                        command.ExecuteNonQuery();
+                    string[] batches = Resource.init_sqlserver.Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string batch in batches) {
+                        if (!string.IsNullOrWhiteSpace(batch)) {
+                            using (SqlCommand command = new SqlCommand(batch, conn)) {
+                                command.ExecuteNonQuery();
+                            }
+                        }
                     }
                 } else {
                     // Check if any modification scripts hasn't been executed
@@ -41,25 +44,28 @@ namespace OperationGuidance_service.Database {
 
                     // Execute scripts that didn't execute
                     List<string> newExecutedSqlFileName = new();
-                    using (SqlCommand command = conn.CreateCommand()) {
-                        List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                        foreach (string fileName in fileNames) {
-                            try {
-                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                    string? fileText = Resource.ResourceManager.GetString(fileName);
-                                    if (!string.IsNullOrEmpty(fileText)) {
-                                        logger.Info($"Not executed sql script[{fileName}] found");
-                                        command.CommandText = fileText;
-                                        command.ExecuteNonQuery();
-
-                                        logger.Info($"Execute sql script[{fileName}] successfully");
-                                        newExecutedSqlFileName.Add(fileName);
+                    List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
+                    foreach (string fileName in fileNames) {
+                        try {
+                            if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
+                                logger.Info($"Not executed sql script[{fileName}] found");
+                                string[] batches = File.ReadAllText(sqlScriptPrefix).Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
+                                foreach (string batch in batches) {
+                                    if (!string.IsNullOrWhiteSpace(batch)) {
+                                        using (SqlCommand command = new SqlCommand(batch, conn)) {
+                                            command.ExecuteNonQuery();
+                                        }
                                     }
                                 }
-                            } catch (Exception e) {
-                                logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
+                                logger.Info($"Execute sql script[{fileName}] successfully");
+                                newExecutedSqlFileName.Add(fileName);
+
                             }
+                        } catch (Exception e) {
+                            logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                         }
+                    }
+                    using (SqlCommand command = conn.CreateCommand()) {
                     }
 
                     if (newExecutedSqlFileName.Count > 0) {

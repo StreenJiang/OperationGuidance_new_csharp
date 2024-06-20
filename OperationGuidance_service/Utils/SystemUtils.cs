@@ -49,7 +49,7 @@ namespace OperationGuidance_service.Utils {
             }
             return (DBTypes) Enum.Parse(typeof(DBTypes), dbType);
         }
-        // Mysql
+        // Mysql and SqlServer
         public static void InitMySqlConfigs() {
             string server = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_server);
             string port = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_port);
@@ -80,6 +80,13 @@ namespace OperationGuidance_service.Utils {
                 MySqlConnector.User = user;
                 MySqlConnector.Password = password;
             }
+
+            // SqlServer
+            SqlServerConnector.Server = MySqlConnector.Server;
+            SqlServerConnector.Port = MySqlConnector.Port;
+            SqlServerConnector.Database = MySqlConnector.Database;
+            SqlServerConnector.User = MySqlConnector.User;
+            SqlServerConnector.Password = MySqlConnector.Password;
         }
         // Sqlite
         public static void InitSQLiteConfigs() {

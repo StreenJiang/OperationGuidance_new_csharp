@@ -17,6 +17,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
         private string _tabelName;
         private DbConnection? _conn;
+        private DbTransaction? _transaction;
 
         public string TableName { get => _tabelName; }
 
@@ -24,13 +25,18 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             _tabelName = GetTableName();
         }
 
-        public void UseConnection(DbConnection conn) {
+        public void UseConnection(DbConnection conn, DbTransaction transaction) {
             _conn = conn;
+            _transaction = transaction;
         }
         public void ReleaseConnection() {
             if (_conn != null) {
                 _conn.Dispose();
                 _conn = null;
+            }
+            if (_transaction != null) {
+                _transaction.Dispose();
+                _transaction = null;
             }
         }
 
@@ -46,8 +52,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                _conn.Execute(sql, entity);
-                return _conn.QueryFirst<T>(newEntitySql, entity);
+                _conn.Execute(sql, entity, _transaction);
+                return _conn.QueryFirst<T>(newEntitySql, entity, _transaction);
             }
         }
 
@@ -60,7 +66,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                return _conn.Execute(sql, entities);
+                return _conn.Execute(sql, entities, _transaction);
             }
         }
 
@@ -79,7 +85,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                enumerable = _conn.Query<T>(sql);
+                enumerable = _conn.Query<T>(sql, null, _transaction);
             }
             return enumerable.ToList();
         }
@@ -94,7 +100,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                enumerable = _conn.Query<T>(sql, @params);
+                enumerable = _conn.Query<T>(sql, @params, _transaction);
             }
             return enumerable.ToList();
         }
@@ -110,7 +116,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                _conn.Execute(sql, entity);
+                _conn.Execute(sql, entity, _transaction);
             }
             return entity;
         }
@@ -126,14 +132,14 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                rows = _conn.Execute(sql, entities);
+                rows = _conn.Execute(sql, entities, _transaction);
             }
             return rows;
         }
 
         public bool Delete(T entity) {
-            entity.deleted = (int)YesOrNo.YES;
-            return Update(entity)?.deleted == (int)YesOrNo.YES;
+            entity.deleted = (int) YesOrNo.YES;
+            return Update(entity)?.deleted == (int) YesOrNo.YES;
         }
 
         public bool DeleteById(int id) {
@@ -144,7 +150,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         public int DeleteByIds(List<int> ids) {
             string idsStr = string.Join(", ", ids.ToArray());
             List<T> entities = FindBySql($"select * from {_tabelName} where id in ({idsStr})");
-            entities.ForEach(entity => entity.deleted = (int)YesOrNo.YES);
+            entities.ForEach(entity => entity.deleted = (int) YesOrNo.YES);
             return UpdateBatch(entities);
         }
 
@@ -210,14 +216,14 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return CommonCondition(new());
         }
         public string CommonCondition(T entity) {
-            return $"{nameof(entity.deleted)} = {(int)YesOrNo.NO} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
+            return $"{nameof(entity.deleted)} = {(int) YesOrNo.NO} and {nameof(entity.user_id)} = @{nameof(entity.user_id)}";
         }
 
         public string ConditionWithoutUserId() {
             return ConditionWithoutUserId(new());
         }
         public string ConditionWithoutUserId(T entity) {
-            return $"{nameof(entity.deleted)} = {(int)YesOrNo.NO}";
+            return $"{nameof(entity.deleted)} = {(int) YesOrNo.NO}";
         }
 
         private List<string> GetFiedsList() {
@@ -226,7 +232,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 string fieldsName = property.Name;
                 foreach (Attribute attribute in property.GetCustomAttributes()) {
                     if (attribute is ColumnAttribute) {
-                        string? name = ((ColumnAttribute)attribute).Name;
+                        string? name = ((ColumnAttribute) attribute).Name;
                         if (name != null) {
                             fieldsName = name;
                         }
@@ -240,7 +246,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private string GetTableName() {
             foreach (object attribute in typeof(T).GetCustomAttributes(false)) {
                 if (attribute is TableAttribute) {
-                    return ((TableAttribute)attribute).Name;
+                    return ((TableAttribute) attribute).Name;
                 }
             }
             throw new InvalidDataException("Enetity<" + typeof(T).Name + "> attibute 'Table' not set, please check.");
@@ -255,7 +261,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                         paramsStr += ", ";
                     }
                     if (pair.Value.GetType() == typeof(List<>)) {
-                        List<object> list = (List<object>)pair.Value;
+                        List<object> list = (List<object>) pair.Value;
                         paramsStr += $"{pair.Key} = {string.Join(",", list)}";
                     } else {
                         paramsStr += $"{pair.Key} = {pair.Value}";

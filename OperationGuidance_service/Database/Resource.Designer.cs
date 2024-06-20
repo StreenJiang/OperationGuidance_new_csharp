@@ -122,6 +122,35 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to /*
+        /// Navicat Premium Data Transfer
+        ///
+        /// Source Server         : SqlServer_OperationGuidanceNew
+        /// Source Server Type    : SQL Server
+        /// Source Server Version : 16001000
+        /// Source Host           : 127.0.0.1:1433
+        /// Source Catalog        : aneng
+        /// Source Schema         : dbo
+        ///
+        /// Target Server Type    : SQL Server
+        /// Target Server Version : 16001000
+        /// File Encoding         : 65001
+        ///
+        /// Date: 20/06/2024 22:02:14
+        ///*/
+        ///
+        ///
+        ///-- ----------------------------
+        ///-- Table structure for bar_code_matching_rule
+        ///-- --------------- [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string init_sqlserver {
+            get {
+                return ResourceManager.GetString("init_sqlserver", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
         ///  ADD COLUMN `predecessor_mission_id` int NULL AFTER `macs_id`;
         ///.

@@ -20,6 +20,7 @@ namespace OperationGuidance_service.Utils {
             try {
                 // ANSI SQL way.  Works in PostgreSQL, MSSQL, MySQL.  
                 dbCommand.CommandText = "select case when exists((select * from information_schema.tables where table_name = '" + tableName + "')) then 1 else 0 end";
+                object? v = dbCommand.ExecuteScalar();
                 exists = (int) dbCommand.ExecuteScalar() == 1;
             } catch {
                 try {

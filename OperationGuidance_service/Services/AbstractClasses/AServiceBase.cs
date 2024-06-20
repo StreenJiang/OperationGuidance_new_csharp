@@ -15,8 +15,8 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         public string TableName => Wrapper.TableName;
         public string ConditionWithoutUserId => Wrapper.ConditionWithoutUserId();
 
-        public void UseConnection(DbConnection conn) {
-            Wrapper.UseConnection(conn);
+        public void UseConnection(DbConnection conn, DbTransaction transaction) {
+            Wrapper.UseConnection(conn, transaction);
         }
         public void ReleaseConnection() {
             Wrapper.ReleaseConnection();
@@ -52,7 +52,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
 
         public T? FindById(int id) {
             T? t = this.Wrapper.FindById(id);
-            if (t == null || t.deleted == (int)YesOrNo.YES) {
+            if (t == null || t.deleted == (int) YesOrNo.YES) {
                 return null;
             }
             return t;

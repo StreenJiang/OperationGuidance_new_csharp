@@ -22,6 +22,9 @@ namespace OperationGuidance_service.Database {
                 case DBTypes.MYSQL:
                     connector = new MySqlConnector();
                     break;
+                case DBTypes.SQLSERVER:
+                    connector = new SqlServerConnector();
+                    break;
             }
         }
 
