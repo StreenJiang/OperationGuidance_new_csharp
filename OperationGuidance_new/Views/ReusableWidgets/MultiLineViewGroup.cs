@@ -56,6 +56,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
                 Multiline = true,
             };
+            _textBox.Box.ScrollBars = ScrollBars.Vertical;
         }
         #endregion
 
