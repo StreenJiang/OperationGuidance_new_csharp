@@ -6,7 +6,7 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Views {
-    public class SoftwareLicenseView : CustomContentPanel {
+    public class SoftwareLicenseView: CustomContentPanel {
         private ILog logger = MainUtils.GetLogger(typeof(SoftwareLicenseView));
 
         #region Fields
@@ -46,7 +46,7 @@ namespace OperationGuidance_new.Views {
                         // Check license
                         MainUtils.CheckLicense();
 
-                        if (MainUtils.LicenseOk) {
+                        if (MainUtils.LicenseMacsOk && MainUtils.LicenseExpirationTimeOk) {
                             WidgetUtils.ShowNoticePopUp("许可证认证成功！");
 
                             // Set flag to re-create all forms
@@ -58,7 +58,7 @@ namespace OperationGuidance_new.Views {
                                 backToLoginView(false);
                             }
                         } else {
-                            WidgetUtils.ShowErrorPopUp("许可证认证失败，请确认MAC物理地址是否正确");
+                            WidgetUtils.ShowNoticePopUp("许可证认证失败！");
                         }
                     } catch (Exception e) {
                         logger.Warn($"License write failed, e = {e}");
