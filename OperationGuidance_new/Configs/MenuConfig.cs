@@ -7,7 +7,6 @@ namespace OperationGuidance_new.Configs {
         private bool _enabled = false;
         private Image _icon;
         private bool _isToggleButton = true;
-        private AppVersion[]? _versions = null;
         private Dictionary<AppVersion, Type>? _viewTypes = null;
         private bool _isUserInfoPanel = false;
         private List<MenuConfig>? _children = null;
@@ -19,7 +18,6 @@ namespace OperationGuidance_new.Configs {
         public bool Enabled { get => _enabled; set => _enabled = value; }
         public Image Icon { get => _icon; set => _icon = value; }
         public bool IsToggleButton { get => _isToggleButton; set => _isToggleButton = value; }
-        public AppVersion[]? Versions { get => _versions; set => _versions = value; }
         public Dictionary<AppVersion, Type>? ViewTypes { get => _viewTypes; set => _viewTypes = value; }
         public bool IsUserInfoPanel { get => _isUserInfoPanel; set => _isUserInfoPanel = value; }
         public List<MenuConfig>? Children { get => _children; set => _children = value; }

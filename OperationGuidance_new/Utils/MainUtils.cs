@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using CustomLibrary.Constants;
 using CustomLibrary.Utils;
+using LicenseLib;
 using log4net;
 using log4net.Config;
 using Newtonsoft.Json;
@@ -25,9 +26,8 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Utils {
     public static class MainUtils {
+        public static MainForm Self;
         public static ILog logger = GetLogger(typeof(MainUtils));
-
-        public static AppVersion Version { get; set; } = AppVersion.STANDARD;
 
         public static bool AppRunning { get; internal set; } = true;
         public static LoginView LoginView { get; set; }
@@ -58,6 +58,61 @@ namespace OperationGuidance_new.Utils {
             XmlConfigurator.Configure();
         }
         public static ILog GetLogger(Type type) => LogManager.GetLogger(type);
+
+        public static string LicensePath = AppDomain.CurrentDomain.BaseDirectory + "/license.lic";
+        public static string Privatkey = @"<RSAKeyValue>
+                        <Modulus>xoTNbjRb6NoleIAl/i+9Edvt+9z+8KYUmk+/SHMAGG0Pkjx65TEcW5TzG8sJJkJLu4Ss3aUF1HUTVBSN12aCQbeE7RvB7+99njBsHhikrVggStO294H36vKAMaTsNpARi4MF/yEbQnDqZRNKg5Zz81PU2T0rz374SbWMSYJn1Enrw9axSLOOWGr0UnYs8CepV1Whcj3Y6OrwqUw4bC+ThvIJsZ4y2E60dy5jOfZdBZMy0dSRVxz/oOrLo2/RWBbCXCvC+VjpecJtQtOPZrUbCUZ60HnulD+7LpqRpjzLwV70NyqmE99EbJxvJzSCfZDcfn+JFh2Q9LN0Djj5gh7cgSVed4ABh/A4VQ7YiGQeci29bni3NXSROr8HiWA/XDloZpCjPC8vWfcERFCsWirdcFtcsiAMU+Y/wKknNxT4Xct3CN6vi6XhKh3PWlZBW9e63Vziq4QkwcV0zOIg3uQn9qHChGLBNFTC8tPWxmxSv34WgS3fDepBRxU2cdciXlQATLeGoLx7ON/F8sD42EJBbv2Op0AvGCswvd1MlYSaSHLBKQCR5LJQY+FbxhyrwUumPhwkZrCoChS0aBPilZONCVb2EjiX4QEQ6k79lOjfW7vyqrHgJR/SxpkgYQXhaPSZkFEmCVvzmdQZIWbX0gu52O4oCT0Kfku1RVyqyg8v8AA12uHoLy5vQPpBlnebfzfNGHt8PaChd+zE67Ew6QPNSgx3vd4SKZ1V/lBJfKINzrsSZqaqeCiLBK13tNWQl6zYYVhBt3YuEKBXVVkUHhBHhkEwx3WML3h4BE9fey2np+U1FACCG5U1krTXfr6XSKkUKAcV9Am5XSCf11EIfnScZ1IRjr6gXnvzRtytpfnTBsnjZab/J6F9pZ5X3lrxTbYNc2P8fe9W3xpIWeVehvtnlWqgRUIHEp8SkfwndDPrwiMlia7NragJ+ZZyNhkMlMACPrXcSU/CV8vn6nZwhvQFX4ZfdjEjIs0FuDf4VV9wakVg8IMN6ZPyttdQlhUmevsBjdMohxnZzQcgiTDdb3gZkL8TU6l3WQqHEfA69YzvSlXgPAlb3iPx/XGfDrNK43MADtFp1QXA2gTfob3JQFEvxuXg9W6ATZDisqAZ0uHJert2X0NEdyasjmugBQQ/1q4gQiFhI9XxwnxmoHPsQ25+XONL64rfMVp9wfRS7BzdiKLMcU+ZB3INhs73gmkSO0HB0UsqutRht0G6fenTkrvCsI7Pn28E5vK8kXSrVJZhpIE+NxOpbW7bchF22p5Bk8lDhX2J8sLy51F32ivsOyuMCffqImq5ynwuEbdInXejCQRme7bjmkhlJz1wLCXe6Ghd8IW3cRl8JCbCnponrdlm6JG+iuKWK6bceTv0pCElJGdYYmIBNT1+UwSTXL0bJsZ7rGxfhygC0HBIOHq+qRKB94vDb1aGF3MMvSeyKnYY2YEV//WjNzh0FW+9CsE030AXmclpC9RRmifM/6Xg3SQe0/YWNRPxtuxV55tvTXhOMPRSzfQ366BaNEzHDxtgeTmuWNQJPC0+s2hDW8uAGszx08RRHwX885X2FzIoD8ms1d39Vrlz0fhn02Z21cXsu9jdBGd3guyWd5dE5YXtUtQsdE3rD+sXCgN3Xm3kSTxcizKXDOeij1cJBhI8NfC9j0/9qvMhSGkl8xPYhprwaOIVKUnBSSeo1rNPUgqz7sG92Sk=</Modulus>
+                        <Exponent>AQAB</Exponent>
+                        <P>4hZI4XGTcFGEKJe1Ty3G/u0uYQmb6S2SzL4cZ164M/YS81COzBeeuOur3+YvvOFw2cNYUhED8G2kpxxu/nthz1Ga89Mj9vRXn6dpksvEjhVPtSO6AK42uh9nUfw1LGOyJSqWoTtRfeqrJjey2/z8B7jYMDoA0Zvxa9G98LgijEtARIi76jmz0x6RHieixDlp3tFWtfHui66Ircuc/libfwKGevCxqpzkzy97wH5qcXPYLAr957Yhdffi+mK66vRa5HRCo07LBUOARxowiiz2y0wK2li7PfHkAlm6Sytu9P7zoI9CZIGmYNzcmswxG5W+KC5K8PG/5tZoP4v2woN0kve0Eyi4q7p2y/t4gF4ZJv1CAz9v95Ro8nsRdZof8B5j9h2RVCWtI2XpKiK4ZfSUX61oTzMbPa/EY04VAFsE5DvZogECETmxMV/GndteZm6RLHN7uv9Yfc2brs+vx2nCaKqm5591FPwdwRQDqWF62QieM5+dWIsYRrMa++8/5SMFbrR+AequS26MerXU2sEra5s8sZfd/D/PxMqRGwIV0VBEVaj/2rmsKhp+eJWcUKzW74j0Imhg2H3fzhDRYnBk3GGR1cNd9pHbQt86xoMn26MqiSOfjsMq5wZ+geEojDI/QVTCSauOXmOagH7bvS+N/8lBf7Sr6C4nflpl3gYsAD9Xe/f5A2F+aLw4WCM3CzXjI1Pj9CDpiDAIIyPcEugX8CcHcaROz8x5ReH/x75AhL12CA4Yudc08aoRRrJ65zYZCL8kBqy4M9lrkLsaIWX81pgZdAmVGTDCnOh5ZRjbtHI52lb8fwpVN4P024AHmYYKxsR7khm5pIHVH99DqcYfAw==</P>
+                        <Q>4MjDCjkk9D8BAuSejG0sNyO6+AJ+g0fIuYV9PuBQV7ij1v4C20VULa9tFzM44x0iKVHYmPtL72b8ERrWHeBzlSIA5PGyhF4W3K+Xps6W3Eisn7Agfjr1L0q4/Ac27pHSpHO2WrfMsu2/ntw1CIPvzoOjHBs87yHZ2oDu/9ILESKynVA4kGF/rEctF7om5CJov/AAtZXrfg1EdKaH9xsJ4GjkGOO+UgbzN8HaLXWQZsjSHSI5qsKc/Pisk0AyXcl1Fr3Ftc61BMXkCuSDwBUEaNQnbO7VKkgSmI1c+1VLIxM2+7x1mzV8Xm3XVeZh7XKIiRNxELdOQbt9J7774RsicZx8JyLzgMJSVnDLtV7/BlptCbmQ8Hg4kJwaXxCGZXIvcdL/nX9PNP69DIKsxlmkze6aB0hdPiPPyUQju6GQawKDwzF2XJkF0goLrcnXlKgGY+gL4w10T4jEJElO1tb0tgI6n9JBtLeW6y27yKHzizsP0ymXFaLlt0hvmKC+94y//X9TiRC5ASE4bwd+FPQBgbU4BqgswQPmtFpT5AiRHAwcWZ9M+KB4Q3Wi0VAnyTbGtU/QVvzAhqcVuhMWsjsKDKRMKYjda8NHBw9qX/Vma1d03jpmt/GHockJEtE2ONJbmNOfLYIYJHLaSKaSrC8SLe7OV9P1empAAH5vsf4LhqkyBbRxOc7YL65fBrAFKQJD74xedrbztqde7dEaIVg1mLTqj1o9+M3gYwnUU3UPzRj76k/V7muFHnD9Oc3U+7Ee20AOwraoA6JW0dcPTC1QBAtgFUtJhJJpOtT43/qrRvJW4msG6ufgm7LwYX4CuXlW+L+YLhuTDTHVEa69kRhJYw==</Q>
+                        <DP>rrIpfooUMyXJyNPw9U2aBkGfJLwYDQV5+Vqs9/Lowr3RxtDohit6Kclw9YEYQgqw+JNJG6CqOo1+POJroZgU6+1SnjT4BUqoqmTh3tw09NTi0kTY5M242/iIDYGkVLh0XuOZoNwFDBbYSJ+hRPsmg5EA+8LV/yFQWs+mxOqDR4SeFFbTXRlZKjjkSTi3PIhglhuLtOtMOAKU+jXrCV3OSUXaRATYQ80XwEAgj40fEqtAzkdwCithj5YLfQ3tAL/vu7daBnZLybVu2YITH7G+wTfw6ubFSAgw9t/+YzccdZLLDbWkx6SmuxHuJG7DQ11hogqjPaqPbf8ebnvoIEUTPrzIGEXO7GMYiGW3pvkO1mG7MGdETToQHc2aoBSHuTLCatpOAYdbUY7drAFIGv/x5jxH7WrAEdpPFayv7aZnETRt5hCBWG4LzOsEvdVUDDJDWuWhJc1Iw2ysb1drq9q8rcOvVCqSfbSSCS895RO9qRZPp/Qd0N0p1PdwUlt8M8Hr4K727uQ36XFyex8laiL5OhypuVBv5wonsRgVJ5lk4mfzZX1AtfHiZmYyc1qnfm8PZeedPTkKHD6nQMMeB8JxLRj3ZwWfBXeOxQ1YjSurELvzkiREljuYWwtZlWI1wp7Q4dpshiBZ0fWE3OUpRfYI8yy/v74LV0zSl3+iVvzN4yMOpmvlrgcXdjZ6EyCi17a73ABmk60axnDW2NBMrQ9J7/c4eUdM3qRQ0P7gdac8k1USbwb1dCQmdNXEo6wl66KRlYCchcvQScAmrZ7lggkcZXUBtffxjZVvy26W3tdmbPgWW+/7Cu8hCdSczz8OoEJC8XPBSBM4rzTjSc1qqzS7oQ==</DP>
+                        <DQ>WbSE8Y2Ai+Cg3LCz/UKMRK0DrnoAVw/MsQzuwKrwJTHQYLoaFbuDLoA1vu54I1q7CVZaZCLVWQL2UTUugdnTBo79YGB8Z4rNAOEqWi1T0zFFgqzdKsMImgjt7dZLO8YCFBMBkQ6MqFNtB07F81ID35x0+YB9Psl5kVOnDXybYglA0rry99uRAgWdnzxwzNZWi1KSVeUwh6tvyEW1OQ4XUPFLJgutJjsT0QqRsVabfAlkoK/J57WmxOXQqSsTbo45Jgwx3K5TW0ZGDXrIgV1h1xvjZ/ugIjGFClBP7RVK2QKQDMJXBMvBiEW5i9RW/FWa22lg09TzbBQQjE4RYvJbOo/ClDPEjXv/M/Prt8PjbnujzB+8EdtIZ52EgK+tksqQ2JHl5Mqrp3CJrXZw0O9xb6Vq3sEoROYxxBZnVDfT1IC6aKlSnP2MbxgHNSG54N91PWWbaM8zvZHNBNYkmmRKYGBfWOylwCMMHWqw6A6JjOTTGegdHUtW9V/4+SYdT9lhvR6VDbwYuLSzOsv4qw/9ke/qHe37fkO6S/tIQ1aP4muK3NFP/GC93d4STgn49rnfbvgdIrnXc2U2rH11r0cUaZsfseumwZy6ubyTLRxX9Tp/rzgLShkfkZcTAelwBBke6Mx7V8P1MoaLSjb/jatzS9Vjj3VNH79LL2dF1/iUTPc0uUYbcYB0kgK6dYbFaGo5Bl40TJgShrAgmDO8g9YZ/YklmnPfC23NwHhpvayX07fGwOl/bJiIFW/t/qV/+7nhoInd2iLexiSBFVkIB9SFfDe17omPG1L6n7niYDA/Lh8EQXOI3TIQVtKAT8fj+nTMGpULfEsQ0lEywM3FZSQWFQ==</DQ>
+                        <InverseQ>LRkG1xhmN+WNml8Myf9OUYVCrPSoz7lN4UOtt1/cJUEB+uym47ymRKdVs6XRdE3K4eNEZeD8kMv/QBYkPdzZAtElKEXjd7BlN2jkerls54We3acvBii7LzNQ7X19j3twVvIb+UFOM+F1P1oPTTfA6TYkZ2o8dZTnpwH/X+oSrZaWqkdnXVOUwNNGWu4afDRlmzIVip9tq383LUXnf8+GUpE0XLNObyaTnI4vBjJ3G+SiZ9jO7mIGjlo6M298wtCQ2Lixil86tqC4PEMNn/jG9C2qvzrDxzEbsVqAiB4FPQW8Byj+gYygWXUN19Omh+nr6WIbdHu4DW4kuZIvR3Aob+92OAYVXxW9MnxunROpbZ782ElEvpdOwNg8XSPZeeMJzFhcBFu59FU7aBeE3bpmgQJNY0LJETay7EiM8Cv2E1iZRag6UR68ie2GFO7yukHE2ZvA9i3LrwI5kRqh7JNvTtGVSXVpcvwV7flbUqEbAdZMID038qjRVecFz70bmGCr5zFufKGFUdF14BLfKqBxxYWsEDdMhEDKXeigyKKoxHigWUs6NmUAMTFbDvBiIkftLS6wli1+NivrmKdurFd4OMRQ+rrc9leq2AJv42MiG/rlr35bKkUeXvOsfXrgP569FfmqBJISkkBtdfVFj8kNYhDapLDj1AbayiweHGZYEe+/bXPpn5SKYEz22nTin4HvqR/Ai6ZNkdRKCuIvWOa6YJQKlA07MkmNf/hRj7k0Dpobd9MnLMd5tGkFATSNLs9Y06gEBb2ASs3Q8niaLKMWIvj85seugvpqc9DyrI9AEYjngwIOM8lt3iAOMQLTq0YFQ8nXdXen9ZK6kqYyXBxNww==</InverseQ>
+                        <D>wn/HDlx6WE+zOrbDgqGfKupB5uyFU55EvVO44/DYfRYNlYdwGTHeyNPMxMROuI9nx9ebzqUqaxgx0cU5m3sxz9VQhUcW4k/Q0bY7l9kpLzUSnn2D3EgYcLcbZohhbqwEpJ3AuFDldllPLayS6w3zmMnf1uAaFngeJ4maY0NDGzk5p2yn0cUqh/JyYoCqUrlpLsoVHer+pGXbWOP2u/h5IFPvr3iB9HBYXBS030tDpHyt4+vSYnlk83JYBk892oKh9tBhfQ/h4IvfpQPGkiiKzrGhDrUITXOLn4ONhEQ4lcLEn3BHu1yam5dBSDYoS4IspjuqQmLBbR6NbInh290Eyfuk7Iwb8+YmKyAagrclJVUvLhdT2SnWSKp1ZeFI8sDESwkXBZZtXEWqhoxL8SPiRX0d+t9vdJw4hji01UDUfoEkpSoY8Eebrjn6uFWeP6/Dw7KH2ufjY35ki4BaGEeN6BRgknh3NyB8yJFI8qua/0c4IWSiD+4d+tkLuMnBQI4opQGDA+TnDbghJ1Bt/uQbW/VNWQyHl7RpUvyJVkzPJIBaRCPszRbvsIxR8G6S0RWfUWcdOweF/CqA/x/MdiRUoHv1J7EPDUKQIiE2TjlC7Yvdm+Qe6gCd8DqDAMxUJxLPihgXnj/bEjI+VP2AIqmecq4Tx8loiIkAl27NXp82pnxuR3/ijqd+FTmcHSIe1awEZCJIfdDtoqP14759Xy98aTqB7yKuxNsEL+DVvyi/QncC9lQA3S1L109l42UC/7g3YFiqOmethliyeEqIbVQh36XrduDycmgjnoVt1S/L/bGSKYC9+Oxdytkn8WQmsOgHeZhHqAwG8vlN4hXgrpTtzotYP9kVGJ/9ACztV7mH05aXOXbd1WjKMF4bLZ2ktCNpInunbcKvWP7glqdcTPvejJ6KI2l80mWw+LtJjboWJyxHA/EaREfppH31ff4W2ZnRD8AmFPzGajrEZ9bn3tAgun0I+6jC3SFvOVyB9cnm8AdQvw7YLHEIfmxWeaCHCz3NqpcXEV64ZJAZMVpqR/CbxLXB3dOI3PQYM9czEzv3xo45sibmg8Q6ymoUvt2J4ugO3GamjNUwJuL6SuWmBuBVWEhjDqJPZXLjYdcgtv5boVUl13kkNacOezPim/u2TPmv4NdhP4Bre6o6u6VuVidyZRit5hkXU7BLmJEM6R4jz3LnRszqN6yWvV9aJZ0BoxcTTW2GJtUoH9/iAD//Em6mVu2IyZeI7EBAN5lTE1joodUVLXrUlhOu93aVkw4v7uv6NWhz/MV+fhVbpdfVfX4W8/oGPCCgtQQjDIW3Knlt3TOofypQ+UVd8hPQWmx1crymRdQ68nIcZUK6miFIlgfAHs1fd2wflJWsZVfQHtrDCsMjFXWmbk+oHUx29Rbg74H5KamgImRjxfP8DaysNNppu0eFT9bLvo2OH4VyShNOsos98yh53M/TDwNRjzblnqgT/jUk+1HeEwkw6fxbgzEGbkGw6A3GAxZ56jOicMsfaMdNQUq1a5XKVTDGYNbrkurm59OYYZBDYie6B+k6DfWwpURMgbf3xEWjKYm9mSlPZtuRli8rppfJR6evk/iDJpjqlX/pidzP9veAxMzqG2HsJd7ZWpT0hD34zNBCrCtb/JsLaK2SjL1ZdRCutmNweiz4vDfda6pmNNwoAAQdvQuPmSsWAUbUarhcmz0j7e6g6Mk=</D>
+                    </RSAKeyValue>";
+        public static License License;
+        public static List<string> Macs;
+        public static bool LicenseOk => Macs.Any(mac => License.Macs.Contains(mac));
+        public static void CheckLicense() {
+            if (File.Exists(LicensePath)) {
+                try {
+                    using (StreamReader sr = new StreamReader(LicensePath)) {
+                        string? line = sr.ReadLine();
+                        if (!string.IsNullOrEmpty(line)) {
+                            License = LicenseUtils.DecryptLicense(line, Privatkey);
+                        }
+                    }
+                } catch (InvalidDataException ie) {
+                    string errorMsg = $"License is not correct, e = {ie}";
+                    Error(logger, errorMsg, false);
+                } catch (Exception ex) {
+                    string errorMsg = $"Error occurred while reading license file, e = {ex}";
+                    Error(logger, errorMsg, false);
+                }
+            } else {
+                try {
+                    using (StreamWriter sw = File.CreateText(LicensePath)) {
+                        sw.WriteLine("");
+                    }
+                } catch (Exception ex) {
+                    string errorMsg = $"Error occurred while creating license file, e = {ex}";
+                    Error(logger, errorMsg, false);
+                }
+            }
+            if (License == null || !LicenseOk) {
+                License = new() {
+                    AppVersion = AppVersion.STANDARD + "",
+                    MenuIds = new() {
+                        {200, null},
+                        {500, new() { 508, 509 }},
+                        {600, new() { 601, 602 }},
+                        {700, null},
+                    },
+                    Macs = new(),
+                };
+            }
+
+        }
 
         public static void CheckDBConnection() {
             Form formPopup = new Form() {
@@ -312,14 +367,14 @@ namespace OperationGuidance_new.Utils {
                 SetStoreLooseningData(flag);
                 return flag;
             }
-            return int.Parse(storeLooseningData) == (int) YesOrNo.YES;
+            return int.Parse(storeLooseningData) == (int)YesOrNo.YES;
         }
         public static bool GetDefaultStoreLooseningData() => true;
         public static void SetStoreLooseningData(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int)YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int)YesOrNo.NO + "");
             }
         }
         // Arm locating enabled
@@ -330,14 +385,14 @@ namespace OperationGuidance_new.Utils {
                 SetArmLocatingEnabled(flag);
                 return flag;
             }
-            return int.Parse(armLocatingEnabled) == (int) YesOrNo.YES;
+            return int.Parse(armLocatingEnabled) == (int)YesOrNo.YES;
         }
         public static bool DefaultIsArmLocatingEnabled() => true;
         public static void SetArmLocatingEnabled(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int)YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int) YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.MissionArmLocatingEnabled, (int)YesOrNo.NO + "");
             }
         }
         // Arm locating accuracy
@@ -360,14 +415,14 @@ namespace OperationGuidance_new.Utils {
                 SetProductBatchNoticeEnabled(flag);
                 return flag;
             }
-            return int.Parse(productBatchNoticeEnabled) == (int) YesOrNo.YES;
+            return int.Parse(productBatchNoticeEnabled) == (int)YesOrNo.YES;
         }
         public static bool DefaultIsProductBatchNoticeEnabled() => true;
         public static void SetProductBatchNoticeEnabled(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int)YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int)YesOrNo.NO + "");
             }
         }
 
@@ -555,12 +610,12 @@ namespace OperationGuidance_new.Utils {
         /// <returns>Zooming ratio float value.</returns>        
         public static float GetZoomingRatio(Size imageSize, Size size) {
             int newWidth = size.Width;
-            float originalRatio = (float) newWidth / imageSize.Width;
-            int newHeight = (int) (imageSize.Height * originalRatio);
+            float originalRatio = (float)newWidth / imageSize.Width;
+            int newHeight = (int)(imageSize.Height * originalRatio);
             if (newHeight > size.Height) {
                 newHeight = size.Height;
-                originalRatio = (float) newHeight / imageSize.Height;
-                newWidth = (int) (imageSize.Width * originalRatio);
+                originalRatio = (float)newHeight / imageSize.Height;
+                newWidth = (int)(imageSize.Width * originalRatio);
             }
             return originalRatio;
         }
@@ -644,7 +699,7 @@ namespace OperationGuidance_new.Utils {
             GetMaxSizeOfSizeRatio(out maxWidthRatio, out maxHeightRatio);
 
             int maxWidth = contentWidth;
-            int maxHeight = (int) (maxWidth / (decimal) maxWidthRatio * maxHeightRatio);
+            int maxHeight = (int)(maxWidth / (decimal)maxWidthRatio * maxHeightRatio);
             return new(maxWidth, maxHeight);
         }
         public static Size GetMaxSizeOfSizeRatioByHeight(int contentHeight) {
@@ -652,17 +707,17 @@ namespace OperationGuidance_new.Utils {
             int maxHeightRatio = 0;
             GetMaxSizeOfSizeRatio(out maxWidthRatio, out maxHeightRatio);
 
-            int maxWidth = (int) (contentHeight / (decimal) maxHeightRatio * maxWidthRatio);
+            int maxWidth = (int)(contentHeight / (decimal)maxHeightRatio * maxWidthRatio);
             return new(maxWidth, contentHeight);
         }
         public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, Size size)
             => GetProperSizeAccordingToSizeRatio(contentSize, size.Width, size.Height);
         public static Size GetProperSizeAccordingToSizeRatio(Size contentSize, int width, int height) {
             int newWidth = contentSize.Width;
-            int newHeight = (int) (height / ((decimal) width / newWidth));
+            int newHeight = (int)(height / ((decimal)width / newWidth));
             if (newHeight > contentSize.Height) {
                 newHeight = contentSize.Height;
-                newWidth = (int) (width / ((decimal) height / newHeight));
+                newWidth = (int)(width / ((decimal)height / newHeight));
             }
             return new(newWidth, newHeight);
         }
@@ -866,7 +921,7 @@ namespace OperationGuidance_new.Utils {
         public static string ToHexString(string binaryString) => ToHexString(ToBytesByBinaryString(binaryString));
 
         public static string ToBinaryString(int intValue) {
-            int maxToOneByte = (int) Math.Pow(16, 2) - 1;
+            int maxToOneByte = (int)Math.Pow(16, 2) - 1;
             if (intValue > maxToOneByte) {
                 string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not greater than {maxToOneByte}.";
                 logger.Error(errorMsg);

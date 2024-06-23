@@ -5,7 +5,7 @@ using CustomLibrary.Utils;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class MultiLineViewGroup: CustomContentPanel {
+    public class MultiLineViewGroup : CustomContentPanel {
         #region Feilds 
         // Common fields
         private int _contentVerticalGap;
@@ -71,22 +71,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             // Calculate gaps
-            _contentVerticalGap = (int) (contentSize.Height * .015);
-            _contentHerticalGap = (int) (contentSize.Width * .015);
+            _contentVerticalGap = (int)(contentSize.Height * .015);
+            _contentHerticalGap = (int)(contentSize.Width * .015);
             // Buttons panel
             int buttonHeight = WidgetUtils.CommonButtonHeight();
             _buttonsPanel.Size = new(contentSize.Width, buttonHeight);
             _buttonsPanel.Margin = new(0, 0, 0, _contentVerticalGap);
-            // Width of button 
-            int buttonWidth = (int)(buttonHeight * 2.5);
             // Resize buttons
             // Right panel width
             int rightPanelWidht = 0;
             int count = 0;
             foreach (Control control in _buttonsRightInnerPanel.Controls) {
-                if (control.Visible) {
-                    control.Size = new(buttonWidth, buttonHeight);
-                    rightPanelWidht += buttonWidth;
+                if (control.Visible && control is CommonButton btn) {
+                    btn.Height = buttonHeight;
+                    btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + buttonHeight * 2;
+                    rightPanelWidht += btn.Width;
                     // Calculate margin
                     if (count != 0) {
                         control.Margin = new(_contentHerticalGap, 0, 0, 0);

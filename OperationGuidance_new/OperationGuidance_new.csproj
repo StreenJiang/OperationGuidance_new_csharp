@@ -20,6 +20,7 @@
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinForms" Version="2.0.0-rc2" />
     <PackageReference Include="log4net" Version="2.0.17" />
     <PackageReference Include="MouseKeyHook" Version="5.7.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SerialPortStream" Version="2.4.2" />
   </ItemGroup>
 
@@ -49,6 +50,12 @@
   <ItemGroup>
     <Folder Include="Extensions\" />
     <Folder Include="Tasks\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LicenseLib">
+      <HintPath>..\..\LicenseLib\LicenseLib\bin\Debug\net6.0\LicenseLib.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

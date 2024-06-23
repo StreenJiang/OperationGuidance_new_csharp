@@ -90,9 +90,8 @@ namespace OperationGuidance_new.Configs {
                         },
                     },
                     new(id: 511, name: "外部数据库管理", icon: Properties.Resources.database) {
-                        Versions = new AppVersion[] { AppVersion.GLB },
                         ViewTypes = new() {
-                            {AppVersion.STANDARD, typeof(OuterDatabaseConfigGlbView)},
+                            {AppVersion.GLB, typeof(OuterDatabaseConfigGlbView)},
                         },
                     },
                     new(id: 507, name: "条码匹配管理", icon: Properties.Resources.bar_code) {

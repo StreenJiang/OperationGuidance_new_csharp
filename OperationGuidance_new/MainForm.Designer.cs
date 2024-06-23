@@ -18,6 +18,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
+using LicenseLib;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -57,46 +58,23 @@ namespace OperationGuidance_new {
         /// </summary>
         private void InitializeComponentManually() {
             String thisprocessname = Process.GetCurrentProcess().ProcessName;
+            MainUtils.Self = this;
             // AllocConsole();
 
             // 先连接一下数据库，看看数据库是否正常
             MainUtils.CheckDBConnection();
 
-            // TODO: 判断mac地址（这段后面要用许可证来做）
+            // 获取mac地址）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
-            List<string> macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
-            if (
-                !(macs.Contains("002B677C56BC") || macs.Contains("BC542FD57669") || macs.Contains("BE542FD57668") || macs.Contains("BC542FD57668") || macs.Contains("BC542FD5766C")
-                /* New HP device */
-                || macs.Contains("8CE9EED88F7E")
-                /* living room */
-                || macs.Contains("A4B1C1C841E1") || macs.Contains("A4B1C1C841E5") || macs.Contains("B42E9954DB93")
-                || macs.Contains("A4B1C1C841E2") || macs.Contains("A6B1C1C841E1")
-                /* TPX */
-                || macs.Contains("086AC57C79DD")
-                /* others */
-                || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E4B2F12")
-                /* SCII */
-                || macs.Contains("E43A6E7936B1") || macs.Contains("E43A6E567F30") || macs.Contains("E43A6E793807") || macs.Contains("E43A6E793727") || macs.Contains("44456F0DDFF5")
-                || macs.Contains("E43A6E793891") || macs.Contains("E43A6E793743") || macs.Contains("E43A6E567F30") || macs.Contains("E43A6E57A543")
-                /* GLB */
-                || macs.Contains("E43A6E77B047") || macs.Contains("E43A6E77BO46") || macs.Contains("E43A6E5CC03B") || macs.Contains("E43A6E77AFCC") || macs.Contains("E43A6E77AFCD")
-                || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBDE8") || macs.Contains("E43A6E5CBE6A")
-                || macs.Contains("E43A6E5CBF48") || macs.Contains("E43A6E5CBE6A") || macs.Contains("E43A6E5CBE6A") || macs.Contains("02285816D889") || macs.Contains("04285816D8D8")
-                || macs.Contains("04285816D891") || macs.Contains("04285816D9BB") || macs.Contains("04285816D803") || macs.Contains("04285816D98F") || macs.Contains("04285816D80D")
-                || macs.Contains("60BEB4097C11") || macs.Contains("60BEB4097C2B") || macs.Contains("788A8651588C") || macs.Contains("FEFCFE3E43E8") || macs.Contains("3448EDF5783D")
-                || macs.Contains("60BEB40A3857")
-            )) {
-                throw new Exception("当前设备未授权");
-            }
-            // TODO: 检查软件版本（这个也是许可证）
-            // MainUtils.Version = AppVersion.SCII;
-            MainUtils.Version = AppVersion.GLB;
+            MainUtils.Macs = networkInterfaces.Select(ni => ni.GetPhysicalAddress().ToString()).Where(mac => !string.IsNullOrEmpty(mac)).ToList();
+
+            // Check license
+            MainUtils.CheckLicense();
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
-            SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(macs)).MacAddressesDTO;
+            SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(MainUtils.Macs)).MacAddressesDTO;
             if (SystemUtils.MacAddressesDTO == null) {
-                MacAddressesDTO? macAddressesDTOTemp = SystemUtils.GetApis().AddOrUpdateMacAddresses(new(new() { macs = string.Join(",", macs) })).MacAddressesDTO;
+                MacAddressesDTO? macAddressesDTOTemp = SystemUtils.GetApis().AddOrUpdateMacAddresses(new(new() { macs = string.Join(",", MainUtils.Macs) })).MacAddressesDTO;
                 if (macAddressesDTOTemp == null) {
                     throw new Exception("物理地址存储至数据库失败");
                 }
@@ -155,7 +133,7 @@ namespace OperationGuidance_new {
                         }
                         MinimumSize = new Size(400, 300);
                         MaximumSize = screenSize;
-                        if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
+                        if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
                             if (_operatorView != null) {
                                 _operatorView.Dispose();
                             }
@@ -173,12 +151,20 @@ namespace OperationGuidance_new {
                                     mainPanel.Show();
                                 }
                             } else {
+                                // Reset some variables
+                                WidgetUtils.ClearViews();
+                                WidgetUtils.ClearMainMenus();
+                                WidgetUtils.ClearChildMenus();
+
+                                // Dispose all controls
                                 foreach (Control c in WidgetUtils.MainForm.Controls) {
                                     if (c is LoginView) {
                                         continue;
                                     }
                                     c.Dispose();
                                 }
+
+                                // Re-create all
                                 AfterLogin(mainFormSize);
                             }
                         }
@@ -214,7 +200,7 @@ namespace OperationGuidance_new {
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
-            if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
+            if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
                 OperatorOpenning();
             } else {
                 // mainPanel
@@ -260,16 +246,9 @@ namespace OperationGuidance_new {
                     };
                 }
 
-                // WidgetUtils.ClearViews();
-                // WidgetUtils.ClearMainMenus();
-                // WidgetUtils.ClearChildMenus();
                 List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
                 for (int i = 0; i < menuCongfigs.Count; i++) {
                     MenuConfig mainMenuConfig = menuCongfigs[i];
-                    if (MainUtils.Version != AppVersion.STANDARD
-                            && mainMenuConfig.Versions != null && !mainMenuConfig.Versions.Contains(MainUtils.Version)) {
-                        continue;
-                    }
                     CustomMainMenuButton mainMenuButton = new(ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_UP, ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_DOWN);
                     mainMenuButton.Name = "mainMenuButton_" + mainMenuConfig.Id;
                     mainMenuButton.Icon = mainMenuConfig.Icon;
@@ -278,118 +257,145 @@ namespace OperationGuidance_new {
                         mainMenuButton.OnMenuButtonClick += mainMenuConfig.Click;
                     }
                     if (mainMenuConfig.ViewTypes != null && mainMenuConfig.ViewTypes.Count > 0) {
-                        Type type;
-                        if (mainMenuConfig.ViewTypes.ContainsKey(MainUtils.Version)) {
-                            type = mainMenuConfig.ViewTypes[MainUtils.Version];
-                        } else {
-                            type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
-                        }
-                        // TODO: License checking here
-                        object instance = type.Assembly.CreateInstance(type.FullName);
-                        if (instance is CustomContentPanel) {
-                            CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
-                            //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
+                        if (!MainUtils.License.MenuIds.ContainsKey(mainMenuConfig.Id)) {
+                            CustomContentPanel contentPanelTemp = new();
                             contentPanelTemp.Name = "mainContentPanel_" + mainMenuConfig.Id;
-                            if (contentPanelTemp.Controls.Count == 0) {
-                                int hPadding = contentPanelTemp.Width / 2;
-                                int vPadding = contentPanelTemp.Height / 2;
-                                contentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
-                            }
+                            int hPadding = contentPanelTemp.Width / 2;
+                            int vPadding = contentPanelTemp.Height / 2;
+                            contentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                             contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
                             mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
                                 ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
                             ) {
                                 Name = contentPanelTemp.Name
                             };
-                            WidgetUtils.AddView(contentPanelTemp);
                         } else {
-                            CustomTabPanel childTapPanel = (CustomTabPanel) instance;
-                            CustomChildMenuFirstPanel childMenuPanel = new();
-                            CustomContentPanelBase childContentPanel = new();
-                            // childMenuPanel
-                            childMenuPanel.BackColor = ColorConfigs.COLOR_CHILD_MENU_BACKGROUND;
-                            childMenuPanel.Margin = new Padding(0);
-                            childMenuPanel.Name = "mainMenuPanel";
-                            childMenuPanel.PanelDirection = MenuPanelDirection.LEFT;
-                            childMenuPanel.NeedFoldButton = true;
-                            childMenuPanel.FoldButton.FoldedIcon = Properties.Resources.navigator_fold;
-                            childMenuPanel.FoldButton.UnfoldedIcon = Properties.Resources.navigator_unfold;
-                            childMenuPanel.FoldButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
-                            if (mainMenuConfig.IsUserInfoPanel) {
-                                childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName);
+                            AppVersion appVersion = (AppVersion)Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+                            Type type;
+                            if (mainMenuConfig.ViewTypes.ContainsKey(appVersion)) {
+                                type = mainMenuConfig.ViewTypes[appVersion];
+                            } else {
+                                type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
                             }
-                            // childContentPanel
-                            childContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-                            childContentPanel.Margin = new Padding(0);
-                            childContentPanel.Name = "mainContentPanel";
 
-                            List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
-                            for (int j = 0; j < childMenuConfigs.Count; j++) {
-                                MenuConfig childMenuConfig = childMenuConfigs[j];
-                                if (MainUtils.Version != AppVersion.STANDARD
-                                        && childMenuConfig.Versions != null && !childMenuConfig.Versions.Contains(MainUtils.Version)) {
-                                    continue;
+                            // TODO: License checking here
+                            object instance = type.Assembly.CreateInstance(type.FullName);
+                            if (instance is CustomContentPanel) {
+                                CustomContentPanel contentPanelTemp = (CustomContentPanel)instance;
+                                //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
+                                contentPanelTemp.Name = "mainContentPanel_" + mainMenuConfig.Id;
+                                if (contentPanelTemp.Controls.Count == 0) {
+                                    int hPadding = contentPanelTemp.Width / 2;
+                                    int vPadding = contentPanelTemp.Height / 2;
+                                    contentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                                 }
-                                CustomChildMenuFirstButton childMenuFirstButton = new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
-                                childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
-                                childMenuFirstButton.Icon = childMenuConfig.Icon;
-                                childMenuFirstButton.Label = childMenuConfig.Name;
-                                if (childMenuConfig.Click != null) {
-                                    childMenuFirstButton.OnMenuButtonClick += childMenuConfig.Click;
+                                contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
+                                mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
+                                    ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
+                                ) {
+                                    Name = contentPanelTemp.Name
+                                };
+                                WidgetUtils.AddView(contentPanelTemp);
+                            } else {
+                                CustomTabPanel childTapPanel = (CustomTabPanel)instance;
+                                CustomChildMenuFirstPanel childMenuPanel = new();
+                                CustomContentPanelBase childContentPanel = new();
+                                // childMenuPanel
+                                childMenuPanel.BackColor = ColorConfigs.COLOR_CHILD_MENU_BACKGROUND;
+                                childMenuPanel.Margin = new Padding(0);
+                                childMenuPanel.Name = "mainMenuPanel";
+                                childMenuPanel.PanelDirection = MenuPanelDirection.LEFT;
+                                childMenuPanel.NeedFoldButton = true;
+                                childMenuPanel.FoldButton.FoldedIcon = Properties.Resources.navigator_fold;
+                                childMenuPanel.FoldButton.UnfoldedIcon = Properties.Resources.navigator_unfold;
+                                childMenuPanel.FoldButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
+                                if (mainMenuConfig.IsUserInfoPanel) {
+                                    childMenuPanel.ShowUserInfoPanel(SystemUtils.LoggedUserName);
                                 }
-                                if (childMenuConfig.ViewTypes != null && childMenuConfig.ViewTypes.Count > 0) {
-                                    Type childType;
-                                    if (childMenuConfig.ViewTypes.ContainsKey(MainUtils.Version)) {
-                                        childType = childMenuConfig.ViewTypes[MainUtils.Version];
-                                    } else {
-                                        childType = childMenuConfig.ViewTypes[AppVersion.STANDARD];
+                                // childContentPanel
+                                childContentPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
+                                childContentPanel.Margin = new Padding(0);
+                                childContentPanel.Name = "mainContentPanel";
+
+                                List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
+                                for (int j = 0; j < childMenuConfigs.Count; j++) {
+                                    MenuConfig childMenuConfig = childMenuConfigs[j];
+                                    CustomChildMenuFirstButton childMenuFirstButton = new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
+                                    childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
+                                    childMenuFirstButton.Icon = childMenuConfig.Icon;
+                                    childMenuFirstButton.Label = childMenuConfig.Name;
+                                    if (childMenuConfig.Click != null) {
+                                        childMenuFirstButton.OnMenuButtonClick += childMenuConfig.Click;
                                     }
-                                    // TODO: License checking here
-                                    object childInstance = childType.Assembly.CreateInstance(childType.FullName);
-                                    if (childInstance is CustomContentPanel) {
-                                        CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
-                                        //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
-                                        childContentPanelTemp.Name = "childContentPanel_" + j;
-                                        if (childContentPanelTemp.Controls.Count == 0) {
+                                    if (childMenuConfig.ViewTypes != null && childMenuConfig.ViewTypes.Count > 0) {
+                                        Type childType;
+                                        if (childMenuConfig.ViewTypes.ContainsKey(appVersion)) {
+                                            childType = childMenuConfig.ViewTypes[appVersion];
+                                        } else {
+                                            if (!childMenuConfig.ViewTypes.ContainsKey(AppVersion.STANDARD)) {
+                                                continue;
+                                            }
+                                            childType = childMenuConfig.ViewTypes[AppVersion.STANDARD];
+                                        }
+                                        // TODO: License checking here
+                                        object childInstance = childType.Assembly.CreateInstance(childType.FullName);
+                                        if (MainUtils.License.MenuIds[mainMenuConfig.Id] == null || !MainUtils.License.MenuIds[mainMenuConfig.Id].Contains(childMenuConfig.Id)) {
+                                            CustomContentPanel childContentPanelTemp = new();
+                                            childContentPanelTemp.Name = "childContentPanel_" + j;
                                             int hPadding = childContentPanelTemp.Width / 2;
                                             int vPadding = childContentPanelTemp.Height / 2;
                                             childContentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
+                                            childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
+                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
+                                                ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
+                                            ) {
+                                                Name = childContentPanelTemp.Name
+                                            };
+                                        } else if (childInstance is CustomContentPanel) {
+                                            CustomContentPanel childContentPanelTemp = (CustomContentPanel)childInstance;
+                                            //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
+                                            childContentPanelTemp.Name = "childContentPanel_" + j;
+                                            if (childContentPanelTemp.Controls.Count == 0) {
+                                                int hPadding = childContentPanelTemp.Width / 2;
+                                                int vPadding = childContentPanelTemp.Height / 2;
+                                                childContentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
+                                            }
+                                            childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
+                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
+                                                ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
+                                            ) {
+                                                Name = childContentPanelTemp.Name
+                                            };
+                                            WidgetUtils.AddView(childContentPanelTemp);
                                         }
-                                        childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
-                                        childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-                                            ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
-                                        ) {
-                                            Name = childContentPanelTemp.Name
-                                        };
-                                        WidgetUtils.AddView(childContentPanelTemp);
                                     }
+                                    childMenuFirstButton.ToggledButton = childMenuConfig.IsToggleButton;
+                                    childMenuFirstButton.GroupMode = true;
+                                    childMenuFirstButton.BackColor = ColorConfigs.COLOR_CHILD_MENU_BACKGROUND;
+                                    childMenuFirstButton.ConerRadius = 0;
+                                    childMenuFirstButton.FlatAppearance.BorderSize = 0;
+                                    childMenuFirstButton.FlatStyle = FlatStyle.Flat;
+                                    childMenuFirstButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
+                                    childMenuFirstButton.Margin = new Padding(0);
+                                    childMenuFirstButton.ToggleBar = true;
+                                    childMenuFirstButton.ToggleBarDirection = AbstractCustomButton.ToggleBarDirectionEnum.LEFT;
+                                    childMenuFirstButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
+
+                                    WidgetUtils.AddChildMenu(childMenuConfig.Id, childMenuFirstButton);
+                                    // Add child menu button an content panel into their parent panels
+                                    childMenuPanel.Controls.Add(childMenuFirstButton);
+                                    childContentPanel.Controls.Add(childMenuFirstButton.CorrespondingContentPanel);
                                 }
-                                childMenuFirstButton.ToggledButton = childMenuConfig.IsToggleButton;
-                                childMenuFirstButton.GroupMode = true;
-                                childMenuFirstButton.BackColor = ColorConfigs.COLOR_CHILD_MENU_BACKGROUND;
-                                childMenuFirstButton.ConerRadius = 0;
-                                childMenuFirstButton.FlatAppearance.BorderSize = 0;
-                                childMenuFirstButton.FlatStyle = FlatStyle.Flat;
-                                childMenuFirstButton.ForeColor = ColorConfigs.COLOR_MENU_FOREGROUND;
-                                childMenuFirstButton.Margin = new Padding(0);
-                                childMenuFirstButton.ToggleBar = true;
-                                childMenuFirstButton.ToggleBarDirection = AbstractCustomButton.ToggleBarDirectionEnum.LEFT;
-                                childMenuFirstButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
 
-                                WidgetUtils.AddChildMenu(childMenuConfig.Id, childMenuFirstButton);
-                                // Add child menu button an content panel into their parent panels
-                                childMenuPanel.Controls.Add(childMenuFirstButton);
-                                childContentPanel.Controls.Add(childMenuFirstButton.CorrespondingContentPanel);
+                                // childTapPanel
+                                childTapPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
+                                childTapPanel.Controls.Add(childMenuPanel);
+                                childTapPanel.Controls.Add(childContentPanel);
+                                childTapPanel.Margin = new Padding(0);
+                                childTapPanel.Name = "childFirstPanel";
+
+                                mainMenuButton.CorrespondingContentPanel = childTapPanel;
                             }
-
-                            // childTapPanel
-                            childTapPanel.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-                            childTapPanel.Controls.Add(childMenuPanel);
-                            childTapPanel.Controls.Add(childContentPanel);
-                            childTapPanel.Margin = new Padding(0);
-                            childTapPanel.Name = "childFirstPanel";
-
-                            mainMenuButton.CorrespondingContentPanel = childTapPanel;
                         }
                     }
                     mainMenuButton.ToggledButton = mainMenuConfig.IsToggleButton;

@@ -15,8 +15,9 @@ namespace OperationGuidance_new.Views {
             if (viewTypes != null && viewTypes.Count > 0) {
                 Type type;
                 // 根据配置决定显示哪个版本的工作台
-                if (viewTypes.ContainsKey(MainUtils.Version)) {
-                    type = viewTypes[MainUtils.Version];
+                AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+                if (viewTypes.ContainsKey(appVersion)) {
+                    type = viewTypes[appVersion];
                 } else {
                     type = viewTypes[AppVersion.STANDARD];
                 }
