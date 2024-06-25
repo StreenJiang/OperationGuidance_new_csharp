@@ -142,7 +142,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _positionBox.GetTextBox(0);
             _positionBox.AddTextBox();
             _positionBox.AddTextBox();
-            CommonButton retrieveCoordinatesBtn = _positionBox.AddButton(_retrievePositionButtonLabel);
+            CommonButton retrieveCoordinatesBtn = _positionBox.AddButton<CommonButton>(_retrievePositionButtonLabel);
             retrieveCoordinatesBtn.Click += async (sender, eventArgs) => {
                 bool labelChanging = true;
                 string dotStr = "";

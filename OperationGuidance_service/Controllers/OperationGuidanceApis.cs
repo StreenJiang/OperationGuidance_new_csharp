@@ -277,6 +277,8 @@ namespace OperationGuidance_service.Controllers {
             count += _productMissionService.ExecuteSql(string.Format(sqlTemp, _productMissionService.TableName, req.IdTo, req.IdFrom));
             // 站点
             count += _workstationService.ExecuteSql(string.Format(sqlTemp, _workstationService.TableName, req.IdTo, req.IdFrom));
+            // Outer database config glb
+            count += _outerDatabaseConfigGlbService.ExecuteSql(string.Format(sqlTemp, _outerDatabaseConfigGlbService.TableName, req.IdTo, req.IdFrom));
 
             return new() {
                 UpdateRows = count,
@@ -1300,6 +1302,12 @@ namespace OperationGuidance_service.Controllers {
 
             return new(0);
         }
+        #endregion
+
+        #region Screw bit counter related
+        // Find by mission id
+        // Add or update
+        // Delete by Id
         #endregion
     }
 }

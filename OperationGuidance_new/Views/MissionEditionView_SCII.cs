@@ -1287,6 +1287,7 @@ namespace OperationGuidance_new.Views {
             private readonly int _columnCount = 2;
             private readonly double _boxRatioOneLine = 7.9;
             private readonly double _boxRatio = 5.75;
+            private readonly int _screwBitCounterMax = 10;
             private ProductMissionDTO _missionDTO;
             private TableLayoutPanel _tablePanel;
             private CustomTextBoxGroup _missionName;
@@ -1297,6 +1298,7 @@ namespace OperationGuidance_new.Views {
             private CustomTextBoxGroup _partsBarCodeNum;
             private List<ProductMissionDTO> _allOtherMissions;
             private List<PredecessorPartMissionMap> _predecessorPartMissionMaps;
+            private List<CustomTextBoxButtonGroup> _screwBitCounters;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
@@ -1355,10 +1357,26 @@ namespace OperationGuidance_new.Views {
                     Enabled = false,
                 };
 
+                _screwBitCounters = new() {
+                    new("批头计数器1") {
+                        Parent = _tablePanel,
+                        Ratio = _boxRatioOneLine,
+                        NameAlignment = HorizontalAlignment.Right,
+                        PositiveIntOnly = true,
+                        Separator = "->",
+                    },
+                };
+                _screwBitCounters[0].AddTextBox();
+                SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
+                addButton.Icon = Properties.Resources.sign_plus;
+                addButton.Click += (s, e) => AddScrewBitCounter();
+
                 _tablePanel.SetColumnSpan(_missionName, _columnCount);
                 _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
                 _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
                 _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
+
+                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1460,6 +1478,42 @@ namespace OperationGuidance_new.Views {
 
                     _predecessorPartMissionMaps.Add(new(i, idBox, missionBox));
                 }
+            }
+
+            private void AddScrewBitCounter() {
+                int currentCount = _screwBitCounters.Count;
+                if (currentCount >= _screwBitCounterMax) {
+                    WidgetUtils.ShowWarningPopUp($"批头计数器每个任务最多支持配置{_screwBitCounterMax}个");
+                    return;
+                }
+
+                CustomTextBoxButtonGroup box = new($"批头计数器{currentCount + 1}") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
+                    PositiveIntOnly = true,
+                    Separator = "->",
+                };
+                box.AddTextBox();
+
+                SignButton minusButton = box.AddButton<SignButton>();
+                minusButton.Icon = Properties.Resources.sign_minus;
+                minusButton.Click += (s, e) => {
+                    _screwBitCounters.Remove(box);
+                    box.Dispose();
+                    for (int i = 0; i < _screwBitCounters.Count; i++) {
+                        _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
+                        _screwBitCounters[i].ResizeChildren();
+                    }
+                    ResizeSelf();
+                };
+
+                _screwBitCounters.Add(box);
+                for (int i = 0; i < _screwBitCounters.Count; i++) {
+                    _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
+                }
+                _tablePanel.SetColumnSpan(box, _columnCount);
+                ResizeSelf();
             }
 
             public void ResizeSelf() {
