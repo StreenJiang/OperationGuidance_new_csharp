@@ -230,7 +230,7 @@ namespace OperationGuidance_new.Views {
                 Parent = _storageContentPanel,
                 Ratio = 8.5,
             };
-            _storagePathTextBox.AddButton("浏览").Click += (sender, eventArgs) => {
+            _storagePathTextBox.AddButton<CommonButton>("浏览").Click += (sender, eventArgs) => {
                 FolderBrowserDialog dialog = new() {
                     ShowNewFolderButton = true,
                 };

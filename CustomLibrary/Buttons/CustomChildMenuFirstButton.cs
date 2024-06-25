@@ -26,7 +26,14 @@ namespace CustomLibrary.Buttons {
         protected override void PaintAfter(PaintEventArgs e) {
             // Check if is toggled
             if (Toggled) {
-                ExtraSize = new(ExtraSize.Width + BarThickness, ExtraSize.Height);
+                // Recalculate extra size for image(icon) and label
+                if (!OnlyIcon) {
+                    ExtraSize = new(ExtraSize.Width + BarThickness, ExtraSize.Height);
+                } else {
+                    ExtraSize = new(ExtraSize.Width + BarThickness / 2, ExtraSize.Height);
+                }
+
+                // Recalcualte toggle bar and redraw
                 Rectangle rect = new(ClientRectangle.Location, ClientRectangle.Size);
                 if (ToggleBar && ToggleBarRect != null) {
                     Rectangle rectT = ToggleBarRect.Value;

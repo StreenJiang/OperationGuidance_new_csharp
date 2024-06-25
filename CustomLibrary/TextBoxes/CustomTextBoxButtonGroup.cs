@@ -1,4 +1,5 @@
 using CustomLibrary.Buttons;
+using CustomLibrary.Buttons.AbstractClasses;
 using CustomLibrary.Utils;
 using System.ComponentModel;
 
@@ -6,7 +7,7 @@ namespace CustomLibrary.TextBoxes {
     [DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomTextBoxButtonGroup: CustomTextBoxGroup {
         private int _gapButtons;
-        private List<CommonButton> _buttons;
+        private List<AbstractCustomButton> _buttons;
 
         public new bool Enabled {
             get => base.Enabled;
@@ -15,7 +16,7 @@ namespace CustomLibrary.TextBoxes {
                 SetButtonsProperties((button) => button.Enabled = value);
             }
         }
-        public List<CommonButton> Buttons { get => _buttons; }
+        public List<AbstractCustomButton> Buttons { get => _buttons; }
         public new Color BackColor { get; private set; }
 
         private void SetTextBoxesProperties(Action<CustomTextBox> setProperty) {
@@ -38,8 +39,8 @@ namespace CustomLibrary.TextBoxes {
             _buttons = new();
         }
 
-        public CommonButton AddButton(string label) {
-            CommonButton button = new() {
+        public T AddButton<T>(string? label = null) where T : AbstractCustomButton, new() {
+            T button = new() {
                 Parent = TextBoxesPanel,
                 Enabled = Enabled,
                 Label = label,
@@ -51,8 +52,11 @@ namespace CustomLibrary.TextBoxes {
             return button;
         }
 
-        public CommonButton GetButton(int index) {
-            return _buttons[index];
+        public T GetButton<T>(int index) where T : AbstractCustomButton {
+            if (_buttons[index] is T) {
+                return (T) _buttons[index];
+            }
+            throw new InvalidCastException($"Button type of _buttons[{index}] is not <{typeof(T).Name}>, please make sure the index is correct.");
         }
 
         protected override int GetBoxesRange() {
@@ -62,11 +66,17 @@ namespace CustomLibrary.TextBoxes {
             int buttonWidthSum = 0;
             using (Graphics g = CreateGraphics()) {
                 // Resize button label
-                foreach (CommonButton button in _buttons) {
-                    // Change height first then Font will change to a new size
-                    button.Height = buttonHeight;
-                    int buttonWidth = WidgetUtils.MeasureString(button.Label, button.Font).Width + buttonHeight * 2;
-                    button.Width = buttonWidth;
+                foreach (AbstractCustomButton button in _buttons) {
+                    int buttonWidth;
+                    if (button is SignButton) {
+                        buttonWidth = buttonHeight;
+                        button.Size = new(buttonWidth, buttonHeight);
+                    } else {
+                        // Change height first then Font will change to a new size
+                        button.Height = buttonHeight;
+                        buttonWidth = WidgetUtils.MeasureString(button.Label, button.Font).Width + buttonHeight * 2;
+                        button.Width = buttonWidth;
+                    }
                     button.Margin = new(GapNameAndBox, 0, 0, 0);
                     buttonWidthSum += buttonWidth;
                 }
@@ -76,7 +86,7 @@ namespace CustomLibrary.TextBoxes {
 
         protected override int GetExtraWidth() {
             int extraWidth = 0;
-            foreach (CommonButton button in _buttons) {
+            foreach (AbstractCustomButton button in _buttons) {
                 extraWidth += button.Width;
             }
             extraWidth += GapNameAndBox * _buttons.Count;
