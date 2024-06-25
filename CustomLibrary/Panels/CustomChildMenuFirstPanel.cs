@@ -125,7 +125,7 @@ namespace CustomLibrary.Panels {
             if (!this.OnlyIconMode) {
                 return 0.165F;
             } else {
-                return 0.05F;
+                return 0.085F;
             }
         }
         protected override void ResizeButtons() {

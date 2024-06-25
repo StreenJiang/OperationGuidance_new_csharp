@@ -339,7 +339,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            CommonButton missionSelectBtn = _missionSelectedName.AddButton("切换");
+            CommonButton missionSelectBtn = _missionSelectedName.AddButton<CommonButton>("切换");
             missionSelectBtn.Enabled = true;
             missionSelectBtn.Click += (s, e) => {
                 if (_activated) {
@@ -358,7 +358,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
                 NameAlignment = HorizontalAlignment.Right,
             };
-            CommonButton sidesDetials = _currentSideName.AddButton("详情");
+            CommonButton sidesDetials = _currentSideName.AddButton<CommonButton>("详情");
             sidesDetials.Enabled = true;
             sidesDetials.Click += (s, e) => {
                 PopUpSideListForm(sidesDetials);
@@ -2225,7 +2225,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
             };
             SetupBox(box);
-            CommonButton btn = box.AddButton("确定");
+            CommonButton btn = box.AddButton<CommonButton>("确定");
             btn.Click += (s, e) => ValidateProductBarCodeAsync();
             box.GetTextBox(0).Box.KeyDown += (s, e) => {
                 if (e.KeyCode == Keys.Enter) {
@@ -2243,7 +2243,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Enabled = false,
             };
             SetupBox(box);
-            CommonButton btn = box.AddButton("确定");
+            CommonButton btn = box.AddButton<CommonButton>("确定");
             btn.Click += (s, e) => ValidatePartsBarCode(box);
             box.GetTextBox(0).Box.KeyDown += (s, e) => {
                 if (e.KeyCode == Keys.Enter) {

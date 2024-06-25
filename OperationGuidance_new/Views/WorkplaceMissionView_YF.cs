@@ -9,9 +9,6 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Extensions;
-using System.Reflection;
-using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
@@ -91,7 +88,7 @@ namespace OperationGuidance_new.Views {
             InitializeBottom();
 
             // Add a stop button
-            _stopMissionBtn = _missionSelectedName.AddButton("中断");
+            _stopMissionBtn = _missionSelectedName.AddButton<CommonButton>("中断");
             _stopMissionBtn.Enabled = true;
             _stopMissionBtn.Click += async (s, e) => {
                 if (_communicationTask == null || ModBusServer == null) {
