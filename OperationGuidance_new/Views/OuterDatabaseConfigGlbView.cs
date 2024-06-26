@@ -15,7 +15,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class OuterDatabaseConfigGlbView : CustomDataGridViewOuterPanel<OuterDatabaseConfigGlbDTO, OuterDatabaseConfigGlbVO> {
+    public class OuterDatabaseConfigGlbView: CustomDataGridViewOuterPanel<OuterDatabaseConfigGlbDTO, OuterDatabaseConfigGlbVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
@@ -132,7 +132,7 @@ namespace OperationGuidance_new.Views {
             Dictionary<string, int> databaseTypes = new();
             DBTypes[] dBTypes = Enum.GetValues<DBTypes>();
             foreach (DBTypes type in dBTypes) {
-                databaseTypes.Add(type.ToString(), (int)type);
+                databaseTypes.Add(type.ToString(), (int) type);
             }
             CustomComboBoxGroup<int> database_type = _editEntityPopUpForm.AddComboBox("数据库类型",
                     (OuterDatabaseConfigGlbDTO dto, int value) => dto.database_type = value, databaseTypes);
@@ -165,8 +165,8 @@ namespace OperationGuidance_new.Views {
             // Workstation name
             CustomTextBoxGroup workstation_name = _editEntityPopUpForm.AddTextBox("工位号", false,
                 (OuterDatabaseConfigGlbDTO dto, string? value) => dto.workstation_name = value ?? null);
-            if (dto.database_name != null) {
-                workstation_name.SetValue(0, dto.database_name);
+            if (dto.workstation_name != null) {
+                workstation_name.SetValue(0, dto.workstation_name);
             }
             workstation_name.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 workstation_name.GetTextBox(0).IsError = string.IsNullOrEmpty(workstation_name.GetTextBox(0).Box.Text);
