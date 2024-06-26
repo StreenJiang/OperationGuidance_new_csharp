@@ -18,7 +18,6 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
-using LicenseLib;
 
 namespace OperationGuidance_new {
     partial class MainForm {

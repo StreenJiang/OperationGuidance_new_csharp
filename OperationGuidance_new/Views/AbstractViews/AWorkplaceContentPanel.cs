@@ -1081,6 +1081,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Clear current bolts
                 _currentWorkingBolt = null;
                 _currentWorkingBoltIndependence.Clear();
+
+                TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
             }
         }
         protected virtual void PrepareBeforeActivatingMission() {

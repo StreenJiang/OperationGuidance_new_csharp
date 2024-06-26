@@ -3,7 +3,7 @@ using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
     public class SignButton: CustomImageTextButtonBase {
-        private float _closebuttonIconRatio = 0.75F;
+        private float _closebuttonIconRatio = 0.7F;
         public float ClosebuttonIconRatio { get => _closebuttonIconRatio; set => _closebuttonIconRatio = value; }
 
         public SignButton() : base() {
