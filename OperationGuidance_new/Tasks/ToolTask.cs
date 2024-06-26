@@ -169,12 +169,16 @@ namespace OperationGuidance_new.Tasks {
         public override async void Connect() {
             HeartBeatCounter = 0;
             CloseConnectionManually = false;
+
             while (!Connected) {
                 Status = CONNECTING;
+
                 if (ConnectToServer()) {
                     RunTask();
                     Status = CONNECTED;
+
                     // Lock tool to keep safe
+                    Locked = false;
                     SendLock();
                     break;
                 }
@@ -184,9 +188,11 @@ namespace OperationGuidance_new.Tasks {
         public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
             logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
+
             if (Connected) {
                 socketClient.Close();
             }
+
             CloseConnectionManually = true;
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
