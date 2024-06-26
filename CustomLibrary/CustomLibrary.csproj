@@ -10,12 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Update="Buttons\BaseClasses\CommonButtonBase.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="Buttons\PageSwitchButton.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Update="Buttons\BaseClasses\CommonButtonBase.cs" />
+    <Compile Update="Buttons\PageSwitchButton.cs" />
     <Compile Update="Panels\CustomChildMenuFirstPanel.cs" />
     <Compile Update="Panels\BaseClasses\CustomContentPanelBase.cs" />
     <Compile Update="Panels\AbstractClasses\AbstractCustomPanel.cs" />
