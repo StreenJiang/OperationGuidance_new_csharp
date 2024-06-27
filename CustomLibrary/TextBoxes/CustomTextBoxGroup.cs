@@ -188,6 +188,7 @@ namespace CustomLibrary.TextBoxes {
                 BorderColorError = _borderColorError,
                 Enabled = _enabled,
                 NumberOnly = NumberOnly,
+                PositiveIntOnly = PositiveIntOnly,
             };
             // box.BackColor = _boxBackColor;
             _textBoxes.Add(box);
@@ -195,6 +196,10 @@ namespace CustomLibrary.TextBoxes {
                 ResizeChildren(this, EventArgs.Empty);
             }
             return box;
+        }
+
+        public void SetDefaultText(int index, string? value) {
+            _textBoxes[index].DefaultText = value;
         }
 
         public CustomTextBox GetTextBox(int index) {

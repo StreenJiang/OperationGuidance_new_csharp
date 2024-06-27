@@ -328,16 +328,16 @@ namespace OperationGuidance_new.Views {
                         List<CustomTextBox> bitPositions = new();
                         List<CustomTextBox> counters = new();
                         _detialPopUpForm.ScrewBitCounters.ForEach(box => {
-                            if (!string.IsNullOrEmpty(box.GetTextBox(0).Box.Text)) {
+                            if (!box.GetTextBox(0).IsEmpty()) {
                                 if (int.Parse(box.GetTextBox(0).Box.Text) <= 0) {
                                     bitPositions.Add(box.GetTextBox(0));
                                 }
 
-                                if (string.IsNullOrEmpty(box.GetTextBox(1).Box.Text)) {
+                                if (box.GetTextBox(1).IsEmpty()) {
                                     counters.Add(box.GetTextBox(1));
                                 }
 
-                                if (string.IsNullOrEmpty(box.GetTextBox(2).Box.Text)) {
+                                if (box.GetTextBox(2).IsEmpty()) {
                                     counters.Add(box.GetTextBox(2));
                                 }
                             }
@@ -384,9 +384,9 @@ namespace OperationGuidance_new.Views {
                             }
 
                             _detialPopUpForm.ScrewBitCounters.ForEach(box => {
-                                if (!string.IsNullOrEmpty(box.GetTextBox(0).Box.Text)
-                                        && !string.IsNullOrEmpty(box.GetTextBox(1).Box.Text)
-                                        && !string.IsNullOrEmpty(box.GetTextBox(2).Box.Text)) {
+                                if (!box.GetTextBox(0).IsEmpty()
+                                        && !box.GetTextBox(1).IsEmpty()
+                                        && !box.GetTextBox(2).IsEmpty()) {
                                     int bitPosition = int.Parse(box.GetTextBox(0).Box.Text);
                                     int maxNum = int.Parse(box.GetTextBox(1).Box.Text);
                                     int countEachTime = int.Parse(box.GetTextBox(2).Box.Text);
@@ -404,7 +404,9 @@ namespace OperationGuidance_new.Views {
                                     temp.count_each_time = countEachTime;
                                 }
                             });
-                            ScrewBitCounterDTO? screwBitCounterDTO = _screwBitCounterDTOs.Find(dto => _detialPopUpForm.ScrewBitCounters.Find(box => dto.bit_position == int.Parse(box.GetTextBox(0).Box.Text)) == null);
+                            ScrewBitCounterDTO? screwBitCounterDTO = _screwBitCounterDTOs.Find(dto =>
+                                    _detialPopUpForm.ScrewBitCounters.Find(box =>
+                                        !box.GetTextBox(0).IsEmpty() && dto.bit_position == int.Parse(box.GetTextBox(0).Box.Text)) == null);
                             if (screwBitCounterDTO != null) {
                                 screwBitCounterDTO.deleted = (int) YesOrNo.YES;
                             }
@@ -1516,6 +1518,9 @@ namespace OperationGuidance_new.Views {
                 };
                 _screwBitCounters[0].AddTextBox();
                 _screwBitCounters[0].AddTextBox();
+                _screwBitCounters[0].SetDefaultText(0, "套筒位");
+                _screwBitCounters[0].SetDefaultText(1, "工作次数上限");
+                _screwBitCounters[0].SetDefaultText(2, "单次计数量");
                 _screwBitCounters[0].GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(0));
                 _screwBitCounters[0].GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(1));
                 _screwBitCounters[0].GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(2));
@@ -1588,6 +1593,9 @@ namespace OperationGuidance_new.Views {
                 box.GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(0));
                 box.GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(1));
                 box.GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(2));
+                box.SetDefaultText(0, "套筒位");
+                box.SetDefaultText(1, "工作次数上限");
+                box.SetDefaultText(2, "单次计数量");
 
                 SignButton minusButton = box.AddButton<SignButton>();
                 minusButton.Icon = Properties.Resources.sign_minus;

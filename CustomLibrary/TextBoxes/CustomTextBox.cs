@@ -11,9 +11,11 @@ namespace CustomLibrary.TextBoxes {
         #region Fields
         private bool _enabled;
         private TextBox _box;
+        private string? _defaultText;
         private int _conerRadius;
         private Rectangle _borderRect;
         private Color _originalBackColor;
+        private Color _originalForeColor;
         private Color _hoverBackColor;
         private Color _disabledBackColor;
         private Color? _borderColor;
@@ -55,6 +57,15 @@ namespace CustomLibrary.TextBoxes {
             }
         }
         public bool ReadOnly { get => _box.ReadOnly; set => _box.ReadOnly = value; }
+        public string? DefaultText {
+            get => _defaultText;
+            set {
+                _defaultText = value;
+                if (string.IsNullOrEmpty(_box.Text)) {
+                    SetToDefault();
+                }
+            }
+        }
         public TextBox Box { get => _box; }
         public override string Text { get => _box.Text; set => _box.Text = value; }
         public bool Multiline { get => _box.Multiline; set => _box.Multiline = value; }
@@ -137,8 +148,13 @@ namespace CustomLibrary.TextBoxes {
                 BorderStyle = BorderStyle.None,
                 Multiline = false,
             };
+            _box.GotFocus += (sender, eventArgs) => ClearDefault();
+            _box.LostFocus += (sender, eventArgs) => SetToDefault();
             _errorTip = new();
             _box.TextChanged += (sender, eventArgs) => {
+                if (_box.Text == _defaultText) {
+                    return;
+                }
                 if (_numberOnly || _intOnly || _positiveIntOnly) {
                     int errorCount = 0;
                     int index = 0;
@@ -220,10 +236,29 @@ namespace CustomLibrary.TextBoxes {
             _box.MouseLeave += (s, e) => OnMouseLeave();
             _box.GotFocus += (s, e) => ResetBack();
             _box.LostFocus += (s, e) => ResetBack();
+
+            _originalForeColor = ForeColor;
         }
         #endregion
 
         #region Reusable methods
+        private void SetToDefault() {
+            if (!string.IsNullOrEmpty(_defaultText)) {
+                if (string.IsNullOrEmpty(_box.Text) || _box.Text == string.Empty) {
+                    _box.Text = _defaultText;
+                    ForeColor = WidgetUtils.LightColor(_originalForeColor, .5);
+                }
+            }
+        }
+        private void ClearDefault() {
+            if (!string.IsNullOrEmpty(_defaultText)) {
+                if (_box.Text == _defaultText) {
+                    _box.Text = string.Empty;
+                }
+            }
+            ForeColor = _originalForeColor;
+        }
+        public bool IsEmpty() => string.IsNullOrEmpty(_box.Text) || _box.Text == _defaultText;
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
