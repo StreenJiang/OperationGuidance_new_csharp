@@ -1431,30 +1431,10 @@ namespace OperationGuidance_new.Views {
                     Enabled = false,
                 };
 
-                _screwBitCounters = new() {
-                    new("批头计数器1") {
-                        Parent = _tablePanel,
-                        Ratio = _boxRatioOneLine,
-                        NameAlignment = HorizontalAlignment.Right,
-                        PositiveIntOnly = true,
-                        Separator = "->",
-                    },
-                };
-                _screwBitCounters[0].AddTextBox();
-                _screwBitCounters[0].AddTextBox();
-                _screwBitCounters[0].GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(0));
-                _screwBitCounters[0].GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(1));
-                _screwBitCounters[0].GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(2));
-                SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
-                addButton.Icon = Properties.Resources.sign_plus;
-                addButton.Click += (s, e) => AddScrewBitCounter();
-
                 _tablePanel.SetColumnSpan(_missionName, _columnCount);
                 _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
                 _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
                 _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
-
-                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1474,17 +1454,6 @@ namespace OperationGuidance_new.Views {
                         partBarCodeIds.Add(rule.id);
                     }
                 }
-
-                for (int i = 0; i < screwBitCounterDTOs.Count - 1; i++) {
-                    AddScrewBitCounter();
-                }
-                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
-                    ScrewBitCounterDTO sbc = screwBitCounterDTOs[i];
-                    _screwBitCounters[0].SetValue(0, sbc.bit_position + "");
-                    _screwBitCounters[0].SetValue(1, sbc.max_num + "");
-                    _screwBitCounters[0].SetValue(2, sbc.count_each_time + "");
-                }
-
 
                 // Show combo box if product bar code is set
                 if (productsBarCodeNum > 0) {
@@ -1534,6 +1503,36 @@ namespace OperationGuidance_new.Views {
                     }
                 } else {
                     _partsBarCodeNum.SetValue(0, "未配置");
+                }
+
+                _screwBitCounters = new() {
+                    new("批头计数器1") {
+                        Parent = _tablePanel,
+                        Ratio = _boxRatioOneLine,
+                        NameAlignment = HorizontalAlignment.Right,
+                        PositiveIntOnly = true,
+                        Separator = "->",
+                    },
+                };
+                _screwBitCounters[0].AddTextBox();
+                _screwBitCounters[0].AddTextBox();
+                _screwBitCounters[0].GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(0));
+                _screwBitCounters[0].GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(1));
+                _screwBitCounters[0].GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(_screwBitCounters[0].GetTextBox(2));
+                SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
+                addButton.Icon = Properties.Resources.sign_plus;
+                addButton.Click += (s, e) => AddScrewBitCounter();
+
+                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
+
+                for (int i = 0; i < screwBitCounterDTOs.Count - 1; i++) {
+                    AddScrewBitCounter();
+                }
+                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
+                    ScrewBitCounterDTO sbc = screwBitCounterDTOs[i];
+                    _screwBitCounters[0].SetValue(0, sbc.bit_position + "");
+                    _screwBitCounters[0].SetValue(1, sbc.max_num + "");
+                    _screwBitCounters[0].SetValue(2, sbc.count_each_time + "");
                 }
 
                 async void ShowWarningIfHasAsync(string errorMsg) {
