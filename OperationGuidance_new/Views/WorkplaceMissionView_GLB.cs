@@ -6,7 +6,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView_GLB: AWorkplaceMissionView<WorkplaceContentPanel_GLB> {
+    public class WorkplaceMissionView_GLB: AWorkplaceMissionView<WorkplaceContentPanel_GLB, WorkplaceTopBar> {
         public WorkplaceMissionView_GLB() { }
         public WorkplaceMissionView_GLB(bool operatorOpenning) : base(operatorOpenning) { }
 
@@ -42,7 +42,7 @@ namespace OperationGuidance_new.Views {
             _operationDatasCached.Add(operationDataDTO);
         }
 
-        protected override void TerminateMission(WorkplaceProcessStatus status) {
+        public override void TerminateMission(WorkplaceProcessStatus status) {
             StoreTighteningDataToOuterDatabase();
             base.TerminateMission(status);
         }

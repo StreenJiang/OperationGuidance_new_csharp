@@ -13,7 +13,7 @@ using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView_YF: AWorkplaceMissionView<WorkplaceContentPanel_YF> {
+    public class WorkplaceMissionView_YF: AWorkplaceMissionView<WorkplaceContentPanel_YF, WorkplaceTopBar> {
         public WorkplaceMissionView_YF() { }
         public WorkplaceMissionView_YF(bool operatorOpenning) : base(operatorOpenning) { }
 

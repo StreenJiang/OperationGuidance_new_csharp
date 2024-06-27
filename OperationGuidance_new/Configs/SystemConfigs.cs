@@ -97,6 +97,7 @@ namespace OperationGuidance_new.Configs {
                     new(id: 507, name: "条码匹配管理", icon: Properties.Resources.bar_code) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(BarCodeMatchingRuleManagementView)},
+                            {AppVersion.SCII, typeof(BarCodeMatchingRuleManagementView_SCII)},
                         },
                     },
                     new(id: 508, name: "软件许可", icon: Properties.Resources.software_license) {
@@ -107,6 +108,7 @@ namespace OperationGuidance_new.Configs {
                     new(id: 509, name: "系统设置", icon: Properties.Resources.variable_settings) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(VariableSettingsView)},
+                            {AppVersion.SCII, typeof(VariableSettingsView_SCII)},
                         },
                     },
                 },

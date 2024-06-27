@@ -7,17 +7,17 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("ID")]
         public override int? id { get; set; }
         [GridColumn("长度")]
-        public int? length { get; set; }
+        public virtual int? length { get; set; }
         [GridColumn("结束符")]
-        public string? end_char { get; set; }
+        public virtual string? end_char { get; set; }
         [GridColumn("关键位")]
-        public string? key_position { get; set; }
+        public virtual string? key_position { get; set; }
         [GridColumn("关键字符")]
-        public string? key_char { get; set; }
+        public virtual string? key_char { get; set; }
         [GridColumn("条码类型")]
-        public string? str_type { get; set; }
-        private int? _type;
-        public int? type {
+        public virtual string? str_type { get; set; }
+        protected int? _type;
+        public virtual int? type {
             get => _type;
             set {
                 _type = value;
@@ -27,8 +27,8 @@ namespace OperationGuidance_new.ViewObjects {
             }
         }
         [GridColumn("匹配任务")]
-        public string? mission_name { get; set; }
-        public int? mission_id { get; set; }
-        public int macs_id { get; set; }
+        public virtual string? mission_name { get; set; }
+        public virtual int? mission_id { get; set; }
+        public virtual int macs_id { get; set; }
     }
 }

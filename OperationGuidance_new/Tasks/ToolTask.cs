@@ -1,10 +1,10 @@
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
@@ -12,10 +12,12 @@ namespace OperationGuidance_new.Tasks {
 
         #region Fields
         private static readonly object SyncObject = new();
+        private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 10000;
         private readonly int PSetWaitTime = 500;
         private readonly int WaitCurveTimes = 2;
+        private int SendMessageRecevingCount = 0;
         private int WaitCurveTimesCount = 0;
         private int WaitTimes = 5;
         private int WaitTimesCount = 0;
@@ -72,9 +74,11 @@ namespace OperationGuidance_new.Tasks {
                                     socketClient.Send(MainUtils.ToBytes(command));
                                 }
 
-                                // Wait for a little bit
-                                await Task.Delay(ReceiveTimeout);
-                                HeartBeatCounter += ReceiveTimeout;
+                                // byte[] msgBytes = new byte[1024 * 1024];
+                                // int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                // if (msgLen > 0) {
+                                //     AnalyzeData(msgBytes.Take(msgLen).ToArray());
+                                // }
                             }
                             // Check if it's time to send heart beating command
                             else if (HeartBeatCounter >= HeartBeatDelay) {
@@ -89,6 +93,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                         } else {
+                            WaitTimesCount++;
                             if (WaitTimesCount > WaitTimes) {
                                 WaitCurveTimesCount--;
                             }
@@ -98,44 +103,9 @@ namespace OperationGuidance_new.Tasks {
                         try {
                             lock (SyncObject) {
                                 byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes));
-
-                                // Analyse result
-                                if (_toolType is ToolPFSeries toolPF2) {
-                                    toolPF2.AnalyzeData(msgBytes.Take(msgLen).ToArray(), (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                                        if (heartIsBeating != null && !heartIsBeating.Value) {
-                                            throw new Exception("Heart is not beating...");
-                                        }
-                                        if (pSetSendingOk != null) {
-                                            PSetOk = pSetSendingOk.Value;
-                                        }
-                                        if (locked != null) {
-                                            Locked = locked.Value;
-                                        }
-                                        if (dataReceived != null && dataReceived.Value) {
-                                            socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_DATA_ACK_ASCII.GetMessage()));
-                                            WaitCurveTimesCount = WaitCurveTimes;
-                                        }
-                                        if (curveReceived != null && curveReceived.Value) {
-                                            socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                                            WaitCurveTimesCount--;
-                                        }
-                                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
-                                } else if (_toolType is ToolSudongX7 toolX7) {
-                                    toolX7.AnalyzeData(msgBytes.Take(msgLen).ToArray(), (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                                        if (pSetSendingOk != null) {
-                                            PSetOk = pSetSendingOk.Value;
-                                        }
-                                        if (locked != null) {
-                                            Locked = locked.Value;
-                                        }
-                                        if (dataReceived != null && dataReceived.Value) {
-                                            // WaitCurveTimesCount = WaitCurveTimes;
-                                        }
-                                        if (curveReceived != null && curveReceived.Value) {
-                                            WaitCurveTimesCount--;
-                                        }
-                                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                if (msgLen > 0) {
+                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
                                 }
                             }
                         } catch (SocketException se) {
@@ -164,6 +134,51 @@ namespace OperationGuidance_new.Tasks {
                     }
                 }
             });
+
+            void AnalyzeData(byte[] msgBytes) {
+                // Analyse result
+                if (_toolType is ToolPFSeries toolPF2) {
+                    toolPF2.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                        if (heartIsBeating != null && !heartIsBeating.Value) {
+                            throw new Exception("Heart is not beating...");
+                        }
+                        if (pSetSendingOk != null) {
+                            PSetOk = pSetSendingOk.Value;
+                        }
+                        if (locked != null) {
+                            Locked = locked.Value;
+                        }
+                        if (dataReceived != null && dataReceived.Value) {
+                            // Have to lock before set wait count
+                            SendLock();
+
+                            WaitCurveTimesCount = WaitCurveTimes;
+                        }
+                        if (curveReceived != null && curveReceived.Value) {
+                            socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                            WaitCurveTimesCount--;
+                        }
+                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    toolX7.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                        if (pSetSendingOk != null) {
+                            PSetOk = pSetSendingOk.Value;
+                        }
+                        if (locked != null) {
+                            Locked = locked.Value;
+                        }
+                        if (dataReceived != null && dataReceived.Value) {
+                            // Have to lock before set wait count
+                            SendLock();
+
+                            // WaitCurveTimesCount = WaitCurveTimes;
+                        }
+                        if (curveReceived != null && curveReceived.Value) {
+                            WaitCurveTimesCount--;
+                        }
+                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                }
+            }
         }
 
         public override async void Connect() {
@@ -173,7 +188,7 @@ namespace OperationGuidance_new.Tasks {
             while (!Connected) {
                 Status = CONNECTING;
 
-                if (ConnectToServer()) {
+                if (await ConnectToServer()) {
                     RunTask();
                     Status = CONNECTED;
 
@@ -200,98 +215,106 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        private bool ConnectToServer() {
-            if (Connected) {
-                logger.Warn($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
-                return false;
-            }
+        private async Task<bool> ConnectToServer() {
+            try {
+                if (Connected) {
+                    logger.Warn($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                    return false;
+                }
 
-            logger.Info($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
-            bool pingSuccess = false;
-            bool connectSuccess = false;
-            bool sendConnectMsgSuceess = false;
-            bool dataEnableMsgSuccess = false;
-            bool curveEnableMsgSuccess = false;
+                logger.Info($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
+                bool pingSuccess = false;
+                bool connectSuccess = false;
+                bool sendConnectMsgSuceess = false;
+                bool dataEnableMsgSuccess = false;
 
-            // 1. check ping
-            pingSuccess = MainUtils.PingHost(_ip);
-            if (pingSuccess) {
-                // 2. check socket
-                try {
-                    socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socketClient.ReceiveTimeout = ReceiveTimeout;
-                    socketClient.Connect(IPAddress.Parse(_ip), _port);
-                    connectSuccess = true;
+                // 1. check ping
+                pingSuccess = MainUtils.PingHost(_ip);
+                if (pingSuccess) {
+                    // 2. check socket
+                    try {
+                        socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        socketClient.ReceiveTimeout = ReceiveTimeout;
+                        socketClient.Connect(IPAddress.Parse(_ip), _port);
+                        connectSuccess = true;
 
-                    // 3. send connecting message
-                    if (connectSuccess && _toolType is ToolPFSeries toolPF) {
-                        if (toolPF.COMMAND_CONNECT_ASCII != null) {
-                            string? result1 = SendAndReceiveOnlyForPreparing(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
-                            if (result1 != null) {
-                                string mid1 = toolPF.GetMid(result1);
-                                sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                            }
-
-                            // 4. send data receving enable message
-                            if (sendConnectMsgSuceess) {
-                                string? result2 = SendAndReceiveOnlyForPreparing(toolPF.COMMAND_DATA_ASCII.GetMessage());
-                                if (result2 != null) {
-                                    string mid2 = toolPF.GetMid(result2);
-                                    dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
+                        // 3. send connecting message
+                        if (connectSuccess && _toolType is ToolPFSeries toolPF) {
+                            if (toolPF.COMMAND_CONNECT_ASCII != null) {
+                                string? result1 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
+                                if (result1 != null) {
+                                    string mid1 = toolPF.GetMid(result1);
+                                    logger.Info($"Mid for connect command is {mid1}");
+                                    sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
                                 }
 
-                                // 5. send curve data receving enable message
-                                if (dataEnableMsgSuccess) {
-                                    string? result3 = SendAndReceiveOnlyForPreparing(toolPF.COMMAND_CURVE_ASCII.GetMessage());
-                                    if (result3 != null) {
-                                        string mid3 = toolPF.GetMid(result3);
-                                        curveEnableMsgSuccess = mid3 == "0005";
+                                // 4. send data receving enable message
+                                if (sendConnectMsgSuceess) {
+                                    string? result2 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_DATA_ASCII.GetMessage());
+                                    if (result2 != null) {
+                                        string mid2 = toolPF.GetMid(result2);
+                                        logger.Info($"Mid for data message command is {mid2}");
+                                        dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
+                                    }
+
+                                    // 5. send curve data receving enable message
+                                    if (dataEnableMsgSuccess) {
+                                        // Don't need to check result, because if PF6000 doesn't have any license for curve data, then it will return 0004 which means it failed, it can not retrieve any curve data
+                                        // SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
                                     }
                                 }
                             }
+                        } else {
+                            sendConnectMsgSuceess = true;
+                            dataEnableMsgSuccess = true;
                         }
-                    } else {
-                        sendConnectMsgSuceess = true;
-                        dataEnableMsgSuccess = true;
-                        curveEnableMsgSuccess = true;
+                    } catch (Exception e) {
+                        logger.Warn($"Connect error while connecting to TOOL[{_device_name} - {_ip}: {_port}], e: {e}");
                     }
-                } catch (Exception e) {
-                    logger.Warn($"Connect error while connecting to TOOL[{_device_name} - {_ip}: {_port}], e: {e}");
+                } else {
+                    logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
                 }
-            } else {
-                logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
-            }
-            if (!(pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess && curveEnableMsgSuccess)) {
-                if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
-                    socketClient.Close();
+                if (!(pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess)) {
+                    if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
+                        socketClient.Close();
+                    }
                 }
+                bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess;
+                if (isConnected) {
+                    MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                }
+                return isConnected;
+            } catch (Exception e) {
+                logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}], e = {e}");
             }
-            bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess && curveEnableMsgSuccess;
-            if (isConnected) {
-                MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
-            }
-            return isConnected;
+
+            return false;
         }
         private void SendCommand(string command) {
             if (!_commands.Contains(command)) {
                 _commands.Enqueue(command);
             }
         }
-        private string? SendAndReceiveOnlyForPreparing(string command) {
-            if (Connected) {
+        private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
+            SendMessageRecevingCount++;
+            if (Connected && SendMessageRecevingCount < SendMessageRecevingTimes) {
                 try {
                     // Reset heart beat counter to prevent multiple response
                     HeartBeatCounter = 0;
                     // Send command to controller
+                    logger.Info($"Sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
                     socketClient.Send(Encoding.ASCII.GetBytes(command));
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
-                    int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes));
-                    return Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                    logger.Info($"Waiting for receving response for command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
+                    int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                    string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                    logger.Info($"Received response[{result}] for command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
+                    return result;
                 } catch (Exception e) {
                     logger.Error($"Error while sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}], e: {e}");
-                    // throw e;
+                    return await SendAndReceiveOnlyForPreparingAsync(command);
                 }
             }
             return null;

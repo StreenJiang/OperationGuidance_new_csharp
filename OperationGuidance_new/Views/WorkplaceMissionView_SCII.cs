@@ -1,17 +1,19 @@
-﻿using CustomLibrary.Configs;
+﻿using CustomLibrary.Buttons;
+using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Views.AbstractViews;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView_SCII: AWorkplaceMissionView<WorkplaceContentPanel_SCII> {
+    public class WorkplaceMissionView_SCII: AWorkplaceMissionView<WorkplaceContentPanel_SCII, WorkplaceTopBar_SCII> {
         public WorkplaceMissionView_SCII() { }
         public WorkplaceMissionView_SCII(bool operatorOpenning) : base(operatorOpenning) { }
 
@@ -79,6 +81,25 @@ namespace OperationGuidance_new.Views {
             _checkRedo = true;
             _toolControlNeedAdminPasswor = true;
         }
+
+        protected override void ActionAfterAllInitialized() {
+            CommonButton terminateMissionBtn = _missionSelectedName.AddButton<CommonButton>("中断");
+            terminateMissionBtn.Enabled = true;
+            terminateMissionBtn.Click += (s, e) => {
+                if (_activated) {
+                    _adminConfirmed = false;
+                    OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false);
+                    if (_adminConfirmed.Value) {
+                        _adminConfirmed = null;
+                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                    }
+                } else {
+                    WidgetUtils.ShowNoticePopUp("任务未激活");
+                }
+            };
+        }
+
+        protected override void ActivateMissionAutomatically() { }
 
         // 初始化所有外框
         private void InitializeOuters() {
@@ -186,7 +207,41 @@ namespace OperationGuidance_new.Views {
                     return;
                 }
             }
-            base.OpenBarCodePopUpForm(barCode);
+
+            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode) {
+                    Title = "录入条码",
+                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                };
+                if (!_activated) {
+                    _barCodePopUpForm.AddButton("激活任务").Click += (sender, eventArgs) => {
+                        if (!_activated) {
+                            if (!_barCodePopUpForm.CheckCanActivateMission()) {
+                                CustomTextBox customTextBox = _barCodePopUpForm.ProductBarCodeBox.GetTextBox(0);
+                                if (string.IsNullOrEmpty(_barCodeObj.ProductBarCode)) {
+                                    customTextBox.IsError = true;
+                                }
+                                for (int i = 0; i < _barCodePopUpForm.PartsBarCodeContentPanel.Controls.Count; i++) {
+                                    if (i >= _barCodeObj.PartsBarCodes.Count) {
+                                        ((CustomTextBoxButtonGroup) _barCodePopUpForm.PartsBarCodeContentPanel.Controls[i]).GetTextBox(0).IsError = true;
+                                    }
+                                }
+                                WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
+                            } else {
+                                ActivateMission();
+                                _barCodePopUpForm.Dispose();
+                            }
+                        } else {
+                            _barCodePopUpForm.Dispose();
+                        }
+                    };
+                }
+                _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
+                _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
+                _barCodePopUpForm.ResizeSelf();
+            }
+            _barCodePopUpForm.Show();
         }
 
         // 初始化顶部中间的右侧
@@ -234,6 +289,7 @@ namespace OperationGuidance_new.Views {
             _topRightBottom.Controls.Add(_ngRatePerDay);
             _topRightBottom.Controls.Add(_pset);
         }
+
         private void ResetMissionDetails() {
             SetTodayData();
             SetPset();
@@ -402,15 +458,12 @@ namespace OperationGuidance_new.Views {
                             if (_currentWorkingBolt.CurrentParameterSet == null) {
                                 // 如果是没有配置就显示对应错误信息，否则可能是下发失败
                                 if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                     AddLockMsg(WorkingProcessPanel.LockedPsetNull);
                                 } else {
                                     RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                    AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                 }
                             } else {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
                             }
                         }
                     }
@@ -801,12 +854,14 @@ namespace OperationGuidance_new.Views {
                 ScrewBitCounterDTO screwBitCounter;
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
                     _adminConfirmed = false;
-                    OpenAdminPasswordPopUpForm($"【{screwBitCounter.bit_position}】号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。请输入管理员密码确认", false);
+                    OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
                     if (_adminConfirmed.Value) {
+                        _adminConfirmed = null;
                         screwBitCounter.current_counts = 0;
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
+                        return true;
                     }
-                    return _adminConfirmed.Value;
+                    return false;
                 }
                 return true;
             }
@@ -937,9 +992,10 @@ namespace OperationGuidance_new.Views {
                                     _workingProcessPanel.NGReasons = null;
 
                                     // Lock the device
-                                    if (_locating_enabled) {
-                                        toolTask.SendLock();
-                                    }
+                                    // if (_locating_enabled) {
+                                    //     toolTask.SendLock();
+                                    // }
+                                    // Task already did lock
 
                                     currentBolt.BoltStatus = BoltStatus.DONE;
                                     currentBolt.Label = data.torque.ToString("0.00");

@@ -11,7 +11,7 @@ using OperationGuidance_new.Views.AbstractViews;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
-    public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel> {
+    public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel, WorkplaceTopBar> {
         public WorkplaceMissionView() { }
         public WorkplaceMissionView(bool operatorOpenning) : base(operatorOpenning) { }
 
@@ -521,9 +521,10 @@ namespace OperationGuidance_new.Views {
                                 _workingProcessPanel.NGReasons = null;
 
                                 // Lock the device
-                                if (_locating_enabled) {
-                                    toolTask.SendLock();
-                                }
+                                // if (_locating_enabled) {
+                                //     toolTask.SendLock();
+                                // }
+                                // Task already did lock
 
                                 currentBolt.BoltStatus = BoltStatus.DONE;
 

@@ -10,6 +10,6 @@ namespace OperationGuidance_new.Configs {
 
         public static string MissionArmLocatingEnabled { get; set; } = "mission_arm_locating_enabled";
         public static string MissionArmLocatingAccuracy { get; set; } = "mission_arm_locating_accuracy";
-        public static string MissionProductBatchNotice { get; set; } = "mission_product_batch_notice";
+        public static string MissionSelfLoopingMode { get; set; } = "mission_self_looping_mode";
     }
 }

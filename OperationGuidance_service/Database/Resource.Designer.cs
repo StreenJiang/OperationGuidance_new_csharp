@@ -310,6 +310,17 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `bar_code_matching_rule` 
+        ///  ADD COLUMN `name` varchar(64) NULL AFTER `id`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240628 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240628", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -571,6 +582,31 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;bar_code_matching_rule&quot; RENAME TO &quot;_bar_code_matching_rule_old_20240628&quot;;
+        ///
+        ///CREATE TABLE &quot;bar_code_matching_rule&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(64),
+        ///  &quot;length&quot; integer(8),
+        ///  &quot;end_char&quot; text(8),
+        ///  &quot;key_position&quot; text(64),
+        ///  &quot;key_char&quot; text(64),
+        ///  &quot;type&quot; integer(2) NOT NULL,
+        ///  &quot;mission_id&quot; integer,
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        /// [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240628 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240628", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
         ///-- ----------------------------
@@ -589,6 +625,16 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20240627 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20240627", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE [dbo].[bar_code_matching_rule] ADD [name] varchar(64) NULL
+        ///.
+        /// </summary>
+        internal static string modify_sqlserver_20240628 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20240628", resourceCulture);
             }
         }
     }

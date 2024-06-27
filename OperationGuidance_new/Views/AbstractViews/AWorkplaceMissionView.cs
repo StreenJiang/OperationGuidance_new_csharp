@@ -8,7 +8,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
-    public abstract class AWorkplaceMissionView<T>: CustomContentPanel where T : AWorkplaceContentPanel {
+    public abstract class AWorkplaceMissionView<T, V>: CustomContentPanel where T : AWorkplaceContentPanel where V : WorkplaceTopBar, new() {
         private MissionListPanel? _missionListPanel;
         private List<ProductMissionDTO>? _productMissionDTOs;
         private OperationGuidanceApis? apis;
@@ -83,12 +83,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Parent = WidgetUtils.MainForm,
                 Size = WidgetUtils.MainForm.ClientSize,
             };
-            WorkplaceTopBar topBar = new(_operatorOpenning) {
+            V topBar = new() {
                 BackColor = ColorConfigs.COLOR_MAIN_MENU_BACKGROUND,
                 MainMenuLogo = Properties.Resources.logo,
                 Margin = new Padding(0),
                 PanelDirection = MenuPanelDirection.TOP,
                 TitleColor = ColorConfigs.COLOR_WORKPLACE_TITLE,
+                OperatorOpenning = _operatorOpenning,
             };
             _workplacePanel = GetWrokplacePanel(missionId, topBar);
             topBar.Workplace = _workplacePanel;
