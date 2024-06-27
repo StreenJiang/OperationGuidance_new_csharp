@@ -1,5 +1,5 @@
-using System.Text;
 using OperationGuidance_new.Utils;
+using System.Text;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
@@ -43,7 +43,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class DeviceTypeTool: DeviceTypeBase {
+    public abstract class DeviceTypeTool : DeviceTypeBase {
         public Command COMMAND_LOCK_ASCII;
         public Command COMMAND_UNLOCK_ASCII;
         protected Command COMMAND_PSET_ASCII;
@@ -57,18 +57,16 @@ namespace OperationGuidance_new.Constants {
         public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null);
     }
 
-    public abstract class ToolPFSeries: DeviceTypeTool {
+    public abstract class ToolPFSeries : DeviceTypeTool {
         public Command? COMMAND_CONNECT_ASCII;
         public Command COMMAND_HEART_ASCII;
         public Command COMMAND_DATA_ASCII;
-        public Command COMMAND_DATA_ACK_ASCII;
         public Command COMMAND_CURVE_ASCII;
         public Command COMMAND_CURVE_ACK_ASCII;
 
         public ToolPFSeries(int id, string name) : base(id, name) {
             COMMAND_HEART_ASCII = new("00209999001         \x00");
             COMMAND_DATA_ASCII = new("002000600031        \x00");
-            COMMAND_DATA_ACK_ASCII = new("00200062001         \x00");
             COMMAND_CURVE_ASCII = new("006700080010    00  09000013800000000000000000000000000000002002001\x00");
             COMMAND_CURVE_ACK_ASCII = new("002400050010    00  0900\x00");
             COMMAND_LOCK_ASCII = new("00200042001         \x00");
@@ -204,7 +202,7 @@ namespace OperationGuidance_new.Constants {
                     string dataType = new(header.Skip(52).Take(2).ToArray());
                     byte[] dataBytes = msgBytes.Skip(header.Length + 1).ToArray();
                     double coefficient = double.Parse(new(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
-                    int decimals = int.Parse(dataType) == (int) CurveDataType.TORQUE ? 2 : 0;
+                    int decimals = int.Parse(dataType) == (int)CurveDataType.TORQUE ? 2 : 0;
                     double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);
 
                     CurveDataTemp curveData = new(id, time, int.Parse(dataType), string.Join(",", values));
@@ -225,7 +223,7 @@ namespace OperationGuidance_new.Constants {
 
                 // Check if is negative value
                 if (value > Math.Pow(2, 15) - 1) {
-                    double valueTemp = (int) Math.Pow(2, 16) - value;
+                    double valueTemp = (int)Math.Pow(2, 16) - value;
                     value = 0 - valueTemp;
                 }
 
@@ -243,19 +241,19 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class ToolPF4000: ToolPFSeries {
+    public class ToolPF4000 : ToolPFSeries {
         public ToolPF4000() : base(1, "PF4000") {
             COMMAND_CONNECT_ASCII = new("00200001003         \x00");
         }
     }
 
-    public class ToolPF6000OP: ToolPFSeries {
+    public class ToolPF6000OP : ToolPFSeries {
         public ToolPF6000OP() : base(2, "PF6000-OP") {
             COMMAND_CONNECT_ASCII = new("00200001006         \x00");
         }
     }
 
-    public class ToolSudongX7: DeviceTypeTool {
+    public class ToolSudongX7 : DeviceTypeTool {
         public string PSET_OK = "55AA058205B9760D0A";
 
         public ToolSudongX7() : base(3, "SudongX7") {
@@ -285,51 +283,51 @@ namespace OperationGuidance_new.Constants {
                         throw new NullReferenceException(errorMsg);
                     }
 
-                    float torque = (float) GetIntData(GetData(dataMessage, 14, 4)) / 1000;
-                    float torqueMin = (float) GetIntData(GetData(dataMessage, 52, 4)) / 1000;
-                    float torqueMax = (float) GetIntData(GetData(dataMessage, 48, 4)) / 1000;
-                    int torqueStatus = (int) TighteningCommonStatus.OK;
+                    float torque = (float)GetIntData(GetData(dataMessage, 14, 4)) / 1000;
+                    float torqueMin = (float)GetIntData(GetData(dataMessage, 52, 4)) / 1000;
+                    float torqueMax = (float)GetIntData(GetData(dataMessage, 48, 4)) / 1000;
+                    int torqueStatus = (int)TighteningCommonStatus.OK;
                     if (torque < torqueMin) {
-                        torqueStatus = (int) TighteningCommonStatus.LOW;
+                        torqueStatus = (int)TighteningCommonStatus.LOW;
                     } else if (torque > torqueMax) {
-                        torqueStatus = (int) TighteningCommonStatus.NG;
+                        torqueStatus = (int)TighteningCommonStatus.NG;
                     }
 
                     int angle = GetIntData(GetData(dataMessage, 22, 4));
                     int angleMin = GetIntData(GetData(dataMessage, 68, 4));
                     int angleMax = GetIntData(GetData(dataMessage, 64, 4));
-                    int angleStatus = (int) TighteningCommonStatus.OK;
+                    int angleStatus = (int)TighteningCommonStatus.OK;
                     if (angle < angleMin) {
-                        angleStatus = (int) TighteningCommonStatus.LOW;
+                        angleStatus = (int)TighteningCommonStatus.LOW;
                     } else if (angle > angleMax) {
-                        angleStatus = (int) TighteningCommonStatus.NG;
+                        angleStatus = (int)TighteningCommonStatus.NG;
                     }
 
                     int rundownAngle = GetIntData(GetData(dataMessage, 26, 4));
                     int rundownAngleMin = GetIntData(GetData(dataMessage, 60, 4));
                     int rundownAngleMax = GetIntData(GetData(dataMessage, 56, 4));
-                    int rundownAngleStatus = (int) TighteningCommonStatus.OK;
+                    int rundownAngleStatus = (int)TighteningCommonStatus.OK;
                     if (rundownAngle < rundownAngleMin) {
-                        rundownAngleStatus = (int) TighteningCommonStatus.LOW;
+                        rundownAngleStatus = (int)TighteningCommonStatus.LOW;
                     } else if (rundownAngle > rundownAngleMax) {
-                        rundownAngleStatus = (int) TighteningCommonStatus.NG;
+                        rundownAngleStatus = (int)TighteningCommonStatus.NG;
                     }
 
                     string tighteningStatusTemp = GetData(dataMessage, 42, 2);
                     int tighteningStatus;
                     if (tighteningStatusTemp == "01" || tighteningStatusTemp == "04") {
                         // 04 equals to CCW, so it's ok to be OK
-                        tighteningStatus = (int) TighteningStatus.OK;
+                        tighteningStatus = (int)TighteningStatus.OK;
                     } else {
-                        tighteningStatus = (int) TighteningStatus.NG;
+                        tighteningStatus = (int)TighteningStatus.NG;
                     }
 
                     string resultTypeTemp = GetData(dataMessage, 34, 2);
                     int resultType;
                     if (resultTypeTemp == "00") {
-                        resultType = (int) TightenOrLoosen.TIGHTENING;
+                        resultType = (int)TightenOrLoosen.TIGHTENING;
                     } else {
-                        resultType = (int) TightenOrLoosen.LOOSENING;
+                        resultType = (int)TightenOrLoosen.LOOSENING;
                     }
 
 

@@ -415,21 +415,21 @@ namespace OperationGuidance_new.Utils {
         public static int GetDefaultArmLocatingAccuracy() => 100;
         public static void SetArmLocatingAccuracy(int accuracy) => Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, accuracy + "");
         // Prodcut batch notice
-        public static bool IsProductBatchNoticeEnabled() {
-            string productBatchNoticeEnabled = Settings.Read(IniFileKeys.MissionProductBatchNotice);
+        public static bool IsMissionSelfLoopingModeEnabled() {
+            string productBatchNoticeEnabled = Settings.Read(IniFileKeys.MissionSelfLoopingMode);
             if (string.IsNullOrEmpty(productBatchNoticeEnabled)) {
-                bool flag = DefaultIsProductBatchNoticeEnabled();
-                SetProductBatchNoticeEnabled(flag);
+                bool flag = DefaultMissionSelfLoopingModeEnabled();
+                SetMissionSelfLoopingModeEnabled(flag);
                 return flag;
             }
             return int.Parse(productBatchNoticeEnabled) == (int) YesOrNo.YES;
         }
-        public static bool DefaultIsProductBatchNoticeEnabled() => true;
-        public static void SetProductBatchNoticeEnabled(bool flag) {
+        public static bool DefaultMissionSelfLoopingModeEnabled() => false;
+        public static void SetMissionSelfLoopingModeEnabled(bool flag) {
             if (flag) {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.YES + "");
+                Settings.Write(IniFileKeys.MissionSelfLoopingMode, (int) YesOrNo.YES + "");
             } else {
-                Settings.Write(IniFileKeys.MissionProductBatchNotice, (int) YesOrNo.NO + "");
+                Settings.Write(IniFileKeys.MissionSelfLoopingMode, (int) YesOrNo.NO + "");
             }
         }
 

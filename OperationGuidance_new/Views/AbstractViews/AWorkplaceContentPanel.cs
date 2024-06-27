@@ -7,7 +7,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
@@ -103,7 +102,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // 条码相关
         public bool _checkRedo = false;
-        protected BarCodeInputPopUpForm? _barCodePopUpForm;
+        protected ABarCodeInputPopUpForm? _barCodePopUpForm;
         protected readonly BarCodeObj _barCodeObj = new();
         protected CustomTextBox _barCodeTextBox;
         // 条码匹配规则
@@ -211,7 +210,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             InitializeDataGridPanel();
             InitializeDeviceBlocks();
             InitializeTimeDisplayer();
+
+            ActionAfterAllInitialized();
         }
+
+        protected virtual void ActionAfterAllInitialized() { }
 
         private void InitializeBarCodePanel() {
             _barCodeImage = Properties.Resources.bar_code_icon;
@@ -442,6 +445,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             SetProductImagePanel();
             RefreshImageDisplayPanel();
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
+
+            // If is self looping mode, then activate mission automatically
+            ActivateMissionAutomatically();
         }
         public virtual void ChangeSideAndInvalidate() {
             // List<BoltButton> currentSideBolts;
@@ -638,7 +644,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                             }
                                         }
                                     };
-                                    contentSize.Width = (int) (WidgetUtils.MainSize.Width * .45);
+                                    contentSize.Width = (int) (WidgetUtils.MainSize.Width * .65);
                                     contentSize.Height = panelHeight * tasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
                                 }
                                 void SetArmRetrieve(bool yes) {
@@ -709,6 +715,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected async void GetBarCodeMatchingRules() {
             await Task.Run(() => {
                 _barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id)).BarCodeMatchingRuleDTOs;
+                _barCodeMatchingRuleDTOs = _barCodeMatchingRuleDTOs.OrderBy(dto => dto.id).ToList();
                 _productBarCodeMatchingRules = new();
                 _partsBarCodeMatchingRules = new();
                 foreach (BarCodeMatchingRuleDTO dto in _barCodeMatchingRuleDTOs) {
@@ -745,7 +752,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
         // 载入设备
-        private async void LoadDevicesAsync() {
+        private async Task LoadDevicesAsync() {
             await Task.Run(() => {
                 // 查询所有站点信息
                 _workstationsDTOs = _apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs.ToList();
@@ -838,7 +845,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (category == DeviceCategories.TOOL) {
                                 Check(block, _toolTasks.Values.ToList());
                             } else if (category == DeviceCategories.ARM) {
-                                Check(block, _ioBoxTasks.Values.Where(task => task.ArmType != null).ToList());
+                                Check(block, _ioBoxTasks.Values.Where(task => task.ArmType != null).ToList(), connected => {
+                                    if (MainUtils.IsArmLocatingEnabled()) {
+                                        if (connected) {
+                                            RemoveLockMsg(WorkingProcessPanel.LockedArmDisconnected);
+                                        } else {
+                                            AddLockMsg(WorkingProcessPanel.LockedArmDisconnected);
+                                        }
+                                    }
+                                });
                             } else if (category == DeviceCategories.SERIAL_PORT) {
                                 Check(block, _serialPortTasks.Values.ToList());
                             } else if (category == DeviceCategories.COMMUNICATION) {
@@ -855,13 +870,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     await Task.Delay(_checkDevicesConnectionDelay);
                 }
             });
-            void Check<T>(DeviceBlock block, List<T> tasks) where T : ATaskBase {
+            void Check<T>(DeviceBlock block, List<T> tasks, Action<bool>? action = null) where T : ATaskBase {
                 if (tasks.Count == 0) {
                     block.ResetIconByStatus(DeviceStatus.EMPTY);
                 } else if (tasks.Find(t => !t.WorkplaceCheckConnection()) != null) {
                     block.ResetIconByStatus(DeviceStatus.ERROR);
+                    if (action != null) {
+                        action(false);
+                    }
                 } else {
                     block.ResetIconByStatus(DeviceStatus.NORMAL);
+                    if (action != null) {
+                        action(true);
+                    }
                 }
                 // foreach (T task in tasks) {
                 //     if (!task.WorkplaceCheckConnection()) {
@@ -1028,7 +1049,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 打开条码弹窗
         protected virtual void OpenBarCodePopUpForm(string? barCode = null) {
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                _barCodePopUpForm = new(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
+                _barCodePopUpForm = new BarCodeInputPopUpForm(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
                         _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
@@ -1295,6 +1316,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             StartSetterSelectorTask();
         }
 
+        protected virtual void ActivateMissionAutomatically() {
+            // If is self looping mode, then activate mission automatically
+            if (MainUtils.IsMissionSelfLoopingModeEnabled() && _mission.id > 0) {
+                ActivateMission();
+            }
+        }
+
         private void StartLockCheckingTask() {
             BeginInvoke(() => {
                 Task.Run(async () => {
@@ -1544,15 +1572,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (_currentWorkingBolt.CurrentParameterSet == null) {
                                 // 如果是没有配置就显示对应错误信息，否则可能是下发失败
                                 if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                     AddLockMsg(WorkingProcessPanel.LockedPsetNull);
                                 } else {
                                     RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                    AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                 }
                             } else {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
                             }
                         }
                     }
@@ -1776,7 +1801,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
             _adminPasswordPopUpForm.PretendToShowToCreateHandlesForChildren();
 
-            int contentWidth = (int) (WidgetUtils.MainSize.Width * .5);
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .75);
             Padding contentPadding = _adminPasswordPopUpForm.ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
@@ -1910,7 +1935,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
-        protected virtual async void TerminateMission(WorkplaceProcessStatus status) {
+        public virtual async void TerminateMission(WorkplaceProcessStatus status) {
             bool resetToDefault = status == WorkplaceProcessStatus.UNACTIVATED;
 
             // Reset variables
@@ -1946,6 +1971,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Reset current operation data
             currentOperationData = null;
+
+            // Wait for .5 seconds
+            await Task.Delay(500);
+
+            // If is self looping mode, then activate mission automatically
+            ActivateMissionAutomatically();
         }
 
         protected void LockAllTools() {
@@ -2024,13 +2055,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Events
-        protected override void OnHandleCreated(EventArgs e) {
+        protected override async void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             BeginInvoke(new Action(GetBarCodeMatchingRules));
             // Load devices asynchronously to avoid delay UI creating
-            LoadDevicesAsync();
+            await LoadDevicesAsync();
             // Initialize others
             InitializeAfterHandelCreated();
+
+            // If is self looping mode, then activate mission automatically
+            ActivateMissionAutomatically();
         }
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
@@ -2100,529 +2134,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
     }
 
-    public class BarCodeInputPopUpForm: CustomPopUpForm {
-        private AWorkplaceContentPanel _workplace;
-        private string _initStr;
-        private ProductMissionDTO _mission;
-        private Dictionary<int, List<BarCodeMatchingRuleDTO>> _productBarCodeRules;
-        private Dictionary<int, List<BarCodeMatchingRuleDTO>> _partsBarCodeRules;
-        private int _partsIndex = 1;
-        private CustomTextBoxButtonGroup _productBarCodeBox;
-        private CustomTextBoxButtonGroup? _focusedBox;
-        private TitlePanel _productBarCodeTitle;
-        private CustomContentPanel _productBarCodeContentPanel;
-        private TitlePanel _partsBarCodeTitle;
-        private CustomContentPanel _partsBarCodeContentPanel;
-        private string? _barCode;
-
-        public CustomTextBoxButtonGroup ProductBarCodeBox { get => _productBarCodeBox; set => _productBarCodeBox = value; }
-        public CustomContentPanel PartsBarCodeContentPanel { get => _partsBarCodeContentPanel; set => _partsBarCodeContentPanel = value; }
-
-        public BarCodeInputPopUpForm(AWorkplaceContentPanel workplace, string initStr, ProductMissionDTO mission, bool activated,
-                Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
-                Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode) : base() {
-            _workplace = workplace;
-            _initStr = initStr;
-            _mission = mission;
-            _productBarCodeRules = productBarCodeRules;
-            _partsBarCodeRules = partsBarCodeRules;
-            _barCode = barCode;
-
-            _productBarCodeTitle = new("产品条码") {
-                Parent = ContentPanel,
-            };
-            _productBarCodeContentPanel = new() {
-                Parent = ContentPanel,
-            };
-            _partsBarCodeTitle = new("物料条码") {
-                Parent = ContentPanel,
-            };
-            _partsBarCodeContentPanel = new() {
-                Parent = ContentPanel,
-            };
-
-            _productBarCodeBox = AddProductBarCodeTextBox(); // 产品码/追溯码框
-            AddPartsBoxes(_mission.id);
-            FillExistingData();
-        }
-        // 一、没选任务
-        //  1. 手动点击打开弹窗：
-        //      1.1. 手动输入，输入后点击确定进行校验
-        //          1.1.1. 没有匹配到任何任务，直接提示“未检测到对应任务”
-        //          1.1.2. 匹配到某一任务，直接切换到对应的任务，并且将输入框设置为不可输入，但“确定”按钮改为“修改”按钮，可供修改。
-        //                 同时自动根据配置到该任务的物料码的数量提前添加所有的物料码输入口，且除了第一个物料输入框为可输入，其他的均先
-        //                 设定为不可输入
-        //              1.1.2.1. 如果当前条码已经存在于任务记录中，则弹出确认框“是否进行返工？”，是则进行【1.1.2.2】，否则回到【1.1】
-        //              1.1.2.2. 如果点击修改“产品码/追溯码”，则输入框改为可输入，并且物料码输入框设置为不可输入。重新输入产品码后从【1.1】处逻辑开始判定
-        //              1.1.2.3. 如果输入物料码并点击确定，则进行物料码校验
-        //                  1.1.2.3.1. 输入的物料码与任务配置的物料码不匹配，直接提示“该物料码与任务配置不符”
-        //                  1.1.2.3.2. 输入的物料码能匹配上，则禁用当前物料码，“确定”按钮改为“修改”按钮，可供修改。
-        //                             随后判断当前物料码是否是该任务配置的最后一个物料码
-        //                      1.1.2.3.2.1. 不是最后一个物料码，， 并将下一个物料码输入框启用，且再次输入进入【1.1.2.2】的流程
-        //                      1.1.2.3.2.2. 是最后一个物料码，则弹出确认框“所有条码扫描完毕，是否激活任务？”
-        //                          1.1.2.3.2.2.1. 确认则激活任务
-        //                          1.1.2.3.2.2.2. 不确认则可以随意进行任意输入框的“修改”操作
-        //      1.2. 扫码自动填入，不需要点击“确定”按钮，直接进入【1.1】的后续流程
-        //      *1.3. 所有输入框均可进行“手动输入”或“扫描自动填入”，“手动输入”需要手动点击“确认”按钮进行确认，“扫描自动填入”则会自动进行验证
-        //            “修改”按钮是为了防止扫码枪扫描的条码值虽然符合任务配置的匹配规则，但是某些字符扫描错误，此时需要重新扫描
-        //  2. 直接扫码自动打开弹窗：
-        //      2.1. 自动回填扫到的码，并立即校验，然后走【1.1】的后续流程
-        //      
-        // 二、已选择任务
-        //  1. 手动点击打开弹窗：
-        //      1.1. 手动输入并点击“确定”进行校验：
-        //          1.1.1. 没有匹配到任何任务（也包括当前已经选择的任务），直接提示“校验不通过”
-        //          1.1.2. 匹配到了非当前任务，提示“当前条码匹配到另一任务，是否切换？”
-        //              1.1.2.1. 确认切换，则切换后进入【一 - 1.1.2】的流程
-        //              1.1.2.1. 不切换，则流程回到【1.1】
-        //          1.1.3. 与当前任务的“产品码/追溯码”校验通过，则也进入【一 - 1.1.2】的流程
-        //  2. 直接扫码自动打开弹窗：
-        //      2.1. 自动回填扫到的码，并立即校验，然后走【二 - 1.1】的后续流程
-
-        // 根据任务ID找到其对应的物料码匹配规则，并根据此规则添加相应的输入框
-        private void AddPartsBoxes(int missionId) {
-            if (missionId > 0 && _partsBarCodeRules.ContainsKey(missionId)) {
-                for (int i = 0; i < _partsBarCodeRules[missionId].Count(); i++) {
-                    AddPartsBarCodeTextBox();
-                }
-            }
-        }
-        // 根据当前缓存的条码数据，回填到弹窗里的所有输入框
-        private void FillExistingData() {
-            _productBarCodeBox.SetValue(0, _workplace.BarCodeObj.ProductBarCode);
-            for (int i = 0; i < _workplace.BarCodeObj.PartsBarCodes.Count; i++) {
-                ((CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[i]).SetValue(0, _workplace.BarCodeObj.PartsBarCodes[i]);
-            }
-            if (!_workplace.Activated) {
-                if (_mission.id <= 0 || string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
-                    _productBarCodeBox.Enabled = true;
-                    _productBarCodeBox.GetTextBox(0).Box.Focus();
-                    ActiveControl = _productBarCodeBox.GetTextBox(0).Box;
-                } else if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
-                    CustomTextBoxButtonGroup focusingBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
-                    focusingBox.Enabled = true;
-                    focusingBox.GetTextBox(0).Box.Focus();
-                    ActiveControl = focusingBox.GetTextBox(0).Box;
-                }
-            }
-        }
-        // 切换任务
-        private void SwitchToMission(ProductMissionDTO mission) {
-            _mission = mission;
-            _workplace.SwitchToMission(mission);
-            _partsIndex = 1;
-            // 自动回填产品码
-            _productBarCodeBox.SetValue(0, _workplace.BarCodeObj.ProductBarCode);
-            // 清除所有物料码输入框并重新根据当前任务添加
-            _partsBarCodeContentPanel.Controls.Clear();
-            AddPartsBoxes(_mission.id);
-            ResizeSelf();
-        }
-        // 添加产品条码输入框
-        private CustomTextBoxButtonGroup AddProductBarCodeTextBox() {
-            CustomTextBoxButtonGroup box = new($"产品条码") {
-                Parent = _productBarCodeContentPanel,
-                Ratio = 8.5,
-                NameAlignment = HorizontalAlignment.Right,
-                Enabled = false,
-            };
-            SetupBox(box);
-            CommonButton btn = box.AddButton<CommonButton>("确定");
-            btn.Click += (s, e) => ValidateProductBarCodeAsync();
-            box.GetTextBox(0).Box.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter) {
-                    ValidateProductBarCodeAsync();
-                }
-            };
-            return box;
-        }
-        // 添加物料条码输入框
-        private CustomTextBoxButtonGroup AddPartsBarCodeTextBox() {
-            CustomTextBoxButtonGroup box = new($"物料条码{_partsIndex++}") {
-                Parent = _partsBarCodeContentPanel,
-                Ratio = 8.5,
-                NameAlignment = HorizontalAlignment.Right,
-                Enabled = false,
-            };
-            SetupBox(box);
-            CommonButton btn = box.AddButton<CommonButton>("确定");
-            btn.Click += (s, e) => ValidatePartsBarCode(box);
-            box.GetTextBox(0).Box.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter) {
-                    ValidatePartsBarCode(box);
-                }
-            };
-            return box;
-        }
-        private void SetupBox(CustomTextBoxButtonGroup box) {
-            CustomTextBox innerBox = box.GetTextBox(0);
-            innerBox.TabStop = false;
-            innerBox.TextChanged += (s, e) => {
-                if (!string.IsNullOrEmpty(innerBox.Text) && innerBox.Text != _initStr) {
-                    innerBox.IsError = false;
-                }
-            };
-            TextBox iBox = innerBox.Box;
-            iBox.GotFocus += (s, e) => {
-                _focusedBox = box;
-                if (iBox.Text == _initStr) {
-                    iBox.Text = "";
-                }
-            };
-            iBox.LostFocus += (s, e) => {
-                if (iBox.Text == "") {
-                    iBox.Text = _initStr;
-                }
-            };
-        }
-        private async void ValidateProductBarCodeAsync() {
-            string barCode = _productBarCodeBox.GetTextBox(0).Box.Text;
-            if (string.IsNullOrEmpty(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
-                _productBarCodeBox.GetTextBox(0).IsError = true;
-                return;
-            }
-            // 对产品码进行校验
-            bool checkPassed = true;
-            ProductMissionDTO? mission = null;
-            // 已选任务
-            if (_mission.id > 0) {
-                mission = _mission;
-
-                // 校验不通过，检查是否匹配其他任务
-                if (!CheckBarCodeMatchedMission(barCode)) {
-                    mission = FindBarCodeMatchedMission(barCode);
-                    // 没匹配到其他任务，不专门提示，只提示与当前任务不匹配
-                    if (mission == null) {
-                        checkPassed = false;
-                        WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与选择的任务不匹配");
-                        _productBarCodeBox.GetTextBox(0).IsError = true;
-                    }
-                    // 如果匹配到其他任务，则做出特定提示
-                    else {
-                        checkPassed = WidgetUtils.ShowConfirmPopUp($"检测到当前条码【{barCode}】与另一任务【{mission.name}】匹配，是否切换任务？");
-                    }
-                }
-            }
-            // 没选任务
-            else {
-                mission = FindBarCodeMatchedMission(barCode);
-                // 匹配不到任何任务，则提示没匹配上
-                if (mission == null) {
-                    checkPassed = false;
-                    WidgetUtils.ShowWarningPopUp($"没有检索到匹配条码【{barCode}】的任务");
-                    _productBarCodeBox.GetTextBox(0).IsError = true;
-                }
-            }
-            // 条码校验通过，再检查下是否需要返工
-            if (checkPassed) {
-                mission = CommonUtils.CannotBeNull(mission);
-
-                // 如果存在前置任务，则先查询前置任务是否完成
-                if (mission.predecessor_mission_id != null) {
-                    bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
-                    if (!yes) {
-                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
-                        checkPassed = false;
-                    }
-                }
-                // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
-                    bool needRedo;
-                    if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
-                        // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
-                    } else {
-                        needRedo = false;
-                    }
-                    // 需要返工，修改是否返工的标识
-                    if (needRedo) {
-                        _workplace.IsRedo = (int) YesOrNo.YES;
-                    } else {
-                        _workplace.IsRedo = (int) YesOrNo.NO;
-                        // 存在确认返工的情况但取消返工，则将校验结果改为不通过
-                        checkPassed = false;
-                    }
-                }
-            }
-            // 所有检查完毕，回填、或切换任务后再回填
-            if (checkPassed) {
-
-                // 存入缓存并回填到主界面
-                _workplace.BarCodeObj.ProductBarCode = barCode;
-                WriteBackBarCodes();
-                // 禁用产品条码输入框
-                _productBarCodeBox.Enabled = false;
-                // 是否需要切换任务
-                mission = CommonUtils.CannotBeNull(mission);
-                SwitchToMission(mission);
-                if (_partsBarCodeRules.ContainsKey(_mission.id)) {
-                    _workplace.BarCodeObj.PartsRulesCount = _partsBarCodeRules[_mission.id].Count;
-                }
-                if (_workplace.BarCodeObj.PartsRulesCount > 0) {
-                    CustomTextBoxButtonGroup firstPartsBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[0];
-                    firstPartsBox.Enabled = true;
-                    firstPartsBox.GetTextBox(0).Box.Focus();
-                    ActiveControl = firstPartsBox.GetTextBox(0).Box;
-                }
-                // 检查是否可以激活任务
-                if (CheckCanActivateMission()) {
-                    // 激活任务
-                    _workplace.ActivateMission();
-                    await Task.Delay(200);
-                    Hide();
-                }
-            } else {
-                _productBarCodeBox.GetTextBox(0).IsError = true;
-            }
-        }
-        public void ValidateProductBarCode(string barCode) {
-            // 先回填，不然校验不到
-            _productBarCodeBox.SetValue(0, barCode);
-            // 校验条码
-            ValidateProductBarCodeAsync();
-        }
-
-        public async void ValidatePartsBarCode(CustomTextBoxButtonGroup box) {
-            string barCode = box.GetTextBox(0).Box.Text;
-            if (string.IsNullOrEmpty(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
-                box.GetTextBox(0).IsError = true;
-                return;
-            } else if (_workplace.BarCodeObj.PartsBarCodes.Contains(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"请勿重复录入物料");
-                box.GetTextBox(0).IsError = true;
-                return;
-            }
-
-            // 物料条码校验不通过
-            int ruleId = CheckPartsBarCodeMatchedMission(barCode);
-            if (ruleId < 0) {
-                WidgetUtils.ShowWarningPopUp($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
-                box.GetTextBox(0).IsError = true;
-            }
-            // 物料条码校验通过
-            else {
-                // 如果存在前置物料任务，则先查询前置物料任务是否完成
-                bool checkPassed = true;
-                if (_mission.predecessor_part_mission_ids != null) {
-                    Dictionary<int, int>? idsDict = JsonConvert.DeserializeObject<Dictionary<int, int>>(_mission.predecessor_part_mission_ids);
-                    if (idsDict != null) {
-                        foreach (KeyValuePair<int, int> pair in idsDict) {
-                            if (pair.Key == ruleId) {
-                                bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
-                                if (!yes) {
-                                    WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
-                                    checkPassed = false;
-                                }
-                            }
-                        }
-
-                    }
-                }
-
-                // 物料码返工确认
-                if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
-                    bool needRedo;
-                    if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
-                        // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
-                    } else {
-                        needRedo = false;
-                    }
-                    // 需要返工，修改是否返工的标识
-                    if (needRedo) {
-                        // 由于追溯码也有这个校验，因此如果不需要返工，则不动已经校验过的状态
-                        _workplace.IsRedo = (int) YesOrNo.YES;
-                    } else {
-                        checkPassed = false;
-                    }
-                }
-
-                if (checkPassed) {
-                    // 存入缓存并回填到主界面
-                    _workplace.BarCodeObj.PartsBarCodes.Add(barCode);
-                    _workplace.BarCodeObj.PartsMatchingRulesCached.Add(ruleId);
-                    WriteBackBarCodes();
-                    // 禁用当前输入框
-                    box.Enabled = false;
-                    // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
-                    if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
-                        CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
-                        nextBox.Enabled = true;
-                        nextBox.GetTextBox(0).Box.Focus();
-                        ActiveControl = nextBox.GetTextBox(0).Box;
-                    }
-                    // 检查是否可以激活任务
-                    if (CheckCanActivateMission()) {
-                        // 激活任务
-                        _workplace.ActivateMission();
-                        await Task.Delay(1000);
-                        Hide();
-                    }
-                } else {
-                    box.GetTextBox(0).IsError = true;
-                }
-            }
-        }
-        public void ValidatePartsBarCode(string barCode) {
-            if (_focusedBox == null) {
-                _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
-            }
-            // 先回填，不然校验不到
-            _focusedBox.SetValue(0, barCode);
-            // 校验条码
-            ValidatePartsBarCode(_focusedBox);
-        }
-        private void WriteBackBarCodes() {
-            string barCodes = _workplace.BarCodeObj.ProductBarCode;
-            if (_workplace.BarCodeObj.PartsBarCodes.Count > 0) {
-                barCodes += " | " + string.Join(", ", _workplace.BarCodeObj.PartsBarCodes);
-            }
-            _workplace.BarCodeTextBox.Text = barCodes;
-        }
-
-        // 检查当前条码是否与当前已选择任务匹配（没有选择任务则不匹配）
-        private bool CheckBarCodeMatchedMission(string barCode) {
-            if (_productBarCodeRules.ContainsKey(_mission.id)) {
-                foreach (BarCodeMatchingRuleDTO rule in _productBarCodeRules[_mission.id]) {
-                    if (MainUtils.CheckBarCodeIsMatched(barCode, rule)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            // 如果没有配置条码匹配规则，则也可以通过
-            return true;
-        }
-        // 检查当前条码是否与数据库中任意任务的产品码/追溯码匹配
-        private ProductMissionDTO? FindBarCodeMatchedMission(string barCode) {
-            ProductMissionDTO? mission = null;
-            foreach (KeyValuePair<int, List<BarCodeMatchingRuleDTO>> pair in _productBarCodeRules) {
-                foreach (BarCodeMatchingRuleDTO rule in pair.Value) {
-                    if (MainUtils.CheckBarCodeIsMatched(barCode, rule.end_char, rule.length, MainUtils.GetKeyMatchingRule(rule.key_position, rule.key_char))) {
-                        mission = _workplace.Apis.QueryProductMissionDetail(new(pair.Key)).ProductMissionDTO;
-                        break;
-                    }
-                }
-                if (mission != null) {
-                    break;
-                }
-            }
-            return mission;
-        }
-        // 检查当前物料条码是否匹配当前任务
-        private int CheckPartsBarCodeMatchedMission(string barCode) {
-            if (_partsBarCodeRules.ContainsKey(_mission.id)) {
-                // 校验时需要剔除已经校验过的规则，以免扫过的码重复也能通过
-                foreach (BarCodeMatchingRuleDTO rule in _partsBarCodeRules[_mission.id].Where(r => !_workplace.BarCodeObj.PartsMatchingRulesCached.Contains(r.id))) {
-                    if (MainUtils.CheckBarCodeIsMatched(barCode, rule)) {
-                        return rule.id;
-                    }
-                }
-                return -1;
-            }
-            // 如果没有配置条码匹配规则，则也可以通过
-            return 0;
-        }
-
-        // 检查是否可以激活任务
-        public bool CheckCanActivateMission() {
-            // 没选任务，pass
-            if (_mission.id > 0) {
-                // 没录入产品码，pass
-                if (!string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
-                    // 配置了物料码但是录入的物料码与配置的数量不一致，pass
-                    if (!_partsBarCodeRules.ContainsKey(_mission.id) || _partsBarCodeRules[_mission.id].Count == _workplace.BarCodeObj.PartsBarCodes.Count) {
-                        // 重置所有带红框提示的输入框
-                        _productBarCodeBox.GetTextBox(0).IsError = false;
-                        foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
-                            ((CustomTextBoxButtonGroup) ctrl).GetTextBox(0).IsError = false;
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        // 根据传入的条码智能校验
-        public void ValidateBarCode(string barCode) {
-            // 如果没有录入产品码，则校验产品码
-            if (string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
-                ValidateProductBarCode(barCode);
-            }
-            // 否则校验物料码
-            else {
-                ValidatePartsBarCode(barCode);
-            }
-        }
-
-        public new void Show() {
-            // 弹窗会阻塞，因此异步判断可以让里面可能出现的弹窗不阻塞后面的逻辑
-            BeginInvoke(new(() => {
-                if (_barCode != null) {
-                    ValidateBarCode(_barCode);
-                }
-            }));
-            base.Show();
-        }
-
-        public void ResizeSelf() {
-            CalculateDetailProperties();
-
-            Size mainSize = WidgetUtils.MainSize;
-            Padding contentPadding = ContentPanel.Padding;
-            int contentWidth = (int) (mainSize.Width * .7);
-            int contentHeight = 0;
-
-            int titleHeight = WidgetUtils.PopUpOrFloatingFormSubTitle();
-            int titleVPadding = titleHeight / 5;
-            Size titleSize = new(contentWidth - contentPadding.Size.Width, titleHeight);
-
-            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-            int boxPadding = boxHeight / 5;
-            int innerContentWidth = contentWidth - contentPadding.Size.Width;
-            Size boxSize = new(innerContentWidth - boxPadding * 2, boxHeight);
-
-            int productPanelHeight = (boxHeight + boxPadding * 2) * _productBarCodeContentPanel.Controls.Count;
-            int partsPanelHeight = (boxHeight + boxPadding * 2) * _partsBarCodeContentPanel.Controls.Count;
-
-            _productBarCodeTitle.Size = titleSize;
-            _partsBarCodeTitle.Size = titleSize;
-            _partsBarCodeTitle.Margin = new(0, titleVPadding, 0, 0);
-
-            foreach (Control ctrl in _productBarCodeContentPanel.Controls) {
-                CustomTextBoxButtonGroup box = (CustomTextBoxButtonGroup) ctrl;
-                box.Size = boxSize;
-                box.Margin = new(boxPadding);
-            }
-            _productBarCodeContentPanel.Size = new(innerContentWidth, productPanelHeight);
-
-            foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
-                CustomTextBoxButtonGroup box = (CustomTextBoxButtonGroup) ctrl;
-                box.Size = boxSize;
-                box.Margin = new(boxPadding);
-            }
-            _partsBarCodeContentPanel.Size = new(innerContentWidth, partsPanelHeight);
-
-            contentHeight += (titleHeight + titleVPadding) * 2 + contentPadding.Size.Height;
-            contentHeight += productPanelHeight + partsPanelHeight;
-            SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
-        }
-    }
-
     public class WorkingProcessPanel: CustomContentPanel {
         private readonly int _loopingInterval = 50;
-        public static readonly string LockedManually = "已手动锁止";
         public static readonly string UnlockedManually = "已手动解锁";
         public static readonly string TighteningDesc = "正在拧紧{0}号螺丝";
         public static readonly string LooseningDesc = "正在反松{0}号螺丝";
         public static readonly string LockedArmPosition = "力臂未在指定位置";
         public static readonly string AdminConfirmation = "需要管理员确认";
+        public static readonly string LockedArmDisconnected = "力臂连接异常";
+        public static readonly string LockedManually = "已手动锁止";
         public static readonly string LockedPsetSending = "正在下发程序号";
         public static readonly string LockedPsetNull = "{0}号螺丝未配置程序号";
         public static readonly string LockedPsetFailed = "{0}号螺丝程序号下发失败";

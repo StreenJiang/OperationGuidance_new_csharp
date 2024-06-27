@@ -13,7 +13,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Color _titleColor;
         private int _titleX;
         private int _titleY;
-        private bool? _operatorOpenning;
+        private bool _operatorOpenning = false;
 
         public BackCommonButton BackButton {
             get => _backButton;
@@ -31,52 +31,56 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             set => _titleColor = value;
         }
         public AWorkplaceContentPanel? Workplace { get => _workplace; set => _workplace = value; }
+        public bool OperatorOpenning {
+            get => _operatorOpenning;
+            set {
+                _operatorOpenning = value;
+                if (value) {
+                    _backButton.Label = "退出登录";
+                } else {
+                    _backButton.Label = "返回";
+                }
+            }
+        }
 
-        public WorkplaceTopBar(bool? operatorOpenning) : base() {
+        public WorkplaceTopBar() : base() {
             _title = "";
-            _operatorOpenning = operatorOpenning;
             _backButton = new() {
                 Parent = this,
+                Label = "返回",
             };
-            if (_operatorOpenning != null && _operatorOpenning.Value) {
-                _backButton.Label = "退出登录";
-            } else {
-                _backButton.Label = "返回";
-            }
             _backButton.Click += (sender, eventArgs) => {
                 if (_workplace != null && _workplace.Activated) {
                     bool yes = WidgetUtils.ShowConfirmPopUp("当前已激活任务，返回主界面将终止任务，确认返回？");
                     if (yes) {
-                        if (_operatorOpenning != null && _operatorOpenning.Value) {
-                            if (WidgetUtils.BackToLoginView != null) {
-                                MainUtils.ActionAfterLogout = CloseWorkplace;
-                                WidgetUtils.BackToLoginView(true);
-                            }
-                        } else {
-                            CloseWorkplace();
-                        }
+                        ExitConfirm();
                     }
                 } else {
-                    if (_operatorOpenning != null && _operatorOpenning.Value) {
-                        if (WidgetUtils.BackToLoginView != null) {
-                            MainUtils.ActionAfterLogout = CloseWorkplace;
-                            WidgetUtils.BackToLoginView(true);
-                        }
-                    } else {
-                        CloseWorkplace();
-                    }
+                    ExitConfirm();
                 }
             };
 
-            void CloseWorkplace() {
-                if (_workplace != null) {
-                    _workplace.Activated = false;
-                    if (WidgetUtils.MainPanel != null) {
-                        WidgetUtils.MainPanel.Visible = true;
-                    }
-                    Parent.Visible = false;
-                    _workplace.Dispose();
+        }
+
+        protected virtual void ExitConfirm() {
+            if (_operatorOpenning) {
+                if (WidgetUtils.BackToLoginView != null) {
+                    MainUtils.ActionAfterLogout = CloseWorkplace;
+                    WidgetUtils.BackToLoginView(true);
                 }
+            } else {
+                CloseWorkplace();
+            }
+        }
+
+        protected void CloseWorkplace() {
+            if (_workplace != null) {
+                _workplace.Activated = false;
+                if (WidgetUtils.MainPanel != null) {
+                    WidgetUtils.MainPanel.Visible = true;
+                }
+                Parent.Visible = false;
+                _workplace.Dispose();
             }
         }
 

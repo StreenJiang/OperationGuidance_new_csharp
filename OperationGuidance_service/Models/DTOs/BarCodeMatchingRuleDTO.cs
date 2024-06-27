@@ -3,6 +3,7 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class BarCodeMatchingRuleDTO: ADTOBase {
+        public string? name { get; set; }
         public int? length { get; set; }
         public string? end_char { get; set; }
         public string? key_position { get; set; }
