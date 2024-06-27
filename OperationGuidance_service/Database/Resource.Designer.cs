@@ -287,6 +287,29 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for screw_bit_counter
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS `screw_bit_counter`;
+        ///CREATE TABLE `screw_bit_counter`  (
+        ///  `id` int NOT NULL AUTO_INCREMENT,
+        ///  `mission_id` int NOT NULL,
+        ///  `bit_position` int NOT NULL,
+        ///  `max_num` int NOT NULL,
+        ///  `count_each_time` int NOT NULL,
+        ///  `current_counts` int NOT NULL,
+        ///  `clear_times` int NOT NULL,
+        ///  `user_id` int NOT NULL,
+        ///  `deleted` int NOT NULL,
+        ///  `creator` varchar(128) CHARACTER SET utf8m [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20240627 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240627", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -522,6 +545,50 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20240618 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20240618", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for screw_bit_counter
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS &quot;screw_bit_counter&quot;;
+        ///CREATE TABLE &quot;screw_bit_counter&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;mission_id&quot; integer NOT NULL,
+        ///  &quot;bit_position&quot; integer NOT NULL,
+        ///  &quot;max_num&quot; integer NOT NULL,
+        ///  &quot;count_each_time&quot; integer NOT NULL,
+        ///  &quot;current_counts&quot; integer NOT NULL,
+        ///  &quot;clear_times&quot; integer NOT NULL,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NU [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240627 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240627", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for screw_bit_counter
+        ///-- ----------------------------
+        ///IF EXISTS (SELECT * FROM sys.all_objects WHERE object_id = OBJECT_ID(N&apos;[dbo].[screw_bit_counter]&apos;) AND type IN (&apos;U&apos;))
+        ///	DROP TABLE [dbo].[screw_bit_counter]
+        ///GO
+        ///
+        ///CREATE TABLE [dbo].[screw_bit_counter] (
+        ///  [id] int  IDENTITY(1,1) NOT NULL,
+        ///  [mission_id] int  NOT NULL,
+        ///  [bit_position] int  NOT NULL,
+        ///  [max_num] int  NOT NULL,
+        ///  [count_each_time] int  NOT NULL,
+        ///  [current_counts] int  NOT NULL, [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlserver_20240627 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20240627", resourceCulture);
             }
         }
     }

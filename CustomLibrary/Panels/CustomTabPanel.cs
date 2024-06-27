@@ -61,7 +61,7 @@ namespace CustomLibrary.Panels {
                 }
                 if (_contentPanel.Controls.Count > 0) {
                     foreach (Control control in _contentPanel.Controls) {
-                        if (!control.IsDisposed && control.Visible 
+                        if (!control.IsDisposed && control.Visible
                                 && control is CustomContentPanelBase && control is not CustomContentPanel) {
                             control.Size = _contentPanel.Size;
                         }

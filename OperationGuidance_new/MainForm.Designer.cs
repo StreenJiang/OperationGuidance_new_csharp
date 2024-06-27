@@ -18,7 +18,6 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
-using LicenseLib;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -60,6 +59,9 @@ namespace OperationGuidance_new {
             String thisprocessname = Process.GetCurrentProcess().ProcessName;
             MainUtils.Self = this;
             // AllocConsole();
+
+            // Set icon
+            Icon = Properties.Resources.ico;
 
             // 先连接一下数据库，看看数据库是否正常
             MainUtils.CheckDBConnection();
@@ -133,7 +135,7 @@ namespace OperationGuidance_new {
                         }
                         MinimumSize = new Size(400, 300);
                         MaximumSize = screenSize;
-                        if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
+                        if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                             if (_operatorView != null) {
                                 _operatorView.Dispose();
                             }
@@ -200,7 +202,7 @@ namespace OperationGuidance_new {
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
-            if (SystemUtils.UserInfo.role_type == (int)Roles.OPERATOR) {
+            if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                 OperatorOpenning();
             } else {
                 // mainPanel
@@ -270,7 +272,7 @@ namespace OperationGuidance_new {
                                 Name = contentPanelTemp.Name
                             };
                         } else {
-                            AppVersion appVersion = (AppVersion)Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+                            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
                             Type type;
                             if (mainMenuConfig.ViewTypes.ContainsKey(appVersion)) {
                                 type = mainMenuConfig.ViewTypes[appVersion];
@@ -281,7 +283,7 @@ namespace OperationGuidance_new {
                             // TODO: License checking here
                             object instance = type.Assembly.CreateInstance(type.FullName);
                             if (instance is CustomContentPanel) {
-                                CustomContentPanel contentPanelTemp = (CustomContentPanel)instance;
+                                CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
                                 //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
                                 contentPanelTemp.Name = "mainContentPanel_" + mainMenuConfig.Id;
                                 if (contentPanelTemp.Controls.Count == 0) {
@@ -297,7 +299,7 @@ namespace OperationGuidance_new {
                                 };
                                 WidgetUtils.AddView(contentPanelTemp);
                             } else {
-                                CustomTabPanel childTapPanel = (CustomTabPanel)instance;
+                                CustomTabPanel childTapPanel = (CustomTabPanel) instance;
                                 CustomChildMenuFirstPanel childMenuPanel = new();
                                 CustomContentPanelBase childContentPanel = new();
                                 // childMenuPanel
@@ -352,7 +354,7 @@ namespace OperationGuidance_new {
                                                 Name = childContentPanelTemp.Name
                                             };
                                         } else if (childInstance is CustomContentPanel) {
-                                            CustomContentPanel childContentPanelTemp = (CustomContentPanel)childInstance;
+                                            CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
                                             //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
                                             childContentPanelTemp.Name = "childContentPanel_" + j;
                                             if (childContentPanelTemp.Controls.Count == 0) {
