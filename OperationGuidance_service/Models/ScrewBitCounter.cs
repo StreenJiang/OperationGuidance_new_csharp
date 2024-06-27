@@ -8,6 +8,7 @@ namespace OperationGuidance_service.Models {
         public int bit_position { get; set; }
         public int max_num { get; set; }
         public int current_counts { get; set; }
+        public int count_each_time { get; set; }
         public int clear_times { get; set; }
     }
 }

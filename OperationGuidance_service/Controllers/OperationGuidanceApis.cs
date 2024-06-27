@@ -50,6 +50,8 @@ namespace OperationGuidance_service.Controllers {
         private OuterDatabaseConfigGlbService _outerDatabaseConfigGlbService;
         [Autowired]
         private DapperDBService _dapperDBService;
+        [Autowired]
+        private ScrewBitCounterService _screwBitCounterService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -1306,8 +1308,41 @@ namespace OperationGuidance_service.Controllers {
 
         #region Screw bit counter related
         // Find by mission id
+        public FindScrewBitCounterByMissionIdRsp FindScrewBitCounterByMissionId(FindScrewBitCounterByMissionIdReq req) {
+            string sql = $"select * from {_screwBitCounterService.TableName} where {_screwBitCounterService.ConditionWithoutUserId} and mission_id = @mission_id";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("mission_id", req.MissionId);
+
+            List<ScrewBitCounter> screwBitCounters = _screwBitCounterService.FindBySql(sql, parameters);
+            List<ScrewBitCounterDTO> screwBitCounterDTOs = new();
+            CommonUtils.ObjectConverter<ScrewBitCounter, ScrewBitCounterDTO>(screwBitCounters, screwBitCounterDTOs);
+
+            return new() {
+                ScrewBitCounterDTOs = screwBitCounterDTOs,
+            };
+        }
         // Add or update
-        // Delete by Id
+        public AddOrUpdateScrewBitCounterRsp AddOrUpdateScrewBitCounter(AddOrUpdateScrewBitCounterReq req) {
+            ScrewBitCounter screwBitCounter = new();
+            CommonUtils.ObjectConverter<ScrewBitCounterDTO, ScrewBitCounter>(req.ScrewBitCounterDTO, screwBitCounter);
+
+            screwBitCounter = _screwBitCounterService.InsertOrUpdate(screwBitCounter);
+            ScrewBitCounterDTO screwBitCounterDTO = new();
+            CommonUtils.ObjectConverter<ScrewBitCounter, ScrewBitCounterDTO>(screwBitCounter, screwBitCounterDTO);
+
+            return new AddOrUpdateScrewBitCounterRsp(screwBitCounterDTO);
+        }
+        // Delete
+        public DeleteScrewBitCounterRsp DeleteScrewBitCounter(DeleteScrewBitCounterReq req) {
+            DeleteScrewBitCounterRsp rsp = new();
+            ScrewBitCounter screwBitCounter = new();
+            CommonUtils.ObjectConverter<ScrewBitCounterDTO, ScrewBitCounter>(req.ScrewBitCounterDTO, screwBitCounter);
+            if (!_screwBitCounterService.DeleteEntity(screwBitCounter)) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = "Delete failed, don't know what happened.";
+            }
+            return rsp;
+        }
         #endregion
     }
 }

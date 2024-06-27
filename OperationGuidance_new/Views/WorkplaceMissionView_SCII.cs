@@ -733,7 +733,7 @@ namespace OperationGuidance_new.Views {
         //         }
         //         changeCurrentPageAndInvalidate();
         //     };
-        //     _last.Click += (sender, eventArgs) => {
+        //     _last.ClicSk += (sender, eventArgs) => {
         //         _currentSideIndex = _missionImages.Count - 1;
         //         changeCurrentPageAndInvalidate();
         //     };
@@ -774,6 +774,7 @@ namespace OperationGuidance_new.Views {
         protected override void AdminPopUpExtraActions() {
             if (_adminPasswordPopUpForm != null && !_adminPasswordPopUpForm.IsDisposed) {
                 _adminPasswordPopUpForm.CloseButton.Enabled = false;
+                _adminPasswordPopUpForm.Buttons[1].Enabled = false;
             }
         }
 
@@ -792,6 +793,45 @@ namespace OperationGuidance_new.Views {
                     _apis.AddOrUpdateMissionRecord(new(_missionRecord));
                 }
             }
+        }
+
+        protected override bool ValidationBeforeActivatingMission() {
+            if (base.ValidationBeforeActivatingMission()) {
+                // Count screw bit used time
+                ScrewBitCounterDTO screwBitCounter;
+                if (!CountScrewBitUsedTime(out screwBitCounter)) {
+                    _adminConfirmed = false;
+                    OpenAdminPasswordPopUpForm($"【{screwBitCounter.bit_position}】号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。请输入管理员密码确认", false);
+                    if (_adminConfirmed.Value) {
+                        screwBitCounter.current_counts = 0;
+                        _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
+                    }
+                    return _adminConfirmed.Value;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {
+            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+
+            // Check first
+            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
+                if (sbc.current_counts + sbc.count_each_time > sbc.max_num) {
+                    screwBitCounter = sbc;
+                    return false;
+                }
+            }
+
+            // Update
+            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
+                sbc.current_counts += sbc.count_each_time;
+                _apis.AddOrUpdateScrewBitCounter(new(sbc));
+            }
+
+            screwBitCounter = new();
+            return true;
         }
 
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
