@@ -44,28 +44,32 @@ namespace OperationGuidance_service.Database {
 
                     // Execute scripts that didn't execute
                     List<string> newExecutedSqlFileName = new();
-                    List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                    foreach (string fileName in fileNames) {
-                        try {
-                            if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                logger.Info($"Not executed sql script[{fileName}] found");
-                                string[] batches = File.ReadAllText(sqlScriptPrefix).Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
-                                foreach (string batch in batches) {
-                                    if (!string.IsNullOrWhiteSpace(batch)) {
-                                        using (SqlCommand command = new SqlCommand(batch, conn)) {
-                                            command.ExecuteNonQuery();
+                    using (SqlCommand command = conn.CreateCommand()) {
+                        List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
+                        foreach (string fileName in fileNames) {
+                            try {
+                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
+                                    string? fileText = Resource.ResourceManager.GetString(fileName);
+                                    if (!string.IsNullOrEmpty(fileText)) {
+                                        logger.Info($"Not executed sql script[{fileName}] found");
+
+
+                                        string[] batches = fileText.Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
+                                        foreach (string batch in batches) {
+                                            if (!string.IsNullOrWhiteSpace(batch)) {
+                                                command.CommandText = batch;
+                                                command.ExecuteNonQuery();
+                                            }
                                         }
+
+                                        logger.Info($"Execute sql script[{fileName}] successfully");
+                                        newExecutedSqlFileName.Add(fileName);
                                     }
                                 }
-                                logger.Info($"Execute sql script[{fileName}] successfully");
-                                newExecutedSqlFileName.Add(fileName);
-
+                            } catch (Exception e) {
+                                logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                             }
-                        } catch (Exception e) {
-                            logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                         }
-                    }
-                    using (SqlCommand command = conn.CreateCommand()) {
                     }
 
                     if (newExecutedSqlFileName.Count > 0) {
