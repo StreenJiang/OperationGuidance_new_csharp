@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace OperationGuidance_new.Tasks {
-    public class ToolTask : ATaskBase {
+    public class ToolTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
@@ -109,7 +109,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                         } catch (SocketException se) {
-                            if (se.ErrorCode == (int)SocketError.TimedOut) {
+                            if (se.ErrorCode == (int) SocketError.TimedOut) {
                                 HeartBeatCounter += ReceiveTimeout;
                                 Console.WriteLine($"No data received... ");
                             } else {
