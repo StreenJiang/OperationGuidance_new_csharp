@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace OperationGuidance_new.Tasks {
-    public class ToolTask : ATaskBase {
+    public class ToolTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
@@ -73,12 +73,6 @@ namespace OperationGuidance_new.Tasks {
                                 } else if (_toolType is ToolSudongX7 toolX7) {
                                     socketClient.Send(MainUtils.ToBytes(command));
                                 }
-
-                                // byte[] msgBytes = new byte[1024 * 1024];
-                                // int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                // if (msgLen > 0) {
-                                //     AnalyzeData(msgBytes.Take(msgLen).ToArray());
-                                // }
                             }
                             // Check if it's time to send heart beating command
                             else if (HeartBeatCounter >= HeartBeatDelay) {
@@ -109,7 +103,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                         } catch (SocketException se) {
-                            if (se.ErrorCode == (int)SocketError.TimedOut) {
+                            if (se.ErrorCode == (int) SocketError.TimedOut) {
                                 HeartBeatCounter += ReceiveTimeout;
                                 Console.WriteLine($"No data received... ");
                             } else {
@@ -138,48 +132,52 @@ namespace OperationGuidance_new.Tasks {
             void AnalyzeData(byte[] msgBytes) {
                 // Analyse result
                 if (_toolType is ToolPFSeries toolPF2) {
-                    toolPF2.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                        if (heartIsBeating != null) {
-                            if (!heartIsBeating.Value) {
-                                throw new Exception("Heart is not beating...");
-                            } else {
-                                logger.Info("Heart beating....");
+                    toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                        await Task.Run(() => {
+                            if (heartIsBeating != null) {
+                                if (!heartIsBeating.Value) {
+                                    throw new Exception("Heart is not beating...");
+                                } else {
+                                    logger.Info("Heart beating....");
+                                }
                             }
-                        }
-                        if (pSetSendingOk != null) {
-                            PSetOk = pSetSendingOk.Value;
-                        }
-                        if (locked != null) {
-                            Locked = locked.Value;
-                        }
-                        if (dataReceived != null && dataReceived.Value) {
-                            // Have to lock before set wait count
-                            SendLock();
+                            if (pSetSendingOk != null) {
+                                PSetOk = pSetSendingOk.Value;
+                            }
+                            if (locked != null) {
+                                Locked = locked.Value;
+                            }
+                            if (dataReceived != null && dataReceived.Value) {
+                                // Have to lock before set wait count
+                                SendLock();
 
-                            WaitCurveTimesCount = WaitCurveTimes;
-                        }
-                        if (curveReceived != null && curveReceived.Value) {
-                            socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                            WaitCurveTimesCount--;
-                        }
+                                WaitCurveTimesCount = WaitCurveTimes;
+                            }
+                            if (curveReceived != null && curveReceived.Value) {
+                                socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                                WaitCurveTimesCount--;
+                            }
+                        });
                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    toolX7.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                        if (pSetSendingOk != null) {
-                            PSetOk = pSetSendingOk.Value;
-                        }
-                        if (locked != null) {
-                            Locked = locked.Value;
-                        }
-                        if (dataReceived != null && dataReceived.Value) {
-                            // Have to lock before set wait count
-                            SendLock();
+                    toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                        await Task.Run(() => {
+                            if (pSetSendingOk != null) {
+                                PSetOk = pSetSendingOk.Value;
+                            }
+                            if (locked != null) {
+                                Locked = locked.Value;
+                            }
+                            if (dataReceived != null && dataReceived.Value) {
+                                // Have to lock before set wait count
+                                SendLock();
 
-                            // WaitCurveTimesCount = WaitCurveTimes;
-                        }
-                        if (curveReceived != null && curveReceived.Value) {
-                            WaitCurveTimesCount--;
-                        }
+                                // WaitCurveTimesCount = WaitCurveTimes;
+                            }
+                            if (curveReceived != null && curveReceived.Value) {
+                                WaitCurveTimesCount--;
+                            }
+                        });
                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                 }
             }
@@ -264,7 +262,7 @@ namespace OperationGuidance_new.Tasks {
                                     // 5. send curve data receving enable message
                                     if (dataEnableMsgSuccess) {
                                         // Don't need to check result, because if PF6000 doesn't have any license for curve data, then it will return 0004 which means it failed, it can not retrieve any curve data
-                                        // SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
+                                        SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
                                     }
                                 }
                             }
