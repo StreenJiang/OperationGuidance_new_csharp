@@ -446,7 +446,7 @@ namespace OperationGuidance_new.Views {
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
                         // Set pset manualy if tool type is sudong x7
                         if (toolTask.ToolType is ToolSudongX7 toolX7) {
-                            dataDTO.parameter_set_number = currentBolt.BoltDTO.parameters_set.Value;
+                            dataDTO.parameter_set_number = currentBolt.CurrentParameterSet;
                         }
 
                         WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);

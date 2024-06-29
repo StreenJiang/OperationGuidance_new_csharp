@@ -15,12 +15,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
-        private readonly int PSetWaitTime = 500;
-        private readonly int WaitCurveTimes = 2;
+        private readonly int PSetWaitTime = 300;
         private int SendMessageRecevingCount = 0;
-        private int WaitCurveTimesCount = 0;
-        private int WaitTimes = 5;
-        private int WaitTimesCount = 0;
         private bool Locked = false;
         private bool? PSetOk = false;
         private Socket? socketClient = null;
@@ -60,36 +56,16 @@ namespace OperationGuidance_new.Tasks {
             Task.Run(async () => {
                 try {
                     while (Connected) {
-                        // Check if any command in queue
-                        if (WaitCurveTimesCount <= 0) {
-                            if (_commands.Count > 0) {
-                                // Reset heart beat counter
+                        // Check if it's time to send heart beating command
+                        if (HeartBeatCounter >= HeartBeatDelay) {
+                            // Only check hart beat interval if heart beat command is not null
+                            if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
+                                // Send heart beat command to controller
+                                SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
+                                logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
+                            } else {
+                                // Reset heart beat counter even no command has been sent
                                 HeartBeatCounter = 0;
-
-                                // Send command
-                                string command = _commands.Dequeue();
-                                if (_toolType is ToolPFSeries toolPF2) {
-                                    socketClient.Send(Encoding.ASCII.GetBytes(command));
-                                } else if (_toolType is ToolSudongX7 toolX7) {
-                                    socketClient.Send(MainUtils.ToBytes(command));
-                                }
-                            }
-                            // Check if it's time to send heart beating command
-                            else if (HeartBeatCounter >= HeartBeatDelay) {
-                                // Only check hart beat interval if heart beat command is not null
-                                if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
-                                    // Send heart beat command to controller
-                                    _commands.Enqueue(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                                    logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
-                                } else {
-                                    // Reset heart beat counter even no command has been sent
-                                    HeartBeatCounter = 0;
-                                }
-                            }
-                        } else {
-                            WaitTimesCount++;
-                            if (WaitTimesCount > WaitTimes) {
-                                WaitCurveTimesCount--;
                             }
                         }
 
@@ -150,12 +126,9 @@ namespace OperationGuidance_new.Tasks {
                             if (dataReceived != null && dataReceived.Value) {
                                 // Have to lock before set wait count
                                 SendLock();
-
-                                WaitCurveTimesCount = WaitCurveTimes;
                             }
                             if (curveReceived != null && curveReceived.Value) {
                                 socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                                WaitCurveTimesCount--;
                             }
                         });
                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
@@ -171,11 +144,8 @@ namespace OperationGuidance_new.Tasks {
                             if (dataReceived != null && dataReceived.Value) {
                                 // Have to lock before set wait count
                                 SendLock();
-
-                                // WaitCurveTimesCount = WaitCurveTimes;
                             }
                             if (curveReceived != null && curveReceived.Value) {
-                                WaitCurveTimesCount--;
                             }
                         });
                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
@@ -294,7 +264,21 @@ namespace OperationGuidance_new.Tasks {
         }
         private void SendCommand(string command) {
             if (!_commands.Contains(command)) {
+                // Enqueue to avoid duplicated calls
                 _commands.Enqueue(command);
+
+                // Reset heart beat counter
+                HeartBeatCounter = 0;
+
+                // Send command
+                if (_toolType is ToolPFSeries toolPF2) {
+                    socketClient.Send(Encoding.ASCII.GetBytes(command));
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    socketClient.Send(MainUtils.ToBytes(command));
+                }
+
+                // Dequeue to allow new command to enqueue
+                _commands.Dequeue();
             }
         }
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
@@ -325,7 +309,7 @@ namespace OperationGuidance_new.Tasks {
             PSetOk = null;
             if (Connected) {
                 await Task.Run(async () => {
-                    // _commands.Enqueue(_toolType.COMMAND_PSET_ASCII.GetMessage(pSetNumber.ToString("000")));
+                    logger.Info($"Setting pset to [{pSetNumber}]...");
                     if (_toolType is ToolPFSeries toolPF) {
                         SendCommand(toolPF.GetPSetCommand(pSetNumber));
                     } else if (_toolType is ToolSudongX7 toolX7) {
@@ -339,6 +323,8 @@ namespace OperationGuidance_new.Tasks {
                         waitTimes++;
                         await Task.Delay(PSetWaitTime);
                     }
+
+                    logger.Info($"Setting pset [{PSetOk}]!");
                     return PSetOk != null && PSetOk.Value;
                 });
             }
@@ -348,6 +334,7 @@ namespace OperationGuidance_new.Tasks {
         public void SendLock() {
             if (Connected && !Locked) {
                 if (_toolType is ToolPFSeries toolPF) {
+                    logger.Info($"Locking tool...");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
@@ -359,6 +346,7 @@ namespace OperationGuidance_new.Tasks {
         public void SendUnlock() {
             if (Connected && Locked) {
                 if (_toolType is ToolPFSeries toolPF) {
+                    logger.Info($"Unlocking tool...");
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());

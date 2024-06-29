@@ -290,24 +290,35 @@ namespace OperationGuidance_new.Views {
             _topRightBottom.Controls.Add(_pset);
         }
 
+        protected override void ActionAfterSwitchMission() {
+            base.ActionAfterSwitchMission();
+            ResetMissionDetails();
+        }
+
         private void ResetMissionDetails() {
             SetTodayData();
             SetPset();
         }
         private void SetTodayData() {
-            List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() { UserId = SystemUtils.LoggedUserId, Date = DateTime.Now }).MissionRecordDTOs;
-            int sum = missionRecordDTOs.Count;
-            int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
-            double ngRate;
-            if (sum == 0) {
-                ngRate = 0;
-            } else {
-                ngRate = Math.Round((sum - okSum) / (double) sum, 4) * 100;
+            int sum = 0;
+            int okSum = 0;
+            double ngRate = 0;
+
+            if (_mission.id > 0) {
+                List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() {
+                    Date = DateTime.Now,
+                    MissionId = _mission.id,
+                }).MissionRecordDTOs;
+                sum = missionRecordDTOs.Count;
+                okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
+                if (sum > 0) {
+                    ngRate = (sum - okSum) / (double) sum * 100;
+                }
             }
 
             _productSumPerDay.SetValue(0, sum + "");
             _okSumPerDay.SetValue(0, okSum + "");
-            _ngRatePerDay.SetValue(0, ngRate + "%");
+            _ngRatePerDay.SetValue(0, $"{ngRate.ToString("F2")}%");
         }
         private void SetPset() => SetPset(null);
         private void SetPset(string? customMsg) {
@@ -859,7 +870,9 @@ namespace OperationGuidance_new.Views {
                         _adminConfirmed = null;
                         screwBitCounter.current_counts = 0;
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
-                        return true;
+
+                        // Check again to ensure no more screw bit needs to be replaced
+                        return ValidationBeforeActivatingMission();
                     }
                     return false;
                 }
@@ -900,6 +913,8 @@ namespace OperationGuidance_new.Views {
                     try {
                         ToolTask toolTask = _toolTasks[deviceId];
                         if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
+                            logger.Info($"Action running after received tightening data...");
+
                             int workstationId = toolTask.WorkstationId.Value;
 
                             List<int> workstationIds = new();
@@ -919,6 +934,10 @@ namespace OperationGuidance_new.Views {
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
+                            // Set pset manualy if tool type is sudong x7
+                            if (toolTask.ToolType is ToolSudongX7 toolX7) {
+                                dataDTO.parameter_set_number = currentBolt.CurrentParameterSet;
+                            }
 
                             WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
                             dataDTO.workstation_id = workstationDTO.id;
@@ -930,9 +949,8 @@ namespace OperationGuidance_new.Views {
                             dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
                             dataDTO.product_sied_id = _sides[_currentSideIndex].id;
                             dataDTO.bolt_serial_num = boltDTO.serial_num;
-                            MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
-                            dataDTO.mission_record_id = missionRecord.id;
-                            dataDTO.vin_number = missionRecord.product_bar_code;
+                            dataDTO.mission_record_id = _missionRecord.id;
+                            dataDTO.vin_number = _missionRecord.product_bar_code;
                             if (_realTimeArmCoordinates != null) {
                                 dataDTO.arm_position = _realTimeArmCoordinates.ToString();
                             }

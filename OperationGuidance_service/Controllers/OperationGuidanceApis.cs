@@ -672,6 +672,10 @@ namespace OperationGuidance_service.Controllers {
                 condition += " and user_id = @userId";
                 parameters.Add("userId", req.UserId.Value);
             }
+            if (req.MissionId != null) {
+                condition += " and mission_id = @mission_id";
+                parameters.Add("mission_id", req.MissionId.Value);
+            }
 
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();

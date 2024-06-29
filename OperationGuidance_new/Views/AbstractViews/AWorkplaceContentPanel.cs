@@ -405,6 +405,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
                     SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
                     popUpForm.Hide();
+
+                    ActionAfterSwitchMission();
                 }
             };
             popUpForm.AddButton("关闭").Click += (s, e) => {
@@ -425,6 +427,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             popUpForm.Show();
         }
+
+        protected virtual void ActionAfterSwitchMission() {
+            // If is self looping mode, then activate mission automatically
+            ActivateMissionAutomatically();
+        }
+
         private void PopUpSideListForm(CommonButton sidesDetialsBtn) {
             _sidePopUpForm = new(this) {
                 Title = "产品面详情",
@@ -445,9 +453,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             SetProductImagePanel();
             RefreshImageDisplayPanel();
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
-
-            // If is self looping mode, then activate mission automatically
-            ActivateMissionAutomatically();
         }
         public virtual void ChangeSideAndInvalidate() {
             // List<BoltButton> currentSideBolts;
@@ -1316,7 +1321,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             StartSetterSelectorTask();
         }
 
-        protected virtual void ActivateMissionAutomatically() {
+        protected virtual async void ActivateMissionAutomatically() {
+            // Wait for .5 seconds
+            await Task.Delay(500);
+
             // If is self looping mode, then activate mission automatically
             if (MainUtils.IsMissionSelfLoopingModeEnabled() && _mission.id > 0) {
                 ActivateMission();
@@ -1697,6 +1705,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         _arrangerIds.Add(boltDTO.arranger_id2.Value);
                     }
 
+                    logger.Info($"Sending signal(s) to arranger(s) for specification(s) = [{string.Join(", ", _specifications)}]...");
+
                     // Do action if specifications is not equal to 0
                     if (_specifications.Count > 0) {
                         // Initialize variables
@@ -1745,6 +1755,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             bool? ok = isOks[(int) position - 1];
                             if (ok != null) {
                                 _arrangerPositionOk[position] = ok.Value;
+                                logger.Info($"Position for specification sent OK!");
                             }
                         }
                         _arrangerPositionTimedOut = isTimedOut;
@@ -1864,69 +1875,70 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
 
-        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
-            lock (DataStorageLockObj) {
-                List<string>? headers = null;
-                string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                // 检查当前文件是否存在
-                bool textFileExists = File.Exists(textFilePath);
-                bool excelFileExists = File.Exists(excelFilePath);
-                // 从配置文件读取配置
-                List<int> sortConfig = MainUtils.GetSortConfig();
-                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                // 检查当前是否存在正在使用的字段配置
-                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                    sortConfigCurr = sortConfig;
-                    MainUtils.SetSortConfigCurr(sortConfigCurr);
-                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                }
-                // 组装数据
-                List<Dictionary<int, object?>> dataWithConfigFields = new();
-                OperationDataVO dataFormatted = new();
-                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                Dictionary<int, object?> record = new();
-                for (int i = 0; i < propertyNames.Count; i++) {
-                    string pName = propertyNames[i];
-                    PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
-                    if (propertyInfo != null) {
-                        record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+        protected virtual async void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            await Task.Run(() => {
+                BeginInvoke(() => {
+                    // 显示完后立马存入数据库
+                    currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+
+                    // 最后再存进本地文件
+                    List<string>? headers = null;
+                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                    // 检查当前文件是否存在
+                    bool textFileExists = File.Exists(textFilePath);
+                    bool excelFileExists = File.Exists(excelFilePath);
+                    // 从配置文件读取配置
+                    List<int> sortConfig = MainUtils.GetSortConfig();
+                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                    // 检查当前是否存在正在使用的字段配置
+                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                        sortConfigCurr = sortConfig;
+                        MainUtils.SetSortConfigCurr(sortConfigCurr);
+                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                     }
-                }
-                dataWithConfigFields.Add(record);
-                // 组装最终数据
-                List<List<object?>> finalData = new();
-                dataWithConfigFields.ForEach(dict => {
-                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                });
-                // 写入数据
-                // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
-                // if (succeed) {
-                //     _apis.BatchAddOperationData(new(data));
-                //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                // } else {
-                //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
-                // }
+                    // 组装数据
+                    List<Dictionary<int, object?>> dataWithConfigFields = new();
+                    OperationDataVO dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                    Dictionary<int, object?> record = new();
+                    for (int i = 0; i < propertyNames.Count; i++) {
+                        string pName = propertyNames[i];
+                        PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
+                        if (propertyInfo != null) {
+                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+                        }
+                    }
+                    dataWithConfigFields.Add(record);
+                    // 组装最终数据
+                    List<List<object?>> finalData = new();
+                    dataWithConfigFields.ForEach(dict => {
+                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                    });
+                    // 写入数据
+                    // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                    // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
+                    // if (succeed) {
+                    //     _apis.BatchAddOperationData(new(data));
+                    //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    // } else {
+                    //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
+                    // }
 
-                // 先将组装好的VOs加入到实时显示数据列表中
-                _tighteningDataVOs.Add(dataFormatted);
-                RefreshTighteningDataPanel();
-                // 显示完后立马存入数据库
-                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+                    // 先将组装好的VOs加入到实时显示数据列表中
+                    _tighteningDataVOs.Add(dataFormatted);
+                    RefreshTighteningDataPanel();
 
-                // 最后再存进本地文件
-                Task.Run(() => {
                     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                     finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
                 });
-            }
+            });
         }
 
         protected void RefreshTighteningDataPanel() {
@@ -1936,14 +1948,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async void TerminateMission(WorkplaceProcessStatus status) {
+            // Lock all tools
+            LockAllTools();
+
             bool resetToDefault = status == WorkplaceProcessStatus.UNACTIVATED;
 
             // Reset variables
             _arrangerNeeded = false;
             _setterSelectorNeeded = false;
-
-            // Lock all tools
-            LockAllTools();
 
             // Change mission status
             _activated = false;
@@ -1972,22 +1984,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset current operation data
             currentOperationData = null;
 
-            // Wait for .5 seconds
-            await Task.Delay(500);
-
             // If is self looping mode, then activate mission automatically
             ActivateMissionAutomatically();
         }
 
-        protected void LockAllTools() {
-            Task.Run(async () => {
+        protected async void LockAllTools() {
+            await Task.Run(() => {
                 // Lock multiple times to ensure lock correctly
                 int lockTimesSum = 3;
                 int lockTimes = 0;
                 while (lockTimes < lockTimesSum) {
                     _toolTasks.Values.ToList().ForEach(toolTask => toolTask.SendLock());
                     lockTimes++;
-                    await Task.Delay(200);
                 }
             });
         }
