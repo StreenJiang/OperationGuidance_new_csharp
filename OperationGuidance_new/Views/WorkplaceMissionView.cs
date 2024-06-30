@@ -404,6 +404,8 @@ namespace OperationGuidance_new.Views {
 
                 try {
                     ToolTask toolTask = _toolTasks[deviceId];
+                    // Lock first
+                    toolTask.SendLock();
                     if (toolTask.WorkstationId != null) {
                         int workstationId = toolTask.WorkstationId.Value;
 
@@ -520,12 +522,6 @@ namespace OperationGuidance_new.Views {
                                 RemoveInformationMsg(_workingProcessPanel.NGReasons);
                                 _workingProcessPanel.NGReasons = null;
 
-                                // Lock the device
-                                // if (_locating_enabled) {
-                                //     toolTask.SendLock();
-                                // }
-                                // Task already did lock
-
                                 currentBolt.BoltStatus = BoltStatus.DONE;
 
                                 // Check next index
@@ -584,12 +580,6 @@ namespace OperationGuidance_new.Views {
                                     }
                                 }
                             } else {
-                                // Lock first
-                                if (_locating_enabled) {
-                                    // Lock all tools here
-                                    _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
-                                }
-
                                 // Change bolt status
                                 currentBolt.BoltStatus = BoltStatus.ERROR;
 

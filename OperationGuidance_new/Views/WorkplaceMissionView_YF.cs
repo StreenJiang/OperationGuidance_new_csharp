@@ -832,9 +832,16 @@ namespace OperationGuidance_new.Views {
 
         // 读取到控制器传回的数据后进行处理
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
-            await Task.Run(() => {
-                BeginInvoke(async () => {
+            BeginInvoke(async () => {
+                // Nonactivated or finished will not handle any received data
+                if (!_activated) {
+                    return;
+                }
+
+                try {
                     ToolTask toolTask = _toolTasks[deviceId];
+                    // Lock first
+                    toolTask.SendLock();
                     if (toolTask.WorkstationId != null) {
                         int workstationId = toolTask.WorkstationId.Value;
 
@@ -1073,7 +1080,9 @@ namespace OperationGuidance_new.Views {
                             }
                         }
                     }
-                });
+                } catch (Exception e) {
+                    logger.Error($"Error occurred while handling tightening data, e: {e}");
+                }
             });
         }
 

@@ -123,10 +123,7 @@ namespace OperationGuidance_new.Tasks {
                             if (locked != null) {
                                 Locked = locked.Value;
                             }
-                            if (dataReceived != null && dataReceived.Value) {
-                                // Have to lock before set wait count
-                                SendLock();
-                            }
+                            if (dataReceived != null && dataReceived.Value) { }
                             if (curveReceived != null && curveReceived.Value) {
                                 socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
                             }
@@ -141,12 +138,8 @@ namespace OperationGuidance_new.Tasks {
                             if (locked != null) {
                                 Locked = locked.Value;
                             }
-                            if (dataReceived != null && dataReceived.Value) {
-                                // Have to lock before set wait count
-                                SendLock();
-                            }
-                            if (curveReceived != null && curveReceived.Value) {
-                            }
+                            if (dataReceived != null && dataReceived.Value) { }
+                            if (curveReceived != null && curveReceived.Value) { }
                         });
                     }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                 }

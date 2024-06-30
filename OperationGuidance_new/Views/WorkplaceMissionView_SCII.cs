@@ -912,6 +912,8 @@ namespace OperationGuidance_new.Views {
 
                     try {
                         ToolTask toolTask = _toolTasks[deviceId];
+                        // Lock first
+                        toolTask.SendLock();
                         if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
                             logger.Info($"Action running after received tightening data...");
 
@@ -1009,12 +1011,6 @@ namespace OperationGuidance_new.Views {
                                     RemoveInformationMsg(_workingProcessPanel.NGReasons);
                                     _workingProcessPanel.NGReasons = null;
 
-                                    // Lock the device
-                                    // if (_locating_enabled) {
-                                    //     toolTask.SendLock();
-                                    // }
-                                    // Task already did lock
-
                                     currentBolt.BoltStatus = BoltStatus.DONE;
                                     currentBolt.Label = data.torque.ToString("0.00");
 
@@ -1044,42 +1040,31 @@ namespace OperationGuidance_new.Views {
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
-                                    // Lock first
-                                    if (_locating_enabled) {
-                                        // Lock all tools here
-                                        _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
-                                    }
-
                                     // Change bolt status
                                     currentBolt.BoltStatus = BoltStatus.ERROR;
 
                                     // Count ng times
                                     currentBolt.NgTimes++;
 
+                                    // Set custom error message
+                                    _workingProcessPanel.NGReasons = errorMsg;
+                                    AddInformationMsg(_workingProcessPanel.NGReasons);
+
                                     // Mission failed
                                     if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
-                                        // Set custom error message
-                                        _workingProcessPanel.NGReasons = errorMsg;
-
                                         // 重置任务信息
                                         ResetMissionDetails();
 
                                         // 记录数据
                                         StoreTighteningData(dataDTO);
 
+                                        // Stop the mission
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
 
                                         // 先记录数据再弹出提示
                                         // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                         MissionNGConfirmPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败。请输入管理员密码");
                                     } else {
-                                        // // 扭矩角度数据颜色改成红色
-                                        // _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                        // _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-
-                                        _workingProcessPanel.NGReasons = errorMsg;
-                                        AddInformationMsg(_workingProcessPanel.NGReasons);
-
                                         _needLoosening = true;
                                         _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
 
@@ -1095,6 +1080,7 @@ namespace OperationGuidance_new.Views {
                                             BoltNGConfirmPopUp();
                                         }
                                     }
+
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;
                                 }
                             } else {
