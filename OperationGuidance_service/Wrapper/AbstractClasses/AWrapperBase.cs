@@ -48,12 +48,16 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
                     conn.Execute(sql, entity);
-                    return conn.QueryFirst<T>(newEntitySql, entity);
+                    int id = conn.QueryFirst<int>(newEntitySql, entity);
+                    entity.id = id;
+                    return entity;
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
                 _conn.Execute(sql, entity, _transaction);
-                return _conn.QueryFirst<T>(newEntitySql, entity, _transaction);
+                int id = _conn.QueryFirst<int>(newEntitySql, entity, _transaction);
+                entity.id = id;
+                return entity;
             }
         }
 
@@ -188,7 +192,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
         private string GenerateQueryNewestSql(T entity) {
             string tableName = GetTableName();
-            return $"select * from {tableName} where {nameof(entity.id)} = (select max(id) from {tableName} where {CommonCondition(entity)})";
+            return $"select id from {tableName} where {nameof(entity.id)} = (select max(id) from {tableName} where {CommonCondition(entity)})";
         }
 
         private string GenerateUpdateSql(T entity) {

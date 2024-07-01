@@ -2,13 +2,12 @@
 using CustomLibrary.Utils;
 using System.Drawing.Drawing2D;
 
-namespace CustomLibrary.Panels
-{
+namespace CustomLibrary.Panels {
     public class CustomMainMenuPanel: CustomMenuPanelBase {
         private Image? _mainMenuLogo;
         private Image? _mainMenuLogoShowing;
         private Point? _mainMenuLogoLocation;
- 
+
         public Image? MainMenuLogo {
             get => _mainMenuLogo;
             set => _mainMenuLogo = value;
@@ -51,9 +50,11 @@ namespace CustomLibrary.Panels
         }
 
         protected override void ResizeButtons() {
-            Size newButtonSize = new(this.Height, this.Height);
+            int margin = (int) (Height * .06);
+            int newBtnSide = Height - margin * 2;
             foreach (Control button in this.Controls) {
-                button.Size = newButtonSize;
+                button.Size = new(newBtnSide, newBtnSide);
+                button.Margin = new(margin);
             }
         }
 

@@ -1,26 +1,14 @@
 ﻿using CustomLibrary.Configs;
 using CustomLibrary.Utils;
-using System.Drawing.Drawing2D;
 
 namespace CustomLibrary.Buttons {
     public class CustomChildMenuFirstButton: CustomMenuButton {
-        private const float _imageSideRatio = 0.37F;
-        private const float _imageSideRatioOnlyIcon = 0.4F;
-        private Color _linerColorLeft;
-        private Color _linerColorRight;
+        private const float _imageSideRatio = 0.42F;
+        private const float _imageSideRatioOnlyIcon = 0.45F;
 
-        public Color LinerColorLeft {
-            get => _linerColorLeft;
-            set => _linerColorLeft = value;
-        }
-        public Color LinerColorRight {
-            get => _linerColorRight;
-            set => _linerColorRight = value;
-        }
-
-        public CustomChildMenuFirstButton(Color linerColorLeft, Color linerColorRight) {
-            _linerColorLeft = linerColorLeft;
-            _linerColorRight = linerColorRight;
+        protected override void OnSizeChanged(EventArgs e) {
+            ConerRadius = Height / 7;
+            base.OnSizeChanged(e);
         }
 
         protected override void PaintAfter(PaintEventArgs e) {
@@ -32,30 +20,6 @@ namespace CustomLibrary.Buttons {
                 } else {
                     ExtraSize = new(ExtraSize.Width + BarThickness / 2, ExtraSize.Height);
                 }
-
-                // Recalcualte toggle bar and redraw
-                Rectangle rect = new(ClientRectangle.Location, ClientRectangle.Size);
-                if (ToggleBar && ToggleBarRect != null) {
-                    Rectangle rectT = ToggleBarRect.Value;
-                    switch (ToggleBarDirection) {
-                        case ToggleBarDirectionEnum.TOP:
-                        case ToggleBarDirectionEnum.BOTTOM:
-                            rect.Height -= rectT.Height;
-                            if (rectT.Y == 0) {
-                                rect.Y -= rectT.Height;
-                            }
-                            break;
-                        case ToggleBarDirectionEnum.LEFT:
-                        case ToggleBarDirectionEnum.RIGHT:
-                            rect.Width -= rectT.Width;
-                            if (rectT.X == 0) {
-                                rect.X = rectT.Width;
-                            }
-                            break;
-                    }
-                }
-                Brush b = new LinearGradientBrush(rect, _linerColorLeft, _linerColorRight, LinearGradientMode.Horizontal);
-                e.Graphics.FillRectangle(b, rect);
             }
             base.PaintAfter(e);
         }
@@ -76,9 +40,9 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (Label != null) {
-                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .275F, FontStyle.Bold, GraphicsUnit.Pixel);
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .315F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
-                LabelX = (int) (Height * 0.475 + Width * .1);
+                LabelX = (int) (Height * 0.75 + Width * .1);
                 LabelY = (Height - Font.Height) / 2;
             }
         }

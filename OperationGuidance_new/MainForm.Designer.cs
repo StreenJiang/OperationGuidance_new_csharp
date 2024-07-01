@@ -251,7 +251,7 @@ namespace OperationGuidance_new {
                 List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
                 for (int i = 0; i < menuCongfigs.Count; i++) {
                     MenuConfig mainMenuConfig = menuCongfigs[i];
-                    CustomMainMenuButton mainMenuButton = new(ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_UP, ColorConfigs.COLOR_MAIN_MENU_BACKGROUND_TOGGLED_DOWN);
+                    CustomMainMenuButton mainMenuButton = new();
                     mainMenuButton.Name = "mainMenuButton_" + mainMenuConfig.Id;
                     mainMenuButton.Icon = mainMenuConfig.Icon;
                     mainMenuButton.Label = mainMenuConfig.Name;
@@ -322,7 +322,7 @@ namespace OperationGuidance_new {
                                 List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
                                 for (int j = 0; j < childMenuConfigs.Count; j++) {
                                     MenuConfig childMenuConfig = childMenuConfigs[j];
-                                    CustomChildMenuFirstButton childMenuFirstButton = new(ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_LEFT, ColorConfigs.COLOR_CHILD_MENU_BACKGROUND_TOGGLED_RIGHT);
+                                    CustomChildMenuFirstButton childMenuFirstButton = new();
                                     childMenuFirstButton.Name = "childMenuFirstButton_" + childMenuConfig.Id;
                                     childMenuFirstButton.Icon = childMenuConfig.Icon;
                                     childMenuFirstButton.Label = childMenuConfig.Name;

@@ -18,8 +18,8 @@ namespace CustomLibrary.Buttons.AbstractClasses {
         private ToggleBarDirectionEnum? _toggleBarDirection;
         private Rectangle? toggleBarRect;
         private int _barThickness;
-        private const float _toggleBarHorizontalHeightRatio = 0.14F;
-        private const float _toggleBarVerticalHeightRatio = 0.145F;
+        private const float _toggleBarHorizontalHeightRatio = 0.125F;
+        private const float _toggleBarVerticalHeightRatio = 0.175F;
         private Color? _toggledColor;
         private Color? _saveBackColor;
         private bool _isMouseIn;
@@ -185,18 +185,21 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             if (_toggleButton && _toggleBar) {
                 if (_toggleBar) {
                     // Draw toggle bar if needed
+                    int barHeight = (int) (Height * .7);
                     int coordinate = _conerRadius > 0 ? 1 : 0;
                     if (_toggleBarDirection == null) {
                         _toggleBarDirection = ToggleBarDirectionEnum.LEFT;
                     }
                     switch (_toggleBarDirection) {
                         case ToggleBarDirectionEnum.LEFT:
+                            coordinate += (Height - barHeight) / 2;
                             _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
-                            toggleBarRect = new Rectangle(coordinate, coordinate, _barThickness, Height);
+                            toggleBarRect = new Rectangle(coordinate, coordinate, _barThickness, barHeight);
                             break;
                         case ToggleBarDirectionEnum.RIGHT:
+                            coordinate += (Height - barHeight) / 2;
                             _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
-                            toggleBarRect = new Rectangle(Width - _barThickness - coordinate, coordinate, _barThickness, Height);
+                            toggleBarRect = new Rectangle(Width - _barThickness - coordinate, coordinate, _barThickness, barHeight);
                             break;
                         case ToggleBarDirectionEnum.BOTTOM:
                             _barThickness = (int) (Height * _toggleBarHorizontalHeightRatio);
@@ -262,7 +265,8 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                         BackColor = _toggledColor.Value;
                     }
                     if (_toggleBar && toggleBarRect != null) {
-                        e.Graphics.FillRectangle(new SolidBrush(_toggleBarColor == null ? ForeColor : _toggleBarColor.Value), toggleBarRect.Value);
+                        GraphicsPath graphicsPath = WidgetUtils.RoundedRect(toggleBarRect.Value, (int) (ConerRadius * .85));
+                        e.Graphics.FillPath(new SolidBrush(_toggleBarColor == null ? ForeColor : _toggleBarColor.Value), graphicsPath);
                     }
                 } else {
                     if (_saveBackColor != null) {

@@ -5,7 +5,7 @@ using CustomLibrary.Utils;
 namespace CustomLibrary.Panels {
     public class CustomChildMenuFirstPanel: CustomMenuPanelBase {
         #region Fields
-        private const float _childFirstButtonHeightRatio = 0.07F;
+        private const float _childFirstButtonHeightRatio = 0.075F;
         private bool _needFoldButton;
         private bool _isFolded;
         private Panel? _foldButtonPanel;
@@ -134,7 +134,10 @@ namespace CustomLibrary.Panels {
                 _userInfoPanel.Size = new(Width, Width);
             }
             // Resize buttons
-            Size newButtonSize = new(this.Width, (int) (this.Height * _childFirstButtonHeightRatio));
+            int btnWholeHeight = (int) (this.Height * _childFirstButtonHeightRatio);
+            int margin = (int) (btnWholeHeight * .125);
+            int newBtnWidth = Width - margin * 2;
+            int newBtnHeight = btnWholeHeight - margin * 2;
             _allMenuButtonHeight = 0;
             foreach (Control button in this.Controls) {
                 if (button is UserInfoPanel panel) {
@@ -149,8 +152,9 @@ namespace CustomLibrary.Panels {
                     }
                     continue;
                 }
-                button.Size = newButtonSize;
-                _allMenuButtonHeight += newButtonSize.Height;
+                button.Size = new(newBtnWidth, newBtnHeight);
+                button.Margin = new(margin);
+                _allMenuButtonHeight += btnWholeHeight;
             }
         }
         #endregion

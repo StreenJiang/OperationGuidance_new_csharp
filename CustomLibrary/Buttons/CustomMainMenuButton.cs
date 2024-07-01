@@ -1,42 +1,19 @@
 ﻿using CustomLibrary.Configs;
 using CustomLibrary.Utils;
-using System.Drawing.Drawing2D;
 
 namespace CustomLibrary.Buttons {
     public class CustomMainMenuButton: CustomMenuButton {
-        private const float _imageSideRatio = 0.33F;
-        private const float _imageSideRatioOnlyIcon = 0.45F;
+        private const float _imageSideRatio = 0.335F;
+        private const float _imageSideRatioOnlyIcon = 0.455F;
         private int _gapBetweenImageAndText;
-        private Color _linerColorUp;
-        private Color _linerColorDown;
         private bool _openFirst = false;
 
-        public CustomMainMenuButton(Color linerColorUp, Color linerColorDown) {
-            this._linerColorUp = linerColorUp;
-            this._linerColorDown = linerColorDown;
-        }
-
-        public Color LinerColorUp {
-            get => this._linerColorUp;
-            set => this._linerColorUp = value;
-        }
-        public Color LinerColorDown {
-            get => this._linerColorDown;
-            set => this._linerColorDown = value;
-        }
         public bool OpenFirst { get => _openFirst; set => _openFirst = value; }
 
         protected override void OnSizeChanged(EventArgs e) {
-            _gapBetweenImageAndText = this.Height / 20;
+            _gapBetweenImageAndText = this.Height / 15;
+            ConerRadius = Height / 9;
             base.OnSizeChanged(e);
-        }
-
-        protected override void PaintAfter(PaintEventArgs e) {
-            if (Toggled) {
-                Brush b = new LinearGradientBrush(ClientRectangle, _linerColorUp, _linerColorDown, LinearGradientMode.Vertical);
-                e.Graphics.FillRectangle(b, this.ClientRectangle);
-            }
-            base.PaintAfter(e);
         }
 
         protected override void ResizeIconImage() {
@@ -55,7 +32,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .15F, FontStyle.Bold, GraphicsUnit.Pixel);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .155F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
                 int newImageSide = CalcNewImageSide();
                 using (Graphics g = CreateGraphics()) {
