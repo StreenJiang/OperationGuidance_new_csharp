@@ -266,8 +266,6 @@ namespace OperationGuidance_new {
                             int vPadding = contentPanelTemp.Height / 2;
                             contentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                             contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
-                            contentPanelTemp.ConerRadius = WidgetUtils.ContainerRadius();
-                            contentPanelTemp.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
                             mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, contentPanelTemp, false, true) {
                                 Name = contentPanelTemp.Name
                             };

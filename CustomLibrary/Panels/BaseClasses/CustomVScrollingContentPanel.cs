@@ -35,9 +35,6 @@ namespace CustomLibrary.Panels.BaseClasses {
                 PenBorderColor = innerBorderColor,
                 PaddingWithoutBorder = paddingWithoutBorder,
             };
-            if (innerBorderColor == null) {
-                _outerPanel.PaddingWithoutBorder = true;
-            }
             _innerPanel = new() {
                 Margin = new(0),
                 Parent = _outerPanel,
