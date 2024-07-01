@@ -266,8 +266,10 @@ namespace OperationGuidance_new {
                             int vPadding = contentPanelTemp.Height / 2;
                             contentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                             contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
+                            contentPanelTemp.ConerRadius = WidgetUtils.ContainerRadius();
+                            contentPanelTemp.BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
                             mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-                                ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
+                                null, contentPanelTemp
                             ) {
                                 Name = contentPanelTemp.Name
                             };
@@ -280,7 +282,6 @@ namespace OperationGuidance_new {
                                 type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
                             }
 
-                            // TODO: License checking here
                             object instance = type.Assembly.CreateInstance(type.FullName);
                             if (instance is CustomContentPanel) {
                                 CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
@@ -292,9 +293,7 @@ namespace OperationGuidance_new {
                                     contentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                                 }
                                 contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
-                                mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-                                    ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, contentPanelTemp
-                                ) {
+                                mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, contentPanelTemp) {
                                     Name = contentPanelTemp.Name
                                 };
                                 WidgetUtils.AddView(contentPanelTemp);
@@ -348,9 +347,7 @@ namespace OperationGuidance_new {
                                             int vPadding = childContentPanelTemp.Height / 2;
                                             childContentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                                             childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
-                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-                                                ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
-                                            ) {
+                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, childContentPanelTemp) {
                                                 Name = childContentPanelTemp.Name
                                             };
                                         } else if (childInstance is CustomContentPanel) {
@@ -363,9 +360,7 @@ namespace OperationGuidance_new {
                                                 childContentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
                                             }
                                             childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
-                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(
-                                                ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER, childContentPanelTemp
-                                            ) {
+                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, childContentPanelTemp) {
                                                 Name = childContentPanelTemp.Name
                                             };
                                             WidgetUtils.AddView(childContentPanelTemp);
