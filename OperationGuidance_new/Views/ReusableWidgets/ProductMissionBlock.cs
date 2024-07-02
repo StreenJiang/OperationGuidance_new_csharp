@@ -63,6 +63,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BlockHoverUp = true,
                 BlockHoverDown = true,
                 Parent = this,
+                ConerRadius = WidgetUtils.ControlRadius(),
             };
             _t = t;
             _coverImage = coverImage;
@@ -70,12 +71,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _borderColor = borderColor;
             _buttonColor = buttonColor;
             _imageBorderColor = imageBorderColor;
+            ConerRadius = WidgetUtils.ControlRadius();
         }
 
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             e.Graphics.Clear(BackColor);
-            e.Graphics.DrawRectangle(new Pen(_borderColor, _borderSize), _innerBorderRect);
+            if (ConerRadius > 0) {
+                Rectangle rect = new(_innerBorderRect.Location.X, _innerBorderRect.Location.Y, _innerBorderRect.Width - 1, _innerBorderRect.Height - 1);
+                GraphicsPath graphicsPath = WidgetUtils.RoundedRect(rect, ConerRadius);
+                e.Graphics.DrawPath(new Pen(_borderColor == null ? ForeColor : _borderColor, _borderSize), graphicsPath);
+            } else {
+                e.Graphics.DrawRectangle(new Pen(_borderColor, _borderSize), _innerBorderRect);
+            }
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
