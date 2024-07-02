@@ -21,9 +21,9 @@ namespace OperationGuidance_new.Views {
             return new(missionId, missionName => {
                 topBar.Title = missionName;
             }) {
-                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
+                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND_2,
                 Margin = new Padding(0),
-                PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                PaddingWithoutBorder = true,
             };
         }
     }
@@ -120,7 +120,8 @@ namespace OperationGuidance_new.Views {
             _barCodeOuter = new() {
                 Parent = _topLeft,
                 Margin = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
             _barCodeOuter.Controls.Add(_barCodePictureBox);
             _barCodeOuter.Controls.Add(_barCodeTextBox);
@@ -130,7 +131,8 @@ namespace OperationGuidance_new.Views {
             _imageDisplayOuter = new() {
                 Parent = _topLeft,
                 Margin = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
             _imageDisplayOuter.Controls.Add(_productImageDisplayPanel);
 
@@ -144,7 +146,8 @@ namespace OperationGuidance_new.Views {
             _topRightTop = new() {
                 Parent = _topRight,
                 Padding = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
             _topRightTop.Controls.Add(_operatorInfoTitle);
             _topRightTop.Controls.Add(_operatorName);
@@ -159,7 +162,8 @@ namespace OperationGuidance_new.Views {
             _topRightMiddleLeft = new() {
                 Parent = _topRightMiddle,
                 Padding = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
             _workingProcessPanel.ConerRadius = 0;
             _topRightMiddleLeft.Controls.Add(_workingProcessPanel);
@@ -169,13 +173,15 @@ namespace OperationGuidance_new.Views {
                 Parent = _topRightMiddle,
                 Padding = new(0),
                 FlowDirection = FlowDirection.TopDown,
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
             // 上方右边的下面
             _topRightBottom = new() {
                 Parent = _topRight,
                 Padding = new(0),
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
 
             // 中间
@@ -183,6 +189,7 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
                 Padding = new(0),
                 FlowDirection = FlowDirection.TopDown,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
 
             // 下方
@@ -190,7 +197,8 @@ namespace OperationGuidance_new.Views {
                 Parent = this,
                 Padding = new(0),
                 FlowDirection = FlowDirection.RightToLeft,
-                OuterPenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                ConerRadius = WidgetUtils.ContainerRadius() / 2,
             };
         }
 

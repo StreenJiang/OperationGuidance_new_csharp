@@ -1209,7 +1209,7 @@ namespace OperationGuidance_new.Views {
                 _bottomLeft.Size = new(bottomLeftWidth, bottomHeight);
 
                 _bottomRight.Size = new(Width - bottomLeftWidth - (outerPadding.Left - 1) / 2, bottomHeight);
-                _bottomRight.Margin = new((outerPadding.Left) / 2, 0, 0, 0);
+                _bottomRight.Margin = new((outerPadding.Left - 1) / 2, 0, 0, 0);
             }
 
             private void ResizeSideButtons() {
