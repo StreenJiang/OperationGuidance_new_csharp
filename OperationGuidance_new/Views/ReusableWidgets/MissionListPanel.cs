@@ -21,6 +21,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public MissionListPanel(string title) : this(title, null, null) { }
         public MissionListPanel(string? title, string? buttonLabel, EventHandler? rightButtonClick) {
             FlowDirection = FlowDirection.TopDown;
+            BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             if (title != null) {
                 _titlePanel = new(title) {
                     Parent = this,

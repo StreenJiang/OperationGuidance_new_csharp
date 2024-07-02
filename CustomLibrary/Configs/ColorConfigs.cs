@@ -12,9 +12,9 @@
         public static Color COLOR_MENU_FOREGROUND => COLOR_E86C10;
         public static Color COLOR_MENU_TOGGLED => COLOR_FEFEFE;
         public static Color COLOR_CONTENT_PANEL_INNER_BORDER => COLOR_DDDDDD;
-        public static Color COLOR_MISSION_BLOCK_BORDER => COLOR_E86C10;
+        public static Color COLOR_MISSION_BLOCK_BORDER => COLOR_F0F0F0;
         public static Color COLOR_MISSION_BLOCK_BACKGROUND => COLOR_F0F0F0;
-        public static Color COLOR_MISSION_BLOCK_IMAGE_BORDER => COLOR_111111;
+        public static Color COLOR_MISSION_BLOCK_IMAGE_BORDER => COLOR_BBBBBB;
         public static Color COLOR_WORKPLACE_TITLE => COLOR_FEFEFE;
         public static Color COLOR_DEVICE_BLOCK_BACKGROUND => COLOR_FEFEFE;
         public static Color COLOR_DEVICE_BLOCK_TOGGLED => COLOR_CCCCCC;

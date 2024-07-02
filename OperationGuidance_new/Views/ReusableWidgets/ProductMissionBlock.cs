@@ -11,7 +11,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private string _missionName;
         private Rectangle _innerBorderRect;
         private int _borderSize;
-        private Color _borderColor;
+        private Color? _borderColor;
         private InnerButton<T> _innerButton;
         private Color _buttonColor;
         private Color _imageBorderColor;
@@ -34,7 +34,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _innerButton.Label = value;
             }
         }
-        public Color BorderColor {
+        public Color? BorderColor {
             get => _borderColor;
             set => _borderColor = value;
         }
@@ -54,7 +54,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         public InnerButton<T> InnerButton { get => _innerButton; set => _innerButton = value; }
 
-        public ProductMissionBlock(T t, Image? coverImage, Image defaultImage, string missionName, Color borderColor, Color buttonColor, Color imageBorderColor) {
+        public ProductMissionBlock(T t, Image? coverImage, Image defaultImage, string missionName, Color? borderColor, Color buttonColor, Color imageBorderColor) {
             _innerButton = new InnerButton<T>(this, defaultImage) {
                 Icon = coverImage,
                 Label = missionName,
@@ -63,19 +63,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 BlockHoverUp = true,
                 BlockHoverDown = true,
                 Parent = this,
+                ConerRadius = WidgetUtils.ControlRadius(),
             };
             _t = t;
             _coverImage = coverImage;
             _missionName = missionName;
-            _borderColor = borderColor;
+            // _borderColor = borderColor;
             _buttonColor = buttonColor;
             _imageBorderColor = imageBorderColor;
+            ConerRadius = WidgetUtils.ControlRadius();
         }
 
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);
             e.Graphics.Clear(BackColor);
-            e.Graphics.DrawRectangle(new Pen(_borderColor, _borderSize), _innerBorderRect);
+            if (_borderColor != null) {
+                if (ConerRadius > 0) {
+                    Rectangle rect = new(_innerBorderRect.Location.X, _innerBorderRect.Location.Y, _innerBorderRect.Width - 1, _innerBorderRect.Height - 1);
+                    GraphicsPath graphicsPath = WidgetUtils.RoundedRect(rect, ConerRadius);
+                    e.Graphics.DrawPath(new Pen(_borderColor.Value, _borderSize), graphicsPath);
+                } else {
+                    e.Graphics.DrawRectangle(new Pen(_borderColor.Value, _borderSize), _innerBorderRect);
+                }
+            }
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

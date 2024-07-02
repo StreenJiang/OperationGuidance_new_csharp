@@ -394,6 +394,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             CustomPopUpForm popUpForm = new() {
                 Title = "选择任务",
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
             };
             MissionListPanel? missionListPanel = null;
             popUpForm.AddButton("确定").Click += (s, e) => {
