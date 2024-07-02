@@ -185,19 +185,19 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             if (_toggleButton && _toggleBar) {
                 if (_toggleBar) {
                     // Draw toggle bar if needed
-                    int barHeight = (int) (Height * .7);
+                    int barHeight = (int) (Height * .6);
                     int coordinate = _conerRadius > 0 ? 1 : 0;
                     if (_toggleBarDirection == null) {
                         _toggleBarDirection = ToggleBarDirectionEnum.LEFT;
                     }
                     switch (_toggleBarDirection) {
                         case ToggleBarDirectionEnum.LEFT:
-                            coordinate += (Height - barHeight) / 2;
+                            coordinate += (Height - barHeight) / 2 - 1;
                             _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
                             toggleBarRect = new Rectangle(coordinate, coordinate, _barThickness, barHeight);
                             break;
                         case ToggleBarDirectionEnum.RIGHT:
-                            coordinate += (Height - barHeight) / 2;
+                            coordinate += (Height - barHeight) / 2 - 1;
                             _barThickness = (int) (Height * _toggleBarVerticalHeightRatio);
                             toggleBarRect = new Rectangle(Width - _barThickness - coordinate, coordinate, _barThickness, barHeight);
                             break;
@@ -254,6 +254,18 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                 }
             }
 
+            Size toggleBarExtraSize = new();
+            if (_isPressing && !_blockHoverDown) {
+                _extraSize.Width += 1;
+                _extraSize.Height += 1;
+                toggleBarExtraSize = new(1, 1);
+            }
+            if (_isMouseIn && !_blockHoverUp) {
+                _extraSize.Width -= 1;
+                _extraSize.Height -= 1;
+                toggleBarExtraSize = new(-1, -1);
+            }
+
             // Check if is toggle button
             if (_toggleButton) {
                 if (Toggled) {
@@ -265,7 +277,15 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                         BackColor = _toggledColor.Value;
                     }
                     if (_toggleBar && toggleBarRect != null) {
-                        GraphicsPath graphicsPath = WidgetUtils.RoundedRect(toggleBarRect.Value, (int) (ConerRadius * .85));
+                        Rectangle rect = toggleBarRect.Value;
+                        float radius;
+                        if (rect.Width < rect.Height) {
+                            radius = rect.Width / 2;
+                        } else {
+                            radius = rect.Height / 2;
+                        }
+                        rect.Location = new(rect.Location.X + toggleBarExtraSize.Width, rect.Location.Y + toggleBarExtraSize.Height);
+                        GraphicsPath graphicsPath = WidgetUtils.RoundedRect(rect, (int) radius);
                         e.Graphics.FillPath(new SolidBrush(_toggleBarColor == null ? ForeColor : _toggleBarColor.Value), graphicsPath);
                     }
                 } else {
@@ -273,15 +293,6 @@ namespace CustomLibrary.Buttons.AbstractClasses {
                         this.BackColor = _saveBackColor.Value;
                     }
                 }
-            }
-
-            if (_isPressing && !_blockHoverDown) {
-                _extraSize.Width += 1;
-                _extraSize.Height += 1;
-            }
-            if (_isMouseIn && !_blockHoverUp) {
-                _extraSize.Width -= 1;
-                _extraSize.Height -= 1;
             }
 
             // If disabled, then color should be lighter
