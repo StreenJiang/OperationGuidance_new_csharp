@@ -428,7 +428,7 @@ namespace OperationGuidance_new.Views {
             // });
         }
 
-        protected override void ActionAfterArmDataReceived(Coordinates3D armCoordinates) {
+        protected override void ActionAfterArmDataReceived(int maxValue, Coordinates3D armCoordinates) {
             Task.Run(() => {
                 BeginInvoke(() => {
                     if (_activated && _currentWorkingBolt != null) {
@@ -439,14 +439,10 @@ namespace OperationGuidance_new.Views {
                             Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
                             _realTimeArmCoordinates = armCoordinates;
 
-                            bool xOk = Math.Abs(armCoordinates.X - boltCoordinates.X) < _armLocatingAccuracy;
-                            bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
-                            bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
-
                             // Can't lock/unlock tools manually while arm is running (Only for SCII)
                             RemoveLockMsg(WorkingProcessPanel.UnlockedManually);
                             RemoveLockMsg(WorkingProcessPanel.LockedManually);
-                            if (xOk && yOk && zOk) {
+                            if (CheckArmPosition(maxValue, armCoordinates, boltCoordinates)) {
                                 // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
                             } else {

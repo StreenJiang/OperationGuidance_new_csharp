@@ -99,6 +99,7 @@ namespace OperationGuidance_new.Constants {
 
         public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
             string dataMessage = Encoding.ASCII.GetString(msgBytes);
+            logger.Info($"Analyzing data from {this.Name}: {dataMessage}");
             string mid = GetMid(dataMessage);
 
             if (mid == "9999") {

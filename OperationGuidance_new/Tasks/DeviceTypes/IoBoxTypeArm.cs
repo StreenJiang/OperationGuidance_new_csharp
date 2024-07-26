@@ -5,14 +5,14 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Tasks.DeviceTypes {
     public class IoBoxTypeArm: AIoBoxDevice<DeviceTypeArm> {
-        public Action<Coordinates3D>? ActionAfterCoordinatesReceived { get; set; } = null;
+        public Action<int, Coordinates3D>? ActionAfterCoordinatesReceived { get; set; } = null;
 
         public IoBoxTypeArm(DeviceTypeArm deviceType, int deviceId) : base(deviceType, deviceId) { }
 
         public async Task<Coordinates3D?> GetCurrentCoordinates() {
             Coordinates3D? coordinates = null;
             RetrieveResult = true;
-            ActionAfterCoordinatesReceived = data => coordinates = data;
+            ActionAfterCoordinatesReceived = (maxValue, data) => coordinates = data;
 
             int maxWaitTime = 2000;
             int waitDelay = 100;

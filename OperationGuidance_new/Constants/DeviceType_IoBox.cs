@@ -14,6 +14,7 @@ namespace OperationGuidance_new.Constants {
 
         public static IoBoxSetterSelector_4 SetterSelector_4 { get; } = AddNew<IoBoxSetterSelector_4>();
         public static IoBoxSetterSelector_8 SetterSelector_8 { get; } = AddNew<IoBoxSetterSelector_8>();
+        public static IoBoxSetterSelector_4_plus SetterSelector_4_plus { get; } = AddNew<IoBoxSetterSelector_4_plus>();
         public static IoBoxArranger Arranger { get; } = AddNew<IoBoxArranger>();
 
         public static DeviceTypeIoBox GetById(int id) {
@@ -77,6 +78,14 @@ namespace OperationGuidance_new.Constants {
         }
 
         public virtual Command GetWriteCommand(int position) {
+            int min = 1;
+            int max = SetterNum;
+            if (position > max || position < min) {
+                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
+                logger.Error(errorMsg);
+                throw new IndexOutOfRangeException(errorMsg);
+            }
+
             _currentPosition = position;
             return new(GetCommand());
         }
@@ -113,33 +122,31 @@ namespace OperationGuidance_new.Constants {
 
     public class IoBoxSetterSelector_4: IoBoxSetterSelector {
         public IoBoxSetterSelector_4() : base(1, "SetterSelector_4", 4) { }
-
-        public override Command GetWriteCommand(int position) {
-            int min = 1;
-            int max = SetterNum;
-            if (position > max || position < min) {
-                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
-                logger.Error(errorMsg);
-                throw new IndexOutOfRangeException(errorMsg);
-            }
-
-            return base.GetWriteCommand(position);
-        }
     }
 
     public class IoBoxSetterSelector_8: IoBoxSetterSelector {
         public IoBoxSetterSelector_8() : base(2, "SetterSelector_8", 8) { }
+    }
 
-        public override Command GetWriteCommand(int position) {
-            int min = 1;
-            int max = SetterNum;
-            if (position > max || position < min) {
-                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
-                logger.Error(errorMsg);
-                throw new IndexOutOfRangeException(errorMsg);
+    public class IoBoxSetterSelector_4_plus: IoBoxSetterSelector {
+        public IoBoxSetterSelector_4_plus() : base(4, "SetterSelector_4_plus", 4) { }
+
+        protected override string GetCommand() {
+            string high = string.Join("", _current_signal.Take(4));
+            string low;
+            if (_currentPosition > 0) {
+                int[] lowTemp = { 0, 0, 0, 0 };
+                lowTemp[_currentPosition - 1] = 1;
+                low = string.Join("", lowTemp);
+            } else {
+                low = "0000";
             }
 
-            return base.GetWriteCommand(position);
+            _current_signal = high + low;
+
+            string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
+            byte[] bytes = MainUtils.ToBytes(temp);
+            return temp + MainUtils.Crc16ToString(bytes);
         }
     }
 

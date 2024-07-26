@@ -303,16 +303,25 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 await Task.Run(async () => {
                     logger.Info($"Setting pset to [{pSetNumber}]...");
+                    string command = "";
                     if (_toolType is ToolPFSeries toolPF) {
-                        SendCommand(toolPF.GetPSetCommand(pSetNumber));
+                        command = toolPF.GetPSetCommand(pSetNumber);
+                        logger.Info($"Sending command to {toolPF.Name}: {command}");
+                        SendCommand(command);
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        SendCommand(toolX7.GetPSetCommand(pSetNumber));
+                        command = toolX7.GetPSetCommand(pSetNumber);
+                        logger.Info($"Sending command to {toolX7.Name}: {command}");
                     } else {
                     }
 
+                    // Send pset
+                    if (string.IsNullOrEmpty(command)) {
+                        return true;
+                    }
                     int waitTimesMax = 15;
                     int waitTimes = 0;
                     while (PSetOk == null && waitTimes < waitTimesMax) {
+                        SendCommand(command);
                         waitTimes++;
                         await Task.Delay(PSetWaitTime);
                     }

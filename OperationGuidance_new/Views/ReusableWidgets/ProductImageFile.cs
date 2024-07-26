@@ -180,10 +180,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ImageCrop() {
             // Get real time displayed image, and will have its size and location
             Image? imageDisplay = GetDisplayImage();
+            Console.WriteLine($"imageDisplay: {imageDisplay}");
             if (imageDisplay != null) {
+                // Set cropped to true here because if the image is smaller than rectangle, it won't go in the if block blow
+                _cropped = true;
+
+                // Check whether the image exceeds the cropping range
                 Point croppingRectLocation = new(_container.MaxRectLocation.X - _centerLocation.X, _container.MaxRectLocation.Y - _centerLocation.Y);
                 Point lowerRightConer = new(_centerLocation.X + imageDisplay.Width, _centerLocation.Y + imageDisplay.Height);
-                // Check whether the image exceeds the cropping range
                 if (!_container.MaxRect.Contains(_centerLocation) || !_container.MaxRect.Contains(lowerRightConer)) {
                     _image = MainUtils.CropImage(imageDisplay, new(croppingRectLocation, _container.MaxRectSize));
                     _locationOffset = new(0, 0);
@@ -191,7 +195,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _zoomingRatio = 1;
                     _zoomingRatioExtra = 0;
                     _rotateAngle = 0;
-                    _cropped = true;
                     RefreshImage();
                 }
             }

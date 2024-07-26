@@ -2147,7 +2147,7 @@ namespace OperationGuidance_new.Views {
                     // g.DrawString(_notice, noticeFont, new SolidBrush(Color.Red), p);
 
                     // 只画最大的范围
-                    Pen pen = new Pen(ColorConfigs.COLOR_MISSION_BLOCK_BORDER, 1) {
+                    Pen pen = new Pen(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND, 1) {
                         DashPattern = new float[] { 9, 6, 9, 6 },
                     };
                     g.DrawRectangle(pen, MaxRect);

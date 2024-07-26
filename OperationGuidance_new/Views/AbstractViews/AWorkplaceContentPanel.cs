@@ -1517,8 +1517,29 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
+        protected bool CheckArmPosition(int maxValue, Coordinates3D armCoordinates, Coordinates3D boltCoordinates) {
+            int x = Math.Abs(armCoordinates.X - boltCoordinates.X);
+            int y = Math.Abs(armCoordinates.Y - boltCoordinates.Y);
+            int z = Math.Abs(armCoordinates.Z - boltCoordinates.Z);
+
+            bool xOk;
+            bool yOk;
+            bool zOk;
+            if (maxValue > 0) {
+                xOk = x < _armLocatingAccuracy || maxValue - x < _armLocatingAccuracy;
+                yOk = y < _armLocatingAccuracy || maxValue - y < _armLocatingAccuracy;
+                zOk = boltCoordinates.Z == 0 || z < _armLocatingAccuracy || maxValue - z < _armLocatingAccuracy;
+            } else {
+                xOk = x < _armLocatingAccuracy;
+                yOk = y < _armLocatingAccuracy;
+                zOk = boltCoordinates.Z == 0 || z < _armLocatingAccuracy;
+            }
+
+            return xOk && yOk && zOk;
+        }
+
         // 读取力臂数据并根据当前螺栓点位配置信息进行解锁、锁枪
-        protected virtual void ActionAfterArmDataReceived(Coordinates3D armCoordinates) {
+        protected virtual void ActionAfterArmDataReceived(int maxValue, Coordinates3D armCoordinates) {
             Task.Run(() => {
                 BeginInvoke(() => {
                     // FIXME: Should use id to handle separately
@@ -1530,11 +1551,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
                             _realTimeArmCoordinates = armCoordinates;
 
-                            bool xOk = Math.Abs(armCoordinates.X - boltCoordinates.X) < _armLocatingAccuracy;
-                            bool yOk = Math.Abs(armCoordinates.Y - boltCoordinates.Y) < _armLocatingAccuracy;
-                            bool zOk = Math.Abs(armCoordinates.Z - boltCoordinates.Z) < _armLocatingAccuracy || boltCoordinates.Z == 0;
-
-                            if (xOk && yOk && zOk) {
+                            if (CheckArmPosition(maxValue, armCoordinates, boltCoordinates)) {
                                 // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
                                 // // 当前下发的程序与点位的不匹配（可能是手动下发）
@@ -2639,7 +2656,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 g.DrawString(coordinates, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(_coordinatesX, _Y));
             }
 
-            public void SetCoordinates(Coordinates3D coordinates) {
+            public void SetCoordinates(int maxValue, Coordinates3D coordinates) {
                 Task.Run(() => {
                     BeginInvoke(() => {
                         XStr = coordinates.X + "";
