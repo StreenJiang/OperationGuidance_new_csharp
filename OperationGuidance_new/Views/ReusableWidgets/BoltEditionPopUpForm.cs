@@ -1,18 +1,18 @@
-using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Utils;
-using CustomLibrary.TextBoxes;
-using OperationGuidance_service.Controllers;
-using CustomLibrary.ComboBoxes;
 using CustomLibrary.Buttons;
+using CustomLibrary.ComboBoxes;
+using CustomLibrary.Forms;
+using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
-using CustomLibrary.Forms;
+using OperationGuidance_service.Controllers;
+using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Utils;
 using Timer = System.Windows.Forms.Timer;
-using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class BoltEditionPopUpForm: CustomPopUpForm {
+    public class BoltEditionPopUpForm : CustomPopUpForm {
         private readonly int _columnCount = 2;
         private readonly double _boxRatioOneLine = 8.5925;
         private readonly double _boxRatio = 7.2;
@@ -310,7 +310,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 NameAlignment = HorizontalAlignment.Right,
             };
             foreach (DeviceIoDTO dto in _deviceIoDTOs) {
-                if (dto.type == DeviceType_IoBox.SetterSelector_4.Id || dto.type == DeviceType_IoBox.SetterSelector_8.Id) {
+                if (dto.type == DeviceType_IoBox.SetterSelector_4.Id || dto.type == DeviceType_IoBox.SetterSelector_8.Id
+                     || dto.type == DeviceType_IoBox.SetterSelector_4_plus.Id) {
                     _setterSelectorType.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
                 }
             }
@@ -634,7 +635,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int subTitleMargin = subTitleHeight / 5;
             int tableHeight = 0;
             int previousRowIndex = -1;
-            int cntentWidth = (int) (WidgetUtils.MainSize.Width * .55);
+            int cntentWidth = (int)(WidgetUtils.MainSize.Width * .55);
             int tableWidth = cntentWidth - contentPadding.Size.Width;
             int contentPieceWidth = (tableWidth - boxMargin * (_columnCount + 1)) / _columnCount;
             foreach (Control control in _tablePanel.Controls) {

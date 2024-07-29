@@ -1,4 +1,5 @@
 ﻿using OperationGuidance_new.Utils;
+using System.Text;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_IoBox {
@@ -43,7 +44,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class DeviceTypeIoBox: DeviceTypeBase {
+    public abstract class DeviceTypeIoBox : DeviceTypeBase {
         protected string _original_signal = "00000000";
         protected string _current_signal;
         protected Command _command_write;
@@ -66,7 +67,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class IoBoxSetterSelector: DeviceTypeIoBox {
+    public abstract class IoBoxSetterSelector : DeviceTypeIoBox {
         protected int _currentPosition; // Io write
         protected int _currentStatus; // Io read
 
@@ -120,26 +121,25 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class IoBoxSetterSelector_4: IoBoxSetterSelector {
+    public class IoBoxSetterSelector_4 : IoBoxSetterSelector {
         public IoBoxSetterSelector_4() : base(1, "SetterSelector_4", 4) { }
     }
 
-    public class IoBoxSetterSelector_8: IoBoxSetterSelector {
+    public class IoBoxSetterSelector_8 : IoBoxSetterSelector {
         public IoBoxSetterSelector_8() : base(2, "SetterSelector_8", 8) { }
     }
 
-    public class IoBoxSetterSelector_4_plus: IoBoxSetterSelector {
+    public class IoBoxSetterSelector_4_plus : IoBoxSetterSelector {
         public IoBoxSetterSelector_4_plus() : base(4, "SetterSelector_4_plus", 4) { }
 
         protected override string GetCommand() {
             string high = string.Join("", _current_signal.Take(4));
             string low;
             if (_currentPosition > 0) {
-                int[] lowTemp = { 0, 0, 0, 0 };
-                lowTemp[_currentPosition - 1] = 1;
-                low = string.Join("", lowTemp);
+                low = MainUtils.ToBinaryString_half(_currentPosition);
+                low = ReverseBit(low);
             } else {
-                low = "0000";
+                low = "1111";
             }
 
             _current_signal = high + low;
@@ -148,9 +148,31 @@ namespace OperationGuidance_new.Constants {
             byte[] bytes = MainUtils.ToBytes(temp);
             return temp + MainUtils.Crc16ToString(bytes);
         }
+
+        public override void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis) {
+            string low = string.Join("", dataMessage.Skip(9).Take(1));
+            string realLow = ReverseBit(MainUtils.ToBinaryString(low));
+            _currentStatus = realLow.IndexOf("1") + 1;
+
+            if (_ioBoxActionAfterAnalysis != null) {
+                _ioBoxActionAfterAnalysis(_currentStatus);
+            }
+        }
+
+        private string ReverseBit(string bits) {
+            StringBuilder sb = new();
+            for (int i = 0; i < bits.Length; i++) {
+                if (bits[i] == '1') {
+                    sb.Append('0');
+                } else {
+                    sb.Append('1');
+                }
+            }
+            return sb.ToString();
+        }
     }
 
-    public class IoBoxArranger: DeviceTypeIoBox {
+    public class IoBoxArranger : DeviceTypeIoBox {
         private int?[] _currentPositions = new int?[] { null, null, null, null };
         private int?[] _sendingPositions = new int?[] { null, null, null, null };
         private int?[] _currentStatuses = new int?[] { null, null, null, null };
