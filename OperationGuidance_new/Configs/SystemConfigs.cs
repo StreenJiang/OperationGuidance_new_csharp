@@ -109,6 +109,7 @@ namespace OperationGuidance_new.Configs {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(VariableSettingsView)},
                             {AppVersion.SCII, typeof(VariableSettingsView_SCII)},
+                            {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
                         },
                     },
                 },

@@ -13,7 +13,7 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Views.AbstractViews {
-    public abstract class AVariableSettingsView : CustomContentPanel {
+    public abstract class AVariableSettingsView: CustomContentPanel {
         #region Fields
         private readonly float _contentHGapRatio = 0.025F;
         private readonly float _contentVGapRatio = 0.05F;
@@ -125,12 +125,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _defaultValueBtn.MouseUp += DefaultValueBtnMouseUp;
 
             void SaveBtnMouseUp(object? sender, MouseEventArgs e) {
-                string? error = SaveStorageSettings();
+                // Check can save storage settings first
+                string? error = CheckBeforeSave();
                 if (!string.IsNullOrEmpty(error)) {
                     WidgetUtils.ShowErrorPopUp(error);
                 } else {
+                    SaveStorageSettings();
                     SaveResolution();
-                    SaveWorkSettings();
+                    SaveMissionSettings();
                     WidgetUtils.ShowNoticePopUp("保存成功");
                 }
             }
@@ -149,27 +151,26 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Load settings
             LoadSettings();
 
-            WidgetUtils.CheckSavedFunc += () => {
-                return WidgetUtils.CurrentPanel != this || !(
-                    _resolutionOptionsBox.Value.Key != _resolutionOriginal
-                    || _storageFileNameTextBox.GetTextBox(0).Box.Text != _sotrageFileNameOriginal
-                    || _storagePathTextBox.GetTextBox(0).Box.Text != _sotragePathOriginal
-                    || !SortConfig.SequenceEqual(_sortConfigOriginal)
-                    || _storeLooseningDataToggle.Checked != _sotrageLooseningDataOriginal
-                    || _enableArmLocatingToggle.Checked != _enableArmLocatingOriginal
-                    || _armLocatingAccuracyBox.GetTextBox(0).Box.Text != _armLocatingAccuracyOriginal + ""
-                    || _missionSelfLoopingModeToggle.Checked != _missionSelfLoopingModeOriginal
-                );
-            };
+            WidgetUtils.CheckSavedFunc += CheckSavedFunc;
         }
+        protected virtual bool CheckSavedFunc() => WidgetUtils.CurrentPanel != this || !(
+            _resolutionOptionsBox.Value.Key != _resolutionOriginal
+            || _storageFileNameTextBox.GetTextBox(0).Box.Text != _sotrageFileNameOriginal
+            || _storagePathTextBox.GetTextBox(0).Box.Text != _sotragePathOriginal
+            || !SortConfig.SequenceEqual(_sortConfigOriginal)
+            || _storeLooseningDataToggle.Checked != _sotrageLooseningDataOriginal
+            || _enableArmLocatingToggle.Checked != _enableArmLocatingOriginal
+            || _armLocatingAccuracyBox.GetTextBox(0).Box.Text != _armLocatingAccuracyOriginal + ""
+            || _missionSelfLoopingModeToggle.Checked != _missionSelfLoopingModeOriginal
+        );
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Control mainForm = WidgetUtils.MainForm;
             _titleHeight = WidgetUtils.ContentTitleHeight();
             _boxNBtnHeight = WidgetUtils.TextOrComboBoxHeight();
-            _contentHGap = (int)(mainForm.Height * _contentHGapRatio);
-            _contentVGap = (int)(mainForm.Height * _contentVGapRatio);
-            _contentHPadding = (int)(mainForm.Width * .015);
-            _contentVPadding = (int)(mainForm.Height * .03);
+            _contentHGap = (int) (mainForm.Height * _contentHGapRatio);
+            _contentVGap = (int) (mainForm.Height * _contentVGapRatio);
+            _contentHPadding = (int) (mainForm.Width * .015);
+            _contentVPadding = (int) (mainForm.Height * .03);
 
             // Resizes
             ResizeResolutionPanel();
@@ -180,7 +181,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             int btnsWidth = 0;
             int count = 0;
             foreach (Control c in _buttonsPanel.Controls) {
-                CommonButton btn = (CommonButton)c;
+                CommonButton btn = (CommonButton) c;
                 btn.Height = _boxNBtnHeight;
                 btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + _boxNBtnHeight * 2;
                 if (count > 0) {
@@ -200,7 +201,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Initialization methods
-        private void InitializeResolutionPanel() {
+        protected virtual void InitializeResolutionPanel() {
             _systemSettingsPanel = new() {
                 Parent = this,
                 FlowDirection = FlowDirection.TopDown,
@@ -217,7 +218,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Ratio = 8.5,
             };
         }
-        private void SaveResolution() {
+        protected virtual void SaveResolution() {
             Size screenSize = WidgetUtils.GetScreenResolution();
             KeyValuePair<Size, SizeRatioNRectColor> value = _resolutionOptionsBox.Value;
             if (value.Key == new Size(0, 0)) {
@@ -225,7 +226,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _resolutionOptionsBox.SetError(true);
             } else {
                 // Resize main form according to chosen resolution
-                Form mainParent = (Form)WidgetUtils.MainForm;
+                Form mainParent = (Form) WidgetUtils.MainForm;
                 Size newSize = value.Key;
                 if (_resolutionOptionsBox.IsError) {
                     _resolutionOptionsBox.SetError(false);
@@ -245,7 +246,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _resolutionOriginal = newSize;
             }
         }
-        private void InitializeStoragePanel() {
+        protected virtual void InitializeStoragePanel() {
             _storagePanel = new() {
                 Parent = this,
                 FlowDirection = FlowDirection.TopDown,
@@ -294,15 +295,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Ratio = 8.5,
             };
         }
-        private string? SaveStorageSettings() {
+        private void SaveStorageSettings() {
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
-            if (!Directory.Exists(newPath)) {
-                return "当前存储路径格式不正确或不存在";
-            }
             string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
-            if (string.IsNullOrEmpty(nameFormat)) {
-                return "存储文件名不能为空";
-            }
             // Save
             MainUtils.SetStorageFileName(nameFormat);
             MainUtils.SetStoragePath(newPath);
@@ -314,7 +309,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _sotrageFileNameOriginal = nameFormat;
             _sotragePathOriginal = newPath;
             _sotrageLooseningDataOriginal = _storeLooseningDataToggle.Checked;
-            return null;
         }
         private void PopUpFieldsConfigurationForm(List<OperationDataField> fields) {
             FieldsConfiguration configPanel = new(fields);
@@ -338,14 +332,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             Padding contentPadding = form.ContentPanel.Padding;
             int buttonHeight = WidgetUtils.CommonButtonHeight();
             int buttonMargin = buttonHeight / 5;
-            Size contentSize = new((int)(WidgetUtils.MainSize.Width * .4), (int)(WidgetUtils.MainSize.Height * .6));
+            Size contentSize = new((int) (WidgetUtils.MainSize.Width * .4), (int) (WidgetUtils.MainSize.Height * .6));
             configPanel.ToggleButtonHeight = buttonHeight;
             configPanel.ButtonMargin = buttonMargin;
             scrollPanel.Size = new(contentSize.Width - contentPadding.Size.Width, contentSize.Height - contentPadding.Size.Height);
             form.SetContentSizeAndSelfSize(contentSize);
             form.Show();
         }
-        protected class FieldsConfiguration : CustomContentPanel {
+        protected class FieldsConfiguration: CustomContentPanel {
             private readonly List<OperationDataField> _fields;
             private int _toggleButtonHeight;
             private int _buttonMargin;
@@ -381,7 +375,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         if (!btn.Checked) {
                             btn.Checked = true;
                         } else if (currentIndex > 0) {
-                            MovableButton previousBtn = (MovableButton)Controls[currentIndex - 1];
+                            MovableButton previousBtn = (MovableButton) Controls[currentIndex - 1];
                             previousBtn.SerialNum += 1;
                             btn.SerialNum -= 1;
                             Controls.SetChildIndex(btn, currentIndex - 1);
@@ -390,7 +384,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     btn.PressDown += () => {
                         int currentIndex = Controls.IndexOf(btn);
                         if (btn.Checked && currentIndex < Controls.Count - 1) {
-                            MovableButton nextBtn = (MovableButton)Controls[currentIndex + 1];
+                            MovableButton nextBtn = (MovableButton) Controls[currentIndex + 1];
                             if (nextBtn.Checked) {
                                 nextBtn.SerialNum -= 1;
                                 btn.SerialNum += 1;
@@ -402,7 +396,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 int VisibleToTrueMovementCount(int previousIndex) {
                     int count = 0;
                     if (previousIndex >= 0) {
-                        MovableButton previousBtn = (MovableButton)Controls[previousIndex];
+                        MovableButton previousBtn = (MovableButton) Controls[previousIndex];
                         if (!previousBtn.Checked) {
                             count++;
                             previousBtn.SerialNum += 1;
@@ -414,7 +408,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 int VisibleToFalseMovementCount(int nextIndex) {
                     int count = 0;
                     if (nextIndex < Controls.Count) {
-                        MovableButton nextBtn = (MovableButton)Controls[nextIndex];
+                        MovableButton nextBtn = (MovableButton) Controls[nextIndex];
                         if (nextBtn.Checked) {
                             count++;
                             nextBtn.SerialNum -= 1;
@@ -465,7 +459,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 return NewHeight > parentNewHeight;
             }
 
-            private class MovableButton : ToggleButtonGroup {
+            private class MovableButton: ToggleButtonGroup {
                 private int _serialNum;
                 private OperationDataField _field;
                 private Image _upImage = Properties.Resources.direction_up;
@@ -519,7 +513,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 protected override void OnMouseEnter(EventArgs e) {
                     base.OnMouseEnter(e);
-                    int btnSide = (int)(Height * .75);
+                    int btnSide = (int) (Height * .75);
                     int margin = btnSide / 3;
                     Size imageSize = new(btnSide, btnSide);
                     Point imageDownLocation = new(Width - btnSide, (Height - btnSide) / 2);
@@ -688,7 +682,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             gridView.Columns.AddRange(columnRange);
             // Calculate size
             int gridHeaderHeight = WidgetUtils.GridViewHeaderHeight();
-            int contentWidth = (int)(WidgetUtils.MainSize.Width * .85);
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .85);
             outer.Size = new(contentWidth - form.ContentPanel.Padding.Size.Width, gridHeaderHeight + 2);
             outer.Padding = new(1);
             gridView.Size = new(outer.Width - 2, gridHeaderHeight);
@@ -716,7 +710,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             form.SetContentSizeAndSelfSize(new(contentWidth, outer.Height + form.ContentPanel.Padding.Size.Height));
             form.Show();
         }
-        private void InitializeMissionSettings() {
+        protected virtual void InitializeMissionSettings() {
             _workPanel = new() {
                 Parent = this,
                 FlowDirection = FlowDirection.TopDown,
@@ -750,15 +744,30 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Ratio = 6.95,
             };
         }
-        private void SaveWorkSettings() {
+        protected virtual void SaveMissionSettings() {
             MainUtils.SetArmLocatingEnabled(_enableArmLocatingToggle.Checked);
             MainUtils.SetArmLocatingAccuracy(int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text));
             MainUtils.SetMissionSelfLoopingModeEnabled(_missionSelfLoopingModeToggle.Checked);
 
             // 修改初始值
             _enableArmLocatingOriginal = _enableArmLocatingToggle.Checked;
-            _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
+            if (_enableArmLocatingOriginal) {
+                _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
+            } else {
+                _armLocatingAccuracyOriginal = 0;
+            }
             _missionSelfLoopingModeOriginal = _missionSelfLoopingModeToggle.Checked;
+        }
+        protected virtual string? CheckBeforeSave() {
+            string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
+            if (!Directory.Exists(newPath)) {
+                return "当前存储路径格式不正确或不存在";
+            }
+            string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
+            if (string.IsNullOrEmpty(nameFormat)) {
+                return "存储文件名不能为空";
+            }
+            return null;
         }
         #endregion
 
@@ -812,7 +821,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _armLocatingAccuracyBox.Size = new(boxWidth, _boxNBtnHeight);
             _armLocatingAccuracyBox.Margin = new(0, 0, 0, 0);
             _missionSelfLoopingModeToggle.Size = new(boxWidth, this._boxNBtnHeight);
-            _missionSelfLoopingModeToggle.Margin = new(0, 0, _contentHGap / 2, 0);
+            _missionSelfLoopingModeToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
         }
@@ -826,10 +835,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Reusable methods
-        private async void LoadSettings() {
+        protected virtual async void LoadSettings() {
             await Task.Run(() => {
                 BeginInvoke(() => {
-                    // 分辨率        
+                    // 分辨率
                     Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
                     Size screenSize = WidgetUtils.GetScreenResolution();
                     bool hasFullScreenResolution = false;
@@ -885,7 +894,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 });
             });
         }
-        private async void ResetAllToDefault() {
+        protected virtual async void ResetAllToDefault() {
             await Task.Run(() => {
                 BeginInvoke(() => {
                     // 分辨率

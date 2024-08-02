@@ -95,7 +95,7 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowNoticePopUp("没有检测到ModBus设备");
                 } else {
                     if (WidgetUtils.ShowConfirmPopUp("确定发送中断指令吗？")) {
-                        ModBusBool eccStop = ModBusServer.EccStop;
+                        ModBusBool eccStop = ((ModBusServer_YF) ModBusServer).EccStop;
                         eccStop.BoolValue = true;
 
                         WriteRequestMessage req = new();
@@ -150,7 +150,7 @@ namespace OperationGuidance_new.Views {
 
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.FINISHED_OK;
 
-                                ModBusBool eccFinish = ModBusServer.EccFinish;
+                                ModBusBool eccFinish = ((ModBusServer_YF) ModBusServer).EccFinish;
                                 eccFinish.BoolValue = true;
 
                                 WriteRequestMessage req = new();
@@ -171,7 +171,16 @@ namespace OperationGuidance_new.Views {
 
         private async void RunModBusTask() {
             // Initialize mod bus server
-            ModBusServer = new(40001, 100);
+            ModBusServer = new ModBusServer_YF(40001, 100);
+            if (_communicationTask != null) {
+                // Reset all
+                WriteRequestMessage req = new();
+                req.Data.MessageHexBytes = ModBusServer.ResetBytes();
+                req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
+                req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
+                req.SetLength();
+                await _communicationTask.WriteToServer(req);
+            }
 
             // Run looping task
             await Task.Run(() => {
@@ -181,8 +190,8 @@ namespace OperationGuidance_new.Views {
                             // Check barcode (check kp_identify + kp_task in looping)
                             if (!_activated) {
                                 if (!_barCodeCheckPassed) {
-                                    string kpIdentify = ModBusServer.KpIdentify.ASCIIStringValue.Trim();
-                                    string kpTask = ModBusServer.KpTask.ASCIIStringValue.Trim();
+                                    string kpIdentify = ((ModBusServer_YF) ModBusServer).KpIdentify.ASCIIStringValue.Trim();
+                                    string kpTask = ((ModBusServer_YF) ModBusServer).KpTask.ASCIIStringValue.Trim();
                                     int l1 = kpIdentify.Length;
                                     int l2 = kpTask.Length;
                                     if (!string.IsNullOrEmpty(kpIdentify) && !string.IsNullOrEmpty(kpTask)) {
@@ -196,7 +205,7 @@ namespace OperationGuidance_new.Views {
                                     }
                                 } else {
                                     // Activate mission (send request and receive release)
-                                    bool kpRelease = ModBusServer.KpRelease.BoolValue;
+                                    bool kpRelease = ((ModBusServer_YF) ModBusServer).KpRelease.BoolValue;
                                     if (kpRelease) {
                                         count1 = 0;
                                         count2 = 0;
@@ -208,7 +217,7 @@ namespace OperationGuidance_new.Views {
                                 // Send finish signal (send finish)
 
                                 // Receive ack and stop mission
-                                bool kpAck = ModBusServer.KpAck.BoolValue;
+                                bool kpAck = ((ModBusServer_YF) ModBusServer).KpAck.BoolValue;
                                 if (kpAck) {
                                     // Reset all variables (send reset command)
                                     WriteRequestMessage req = new();
@@ -240,7 +249,7 @@ namespace OperationGuidance_new.Views {
         public override void ActivateMission() {
             _barCodeCheckPassed = true;
             if (_communicationTask != null && ModBusServer != null) {
-                ModBusBool eccRequest = ModBusServer.EccRequest;
+                ModBusBool eccRequest = ((ModBusServer_YF) ModBusServer).EccRequest;
                 eccRequest.BoolValue = true;
 
                 WriteRequestMessage req = new();

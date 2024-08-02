@@ -11,5 +11,8 @@ namespace OperationGuidance_new.Configs {
         public static string MissionArmLocatingEnabled { get; set; } = "mission_arm_locating_enabled";
         public static string MissionArmLocatingAccuracy { get; set; } = "mission_arm_locating_accuracy";
         public static string MissionSelfLoopingMode { get; set; } = "mission_self_looping_mode";
+        public static string PLCBarCodeSelfLooping { get; internal set; } = "plc_bar_code_self_looping";
+        public static string PLCBarCodeStartAddress { get; internal set; } = "plc_bar_code_start_address";
+        public static string PLCBarCodeLength { get; internal set; } = "plc_bar_code_length";
     }
 }

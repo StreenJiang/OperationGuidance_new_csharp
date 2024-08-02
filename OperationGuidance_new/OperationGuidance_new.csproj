@@ -54,7 +54,7 @@
 
   <ItemGroup>
     <Reference Include="LicenseLib">
-      <HintPath>..\..\LicenseLib\LicenseLib\bin\Debug\net6.0\LicenseLib.dll</HintPath>
+      <HintPath>..\..\OperationGuidanceNew_LicenseLib\LicenseLib\bin\Release\net6.0\LicenseLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 

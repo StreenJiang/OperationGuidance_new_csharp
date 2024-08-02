@@ -44,7 +44,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class DeviceTypeIoBox : DeviceTypeBase {
+    public abstract class DeviceTypeIoBox: DeviceTypeBase {
         protected string _original_signal = "00000000";
         protected string _current_signal;
         protected Command _command_write;
@@ -67,7 +67,7 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public abstract class IoBoxSetterSelector : DeviceTypeIoBox {
+    public abstract class IoBoxSetterSelector: DeviceTypeIoBox {
         protected int _currentPosition; // Io write
         protected int _currentStatus; // Io read
 
@@ -121,16 +121,8 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class IoBoxSetterSelector_4 : IoBoxSetterSelector {
-        public IoBoxSetterSelector_4() : base(1, "SetterSelector_4", 4) { }
-    }
-
-    public class IoBoxSetterSelector_8 : IoBoxSetterSelector {
-        public IoBoxSetterSelector_8() : base(2, "SetterSelector_8", 8) { }
-    }
-
-    public class IoBoxSetterSelector_4_plus : IoBoxSetterSelector {
-        public IoBoxSetterSelector_4_plus() : base(4, "SetterSelector_4_plus", 4) { }
+    public abstract class IoBoxSetterSelectorPlus: IoBoxSetterSelector {
+        public IoBoxSetterSelectorPlus(int id, string name, int setterNum) : base(id, name, setterNum) { }
 
         protected override string GetCommand() {
             string high = string.Join("", _current_signal.Take(4));
@@ -172,7 +164,19 @@ namespace OperationGuidance_new.Constants {
         }
     }
 
-    public class IoBoxArranger : DeviceTypeIoBox {
+    public class IoBoxSetterSelector_4: IoBoxSetterSelector {
+        public IoBoxSetterSelector_4() : base(1, "SetterSelector_4", 4) { }
+    }
+
+    public class IoBoxSetterSelector_8: IoBoxSetterSelector {
+        public IoBoxSetterSelector_8() : base(2, "SetterSelector_8", 8) { }
+    }
+
+    public class IoBoxSetterSelector_4_plus: IoBoxSetterSelectorPlus {
+        public IoBoxSetterSelector_4_plus() : base(4, "SetterSelector_4_plus", 4) { }
+    }
+
+    public class IoBoxArranger: DeviceTypeIoBox {
         private int?[] _currentPositions = new int?[] { null, null, null, null };
         private int?[] _sendingPositions = new int?[] { null, null, null, null };
         private int?[] _currentStatuses = new int?[] { null, null, null, null };

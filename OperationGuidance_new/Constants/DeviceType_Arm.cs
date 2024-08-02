@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Constants {
 
         public static ArmCF01 CF01 { get; } = AddNew<ArmCF01>();
         public static ArmCF02 CF02 { get; } = AddNew<ArmCF02>();
-        // public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
+        public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
 
         public static DeviceTypeArm GetById(int id) {
             foreach (DeviceTypeArm type in Elements) {
@@ -100,6 +100,6 @@ namespace OperationGuidance_new.Constants {
     }
 
     public class ArmCF03: DeviceTypeArm {
-        public ArmCF03() : base(3, "CF03", new string[] { "010300030002340B", "0203000300023438", "030300000002c5e9" }, 0) { }
+        public ArmCF03() : base(3, "CF03", new string[] { "010300000001840A", "0203000000018439", "03030000000185E8" }, 0) { }
     }
 }

@@ -7,7 +7,7 @@ using OperationGuidance_service.Models.DTOs;
 using System.Drawing.Drawing2D;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class BoltButton : CommonButtonBase {
+    public class BoltButton: CommonButtonBase {
         public static Color WAITING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
         public static Color WORKING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WORKING;
         public static Color DONE = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_DONE;
@@ -56,23 +56,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _boltStatus = value;
                 switch (_boltStatus) {
                     case BoltStatus.WORKING:
-                        BackColor = Color.FromArgb((int)(255 * _opacity), WORKING);
+                        BackColor = Color.FromArgb((int) (255 * _opacity), WORKING);
                         ForeColor = TEXT_BLACK;
                         StartFlickering();
                         break;
                     case BoltStatus.DONE:
-                        BackColor = Color.FromArgb((int)(255 * _opacity), DONE);
+                        BackColor = Color.FromArgb((int) (255 * _opacity), DONE);
                         ForeColor = TEXT_WHITE;
                         StopFlickering();
                         break;
                     case BoltStatus.ERROR:
-                        BackColor = Color.FromArgb((int)(255 * _opacity), ERROR);
+                        BackColor = Color.FromArgb((int) (255 * _opacity), ERROR);
                         ForeColor = TEXT_WHITE;
                         StartFlickering();
                         break;
                     case BoltStatus.DEFAULT:
                     default:
-                        BackColor = Color.FromArgb((int)(255 * _opacity), WAITING);
+                        BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
                         ForeColor = TEXT_BLACK;
                         Label = _boltDTO.serial_num + "";
                         StopFlickering();
@@ -118,7 +118,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             BlockHoverUp = true;
             _boltStatus = BoltStatus.DEFAULT;
             FlatStyle = FlatStyle.Popup;
-            BackColor = Color.FromArgb((int)(255 * _opacity), WAITING);
+            BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
             ForeColor = TEXT_BLACK;
         }
 
@@ -133,7 +133,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void ResetStatusWithoutChangingVisible() {
             _showingWhileWorking = true;
             _boltStatus = BoltStatus.DEFAULT;
-            BackColor = Color.FromArgb((int)(255 * _opacity), WAITING);
+            BackColor = Color.FromArgb((int) (255 * _opacity), WAITING);
             ForeColor = TEXT_BLACK;
             SetLabel();
         }
@@ -164,7 +164,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _specifications = new int?[] { null, null, null, null };
             _specificationsOk = new bool?[] { null, null, null, null };
             foreach (float specification in specifications) {
-                int index = (int)specification - 1;
+                int index = (int) specification - 1;
                 _specifications[index] = 1;
                 _specificationsOk[index] = false;
             }
@@ -181,7 +181,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     HandleDestroyed += (s, e) => {
                         // Set to true to break from loop
                         foreach (float specification in specifications) {
-                            _specificationsOk[(int)specification - 1] = true;
+                            _specificationsOk[(int) specification - 1] = true;
                         }
 
                         arrangerType.RetrieveResult = false;
@@ -282,7 +282,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                     // Start sending signal
                     while (!_bitSpecificationOk && _setter_selector_time_count < _setter_selector_time_out) {
-                        setterSelectorType.WritePosition((int)bitSpecification);
+                        setterSelectorType.WritePosition((int) bitSpecification);
 
                         // Delay for a little bit
                         await Task.Delay(_setter_selector_delay);
@@ -305,6 +305,62 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _setter_selector_time_count = 0;
                 });
             });
+        }
+        public void SendSignalToSetterSelectorPlus(float bitSpecification, IoBoxTypeSetterSelector setterSelectorType, Action<bool> callBack) {
+            _bitSpecification = bitSpecification;
+            _bitSpecificationOk = false;
+
+            // Start task
+            BeginInvoke(() => {
+                Task.Run(async () => {
+                    // Start retrieve result from io box - arranger
+                    setterSelectorType.RetrieveResult = true;
+                    setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorActionAfterAnalysis;
+
+                    // Reset if disposed
+                    HandleDestroyed += async (s, e) => {
+                        // wait for reset
+                        await Reset();
+
+                        setterSelectorType.RetrieveResult = false;
+                        if (setterSelectorType.ActionAfterIoSignalReceived != null && setterSelectorType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoSetterSelectorActionAfterAnalysis)) {
+                            setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
+                        }
+                    };
+
+                    // Start sending signal
+                    while (!_bitSpecificationOk) {
+                        setterSelectorType.WritePosition((int) bitSpecification);
+
+                        // Delay for a little bit
+                        await Task.Delay(_setter_selector_delay);
+                    }
+
+                    callBack(_bitSpecificationOk);
+
+                    // wait for reset
+                    await Reset();
+
+                    // Stop retrieve result
+                    setterSelectorType.RetrieveResult = false;
+                    setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
+
+                    // Reset variables
+                    _bitSpecification = null;
+                    _bitSpecificationOk = false;
+                });
+            });
+
+            async Task Reset() {
+                // Start checking if setter had been placed back
+                while (_bitSpecificationOk) {
+                    // Delay for a little bit
+                    await Task.Delay(_setter_selector_delay);
+                }
+
+                // Send reset command after setter had been place back 
+                setterSelectorType.Reset();
+            }
         }
         private void DoSetterSelectorActionAfterAnalysis(int position) {
             BeginInvoke(() => {

@@ -414,15 +414,15 @@ namespace OperationGuidance_new.Utils {
         }
         public static int GetDefaultArmLocatingAccuracy() => 100;
         public static void SetArmLocatingAccuracy(int accuracy) => Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, accuracy + "");
-        // Prodcut batch notice
+        // Mission self looping mode
         public static bool IsMissionSelfLoopingModeEnabled() {
-            string productBatchNoticeEnabled = Settings.Read(IniFileKeys.MissionSelfLoopingMode);
-            if (string.IsNullOrEmpty(productBatchNoticeEnabled)) {
+            string missionSelfLoopingModeEnabled = Settings.Read(IniFileKeys.MissionSelfLoopingMode);
+            if (string.IsNullOrEmpty(missionSelfLoopingModeEnabled)) {
                 bool flag = DefaultMissionSelfLoopingModeEnabled();
                 SetMissionSelfLoopingModeEnabled(flag);
                 return flag;
             }
-            return int.Parse(productBatchNoticeEnabled) == (int) YesOrNo.YES;
+            return int.Parse(missionSelfLoopingModeEnabled) == (int) YesOrNo.YES;
         }
         public static bool DefaultMissionSelfLoopingModeEnabled() => false;
         public static void SetMissionSelfLoopingModeEnabled(bool flag) {
@@ -432,6 +432,48 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.MissionSelfLoopingMode, (int) YesOrNo.NO + "");
             }
         }
+        // PLC bar code self looping
+        public static bool IsPLCBarCodeSelfLoopingEnabled() {
+            string plcBarCodeSelfLoopingEnabled = Settings.Read(IniFileKeys.PLCBarCodeSelfLooping);
+            if (string.IsNullOrEmpty(plcBarCodeSelfLoopingEnabled)) {
+                bool flag = DefaultPLCBarCodeSelfLoopingModeEnabled();
+                SetPLCBarCodeSelfLoopingModeEnabled(flag);
+                return flag;
+            }
+            return int.Parse(plcBarCodeSelfLoopingEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultPLCBarCodeSelfLoopingModeEnabled() => false;
+        public static void SetPLCBarCodeSelfLoopingModeEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.PLCBarCodeSelfLooping, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.PLCBarCodeSelfLooping, (int) YesOrNo.NO + "");
+            }
+        }
+        // PLC start address
+        public static int GetPLCBarCodeStartAddress() {
+            string startAddress = Settings.Read(IniFileKeys.PLCBarCodeStartAddress);
+            if (string.IsNullOrEmpty(startAddress)) {
+                int startAddressTemp = GetDefaultPLCBarCodeStartAddress();
+                SetPLCBarCodeStartAddress(startAddressTemp);
+                return startAddressTemp;
+            }
+            return int.Parse(startAddress);
+        }
+        public static int GetDefaultPLCBarCodeStartAddress() => 0;
+        public static void SetPLCBarCodeStartAddress(int startAddress) => Settings.Write(IniFileKeys.PLCBarCodeStartAddress, startAddress + "");
+        // PLC bar code length
+        public static int GetPLCBarCodeLength() {
+            string startAddress = Settings.Read(IniFileKeys.PLCBarCodeLength);
+            if (string.IsNullOrEmpty(startAddress)) {
+                int startAddressTemp = GetDefaultPLCBarCodeLength();
+                SetPLCBarCodeLength(startAddressTemp);
+                return startAddressTemp;
+            }
+            return int.Parse(startAddress);
+        }
+        public static int GetDefaultPLCBarCodeLength() => 0;
+        public static void SetPLCBarCodeLength(int length) => Settings.Write(IniFileKeys.PLCBarCodeLength, length + "");
 
         // Ping util method
         public static bool PingHost(string nameOrAddress) {

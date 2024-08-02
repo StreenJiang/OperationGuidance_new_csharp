@@ -114,7 +114,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected List<DeviceBlock> _deviceBlocks;
         protected bool _toolControlNeedAdminPasswor;
         protected Action? _actionAfterSendingPset;
-        protected ModBusServer_YF? ModBusServer;
+        protected ModBusServerBase? ModBusServer;
 
         // 产品面相关
         public int _currentSideIndex;
@@ -824,15 +824,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 foreach (KeyValuePair<int, CommunicationTask> pair in _communicationTasks) {
                     CommunicationTask communicationTask = pair.Value;
                     communicationTask.ModBusServer = ModBusServer;
-                    // Reset all
-                    if (ModBusServer != null) {
-                        WriteRequestMessage req = new();
-                        req.Data.MessageHexBytes = ModBusServer.ResetBytes();
-                        req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
-                        req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
-                        req.SetLength();
-                        communicationTask.WriteToServer(req);
-                    }
                     _communicationTask = communicationTask;
                     break;
                 }
@@ -1792,10 +1783,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
                         if (setterSelectorType != null) {
                             _bitPositionOk = false;
-                            boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
-                                _bitPositionOk = isOk;
-                                _bitPositionTimedOut = isTimedOut;
-                            });
+
+                            if (setterSelectorType.DeviceType is IoBoxSetterSelectorPlus) {
+                                _bitPositionTimedOut = false;
+                                boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorType, isOk => _bitPositionOk = isOk);
+                            } else {
+                                boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
+                                    _bitPositionOk = isOk;
+                                    _bitPositionTimedOut = isTimedOut;
+                                });
+                            }
                         }
                     } else {
                         _bitPositionOk = null;
