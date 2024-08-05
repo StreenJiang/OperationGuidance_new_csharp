@@ -1,6 +1,7 @@
 using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
+using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
@@ -264,7 +265,11 @@ namespace OperationGuidance_new.Tasks {
                                 ioBoxTask.ArrangerType = new(ioBoxTask, arranger, dto.id);
                                 ioBoxTask.ArrangerType.Reset();
                             } else if (deviceIoBox is IoBoxSetterSelector setterSelector && ioBoxTask.SetterSelectorType == null) {
-                                ioBoxTask.SetterSelectorType = new(ioBoxTask, setterSelector, dto.id);
+                                if (setterSelector is IoBoxSetterSelectorPlus selectorPlus) {
+                                    ioBoxTask.SetterSelectorType = new IoBoxTypeSetterSelectorPlus(ioBoxTask, selectorPlus, dto.id);
+                                } else {
+                                    ioBoxTask.SetterSelectorType = new(ioBoxTask, setterSelector, dto.id);
+                                }
                                 ioBoxTask.SetterSelectorType.Reset();
                             }
                         }

@@ -1,13 +1,17 @@
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
 using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.DeviceTypes;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 using System.Drawing.Drawing2D;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltButton: CommonButtonBase {
+        private ILog logger;
+
         public static Color WAITING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WAITING;
         public static Color WORKING = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_WORKING;
         public static Color DONE = ColorConfigs.COLOR_WORKPLACE_BOLT_BG_DONE;
@@ -106,6 +110,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public BoltButton(ProductBoltDTO boltDTO) {
+            logger = MainUtils.GetLogger(this.GetType());
             Label = boltDTO.serial_num + "";
             _borderSize = 0;
             _boltDTO = boltDTO;
@@ -340,26 +345,31 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                     // If the one which is not placed in is the one we need, then don't do anything
                     if (_currentBitSpecificationForPlus == _bitSpecification) {
+                        logger.Info($"Same bit position[{_currentBitSpecificationForPlus}], return true...");
                         callBack(true);
                     } else {
                         // Check current bit specification first
                         // If it's not equal to 0, means some of setters are not placed in it
                         while (_currentBitSpecificationForPlus != 0) {
+                            logger.Info($"Waiting for [{_currentBitSpecificationForPlus}] position placing back...");
                             // Delay for a little bit
                             await Task.Delay(_setter_selector_delay);
                         }
 
+                        logger.Info($"All are placed back, reset all...");
                         // Reset all first
                         await Reset();
 
                         // Start sending signal
                         while (!_bitSpecificationOk) {
+                            logger.Info($"Writing position[{bitSpecification}]...");
                             setterSelectorType.WritePosition((int) bitSpecification);
 
                             // Delay for a little bit
                             await Task.Delay(_setter_selector_delay);
                         }
 
+                        logger.Info($"Wrote position[{bitSpecification}] OK, return ture...");
                         callBack(_bitSpecificationOk);
                     }
 

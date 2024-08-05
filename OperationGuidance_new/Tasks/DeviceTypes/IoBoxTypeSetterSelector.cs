@@ -3,13 +3,13 @@ using OperationGuidance_new.Tasks.AsbtractClasses;
 
 namespace OperationGuidance_new.Tasks.DeviceTypes {
     public class IoBoxTypeSetterSelector: AIoBoxDevice<IoBoxSetterSelector> {
-        private IoBoxTask _task;
+        protected IoBoxTask _task;
         public Action<int>? ActionAfterIoSignalReceived { get; set; } = null;
 
         public IoBoxTypeSetterSelector(IoBoxTask task, IoBoxSetterSelector deviceType, int deviceId) : base(deviceType, deviceId) => _task = task;
 
         public string WritePosition(int position) => _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage());
-        public async void Reset() {
+        public virtual async void Reset() {
             string result = _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
             bool ok = false;
             int tryTimes = 0;

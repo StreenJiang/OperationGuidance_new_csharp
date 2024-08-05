@@ -81,7 +81,7 @@ namespace OperationGuidance_new.Tasks {
                         }
 
                         // Check setter selector
-                        if (SetterSelectorType != null && SetterSelectorType.RetrieveResult) {
+                        if (SetterSelectorType != null && (SetterSelectorType.RetrieveResult || SetterSelectorType is IoBoxTypeSetterSelectorPlus)) {
                             if (SetterSelectorType.ActionAfterIoSignalReceived != null) {
                                 try {
                                     string readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
