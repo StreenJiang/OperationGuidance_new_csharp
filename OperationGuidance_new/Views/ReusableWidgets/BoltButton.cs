@@ -39,6 +39,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _setter_selector_time_count = 0;
         private float? _bitSpecification;
         private bool _bitSpecificationOk;
+        private float _currentBitSpecificationForPlus = 0;
 
         public int Arranger_time_out => _arranger_time_out;
         public int Setter_selector_time_out => _setter_selector_time_out;
@@ -306,6 +307,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 });
             });
         }
+        private void DoSetterSelectorActionAfterAnalysis(int position) {
+            BeginInvoke(() => {
+                if (position > 0) {
+                    if (!_bitSpecificationOk && _bitSpecification == position) {
+                        _bitSpecificationOk = true;
+                    }
+                }
+            });
+        }
         public void SendSignalToSetterSelectorPlus(float bitSpecification, IoBoxTypeSetterSelector setterSelectorType, Action<bool> callBack) {
             _bitSpecification = bitSpecification;
             _bitSpecificationOk = false;
@@ -315,7 +325,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Task.Run(async () => {
                     // Start retrieve result from io box - arranger
                     setterSelectorType.RetrieveResult = true;
-                    setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorActionAfterAnalysis;
+                    setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorPlusActionAfterAnalysis;
 
                     // Reset if disposed
                     HandleDestroyed += async (s, e) => {
@@ -323,27 +333,39 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         await Reset();
 
                         setterSelectorType.RetrieveResult = false;
-                        if (setterSelectorType.ActionAfterIoSignalReceived != null && setterSelectorType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoSetterSelectorActionAfterAnalysis)) {
-                            setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
+                        if (setterSelectorType.ActionAfterIoSignalReceived != null && setterSelectorType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoSetterSelectorPlusActionAfterAnalysis)) {
+                            setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorPlusActionAfterAnalysis;
                         }
                     };
 
-                    // Start sending signal
-                    while (!_bitSpecificationOk) {
-                        setterSelectorType.WritePosition((int) bitSpecification);
+                    // If the one which is not placed in is the one we need, then don't do anything
+                    if (_currentBitSpecificationForPlus == _bitSpecification) {
+                        callBack(true);
+                    } else {
+                        // Check current bit specification first
+                        // If it's not equal to 0, means some of setters are not placed in it
+                        while (_currentBitSpecificationForPlus != 0) {
+                            // Delay for a little bit
+                            await Task.Delay(_setter_selector_delay);
+                        }
 
-                        // Delay for a little bit
-                        await Task.Delay(_setter_selector_delay);
+                        // Reset all first
+                        await Reset();
+
+                        // Start sending signal
+                        while (!_bitSpecificationOk) {
+                            setterSelectorType.WritePosition((int) bitSpecification);
+
+                            // Delay for a little bit
+                            await Task.Delay(_setter_selector_delay);
+                        }
+
+                        callBack(_bitSpecificationOk);
                     }
-
-                    callBack(_bitSpecificationOk);
-
-                    // wait for reset
-                    await Reset();
 
                     // Stop retrieve result
                     setterSelectorType.RetrieveResult = false;
-                    setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorActionAfterAnalysis;
+                    setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorPlusActionAfterAnalysis;
 
                     // Reset variables
                     _bitSpecification = null;
@@ -362,12 +384,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 setterSelectorType.Reset();
             }
         }
-        private void DoSetterSelectorActionAfterAnalysis(int position) {
+        private void DoSetterSelectorPlusActionAfterAnalysis(int position) {
             BeginInvoke(() => {
                 if (position > 0) {
+                    _currentBitSpecificationForPlus = position;
                     if (!_bitSpecificationOk && _bitSpecification == position) {
                         _bitSpecificationOk = true;
                     }
+                } else {
+                    _currentBitSpecificationForPlus = 0;
                 }
             });
         }
