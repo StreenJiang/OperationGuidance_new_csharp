@@ -8,21 +8,23 @@ namespace OperationGuidance_new.Tasks.DeviceTypes {
 
         public IoBoxTypeSetterSelector(IoBoxTask task, IoBoxSetterSelector deviceType, int deviceId) : base(deviceType, deviceId) => _task = task;
 
-        public string WritePosition(int position) => _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage());
+        public virtual string WritePosition(int position) => _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage());
         public virtual async void Reset() {
-            string result = _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
-            bool ok = false;
-            int tryTimes = 0;
-            int tryMaxTimes = 10;
-            while (ok && tryTimes < tryMaxTimes) {
-                ok = DeviceType.WriteOk(result);
-                if (ok && DeviceType.CurrentStatus == 0) {
-                    tryTimes += tryMaxTimes;
-                    break;
-                }
+            if (_task != null) {
+                string result = _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
+                bool ok = false;
+                int tryTimes = 0;
+                int tryMaxTimes = 10;
+                while (ok && tryTimes < tryMaxTimes) {
+                    ok = DeviceType.WriteOk(result);
+                    if (ok && DeviceType.CurrentStatus == 0) {
+                        tryTimes += tryMaxTimes;
+                        break;
+                    }
 
-                tryTimes++;
-                await Task.Delay(100);
+                    tryTimes++;
+                    await Task.Delay(100);
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using log4net;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
@@ -68,30 +69,39 @@ namespace OperationGuidance_new.Tasks {
                         // Check arranger
                         if (ArrangerType != null && ArrangerType.RetrieveResult) {
                             if (ArrangerType.ActionAfterIoSignalReceived != null) {
+                                string readResult = "empty";
                                 try {
-                                    string readResult = SendCommand(ArrangerType.DeviceType.COMMAND_READ.GetMessage());
+                                    readResult = SendCommand(ArrangerType.DeviceType.COMMAND_READ.GetMessage());
                                     // logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
 
                                     // Analyze data
                                     ArrangerType.DeviceType.AnalyzeData(readResult, ArrangerType.ActionAfterIoSignalReceived);
                                 } catch (Exception e) {
-                                    logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], e = {e}");
+                                    logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
                                 }
                             }
                         }
 
                         // Check setter selector
-                        if (SetterSelectorType != null && (SetterSelectorType.RetrieveResult || SetterSelectorType is IoBoxTypeSetterSelectorPlus)) {
-                            if (SetterSelectorType.ActionAfterIoSignalReceived != null) {
-                                try {
-                                    string readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
-                                    // logger.Debug($"[_ioBoxType.Name:{SetterSelectorType.DeviceType.Name}] result: readResult = {readResult}");
+                        if (SetterSelectorType != null) {
+                            string readResult = "empty";
+                            try {
+                                if (SetterSelectorType is IoBoxTypeSetterSelectorPlus selectorPlus) {
+                                    readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
+
+                                    // Analyze data
+                                    ((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).AnalyzeData(readResult, null);
+
+                                    // Write based on data and current position
+                                    SendCommand(((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).LoopingWriteCommand().GetMessage());
+                                } else if (SetterSelectorType.RetrieveResult && SetterSelectorType.ActionAfterIoSignalReceived != null) {
+                                    readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
 
                                     // Analyze data
                                     SetterSelectorType.DeviceType.AnalyzeData(readResult, SetterSelectorType.ActionAfterIoSignalReceived);
-                                } catch (Exception e) {
-                                    logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{SetterSelectorType.DeviceType.Name}], e = {e}");
                                 }
+                            } catch (Exception e) {
+                                logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{SetterSelectorType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
                             }
                         }
 

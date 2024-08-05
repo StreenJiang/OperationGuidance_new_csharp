@@ -1784,9 +1784,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         if (setterSelectorType != null) {
                             _bitPositionOk = false;
 
-                            if (setterSelectorType.DeviceType is IoBoxSetterSelectorPlus) {
+                            if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
                                 _bitPositionTimedOut = false;
-                                boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorType, isOk => _bitPositionOk = isOk);
+                                boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => _bitPositionOk = isOk);
                             } else {
                                 boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
                                     _bitPositionOk = isOk;

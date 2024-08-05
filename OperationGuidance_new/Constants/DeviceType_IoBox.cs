@@ -122,32 +122,43 @@ namespace OperationGuidance_new.Constants {
     }
 
     public abstract class IoBoxSetterSelectorPlus: IoBoxSetterSelector {
-        public IoBoxSetterSelectorPlus(int id, string name, int setterNum) : base(id, name, setterNum) { }
+        private int[] _allPositions = { 0, 0, 0, 0 };
 
-        protected override string GetCommand() {
+        public int CurrentPosition { get => _currentPosition; set => _currentPosition = value; }
+        public int[] AllPositions => _allPositions;
+
+        public IoBoxSetterSelectorPlus(int id, string name, int setterNum) : base(id, name, setterNum) {
+            // No need to use this one
+            _currentStatus = 0;
+        }
+
+        public Command LoopingWriteCommand() {
             string high = string.Join("", _current_signal.Take(4));
-            string low;
-            if (_currentPosition > 0) {
-                low = MainUtils.ToBinaryString_half(_currentPosition);
-                low = ReverseBit(low);
-            } else {
-                low = "1111";
+            string low = "1111";
+            for (int i = 0; i < _allPositions.Length; i++) {
+                char[] newLow = low.ToArray();
+                if ((_currentPosition > 0 && i == _currentPosition - 1) || _allPositions[i] == 1) {
+                    newLow[i] = '0';
+                }
             }
 
             _current_signal = high + low;
 
             string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
             byte[] bytes = MainUtils.ToBytes(temp);
-            return temp + MainUtils.Crc16ToString(bytes);
+            return new Command(temp + MainUtils.Crc16ToString(bytes));
         }
 
-        public override void AnalyzeData(string dataMessage, Action<int>? _ioBoxActionAfterAnalysis) {
+        public void AnalyzeDataAndAction(string dataMessage) {
             string low = string.Join("", dataMessage.Skip(9).Take(1));
             string realLow = ReverseBit(MainUtils.ToBinaryString(low));
-            _currentStatus = realLow.IndexOf("1") + 1;
-
-            if (_ioBoxActionAfterAnalysis != null) {
-                _ioBoxActionAfterAnalysis(_currentStatus);
+            for (int i = 0; i < realLow.Length; i++) {
+                char c = realLow[i];
+                if (c == '1') {
+                    _allPositions[i] = 1;
+                } else {
+                    _allPositions[i] = 0;
+                }
             }
         }
 

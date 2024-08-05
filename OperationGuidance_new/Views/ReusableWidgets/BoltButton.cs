@@ -43,7 +43,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _setter_selector_time_count = 0;
         private float? _bitSpecification;
         private bool _bitSpecificationOk;
-        private float _currentBitSpecificationForPlus = 0;
 
         public int Arranger_time_out => _arranger_time_out;
         public int Setter_selector_time_out => _setter_selector_time_out;
@@ -268,7 +267,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // Start task
             BeginInvoke(() => {
                 Task.Run(async () => {
-                    // Start retrieve result from io box - arranger
+                    // Start retrieve result from io box - setter selector
                     setterSelectorType.RetrieveResult = true;
                     setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorActionAfterAnalysis;
 
@@ -321,89 +320,27 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             });
         }
-        public void SendSignalToSetterSelectorPlus(float bitSpecification, IoBoxTypeSetterSelector setterSelectorType, Action<bool> callBack) {
-            _bitSpecification = bitSpecification;
-            _bitSpecificationOk = false;
-
+        public void SendSignalToSetterSelectorPlus(float bitSpecification, IoBoxTypeSetterSelectorPlus setterSelectorType, Action<bool> callBack) {
             // Start task
             BeginInvoke(() => {
                 Task.Run(async () => {
-                    // Start retrieve result from io box - arranger
-                    setterSelectorType.RetrieveResult = true;
-                    setterSelectorType.ActionAfterIoSignalReceived += DoSetterSelectorPlusActionAfterAnalysis;
+                    // Start retrieve result from io box - setter selector plus
+                    IoBoxSetterSelectorPlus deviceType = (IoBoxSetterSelectorPlus) setterSelectorType.DeviceType;
+                    bool isOk = false;
+                    do {
+                        logger.Info($"Writing position[{bitSpecification}]...");
+                        setterSelectorType.WritePositionPlus((int) bitSpecification);
 
-                    // Reset if disposed
-                    HandleDestroyed += async (s, e) => {
-                        // wait for reset
-                        await Reset();
+                        // Delay for a little bit
+                        await Task.Delay(_setter_selector_delay);
 
-                        setterSelectorType.RetrieveResult = false;
-                        if (setterSelectorType.ActionAfterIoSignalReceived != null && setterSelectorType.ActionAfterIoSignalReceived.GetInvocationList().Contains(DoSetterSelectorPlusActionAfterAnalysis)) {
-                            setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorPlusActionAfterAnalysis;
-                        }
-                    };
+                        // Check if is OK
+                        isOk = deviceType.AllPositions[(int) bitSpecification - 1] == 1;
+                    } while (!isOk);
 
-                    // If the one which is not placed in is the one we need, then don't do anything
-                    if (_currentBitSpecificationForPlus == _bitSpecification) {
-                        logger.Info($"Same bit position[{_currentBitSpecificationForPlus}], return true...");
-                        callBack(true);
-                    } else {
-                        // Check current bit specification first
-                        // If it's not equal to 0, means some of setters are not placed in it
-                        while (_currentBitSpecificationForPlus != 0) {
-                            logger.Info($"Waiting for [{_currentBitSpecificationForPlus}] position placing back...");
-                            // Delay for a little bit
-                            await Task.Delay(_setter_selector_delay);
-                        }
-
-                        logger.Info($"All are placed back, reset all...");
-                        // Reset all first
-                        await Reset();
-
-                        // Start sending signal
-                        while (!_bitSpecificationOk) {
-                            logger.Info($"Writing position[{bitSpecification}]...");
-                            setterSelectorType.WritePosition((int) bitSpecification);
-
-                            // Delay for a little bit
-                            await Task.Delay(_setter_selector_delay);
-                        }
-
-                        logger.Info($"Wrote position[{bitSpecification}] OK, return ture...");
-                        callBack(_bitSpecificationOk);
-                    }
-
-                    // Stop retrieve result
-                    setterSelectorType.RetrieveResult = false;
-                    setterSelectorType.ActionAfterIoSignalReceived -= DoSetterSelectorPlusActionAfterAnalysis;
-
-                    // Reset variables
-                    _bitSpecification = null;
-                    _bitSpecificationOk = false;
+                    logger.Info($"Wrote position[{bitSpecification}] OK, return ture...");
+                    callBack(true);
                 });
-            });
-
-            async Task Reset() {
-                // Start checking if setter had been placed back
-                while (_bitSpecificationOk) {
-                    // Delay for a little bit
-                    await Task.Delay(_setter_selector_delay);
-                }
-
-                // Send reset command after setter had been place back 
-                setterSelectorType.Reset();
-            }
-        }
-        private void DoSetterSelectorPlusActionAfterAnalysis(int position) {
-            BeginInvoke(() => {
-                if (position > 0) {
-                    _currentBitSpecificationForPlus = position;
-                    if (!_bitSpecificationOk && _bitSpecification == position) {
-                        _bitSpecificationOk = true;
-                    }
-                } else {
-                    _currentBitSpecificationForPlus = 0;
-                }
             });
         }
 
