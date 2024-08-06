@@ -122,10 +122,12 @@ namespace OperationGuidance_new.Constants {
     }
 
     public abstract class IoBoxSetterSelectorPlus: IoBoxSetterSelector {
-        private int[] _allPositions = { 0, 0, 0, 0 };
+        private int[] _positionsInUse = { 0, 0, 0, 0 };
+        private int[] _positionStatuses = { 0, 0, 0, 0 };
 
         public int CurrentPosition { get => _currentPosition; set => _currentPosition = value; }
-        public int[] AllPositions => _allPositions;
+        public int[] PositionsInUse { get => _positionsInUse; set => _positionsInUse = value; }
+        public int[] PositionStatuses => _positionStatuses;
 
         public IoBoxSetterSelectorPlus(int id, string name, int setterNum) : base(id, name, setterNum) {
             // No need to use this one
@@ -133,14 +135,29 @@ namespace OperationGuidance_new.Constants {
         }
 
         public Command LoopingWriteCommand() {
+#if DEBUG
+            logger.Debug($"_positionStatuses = {string.Join(", ", _positionStatuses)}");
+            logger.Debug($"_positionsInUse = {string.Join(", ", _positionsInUse)}");
+#endif
+
             string high = "0000";
             string low = "1111";
             char[] newHigh = high.ToArray();
             char[] newLow = low.ToArray();
-            for (int i = 0; i < _allPositions.Length; i++) {
+
+            bool lastOneBack = true;
+            for (int i = 0; i < _positionStatuses.Length; i++) {
+                if (_positionsInUse[i] == 1 && _positionStatuses[i] == 1) {
+                    newLow[i] = '0';
+                    lastOneBack = false;
+                }
+            }
+            for (int i = 0; i < _positionStatuses.Length; i++) {
                 if (_currentPosition > 0 && i == _currentPosition - 1) {
                     newHigh[i] = '1';
-                    newLow[i] = '0';
+                    if (lastOneBack) {
+                        newLow[i] = '0';
+                    }
                 }
             }
 
@@ -153,13 +170,16 @@ namespace OperationGuidance_new.Constants {
 
         public void AnalyzeDataAndAction(string dataMessage) {
             string low = string.Join("", dataMessage.Skip(9).Take(1));
+            // Reverse to check which one has been took out
             string realLow = ReverseBit(MainUtils.ToBinaryString(low));
             for (int i = 0; i < realLow.Length; i++) {
                 char c = realLow[i];
+                // Equals to 1 means current one has been took out
+                // Means: current one is empty
                 if (c == '1') {
-                    _allPositions[i] = 1;
+                    _positionStatuses[i] = 1;
                 } else {
-                    _allPositions[i] = 0;
+                    _positionStatuses[i] = 0;
                 }
             }
         }

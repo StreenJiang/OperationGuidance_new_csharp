@@ -1257,6 +1257,31 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Reset current operation data
             currentOperationData = null;
+
+            // Initialize setter selector
+            foreach (IoBoxTask ioTask in _ioBoxTasks.Values) {
+                if (ioTask.SetterSelectorType is IoBoxTypeSetterSelectorPlus) {
+                    IoBoxSetterSelectorPlus deviceType = (IoBoxSetterSelectorPlus) ioTask.SetterSelectorType.DeviceType;
+                    deviceType.PositionsInUse = new int[] { 0, 0, 0, 0 };
+
+                    foreach (Dictionary<int, List<BoltButton>> boltsInWorkstations in _allBoltsIndependence.Values) {
+                        foreach (List<BoltButton> bolts in boltsInWorkstations.Values) {
+                            foreach (ProductBoltDTO dto in bolts.Where(b => b.BoltDTO.bit_specification != null).Select(b => b.BoltDTO)) {
+                                if (dto.bit_specification != null && dto.bit_specification > 0) {
+                                    deviceType.PositionsInUse[(int) dto.bit_specification.Value - 1] = 1;
+                                }
+                            }
+                        }
+                    }
+                    foreach (List<BoltButton> bolts in _allBolts.Values) {
+                        foreach (ProductBoltDTO dto in bolts.Where(b => b.BoltDTO.setter_selector_id != null).Select(b => b.BoltDTO)) {
+                            if (dto.bit_specification != null && dto.bit_specification > 0) {
+                                deviceType.PositionsInUse[(int) dto.bit_specification.Value - 1] = 1;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         protected virtual async void ActionAfterActivatingMission() {

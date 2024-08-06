@@ -335,7 +335,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         await Task.Delay(_setter_selector_delay);
 
                         // Check if is OK
-                        isOk = deviceType.AllPositions[(int) bitSpecification - 1] == 1;
+                        isOk = deviceType.PositionStatuses[(int) bitSpecification - 1] == 1;
                     } while (!isOk);
 
                     logger.Info($"Wrote position[{bitSpecification}] OK, return ture...");
