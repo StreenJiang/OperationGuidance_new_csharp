@@ -266,11 +266,13 @@ namespace OperationGuidance_new.Tasks {
                                 ioBoxTask.ArrangerType.Reset();
                             } else if (deviceIoBox is IoBoxSetterSelector setterSelector && ioBoxTask.SetterSelectorType == null) {
                                 if (setterSelector is IoBoxSetterSelectorPlus selectorPlus) {
-                                    ioBoxTask.SetterSelectorType = new IoBoxTypeSetterSelectorPlus(ioBoxTask, selectorPlus, dto.id);
+                                    IoBoxTypeSetterSelectorPlus ioBoxTypeSetterSelectorPlus = new IoBoxTypeSetterSelectorPlus(ioBoxTask, selectorPlus, dto.id);
+                                    ioBoxTypeSetterSelectorPlus.Reset();
+                                    ioBoxTask.SetterSelectorType = ioBoxTypeSetterSelectorPlus;
                                 } else {
                                     ioBoxTask.SetterSelectorType = new(ioBoxTask, setterSelector, dto.id);
+                                    ioBoxTask.SetterSelectorType.Reset();
                                 }
-                                ioBoxTask.SetterSelectorType.Reset();
                             }
                         }
                     });

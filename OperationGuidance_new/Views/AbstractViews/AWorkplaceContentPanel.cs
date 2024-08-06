@@ -903,8 +903,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         task.ArrangerType.ActionAfterIoSignalReceived = null;
                     }
                     if (task.SetterSelectorType != null) {
-                        task.SetterSelectorType.Reset();
-                        task.SetterSelectorType.ActionAfterIoSignalReceived = null;
+                        if (task.SetterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
+                            setterSelectorPlus.Reset();
+                        } else {
+                            task.SetterSelectorType.Reset();
+                            task.SetterSelectorType.ActionAfterIoSignalReceived = null;
+                        }
                     }
                 }
             }
@@ -2001,6 +2005,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // If is self looping mode, then activate mission automatically
             ActivateMissionAutomatically();
+
+            // Reset IoBox
+            ReseetIoBox();
         }
 
         protected async void LockAllTools() {

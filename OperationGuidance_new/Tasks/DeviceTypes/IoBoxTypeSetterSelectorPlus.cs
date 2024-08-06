@@ -11,6 +11,6 @@ namespace OperationGuidance_new.Tasks.DeviceTypes {
 
         public void WritePositionPlus(int position) => ((IoBoxSetterSelectorPlus) DeviceType).CurrentPosition = position;
 
-        public override void Reset() => WritePosition(0);
+        public override void Reset() => WritePositionPlus(0);
     }
 }

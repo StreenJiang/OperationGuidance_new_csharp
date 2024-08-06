@@ -90,7 +90,7 @@ namespace OperationGuidance_new.Tasks {
                                     readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
 
                                     // Analyze data
-                                    ((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).AnalyzeData(readResult, null);
+                                    ((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).AnalyzeDataAndAction(readResult);
 
                                     // Write based on data and current position
                                     SendCommand(((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).LoopingWriteCommand().GetMessage());

@@ -82,7 +82,7 @@ namespace OperationGuidance_new.Constants {
             int min = 1;
             int max = SetterNum;
             if (position > max || position < min) {
-                string errorMsg = $"Position of {Name} can not less then {min} or grater then {max}, please check.";
+                string errorMsg = $"Position[{position}] of {Name} can not less then {min} or grater then {max}, please check.";
                 logger.Error(errorMsg);
                 throw new IndexOutOfRangeException(errorMsg);
             }
@@ -133,16 +133,18 @@ namespace OperationGuidance_new.Constants {
         }
 
         public Command LoopingWriteCommand() {
-            string high = string.Join("", _current_signal.Take(4));
+            string high = "0000";
             string low = "1111";
+            char[] newHigh = high.ToArray();
+            char[] newLow = low.ToArray();
             for (int i = 0; i < _allPositions.Length; i++) {
-                char[] newLow = low.ToArray();
-                if ((_currentPosition > 0 && i == _currentPosition - 1) || _allPositions[i] == 1) {
+                if (_currentPosition > 0 && i == _currentPosition - 1) {
+                    newHigh[i] = '1';
                     newLow[i] = '0';
                 }
             }
 
-            _current_signal = high + low;
+            _current_signal = new String(newHigh.ToArray()) + new String(newLow.Reverse().ToArray());
 
             string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
             byte[] bytes = MainUtils.ToBytes(temp);
@@ -216,20 +218,24 @@ namespace OperationGuidance_new.Constants {
         }
 
         protected override string GetCommand() {
-            string[] highTemp = { "0", "0", "0", "0" };
+            string[] lowTemp = { "0", "0", "0", "0" };
             if (_currentPositions.ToList().Find(p => p != null) != null) {
                 for (int i = 0; i < _currentPositions.Length; i++) {
                     int? curr = _currentPositions[i];
                     if (curr != null) {
-                        highTemp[i] = curr + "";
+                        lowTemp[i] = curr + "";
                     }
                 }
                 _sendingPositions = _currentPositions;
             }
-            string high = string.Join("", highTemp.Reverse());
-            string low = string.Join("", _current_signal.Skip(4));
+            string high = string.Join("", _current_signal.Take(4));
+            string low = string.Join("", lowTemp);
 
             _current_signal = high + low;
+
+#if DEBUG
+            logger.Debug($"_current_signal = {_current_signal}");
+#endif
 
             string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
             byte[] bytes = MainUtils.ToBytes(temp);
@@ -239,11 +245,18 @@ namespace OperationGuidance_new.Constants {
         public void AnalyzeData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {
             if (_sendingPositions.ToList().Find(p => p != null) != null) {
                 try {
-                    string high = string.Join("", dataMessage.Skip(8).Take(1));
-                    String reversedBinaryStr = new(MainUtils.ToBinaryString(high).Reverse().ToArray());
-                    for (int i = 0; i < reversedBinaryStr.Length; i++) {
+                    string high = string.Join("", dataMessage.Skip(7).Take(1));
+                    String binaryStr = new(MainUtils.ToBinaryString(high).ToArray());
+
+#if DEBUG
+                    logger.Debug($"dataMessage = {dataMessage}");
+                    logger.Debug($"high = {high}");
+                    logger.Debug($"binaryStr = {binaryStr}");
+#endif
+
+                    for (int i = 0; i < binaryStr.Length; i++) {
                         if (_sendingPositions[i] != null) {
-                            char c = reversedBinaryStr.ElementAt(i);
+                            char c = binaryStr.ElementAt(i);
                             _currentStatuses[i] = int.Parse(c.ToString());
                         } else {
                             _currentStatuses[i] = null;
