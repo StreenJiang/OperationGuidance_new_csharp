@@ -4,14 +4,13 @@ using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
+using S7.Net;
 
 namespace OperationGuidance_new.Tasks {
     public class CommunicationTask: ATaskBase {
         private ILog logger = MainUtils.GetLogger(typeof(CommunicationTask));
 
         #region Fields
-        private static readonly object SendSyncRoot = new();
-        private static readonly object ReceiveSyncRoot = new();
         private readonly int ReceiveTimeout = 500;
         private readonly int KeepAliveDelay = 200;
         private Socket? socketClient = null;
@@ -22,20 +21,31 @@ namespace OperationGuidance_new.Tasks {
         private ReadRequestMessage ReadRequest = new();
         private ReadResponseMessage ReadResponse = new();
         private ModBusServerBase? _modBusServer;
+        private Plc? _plc;
+        private bool _reading = false;
         #endregion
 
         #region Properties
         // Override properties
-        public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
+        public override bool Connected {
+            get {
+                if (_communicationType is CommunicationSiemensPlc) {
+                    return _plc != null && _plc.IsConnected;
+                }
+                return socketClient != null && socketClient.Connected && !CloseConnectionManually;
+            }
+        }
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeCommunication CommunicationType { get => _communicationType; set => _communicationType = value; }
-        public Queue<ACommunicationMessage> Command { get; } = new();
+        public Queue<AModBusMessage> ModBusCommand { get; } = new();
         public Queue<byte[]> Result { get; } = new();
         public bool Locked { get; set; }
         public Action? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public ModBusServerBase? ModBusServer { get => _modBusServer; set => _modBusServer = value; }
+        public bool Reading { get => _reading; set => _reading = value; }
+        public Plc? Plc { get => _plc; set => _plc = value; }
         #endregion
 
         #region Constructors
@@ -54,17 +64,26 @@ namespace OperationGuidance_new.Tasks {
             Task.Run(async () => {
                 try {
                     while (Connected) {
-                        // Check if any command
-                        if (Command.Count <= 0) {
-                            ReadResponse.SourceData = SendCommand(ReadRequest);
+                        // If is ModBus server
+                        if (_modBusServer != null) {
+                            // Check if any command
+                            if (ModBusCommand.Count <= 0) {
+                                if (_reading) {
+                                    ReadResponse.SourceData = SendCommandToModBusServer(ReadRequest);
 
-                            byte[] bytes = ReadResponse.MessageData.Skip(ReadResponse.LengthOfSymbols).ToArray();
-                            if (_modBusServer != null) {
-                                _modBusServer.LoadData(bytes);
+                                    byte[] bytes = ReadResponse.MessageData.Skip(ReadResponse.LengthOfSymbols).ToArray();
+                                    _modBusServer.LoadData(bytes);
+                                }
+                            } else {
+                                AModBusMessage req = ModBusCommand.Dequeue();
+                                Result.Enqueue(SendCommandToModBusServer(req));
                             }
-                        } else {
-                            ACommunicationMessage req = Command.Dequeue();
-                            Result.Enqueue(SendCommand(req));
+                        }
+                        // If is plc
+                        else if (_plc != null) {
+                            if (_reading) {
+
+                            }
                         }
 
                         await Task.Delay(KeepAliveDelay);
@@ -98,13 +117,15 @@ namespace OperationGuidance_new.Tasks {
         public override void CloseConnection() {
             logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
             if (Connected) {
-                socketClient.Close();
+                if (socketClient != null) {
+                    socketClient.Close();
+                }
             }
             CloseConnectionManually = true;
-            Command.Clear();
+            ModBusCommand.Clear();
             Result.Clear();
         }
-        public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
+        public override bool WorkplaceCheckConnection() => Connected;
         #endregion
 
         #region Methods
@@ -123,11 +144,15 @@ namespace OperationGuidance_new.Tasks {
             if (pingSuccess) {
                 // 2. check socket
                 try {
-                    socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socketClient.ReceiveTimeout = ReceiveTimeout;
-                    socketClient.Connect(IPAddress.Parse(_ip), _port);
-                    connectSuccess = true;
-                    logger.Info($"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    if (_communicationType is CommunicationSiemensPlc) {
+                        MainUtils.Info(logger, $"COMMUNICATION[{_device_name} - {_ip}: {_port}] is Siemens PLC, ping is ok...");
+                    } else {
+                        socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        socketClient.ReceiveTimeout = ReceiveTimeout;
+                        socketClient.Connect(IPAddress.Parse(_ip), _port);
+                        connectSuccess = true;
+                        MainUtils.Info(logger, $"Successfully connect to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+                    }
                 } catch (Exception e) {
                     logger.Warn($"Error while connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}]: {e}");
                 }
@@ -136,32 +161,28 @@ namespace OperationGuidance_new.Tasks {
             }
             return pingSuccess && connectSuccess;
         }
-        public byte[] SendCommand(ACommunicationMessage command) {
+        public byte[] SendCommandToModBusServer(AModBusMessage command) {
             if (Connected) {
                 try {
-                    lock (SendSyncRoot) {
-                        // Send command to controller
-                        socketClient.Send(command.MessageData);
+                    // Send command to controller
+                    socketClient.Send(command.MessageData);
 
-                        // Receive data
-                        lock (ReceiveSyncRoot) {
-                            byte[] msgBytes = new byte[1024 * 1024];
-                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            return msgBytes.Take(msgLen).ToArray();
-                        }
-                    }
+                    // Receive data
+                    byte[] msgBytes = new byte[1024 * 1024];
+                    int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                    return msgBytes.Take(msgLen).ToArray();
                 } catch (Exception e) {
-                    logger.Error($"Error while sending command[{command}] to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
+                    logger.Error($"Error while sending command[{command.MessageDataString}] to COMMUNICATION[{_device_name} - {_ip}: {_port}], e: {e}");
                     // throw e;
                 }
             }
             return new byte[0];
         }
-        public async Task<byte[]> SendCommandAsync(ACommunicationMessage command) {
-            return await Task.Run(() => SendCommand(command));
+        public async Task<byte[]> SendCommandToModBusServerAsync(AModBusMessage command) {
+            return await Task.Run(() => SendCommandToModBusServer(command));
         }
-        public async Task<byte[]> WriteToServer(ACommunicationMessage req) {
-            Command.Enqueue(req);
+        public async Task<byte[]> WriteToModBusServer(AModBusMessage req) {
+            ModBusCommand.Enqueue(req);
             int waitCount = 0;
             while (Result.Count <= 0) {
                 waitCount += 100;

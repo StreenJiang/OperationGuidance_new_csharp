@@ -20,6 +20,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using S7.Net;
 using System.Collections;
 using System.Drawing.Drawing2D;
 using System.Reflection;
@@ -115,6 +116,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected bool _toolControlNeedAdminPasswor;
         protected Action? _actionAfterSendingPset;
         protected ModBusServerBase? ModBusServer;
+        protected Plc? plc;
 
         // 产品面相关
         public int _currentSideIndex;
@@ -779,10 +781,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (toolTask.ToolType is ToolPFSeries) {
                         toolTask.ActionAfterCurveDataReceived = DoAfterRecevingCurveDataAsync;
                     }
-                    // 进入工作台先把所有工具都锁住
-                    if (toolTask.Connected) {
-                        toolTask.SendLock();
-                    }
                 }
 
                 // Load io boxes, included arms
@@ -824,6 +822,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 foreach (KeyValuePair<int, CommunicationTask> pair in _communicationTasks) {
                     CommunicationTask communicationTask = pair.Value;
                     communicationTask.ModBusServer = ModBusServer;
+                    communicationTask.Reading = true;
                     _communicationTask = communicationTask;
                     break;
                 }
@@ -1892,32 +1891,33 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // 读取到控制器传回的数据后进行处理
         protected abstract void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId);
-        protected virtual void DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
-            BeginInvoke(async () => {
-                try {
-                    int max = 50;
-                    int count = 0;
-                    while (currentOperationData == null && count < max) {
-                        await Task.Delay(100);
-                    }
+        protected virtual async void DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
+            await Task.Run(() => {
+                BeginInvoke(async () => {
+                    try {
+                        int max = 50;
+                        int count = 0;
+                        while (currentOperationData == null && count < max) {
+                            await Task.Delay(100);
+                        }
 
-                    if (currentOperationData != null) {
-                        CurveDataDTO dataDTO = new();
-                        CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
+                        if (currentOperationData != null) {
+                            CurveDataDTO dataDTO = new();
+                            CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
 
-                        dataDTO.operation_data_id = currentOperationData.id;
-                        _apis.AddOrUpdateCurveData(new(dataDTO));
-                    } else {
-                        string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
-                        logger.Error(errorMsg);
-                        throw new InvalidDataException(errorMsg);
+                            dataDTO.operation_data_id = currentOperationData.id;
+                            _apis.AddOrUpdateCurveData(new(dataDTO));
+                        } else {
+                            string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
+                            logger.Error(errorMsg);
+                            throw new System.IO.InvalidDataException(errorMsg);
+                        }
+                    } catch (Exception e) {
+                        logger.Error($"Error occurred while handling curve data, e: {e}");
                     }
-                } catch (Exception e) {
-                    logger.Error($"Error occurred while handling curve data, e: {e}");
-                }
+                });
             });
         }
-
 
         protected virtual async void StoreTighteningData(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
@@ -1925,7 +1925,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // 显示完后立马存入数据库
                     currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
 
+                    // 先将VOs加入到实时显示数据列表中
+                    OperationDataVO dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                    _tighteningDataVOs.Add(dataFormatted);
+                    RefreshTighteningDataPanel();
+
                     // 最后再存进本地文件
+                    StoreDataToFiles(dataFormatted);
+                });
+            });
+        }
+
+        protected virtual async void StoreDataToFiles(OperationDataVO dataFormatted) {
+            await Task.Run(() => {
+                BeginInvoke(() => {
                     List<string>? headers = null;
                     string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
                     string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
@@ -1947,8 +1961,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                     // 组装数据
                     List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    OperationDataVO dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
                     // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
                     Dictionary<int, object?> record = new();
                     for (int i = 0; i < propertyNames.Count; i++) {
@@ -1965,19 +1977,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
                         finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
                     });
-                    // 写入数据
-                    // bool succeed = finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    // // 由于 excel 文件如果打开后没有关闭会导致数据存储出错，因此先判断是否成功再进行后续操作
-                    // if (succeed) {
-                    //     _apis.BatchAddOperationData(new(data));
-                    //     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    // } else {
-                    //     WidgetUtils.ShowWarningPopUp("Excel文件被占用，无法执行数据存储操作，本次数据已保留，请在下次任务完成以前或关闭工作台前释放被占用的数据文件，以免造成数据丢失！");
-                    // }
-
-                    // 先将组装好的VOs加入到实时显示数据列表中
-                    _tighteningDataVOs.Add(dataFormatted);
-                    RefreshTighteningDataPanel();
 
                     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                     finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
@@ -1993,7 +1992,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public virtual async void TerminateMission(WorkplaceProcessStatus status) {
             // Lock all tools
-            LockAllTools();
+            if (MainUtils.IsAutoLockToolEnabled() && _activated) {
+                LockAllTools();
+            }
+
+            // Reset IoBox
+            ReseetIoBox();
 
             bool resetToDefault = status == WorkplaceProcessStatus.UNACTIVATED;
 
@@ -2030,9 +2034,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // If is self looping mode, then activate mission automatically
             ActivateMissionAutomatically();
-
-            // Reset IoBox
-            ReseetIoBox();
         }
 
         protected async void LockAllTools() {
@@ -2124,12 +2125,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
 
-            if (_toolTasks != null && _toolTasks.Count > 0) {
-                foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
-                    // Clear all delegates once this workplace handle has been destroyed to ensure running performance
-                    tool.Value.ActionAfterAnalysis = null;
-                    // Lock all tools
-                    tool.Value.SendLock();
+            if (MainUtils.IsAutoLockToolEnabled()) {
+                if (_toolTasks != null && _toolTasks.Count > 0) {
+                    foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
+                        // Clear all delegates once this workplace handle has been destroyed to ensure running performance
+                        tool.Value.ActionAfterAnalysis = null;
+                        // Lock all tools
+                        if (_activated) {
+                            tool.Value.SendLock();
+                        }
+                    }
                 }
             }
             // Clear all delegates once this workplace handle has been destroyed to ensure running performance
@@ -2139,6 +2144,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
                     // Clear all delegates once this workplace handle has been destroyed to make sure it won't throw any exception
                     pair.Value.ActionAfterDataReceived = null;
+                }
+            }
+
+            if (_communicationTasks != null && _communicationTasks.Count > 0) {
+                foreach (CommunicationTask task in _communicationTasks.Values) {
+                    task.Reading = false;
                 }
             }
 
@@ -2814,7 +2825,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SendCommand(async toolTask => {
                     toolTask.SendLock();
                     await Task.Delay(500);
-                    if (toolTask.IsLocked()) {
+                    if (toolTask.Locked) {
                         _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
@@ -2828,7 +2839,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SendCommand(async toolTask => {
                     toolTask.SendUnlock();
                     await Task.Delay(500);
-                    if (!toolTask.IsLocked() && canUnlock) {
+                    if (!toolTask.Locked && canUnlock) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                         _workplace.AddInformationMsg(WorkingProcessPanel.UnlockedManually);
                         _workplace.ClearLockMsgs();

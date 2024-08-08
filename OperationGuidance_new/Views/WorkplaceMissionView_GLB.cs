@@ -64,7 +64,7 @@ namespace OperationGuidance_new.Views {
                 } else if (MainUtils.IsPLCBarCodeSelfLoopingEnabled()) {
                     if (ModBusServer != null) {
                         string barCode = ((ModBusServer_GLB) ModBusServer).BarCdoe.ASCIIStringValue;
-                        logger.Info($"Get bar code[{barCode}] from modbus server");
+                        logger.Info($"Get bar code[{barCode}] from plcs");
                         ActionAfterRecevingBarCode(barCode);
                     }
                 }
@@ -74,7 +74,7 @@ namespace OperationGuidance_new.Views {
         // Initialize mod bus server
         protected override void InitializeAfterHandelCreated() {
             if (_communicationTask != null) {
-                ModBusServer = new ModBusServer_GLB(MainUtils.GetPLCBarCodeStartAddress(), MainUtils.GetPLCBarCodeLength());
+                // ModBusServer = new ModBusServer_GLB(MainUtils.(), MainUtils.GetPLCBarCodeLength());
             }
         }
 

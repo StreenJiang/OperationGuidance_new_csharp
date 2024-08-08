@@ -1,7 +1,7 @@
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
-    public abstract class ACommunicationMessage {
+    public abstract class AModBusMessage {
         private int _lengthOfSymbols;
         private string? _sourceDataStr;
         private byte[]? _sourceData;
@@ -71,7 +71,7 @@ namespace OperationGuidance_new.Constants {
         public MessageSegment? DataLength { get => _dataLength; protected set => _dataLength = value; }
         public MessageSegment? Data { get => _data; protected set => _data = value; }
 
-        public ACommunicationMessage(byte[]? sourceData = null) {
+        public AModBusMessage(byte[]? sourceData = null) {
             _sourceData = sourceData;
 
             InitializeOtherSegments();

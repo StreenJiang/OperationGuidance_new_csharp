@@ -17,7 +17,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 300;
         private int SendMessageRecevingCount = 0;
-        private bool Locked = false;
+        private bool _locked = false;
         private bool? PSetOk = false;
         private Socket? socketClient = null;
         private string _ip;
@@ -33,6 +33,7 @@ namespace OperationGuidance_new.Tasks {
         // Override properties
         public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
         // Other properties
+        public bool Locked => _locked;
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
@@ -121,7 +122,7 @@ namespace OperationGuidance_new.Tasks {
                                 PSetOk = pSetSendingOk.Value;
                             }
                             if (locked != null) {
-                                Locked = locked.Value;
+                                _locked = locked.Value;
                             }
                             if (dataReceived != null && dataReceived.Value) { }
                             if (curveReceived != null && curveReceived.Value) {
@@ -136,7 +137,7 @@ namespace OperationGuidance_new.Tasks {
                                 PSetOk = pSetSendingOk.Value;
                             }
                             if (locked != null) {
-                                Locked = locked.Value;
+                                _locked = locked.Value;
                             }
                             if (dataReceived != null && dataReceived.Value) { }
                             if (curveReceived != null && curveReceived.Value) { }
@@ -157,9 +158,7 @@ namespace OperationGuidance_new.Tasks {
                     RunTask();
                     Status = CONNECTED;
 
-                    // Lock tool to keep safe
-                    Locked = false;
-                    SendLock();
+                    _locked = false;
                     break;
                 }
                 await Task.Delay(AutoReconnectingTrialDelay);
@@ -202,6 +201,7 @@ namespace OperationGuidance_new.Tasks {
                         socketClient.ReceiveTimeout = ReceiveTimeout;
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
+                        SendMessageRecevingCount = 0;
 
                         // 3. send connecting message
                         if (connectSuccess && _toolType is ToolPFSeries toolPF) {
@@ -334,30 +334,29 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void SendLock() {
-            if (Connected && !Locked) {
+            if (Connected) {
                 if (_toolType is ToolPFSeries toolPF) {
                     logger.Info($"Locking tool...");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    Locked = true;
+                    _locked = true;
                 } else {
                 }
             }
         }
         public void SendUnlock() {
-            if (Connected && Locked) {
+            if (Connected) {
                 if (_toolType is ToolPFSeries toolPF) {
                     logger.Info($"Unlocking tool...");
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    Locked = false;
+                    _locked = false;
                 } else {
                 }
             }
         }
-        public bool IsLocked() => Locked;
         #endregion
     }
 }

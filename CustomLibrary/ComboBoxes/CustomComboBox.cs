@@ -253,6 +253,9 @@ namespace CustomLibrary.ComboBoxes {
                             }
                         });
                     });
+
+                    // Check proper width
+                    ResetWidthOfItemScrollPanelByItemProperWidth();
                 } else {
                     if (_selectButton.SelectedItem != null) {
                         _itemSelected();
@@ -467,8 +470,6 @@ namespace CustomLibrary.ComboBoxes {
                     if (_itemsInnerPanel != null) {
                         _itemsInnerPanel.Visible = true;
                     }
-                    // Do this method
-                    ResetWidthOfItemScrollPanelByItemProperWidth();
                     _collapseTimer.Stop();
                 } else {
                     _itemsOuterForm.Height += _collapseStep;

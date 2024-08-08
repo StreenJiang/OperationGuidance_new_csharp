@@ -10,7 +10,7 @@
             return type;
         }
 
-        public static CommunicationOpenProtocol OpenProtocol { get; } = AddNew<CommunicationOpenProtocol>();
+        public static CommunicationSiemensPlc SiemensPlc { get; } = AddNew<CommunicationSiemensPlc>();
         public static CommunicationModBus ModBus { get; } = AddNew<CommunicationModBus>();
 
         public static DeviceTypeCommunication GetById(int id) {
@@ -43,8 +43,8 @@
         public DeviceTypeCommunication(int id, string name) : base(id, name) { }
     }
 
-    public class CommunicationOpenProtocol: DeviceTypeCommunication {
-        public CommunicationOpenProtocol() : base(1, "OpenProtocol") { }
+    public class CommunicationSiemensPlc: DeviceTypeCommunication {
+        public CommunicationSiemensPlc() : base(1, "SiemensPlc") { }
     }
 
     public class CommunicationModBus: DeviceTypeCommunication {

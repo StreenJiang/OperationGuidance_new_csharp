@@ -432,6 +432,24 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.MissionSelfLoopingMode, (int) YesOrNo.NO + "");
             }
         }
+        // Auto lock tool
+        public static bool IsAutoLockToolEnabled() {
+            string autoLockToolEnabled = Settings.Read(IniFileKeys.AutoLockTool);
+            if (string.IsNullOrEmpty(autoLockToolEnabled)) {
+                bool flag = DefaultAutoLockToolEnabled();
+                SetAutoLockToolEnabled(flag);
+                return flag;
+            }
+            return int.Parse(autoLockToolEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultAutoLockToolEnabled() => false;
+        public static void SetAutoLockToolEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.AutoLockTool, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.AutoLockTool, (int) YesOrNo.NO + "");
+            }
+        }
         // PLC bar code self looping
         public static bool IsPLCBarCodeSelfLoopingEnabled() {
             string plcBarCodeSelfLoopingEnabled = Settings.Read(IniFileKeys.PLCBarCodeSelfLooping);
@@ -450,18 +468,54 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.PLCBarCodeSelfLooping, (int) YesOrNo.NO + "");
             }
         }
-        // PLC start address
-        public static int GetPLCBarCodeStartAddress() {
-            string startAddress = Settings.Read(IniFileKeys.PLCBarCodeStartAddress);
-            if (string.IsNullOrEmpty(startAddress)) {
-                int startAddressTemp = GetDefaultPLCBarCodeStartAddress();
-                SetPLCBarCodeStartAddress(startAddressTemp);
-                return startAddressTemp;
+        // PLC model
+        public static string GetPLCModel() {
+            string model = Settings.Read(IniFileKeys.PLCModel);
+            if (string.IsNullOrEmpty(model)) {
+                string modelTemp = GetDefaultPLCModel();
+                SetPLCModel(modelTemp);
+                return modelTemp;
             }
-            return int.Parse(startAddress);
+            return model;
         }
-        public static int GetDefaultPLCBarCodeStartAddress() => 0;
-        public static void SetPLCBarCodeStartAddress(int startAddress) => Settings.Write(IniFileKeys.PLCBarCodeStartAddress, startAddress + "");
+        public static string GetDefaultPLCModel() => "";
+        public static void SetPLCModel(string model) => Settings.Write(IniFileKeys.PLCModel, model);
+        // PLC db address
+        public static int GetPLCDBAddress() {
+            string dbAddress = Settings.Read(IniFileKeys.PLCDBAddress);
+            if (string.IsNullOrEmpty(dbAddress)) {
+                int dbAddressTemp = GetDefaultPLCDBAddress();
+                SetPLCDBAddress(dbAddressTemp);
+                return dbAddressTemp;
+            }
+            return int.Parse(dbAddress);
+        }
+        public static int GetDefaultPLCDBAddress() => 0;
+        public static void SetPLCDBAddress(int dbAddress) => Settings.Write(IniFileKeys.PLCDBAddress, dbAddress + "");
+        // PLC db register no
+        public static string GetPLCDBRegisterNo() {
+            string registerNo = Settings.Read(IniFileKeys.PLCDBRegisterNo);
+            if (string.IsNullOrEmpty(registerNo)) {
+                string registerNoTemp = GetDefaultPLCDBRegisterNo();
+                SetPLCDBRegisterNo(registerNoTemp);
+                return registerNoTemp;
+            }
+            return registerNo;
+        }
+        public static string GetDefaultPLCDBRegisterNo() => "";
+        public static void SetPLCDBRegisterNo(string registerNo) => Settings.Write(IniFileKeys.PLCDBRegisterNo, registerNo);
+        // PLC bit address
+        public static int GetPLCDBBitAddress() {
+            string bitAddress = Settings.Read(IniFileKeys.PLCDBBitAddress);
+            if (string.IsNullOrEmpty(bitAddress)) {
+                int bitAddressTemp = GetDefaultPLCDBBitAddress();
+                SetPLCDBBitAddress(bitAddressTemp);
+                return bitAddressTemp;
+            }
+            return int.Parse(bitAddress);
+        }
+        public static int GetDefaultPLCDBBitAddress() => 0;
+        public static void SetPLCDBBitAddress(int bitAddress) => Settings.Write(IniFileKeys.PLCDBBitAddress, bitAddress + "");
         // PLC bar code length
         public static int GetPLCBarCodeLength() {
             string startAddress = Settings.Read(IniFileKeys.PLCBarCodeLength);
@@ -504,6 +558,9 @@ namespace OperationGuidance_new.Utils {
         public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolId, toolName, ip, port, tool);
             task.Connect();
+            if (IsAutoLockToolEnabled()) {
+                task.SendLock();
+            }
             _toolTasks.Add(toolId, task);
         }
         public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
@@ -523,6 +580,11 @@ namespace OperationGuidance_new.Utils {
                 return _toolTasks[toolId];
             }
             return null;
+        }
+        public static void RemoveToolTask(int toolId) {
+            if (_toolTasks.ContainsKey(toolId)) {
+                _toolTasks.Remove(toolId);
+            }
         }
 
         private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
@@ -554,6 +616,11 @@ namespace OperationGuidance_new.Utils {
             }
             return null;
         }
+        public static void RemoveSerialPortTask(int serialPortId) {
+            if (_serialPortTasks.ContainsKey(serialPortId)) {
+                _serialPortTasks.Remove(serialPortId);
+            }
+        }
 
         private static Dictionary<int, CommunicationTask> _communicationTasks = new();
         public static Dictionary<int, CommunicationTask> CommunicationTasks => _communicationTasks;
@@ -579,6 +646,11 @@ namespace OperationGuidance_new.Utils {
                 return _communicationTasks[communicationId];
             }
             return null;
+        }
+        public static void RemoveCommunicationTask(int communicationId) {
+            if (_communicationTasks.ContainsKey(communicationId)) {
+                _communicationTasks.Remove(communicationId);
+            }
         }
 
         private static Dictionary<string, IoBoxTask> _ioBoxTasks = new();
@@ -608,6 +680,12 @@ namespace OperationGuidance_new.Utils {
                 return _ioBoxTasks[key];
             }
             return null;
+        }
+        public static void RemoveIoBoxTask(string key) {
+            _ioBoxTasks.Remove(key);
+        }
+        public static void RemoveIoBoxTask(string ip, int port) {
+            _ioBoxTasks.Remove(GetTCPClientKey(ip, port));
         }
 
         public static List<string> LogCache { get; } = new();

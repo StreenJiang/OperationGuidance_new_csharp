@@ -105,7 +105,7 @@ namespace OperationGuidance_new.Views {
                         req.SetLength();
 
                         WriteResponseMessage rsp = new();
-                        rsp.SourceData = await _communicationTask.WriteToServer(req);
+                        rsp.SourceData = await _communicationTask.WriteToModBusServer(req);
                         if (rsp.MessageData.Length == 0) {
                             WidgetUtils.ShowNoticePopUp("发送失败");
                         }
@@ -160,7 +160,7 @@ namespace OperationGuidance_new.Views {
                                 req.SetLength();
 
                                 WriteResponseMessage rsp = new();
-                                _communicationTask.WriteToServer(req);
+                                _communicationTask.WriteToModBusServer(req);
                             }
                         }
                         await Task.Delay(1500);
@@ -179,7 +179,7 @@ namespace OperationGuidance_new.Views {
                 req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
                 req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
                 req.SetLength();
-                await _communicationTask.WriteToServer(req);
+                await _communicationTask.WriteToModBusServer(req);
             }
 
             // Run looping task
@@ -225,7 +225,7 @@ namespace OperationGuidance_new.Views {
                                     req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
                                     req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
                                     req.SetLength();
-                                    await _communicationTask.WriteToServer(req);
+                                    await _communicationTask.WriteToModBusServer(req);
 
                                     await Task.Delay(200);
 
@@ -257,7 +257,7 @@ namespace OperationGuidance_new.Views {
                 req.DataLength.MessageHexBytes = MainUtils.ToSingleBytes(req.Data.Length);
                 req.RegisterNum.MessageHexBytes = MainUtils.ToBytes(req.Data.Length / Register.Bytes);
                 req.SetLength();
-                _communicationTask.WriteToServer(req);
+                _communicationTask.WriteToModBusServer(req);
             }
         }
 

@@ -1,7 +1,7 @@
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Constants {
-    public class WriteRequestMessage: ACommunicationMessage {
+    public class WriteRequestMessage: AModBusMessage {
         protected override void InitializeOtherSegments() {
             RegisterStart = new(8, 2);
             RegisterNum = new(10, 2);

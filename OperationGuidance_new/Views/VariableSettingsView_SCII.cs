@@ -5,12 +5,5 @@ namespace OperationGuidance_new.Views {
         public VariableSettingsView_SCII() {
             MissionSelfLoopingModeToggle.Hide();
         }
-
-        protected override void ResizeMissionSettings() {
-            base.ResizeMissionSettings();
-
-            WorkContentPanel.Height -= BoxNBtnHeight + BoxNBtnHeight / 2;
-            WorkPanel.Height = WorkTitlePanel.Height + WorkContentPanel.Height;
-        }
     }
 }

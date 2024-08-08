@@ -57,6 +57,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private int _armLocatingAccuracyOriginal;
         private ToggleButtonGroup _missionSelfLoopingModeToggle;
         private bool _missionSelfLoopingModeOriginal;
+        private ToggleButtonGroup _autoLockToolToggle;
+        private bool _autoLockToolOriginal;
         #endregion
 
         private List<OperationDataField> Fields { get; set; } = new();
@@ -743,11 +745,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Parent = _workContentPanel,
                 Ratio = 6.95,
             };
+            _autoLockToolToggle = new("启动后自动锁枪") {
+                Parent = _workContentPanel,
+                Ratio = 6.95,
+            };
         }
         protected virtual void SaveMissionSettings() {
             MainUtils.SetArmLocatingEnabled(_enableArmLocatingToggle.Checked);
             MainUtils.SetArmLocatingAccuracy(int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text));
             MainUtils.SetMissionSelfLoopingModeEnabled(_missionSelfLoopingModeToggle.Checked);
+            MainUtils.SetAutoLockToolEnabled(_autoLockToolToggle.Checked);
 
             // 修改初始值
             _enableArmLocatingOriginal = _enableArmLocatingToggle.Checked;
@@ -757,6 +764,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _armLocatingAccuracyOriginal = 0;
             }
             _missionSelfLoopingModeOriginal = _missionSelfLoopingModeToggle.Checked;
+            _autoLockToolOriginal = _autoLockToolToggle.Checked;
         }
         protected virtual string? CheckBeforeSave() {
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
@@ -822,6 +830,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _armLocatingAccuracyBox.Margin = new(0, 0, 0, 0);
             _missionSelfLoopingModeToggle.Size = new(boxWidth, this._boxNBtnHeight);
             _missionSelfLoopingModeToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _autoLockToolToggle.Size = new(boxWidth, this._boxNBtnHeight);
+            _autoLockToolToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
         }
@@ -887,10 +897,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _enableArmLocatingOriginal = MainUtils.IsArmLocatingEnabled();
                     _armLocatingAccuracyOriginal = MainUtils.GetArmLocatingAccuracy();
                     _missionSelfLoopingModeOriginal = MainUtils.IsMissionSelfLoopingModeEnabled();
+                    _autoLockToolOriginal = MainUtils.IsAutoLockToolEnabled();
                     _enableArmLocatingToggle.Checked = _enableArmLocatingOriginal;
                     _armLocatingAccuracyBox.SetValue(0, _armLocatingAccuracyOriginal + "");
                     _armLocatingAccuracyBox.Enabled = _enableArmLocatingOriginal;
                     _missionSelfLoopingModeToggle.Checked = _missionSelfLoopingModeOriginal;
+                    _autoLockToolToggle.Checked = _autoLockToolOriginal;
                 });
             });
         }
@@ -917,6 +929,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _enableArmLocatingToggle.Checked = MainUtils.DefaultIsArmLocatingEnabled();
                     _armLocatingAccuracyBox.SetValue(0, MainUtils.GetDefaultArmLocatingAccuracy() + "");
                     _missionSelfLoopingModeToggle.Checked = MainUtils.DefaultMissionSelfLoopingModeEnabled();
+                    _autoLockToolToggle.Checked = MainUtils.DefaultAutoLockToolEnabled();
                 });
             });
         }
