@@ -831,7 +831,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _missionSelfLoopingModeToggle.Size = new(boxWidth, this._boxNBtnHeight);
             _missionSelfLoopingModeToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             _autoLockToolToggle.Size = new(boxWidth, this._boxNBtnHeight);
-            _autoLockToolToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _autoLockToolToggle.Margin = new(0, boxVMargin, 0, 0);
             // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
         }

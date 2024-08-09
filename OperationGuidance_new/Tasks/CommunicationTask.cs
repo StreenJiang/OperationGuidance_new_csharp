@@ -4,7 +4,6 @@ using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.AsbtractClasses;
 using OperationGuidance_new.Utils;
-using S7.Net;
 
 namespace OperationGuidance_new.Tasks {
     public class CommunicationTask: ATaskBase {
@@ -21,7 +20,7 @@ namespace OperationGuidance_new.Tasks {
         private ReadRequestMessage ReadRequest = new();
         private ReadResponseMessage ReadResponse = new();
         private ModBusServerBase? _modBusServer;
-        private Plc? _plc;
+        private PlcServerBase? _plcServer;
         private bool _reading = false;
         #endregion
 
@@ -29,9 +28,9 @@ namespace OperationGuidance_new.Tasks {
         // Override properties
         public override bool Connected {
             get {
-                if (_communicationType is CommunicationSiemensPlc) {
-                    return _plc != null && _plc.IsConnected;
-                }
+                // if (_communicationType is CommunicationSiemensPlc) {
+                //     return _plcServer != null && _plcServer.Plc.IsConnected;
+                // }
                 return socketClient != null && socketClient.Connected && !CloseConnectionManually;
             }
         }
@@ -45,7 +44,7 @@ namespace OperationGuidance_new.Tasks {
         public Action? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public ModBusServerBase? ModBusServer { get => _modBusServer; set => _modBusServer = value; }
         public bool Reading { get => _reading; set => _reading = value; }
-        public Plc? Plc { get => _plc; set => _plc = value; }
+        public PlcServerBase? PlcServer { get => _plcServer; set => _plcServer = value; }
         #endregion
 
         #region Constructors
@@ -80,9 +79,9 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }
                         // If is plc
-                        else if (_plc != null) {
+                        else if (_plcServer != null) {
                             if (_reading) {
-
+                                _plcServer.ReadBytes();
                             }
                         }
 
@@ -146,6 +145,10 @@ namespace OperationGuidance_new.Tasks {
                 try {
                     if (_communicationType is CommunicationSiemensPlc) {
                         MainUtils.Info(logger, $"COMMUNICATION[{_device_name} - {_ip}: {_port}] is Siemens PLC, ping is ok...");
+                        socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        socketClient.ReceiveTimeout = ReceiveTimeout;
+                        socketClient.Connect(IPAddress.Parse(_ip), _port);
+                        connectSuccess = true;
                     } else {
                         socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         socketClient.ReceiveTimeout = ReceiveTimeout;

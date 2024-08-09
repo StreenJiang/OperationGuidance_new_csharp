@@ -20,7 +20,6 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using S7.Net;
 using System.Collections;
 using System.Drawing.Drawing2D;
 using System.Reflection;
@@ -116,7 +115,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected bool _toolControlNeedAdminPasswor;
         protected Action? _actionAfterSendingPset;
         protected ModBusServerBase? ModBusServer;
-        protected Plc? plc;
+        protected PlcServerBase? plcServer;
 
         // 产品面相关
         public int _currentSideIndex;
@@ -819,13 +818,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // Load communication devices
                 _communicationTasks = MainUtils.CommunicationTasks;
-                foreach (KeyValuePair<int, CommunicationTask> pair in _communicationTasks) {
-                    CommunicationTask communicationTask = pair.Value;
-                    communicationTask.ModBusServer = ModBusServer;
-                    communicationTask.Reading = true;
-                    _communicationTask = communicationTask;
-                    break;
-                }
             });
 
             // Keep listenging devices
@@ -945,6 +937,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 ShowingWhileWorking = false,
                                 Visible = false,
                             };
+                            boltBtn.MissionIsActivated = () => _activated;
                             boltBtn.Click += (s, e) => {
                                 _boltPopUpForm = new(boltDTO) {
                                     Title = boltDTO.serial_num + " - " + boltDTO.name,

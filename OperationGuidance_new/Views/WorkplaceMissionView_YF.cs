@@ -170,6 +170,10 @@ namespace OperationGuidance_new.Views {
         }
 
         private async void RunModBusTask() {
+            foreach (CommunicationTask task in _communicationTasks.Values) {
+                _communicationTask = task;
+                break;
+            }
             // Initialize mod bus server
             ModBusServer = new ModBusServer_YF(40001, 100);
             if (_communicationTask != null) {

@@ -22,7 +22,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private readonly int _flikerInterval = 500;
         private readonly float _opacity = .75F;
         private readonly int _arranger_pulse_delay = 200;
-        private readonly int _arranger_wait_result_delay = 200;
+        private readonly int _arranger_wait_result_delay = 1000;
         private readonly int _arranger_time_out = 5000;
         private readonly int _setter_selector_delay = 300;
         private readonly int _setter_selector_time_out = 10000;
@@ -43,6 +43,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _setter_selector_time_count = 0;
         private float? _bitSpecification;
         private bool _bitSpecificationOk;
+        private Func<bool>? _missionIsActivated;
 
         public int Arranger_time_out => _arranger_time_out;
         public int Setter_selector_time_out => _setter_selector_time_out;
@@ -107,6 +108,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => base.BackColor;
             set => base.BackColor = value;
         }
+        public Func<bool>? MissionIsActivated { get => _missionIsActivated; set => _missionIsActivated = value; }
 
         public BoltButton(ProductBoltDTO boltDTO) {
             logger = MainUtils.GetLogger(this.GetType());
@@ -199,27 +201,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     };
 
                     // Waiting for finish signal from arranger
-                    while (_arranger_time_count < _arranger_time_out) {
-                        // check if all tasks were done
-                        if (_specificationsOk.ToList().Count(sOk => sOk != null && !sOk.Value) == 0) {
-                            break;
-                        }
-
-                        // Check which ones are not done yet, and clear the ones were done
-                        for (int i = 0; i < _specificationsOk.Length; i++) {
-                            bool? ok = _specificationsOk[i];
-                            if (ok != null && ok.Value) {
-                                _specifications[i] = null;
-                            }
-                        }
-
+                    bool isAllSent = false;
+                    while (_arranger_time_count < _arranger_time_out && !isAllSent) {
                         // Start sending signal
                         arrangerType.WritePosition(_specifications);
+
+                        // Pulse
                         await WaitAndCountAsync(_arranger_pulse_delay);
 
                         // Reset signal
                         arrangerType.Reset();
-                        await WaitAndCountAsync(_arranger_wait_result_delay);
+
+                        // Check if all sent
+                        isAllSent = await AllSent();
                     }
 
                     // Reset again to ensure status of arranger is right
@@ -243,6 +237,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 await Task.Delay(delay);
                 // Counting time
                 _arranger_time_count += delay;
+            }
+
+            async Task<bool> AllSent() {
+                int waitTimeEach = 50;
+                int waitTimeCount = 0;
+                while (waitTimeCount < _arranger_wait_result_delay) {
+                    // check if all tasks were done
+                    if (_specificationsOk.ToList().Count(sOk => sOk != null && !sOk.Value) == 0) {
+                        return true;
+                    }
+
+                    await Task.Delay(waitTimeEach);
+                    waitTimeCount += waitTimeEach;
+                }
+
+                // Check which ones are not done yet, and clear the ones were done
+                for (int i = 0; i < _specificationsOk.Length; i++) {
+                    bool? ok = _specificationsOk[i];
+                    if (ok != null && ok.Value) {
+                        _specifications[i] = null;
+                    }
+                }
+                return false;
             }
         }
         private void DoArrangerActionAfterAnalysis(int?[] positions) {
@@ -336,7 +353,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                         // Check if is OK
                         isOk = deviceType.PositionStatuses[(int) bitSpecification - 1] == 1;
-                    } while (!isOk);
+                    } while (!IsDisposed && _missionIsActivated != null && _missionIsActivated() && !isOk);
 
                     logger.Info($"Wrote position[{bitSpecification}] OK, return ture...");
                     callBack(true);

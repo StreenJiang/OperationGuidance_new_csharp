@@ -470,6 +470,9 @@ namespace CustomLibrary.ComboBoxes {
                     if (_itemsInnerPanel != null) {
                         _itemsInnerPanel.Visible = true;
                     }
+
+                    // Check proper width
+                    ResetWidthOfItemScrollPanelByItemProperWidth();
                     _collapseTimer.Stop();
                 } else {
                     _itemsOuterForm.Height += _collapseStep;
