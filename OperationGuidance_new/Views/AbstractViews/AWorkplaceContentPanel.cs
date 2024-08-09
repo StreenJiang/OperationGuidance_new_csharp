@@ -946,6 +946,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 ShowingWhileWorking = false,
                                 Visible = false,
                             };
+                            boltBtn.MissionIsActivated = () => _activated;
                             boltBtn.Click += (s, e) => {
                                 _boltPopUpForm = new(boltDTO) {
                                     Title = boltDTO.serial_num + " - " + boltDTO.name,
