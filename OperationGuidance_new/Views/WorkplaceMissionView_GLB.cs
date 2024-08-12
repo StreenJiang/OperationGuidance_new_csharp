@@ -67,7 +67,9 @@ namespace OperationGuidance_new.Views {
                     // Activate mission
                     ActivateMission();
                 } else if (MainUtils.IsPLCBarCodeSelfLoopingEnabled()) {
-                    if (_communicationTask != null && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null) {
+                    if (_communicationTask != null && _communicationTask.Connected
+                            && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
+                            && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
                         _communicationTask.Reading = true;
 
                         // Wait for .5 seconds to ensure data is latest
@@ -112,7 +114,7 @@ namespace OperationGuidance_new.Views {
                     break;
                 }
 
-                if (_communicationTask != null) {
+                if (_communicationTask != null && _communicationTask.Connected) {
                     CpuType cupType = Enum.Parse<CpuType>(MainUtils.GetPLCModel());
                     int db = MainUtils.GetPLCDBAddress();
                     string registerNo = MainUtils.GetPLCDBRegisterNo();

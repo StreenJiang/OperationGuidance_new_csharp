@@ -16,8 +16,8 @@ namespace OperationGuidance_new.Constants {
         private byte[]? _dataBytes;
 
         public Plc? Plc { get => _plc; set => _plc = value; }
-        public CpuType CpuType { get => _cpuType; set => _cpuType=value; }
-        public string Ip { get => _ip; set => _ip=value; }
+        public CpuType CpuType { get => _cpuType; set => _cpuType = value; }
+        public string Ip { get => _ip; set => _ip = value; }
         public int Db { get => _db; set => _db = value; }
         public string Address { get => _address; set => _address = value; }
         public int BitAddress { get => _bitAddress; set => _bitAddress = value; }
@@ -55,7 +55,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         public void Dispose() {
-            if (_plc != null) {
+            if (_plc != null && _plc.IsConnected) {
                 _plc.Close();
             }
         }

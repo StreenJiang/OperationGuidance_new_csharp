@@ -2107,13 +2107,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override async void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             BeginInvoke(new Action(GetBarCodeMatchingRules));
-            // Load devices asynchronously to avoid delay UI creating
-            await LoadDevicesAsync();
-            // Initialize others
-            InitializeAfterHandelCreated();
 
-            // If is self looping mode, then activate mission automatically
-            ActivateMissionAutomatically();
+            await Task.Run(() => {
+                BeginInvoke(async () => {
+                    // Load devices asynchronously to avoid delay UI creating
+                    await LoadDevicesAsync();
+
+                    // Initialize others
+                    InitializeAfterHandelCreated();
+
+                    // If is self looping mode, then activate mission automatically
+                    ActivateMissionAutomatically();
+                });
+            });
         }
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
