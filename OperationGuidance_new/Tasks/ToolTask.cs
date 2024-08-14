@@ -16,14 +16,21 @@ namespace OperationGuidance_new.Tasks {
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 300;
+        private readonly int LockMaxTimes = 3;
+        private readonly int UnLockMaxTimes = 3;
+        private readonly int LockWaitTime = 1000;
         private int SendMessageRecevingCount = 0;
         private bool _locked = false;
+        private int? CurrentPSet = null;
         private bool? PSetOk = false;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
         private DeviceTypeTool _toolType;
         private int HeartBeatCounter;
+        private int LockCounter;
+        private int UnLockCounter;
+        private int LockWaitTimeCounter;
         private Queue<string> _commands = new();
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
@@ -88,9 +95,17 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }
 
+                        // Check for lock wait time
+                        if (LockWaitTimeCounter >= LockWaitTime) {
+                            LockWaitTimeCounter = 0;
+                            LockCounter = 0;
+                            UnLockCounter = 0;
+                        }
+
                         // Looping interval
                         await Task.Delay(LoopingInterval);
                         HeartBeatCounter += LoopingInterval;
+                        LockWaitTimeCounter += LoopingInterval;
                     }
                 } catch (Exception e) {
                     logger.Warn($"Error while running task for connection<TOOL[{_device_name} - {_ip}: {_port}]>, e: {e}");
@@ -170,6 +185,7 @@ namespace OperationGuidance_new.Tasks {
 
             if (Connected) {
                 socketClient.Close();
+                socketClient = null;
             }
 
             CloseConnectionManually = true;
@@ -201,11 +217,11 @@ namespace OperationGuidance_new.Tasks {
                         socketClient.ReceiveTimeout = ReceiveTimeout;
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
-                        SendMessageRecevingCount = 0;
 
                         // 3. send connecting message
                         if (connectSuccess && _toolType is ToolPFSeries toolPF) {
                             if (toolPF.COMMAND_CONNECT_ASCII != null) {
+                                SendMessageRecevingCount = 0;
                                 string? result1 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
                                 if (result1 != null) {
                                     string mid1 = toolPF.GetMid(result1);
@@ -215,6 +231,7 @@ namespace OperationGuidance_new.Tasks {
 
                                 // 4. send data receving enable message
                                 if (sendConnectMsgSuceess) {
+                                    SendMessageRecevingCount = 0;
                                     string? result2 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_DATA_ASCII.GetMessage());
                                     if (result2 != null) {
                                         string mid2 = toolPF.GetMid(result2);
@@ -225,6 +242,7 @@ namespace OperationGuidance_new.Tasks {
                                     // 5. send curve data receving enable message
                                     if (dataEnableMsgSuccess) {
                                         // Don't need to check result, because if PF6000 doesn't have any license for curve data, then it will return 0004 which means it failed, it can not retrieve any curve data
+                                        SendMessageRecevingCount = 0;
                                         SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
                                     }
                                 }
@@ -239,14 +257,14 @@ namespace OperationGuidance_new.Tasks {
                 } else {
                     logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
                 }
-                if (!(pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess)) {
-                    if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
-                        socketClient.Close();
-                    }
-                }
                 bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess;
                 if (isConnected) {
                     MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                } else {
+                    if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
+                        socketClient.Close();
+                        socketClient = null;
+                    }
                 }
                 return isConnected;
             } catch (Exception e) {
@@ -299,15 +317,19 @@ namespace OperationGuidance_new.Tasks {
             return null;
         }
         public async Task<bool> SendPSetAsync(int pSetNumber) {
+            if (pSetNumber == CurrentPSet) {
+                logger.Info($"Current pset is [{CurrentPSet}], same as sending one [{pSetNumber}], no need to send any command...");
+                return true;
+            }
+
             PSetOk = null;
             if (Connected) {
-                await Task.Run(async () => {
+                return await Task.Run(async () => {
                     logger.Info($"Setting pset to [{pSetNumber}]...");
                     string command = "";
                     if (_toolType is ToolPFSeries toolPF) {
                         command = toolPF.GetPSetCommand(pSetNumber);
                         logger.Info($"Sending command to {toolPF.Name}: {command}");
-                        SendCommand(command);
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         command = toolX7.GetPSetCommand(pSetNumber);
                         logger.Info($"Sending command to {toolX7.Name}: {command}");
@@ -326,7 +348,11 @@ namespace OperationGuidance_new.Tasks {
                         await Task.Delay(PSetWaitTime);
                     }
 
-                    logger.Info($"Setting pset [{PSetOk}]!");
+                    if (PSetOk != null && PSetOk.Value) {
+                        CurrentPSet = pSetNumber;
+                    }
+
+                    logger.Info($"Setting pset [{PSetOk != null && PSetOk.Value}]!");
                     return PSetOk != null && PSetOk.Value;
                 });
             }
@@ -334,7 +360,7 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void SendLock() {
-            if (Connected) {
+            if (Connected && LockCounter < LockMaxTimes) {
                 if (_toolType is ToolPFSeries toolPF) {
                     logger.Info($"Locking tool...");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
@@ -343,10 +369,12 @@ namespace OperationGuidance_new.Tasks {
                     _locked = true;
                 } else {
                 }
+
+                LockCounter++;
             }
         }
         public void SendUnlock() {
-            if (Connected) {
+            if (Connected && UnLockCounter < UnLockMaxTimes) {
                 if (_toolType is ToolPFSeries toolPF) {
                     logger.Info($"Unlocking tool...");
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
@@ -355,6 +383,8 @@ namespace OperationGuidance_new.Tasks {
                     _locked = false;
                 } else {
                 }
+
+                UnLockCounter++;
             }
         }
         #endregion

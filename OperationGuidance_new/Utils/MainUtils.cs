@@ -405,7 +405,7 @@ namespace OperationGuidance_new.Utils {
         // Arm locating accuracy
         public static int GetArmLocatingAccuracy() {
             string armLocatingAccuracy = Settings.Read(IniFileKeys.MissionArmLocatingAccuracy);
-            if (string.IsNullOrEmpty(armLocatingAccuracy)) {
+            if (string.IsNullOrEmpty(armLocatingAccuracy) || armLocatingAccuracy == "0") {
                 int accuracy = GetDefaultArmLocatingAccuracy();
                 SetArmLocatingAccuracy(accuracy);
                 return accuracy;

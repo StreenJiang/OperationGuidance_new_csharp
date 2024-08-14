@@ -2822,26 +2822,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _btnLock = AddButton("锁枪");
             _btnLock.Click += (s, e) => {
                 SendCommand(async toolTask => {
+                    _workplace.RemoveInformationMsg(WorkingProcessPanel.UnlockedManually);
+                    _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
                     toolTask.SendLock();
+
                     await Task.Delay(500);
                     if (toolTask.Locked) {
-                        _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
                         WidgetUtils.ShowNoticePopUp("操作成功！");
                     } else {
                         WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令");
                     }
                 });
             };
-            bool canUnlock = true;
             _btnUnlock = AddButton("解锁");
             _btnUnlock.Click += (s, e) => {
                 SendCommand(async toolTask => {
+                    _workplace.ClearLockMsgs();
+                    _workplace.AddInformationMsg(WorkingProcessPanel.UnlockedManually);
                     toolTask.SendUnlock();
+
                     await Task.Delay(500);
-                    if (!toolTask.Locked && canUnlock) {
+                    if (!toolTask.Locked) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
-                        _workplace.AddInformationMsg(WorkingProcessPanel.UnlockedManually);
-                        _workplace.ClearLockMsgs();
                     } else {
                         string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
                         WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】");
@@ -2855,10 +2857,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     int pset = int.Parse(parameterSet);
                     if (await toolTask.SendPSetAsync(pset)) {
                         WidgetUtils.ShowNoticePopUp("操作成功！");
-
-                        // 下发成功自动解锁
-                        // toolTask.SendUnlock();
-                        canUnlock = true;
 
                         BoltButton? boltButton = null;
                         int workstationId = _stationComboBox.Value;
@@ -2878,8 +2876,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             Dispose();
                         }
                     } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定");
-                        canUnlock = false;
+                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定\r\n3. 【控制器-虚拟站-任务】未配置为【source tightening】");
                     }
                 });
             };

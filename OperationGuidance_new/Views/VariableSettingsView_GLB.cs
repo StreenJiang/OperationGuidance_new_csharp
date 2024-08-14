@@ -111,11 +111,24 @@ namespace OperationGuidance_new.Views {
             base.SaveMissionSettings();
 
             bool plcToggle = _plcBarCodeSelfLoopingToggle.Checked;
-            int plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
-            string plcModel = CommonUtils.CannotBeNull(_plcModelComboBox.Value);
-            string plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
-            int plcBitAddr = int.Parse(_plcDBBitAddressBox.GetTextBox(0).Box.Text);
-            int plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
+            int plcAddr;
+            string plcModel;
+            string plcRgiNo;
+            int plcBitAddr;
+            int plcLen;
+            if (plcToggle) {
+                plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
+                plcModel = CommonUtils.CannotBeNull(_plcModelComboBox.Value);
+                plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
+                plcBitAddr = int.Parse(_plcDBBitAddressBox.GetTextBox(0).Box.Text);
+                plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
+            } else {
+                plcAddr = 0;
+                plcModel = "";
+                plcRgiNo = "";
+                plcBitAddr = 0;
+                plcLen = 0;
+            }
 
             MainUtils.SetPLCBarCodeSelfLoopingModeEnabled(plcToggle);
             MainUtils.SetPLCDBAddress(plcAddr);
