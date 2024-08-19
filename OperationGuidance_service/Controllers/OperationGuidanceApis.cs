@@ -1249,63 +1249,71 @@ namespace OperationGuidance_service.Controllers {
 
         // Outer database actions
         public AddDataToOuterDatabaseGlbRsp AddDataToOuterDatabaseGlb(AddDataToOuterDatabaseGlbReq req) {
-            OuterDatabaseConfigGlbDTO configDto = req.OuterDatabaseConfigGlbDTO;
-            MissionRecordDTO missionRecord = req.MissionRecordDTO;
+            try {
+                OuterDatabaseConfigGlbDTO configDto = req.OuterDatabaseConfigGlbDTO;
+                MissionRecordDTO missionRecord = req.MissionRecordDTO;
 
-            DbConnection? conn = DbConnector.GetOuterConnection(configDto);
-            if (conn != null) {
-                string tableName = $"tightening_data_glb_{configDto.workstation_name}";
-                if (!ConnectionUtils.CheckTableExists(conn, tableName)) {
-                    string fieldSql = "";
-                    for (int i = 0; i < 50; i++) {
-                        fieldSql += $"torque{i + 1} float NULL, angle{i + 1} float NULL, ";
+                DbConnection? conn = DbConnector.GetOuterConnection(configDto);
+                if (conn != null) {
+                    string tableName = $"tightening_data_glb_{configDto.workstation_name}";
+                    if (!ConnectionUtils.CheckTableExists(conn, tableName)) {
+                        logger.Info($"Outer database[{tableName}] does not exsit, trying to create one...");
+
+                        string fieldSql = "";
+                        for (int i = 0; i < 50; i++) {
+                            fieldSql += $"torque{i + 1} float NULL, angle{i + 1} float NULL, ";
+                        }
+                        string sqlCreate = @$"CREATE TABLE [{tableName}] (
+                            [id] int IDENTITY(1,1) NOT NULL, 
+                            Serial_Number nvarchar(255) NULL,
+                            SoftwareVersion nvarchar(255) NULL,
+                            Test_Date nvarchar(255) NULL,
+                            Test_Time nvarchar(255) NULL,
+                            Operator_Number nvarchar(255) NULL,
+                            Model nvarchar(255) NULL,
+                            Collect int DEFAULT 0 NULL,
+                            Test_Result int NULL,
+                            {fieldSql}
+                            PRIMARY KEY CLUSTERED ([id])
+                            WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
+                        );";
+                        logger.Info($"Sql = [{sqlCreate}]");
+
+                        int result = _dapperDBService.ExecuteSql(conn, sqlCreate);
+                        logger.Info($"Result of creation = [{result}]");
                     }
-                    string sqlCreate = @$"CREATE TABLE [{tableName}] (
-                        [id] int IDENTITY(1,1) NOT NULL, 
-                        Serial_Number nvarchar(255) NULL,
-                        SoftwareVersion nvarchar(255) NULL,
-                        Test_Date nvarchar(255) NULL,
-                        Test_Time nvarchar(255) NULL,
-                        Operator_Number nvarchar(255) NULL,
-                        Model nvarchar(255) NULL,
-                        Collect int DEFAULT 0 NULL,
-                        Test_Result int NULL,
-                        {fieldSql}
-                        PRIMARY KEY CLUSTERED ([id])
-                        WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
-                    );";
-                    _dapperDBService.ExecuteSql(conn, sqlCreate);
+
+                    string sql = $"insert into {tableName}";
+                    Dictionary<string, object> parameters = new();
+                    parameters.Add("Serial_Number", missionRecord.product_bar_code);
+                    parameters.Add("Test_Date", missionRecord.create_time.ToString("yyyy-MM-dd"));
+                    parameters.Add("Test_Time", missionRecord.create_time.ToString("HH:mm:ss"));
+                    parameters.Add("Test_Result", missionRecord.mission_result);
+
+                    List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
+                    string dataSql = "";
+                    string paramNamesSql = "";
+                    for (int i = 0; i < operationDataDTOs.Count; i++) {
+                        OperationDataDTO data = operationDataDTOs[i];
+
+                        // Torque
+                        dataSql += $", torque{i + 1}";
+                        paramNamesSql += $", @torque{i + 1}";
+                        parameters.Add($"torque{i + 1}", data.torque.Value);
+
+                        // Angle
+                        dataSql += $", angle{i + 1}";
+                        paramNamesSql += $", @angle{i + 1}";
+                        parameters.Add($"angle{i + 1}", data.angle.Value);
+                    }
+
+                    sql += $"(Serial_Number, Test_Date, Test_Time, Test_Result{dataSql}) values (@Serial_Number, @Test_Date, @Test_Time, @Test_Result{paramNamesSql})";
+
+                    return new(_dapperDBService.ExecuteSql(conn, sql, parameters));
                 }
-
-                string sql = $"insert into {tableName}";
-                Dictionary<string, object> parameters = new();
-                parameters.Add("Serial_Number", missionRecord.product_bar_code);
-                parameters.Add("Test_Date", missionRecord.create_time.ToString("yyyy-MM-dd"));
-                parameters.Add("Test_Time", missionRecord.create_time.ToString("HH:mm:ss"));
-                parameters.Add("Test_Result", missionRecord.mission_result);
-
-                List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
-                string dataSql = "";
-                string paramNamesSql = "";
-                for (int i = 0; i < operationDataDTOs.Count; i++) {
-                    OperationDataDTO data = operationDataDTOs[i];
-
-                    // Torque
-                    dataSql += $", torque{i + 1}";
-                    paramNamesSql += $", @torque{i + 1}";
-                    parameters.Add($"torque{i + 1}", data.torque.Value);
-
-                    // Angle
-                    dataSql += $", angle{i + 1}";
-                    paramNamesSql += $", @angle{i + 1}";
-                    parameters.Add($"angle{i + 1}", data.angle.Value);
-                }
-
-                sql += $"(Serial_Number, Test_Date, Test_Time, Test_Result{dataSql}) values (@Serial_Number, @Test_Date, @Test_Time, @Test_Result{paramNamesSql})";
-
-                return new(_dapperDBService.ExecuteSql(conn, sql, parameters));
+            } catch (Exception e) {
+                logger.Error($"Error while inserting data into outer database, e = [{e}]");
             }
-
             return new(0);
         }
         #endregion

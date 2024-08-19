@@ -55,6 +55,7 @@ namespace OperationGuidance_service.Database {
 
         public static DbConnection? GetOuterConnection(OuterDatabaseConfigGlbDTO dto) {
             DbConnection? dbConnection = null;
+            string databaseInfo = $"host = {dto.host}, port = {dto.port}, database = {dto.database_name}, username = {dto.username}, password = {dto.password}";
             if (dto.database_type != null && dto.host != null && dto.port != null && dto.database_name != null) {
                 ADbConnector? connector;
                 DBTypes dBType = (DBTypes) Enum.ToObject(typeof(DBTypes), dto.database_type.Value);
@@ -76,8 +77,10 @@ namespace OperationGuidance_service.Database {
                     dbConnection = connector.GetOuterDbConnection(dto.host, dto.port.Value, dto.database_name, dto.username, dto.password);
                 }
             }
-            if (dbConnection == null) {
-                logger.Warn($"Can not get outer database connection using config: host = {dto.host}, port = {dto.port}, database = {dto.database_name}, username = {dto.username}, password = {dto.password}");
+            if (dbConnection != null) {
+                logger.Info($"Successfully connect to outer database: {databaseInfo}");
+            } else {
+                logger.Warn($"Can not get outer database connection using config: {databaseInfo}");
             }
             return dbConnection;
         }
