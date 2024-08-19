@@ -412,6 +412,7 @@ namespace CustomLibrary.Utils {
             return thickness > 0 ? thickness : 1;
         }
         // Pop up / floating form configs 
+        public static int PopUpOrFloatingFormMaxHeight() => (int) (MainSize.Height * .8);
         public static int PopUpOrFloatingFormTitle() => (int) (MainSize.Height * .0475);
         public static int PopUpOrFloatingFormSubTitle() => (int) (MainSize.Height * .0475);
         public static int PopUpOrFloatingFormTextOrComboBoxHeight() => (int) (MainSize.Height * .035);

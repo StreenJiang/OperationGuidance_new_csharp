@@ -1070,6 +1070,7 @@ namespace OperationGuidance_new.Views {
                 _boltPopUpForm = new(boltDTO) {
                     Title = boltDTO.serial_num + " - " + boltDTO.name,
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                    MaxContentHeight = WidgetUtils.PopUpOrFloatingFormMaxHeight(),
                 };
                 // 添加按钮
                 CommonButton confirmButton = _boltPopUpForm.AddButton("确定信息");

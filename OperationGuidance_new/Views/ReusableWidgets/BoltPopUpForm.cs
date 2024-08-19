@@ -10,7 +10,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class BoltPopUpForm : CustomPopUpForm {
+    public class BoltPopUpForm: CustomPopUpForm {
         private readonly int _columnCount = 2;
         private readonly double _boxRatioOneLine = 8.5925;
         private readonly double _boxRatio = 7.2;
@@ -295,7 +295,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int subTitleMargin = subTitleHeight / 5;
             int tableHeight = 0;
             int previousRowIndex = -1;
-            int cntentWidth = (int)(WidgetUtils.MainSize.Width * .55);
+            int cntentWidth = (int) (WidgetUtils.MainSize.Width * .55);
             int tableWidth = cntentWidth - contentPadding.Size.Width;
             int contentPieceWidth = (tableWidth - boxMargin * (_columnCount + 1)) / _columnCount;
             foreach (Control control in _tablePanel.Controls) {

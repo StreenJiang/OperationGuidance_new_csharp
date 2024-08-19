@@ -2,6 +2,7 @@
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
+using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 
 namespace CustomLibrary.Forms {
@@ -14,10 +15,12 @@ namespace CustomLibrary.Forms {
         private readonly int _borderThickness = 1;
         private bool _needToAskBeforeClosing = false;
         private bool _clickOutsideToClose = false;
+        private int _maxContentHeight = 0;
         // All containers
         private CustomContentPanel _outerPanel;
         private CustomContentPanel _titlePanel;
         private CustomContentPanel _contentPanel;
+        private CustomVScrollingContentPanel _contentOuterPanel;
         private Panel _buttonsPanel;
         private CustomContentPanel _buttonsInnerPanel;
 
@@ -32,6 +35,7 @@ namespace CustomLibrary.Forms {
         private HorizontalAlignment _buttonAlignment;
 
         // -- Properties --
+        public int MaxContentHeight { get => _maxContentHeight; set => _maxContentHeight = value; }
         public Form PopUpFormBackboard { get => _popUpFormBackboard; set => _popUpFormBackboard = value; }
         // Used in EventFuncs
         public Form BackForm { get => _popUpFormBackboard; set => _popUpFormBackboard = value; }
@@ -57,6 +61,7 @@ namespace CustomLibrary.Forms {
         public bool HasTitleBar { get => TitlePanel.Visible; set => TitlePanel.Visible = value; }
         // Content panel
         public CustomContentPanel ContentPanel { get => _contentPanel; set => _contentPanel = value; }
+        public CustomVScrollingContentPanel ContentOuterPanel { get => _contentOuterPanel; set => _contentOuterPanel = value; }
         // Buttons panel
         public Panel ButtonsPanel { get => _buttonsPanel; set => _buttonsPanel = value; }
         public CustomContentPanel ButtonsInnerPanel { get => _buttonsInnerPanel; set => _buttonsInnerPanel = value; }
@@ -119,6 +124,14 @@ namespace CustomLibrary.Forms {
                 Margin = new(0),
                 Padding = GetContentPadding(),
             };
+            _contentPanel.OnCheckNeedsScrollBar += parentNewHeight => {
+                if (_maxContentHeight > 0 && _contentPanel.NewHeight > 0) {
+                    return parentNewHeight < _contentPanel.NewHeight;
+                }
+                return false;
+            };
+            _contentOuterPanel = new(null, _contentPanel);
+            _contentOuterPanel.DoVisibleToTrue = () => { };
             // Buttons panel
             _buttonsPanel = new() {
                 Padding = GetButtonsPanelPadding(),
@@ -156,11 +169,12 @@ namespace CustomLibrary.Forms {
                 FlowDirection = FlowDirection.TopDown,
             };
             _outerPanel.Controls.Add(_titlePanel);
-            _outerPanel.Controls.Add(_contentPanel);
+            _outerPanel.Controls.Add(_contentOuterPanel);
             _outerPanel.Controls.Add(_buttonsPanel);
             _outerPanel.SizeChanged += (sender, eventArgs) => {
                 _titlePanel.Width = _outerPanel.Width;
                 _contentPanel.Width = _outerPanel.Width;
+                _contentOuterPanel.Width = _contentOuterPanel.Width;
                 _buttonsPanel.Width = _outerPanel.Width;
             };
         }
@@ -242,12 +256,24 @@ namespace CustomLibrary.Forms {
         protected Padding GetButtonsPanelPadding() => WidgetUtils.PopUpOrFloatingFormButtonsPadding();
 
         public void SetContentSizeAndSelfSize(Size contentSize) {
-            ContentPanel.Height = contentSize.Height;
-            int formHeight = ContentPanel.Height;
-            if (TitlePanel.Visible) formHeight += TitlePanel.Height;
-            if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
-            if (_borderColor != null) formHeight += _borderThickness * 2;
-            Size = new(contentSize.Width, formHeight);
+            ContentPanel.NewHeight = contentSize.Height;
+            _contentOuterPanel.Width = contentSize.Width;
+            if (_maxContentHeight > 0) {
+                int contentHeight = _maxContentHeight;
+                if (TitlePanel.Visible) contentHeight -= TitlePanel.Height;
+                if (ButtonsPanel.Visible) contentHeight -= ButtonsPanel.Height;
+                if (_borderColor != null) contentHeight -= _borderThickness * 2;
+                _contentOuterPanel.Height -= 1;
+                _contentOuterPanel.Height = contentHeight;
+                Size = new(contentSize.Width, _maxContentHeight);
+            } else {
+                _contentOuterPanel.Height = contentSize.Height;
+                int formHeight = ContentPanel.Height;
+                if (TitlePanel.Visible) formHeight += TitlePanel.Height;
+                if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
+                if (_borderColor != null) formHeight += _borderThickness * 2;
+                Size = new(contentSize.Width, formHeight);
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e) {

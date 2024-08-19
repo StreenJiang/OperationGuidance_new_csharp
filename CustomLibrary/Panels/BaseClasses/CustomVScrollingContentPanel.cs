@@ -8,6 +8,7 @@ namespace CustomLibrary.Panels.BaseClasses {
         private bool _alwaysShowScrollBar;
         private CustomContentPanelBase _contentPanel;
         private bool _needsPadding;
+        private Action? _doVisibleToTrue;
 
         public CustomContentPanel OuterPanel { get => _outerPanel; }
         public Panel InnerPanel { get => _innerPanel; }
@@ -24,6 +25,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             }
         }
         public bool NeedsPadding { get => _needsPadding; set => _needsPadding = value; }
+        public Action? DoVisibleToTrue { get => _doVisibleToTrue; set => _doVisibleToTrue = value; }
 
         public CustomVScrollingContentPanel(CustomContentPanelBase contentPanel, bool paddingWithoutBorder = false) : this(null, contentPanel, false) {
             _outerPanel.PaddingWithoutBorder = paddingWithoutBorder;
@@ -83,6 +85,7 @@ namespace CustomLibrary.Panels.BaseClasses {
             if (TopLevelControl == null) {
                 return;
             }
+
             // Recalculate all inner controls
             _vScrollBar.Height = Height;
             _vScrollBar.Width = WidgetUtils.ScrollBarThickness();
@@ -130,7 +133,11 @@ namespace CustomLibrary.Panels.BaseClasses {
         }
 
         public override void VisibleToTrue() {
-            Size = new(Parent.Width - Parent.Padding.Size.Width, Parent.Height - Parent.Padding.Size.Height);
+            if (_doVisibleToTrue == null) {
+                Size = new(Parent.Width - Parent.Padding.Size.Width, Parent.Height - Parent.Padding.Size.Height);
+            } else {
+                _doVisibleToTrue();
+            }
         }
     }
 }

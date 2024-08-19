@@ -7,10 +7,13 @@ namespace CustomLibrary.Panels {
         private Color? _penBorderColor;
         private bool _autoPadding;
         private bool _paddingWithoutBorder;
+        private Func<int, bool>? _onCheckNeedsScrollBar;
 
         public Color? PenBorderColor { get => _penBorderColor; set => _penBorderColor = value; }
         public bool AutoPadding { get => _autoPadding; set => _autoPadding = value; }
         public bool PaddingWithoutBorder { get => _paddingWithoutBorder; set => _paddingWithoutBorder = value; }
+
+        public event Func<int, bool>? OnCheckNeedsScrollBar { add => _onCheckNeedsScrollBar += value; remove => _onCheckNeedsScrollBar -= value; }
 
         public CustomContentPanel() {
             _autoPadding = true;
@@ -41,6 +44,6 @@ namespace CustomLibrary.Panels {
             }
         }
 
-        public override bool CheckNeedsScrollBar(int parentNewHeight) => false;
+        public override bool CheckNeedsScrollBar(int parentNewHeight) => false || (_onCheckNeedsScrollBar != null && _onCheckNeedsScrollBar(parentNewHeight));
     }
 }

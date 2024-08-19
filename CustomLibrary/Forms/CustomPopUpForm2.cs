@@ -8,7 +8,7 @@ namespace CustomLibrary.Forms {
             TitlePanel.Height = GetTitlePanelHeight();
             ButtonsPanel.Padding = GetButtonsPanelPadding();
             ButtonsPanel.Height = GetButtonsPanelHeight();
-            ContentPanel.Padding = GetContentPadding();
+            ContentOuterPanel.Padding = GetContentPadding();
         }
 
         protected override void AfterSizeChanged(object? sender, EventArgs eventArgs) {

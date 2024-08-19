@@ -17,7 +17,7 @@ using OperationGuidance_service.Utils;
 using System.Reflection;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView : CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
+    public class DataQueryView: CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
         private ILog logger = MainUtils.GetLogger(typeof(DataQueryView));
 
         #region Fields
@@ -69,7 +69,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.VoGridView.GridView.CellDoubleClick += (s, e) => {
                 if (e.RowIndex >= 0) {
-                    OperationDataVO record = (OperationDataVO)_dataGridView.VoGridView.GridView.Rows[e.RowIndex].DataBoundItem;
+                    OperationDataVO record = (OperationDataVO) _dataGridView.VoGridView.GridView.Rows[e.RowIndex].DataBoundItem;
                     CheckCurveData(record.id.Value);
                 }
             };
@@ -162,8 +162,8 @@ namespace OperationGuidance_new.Views {
                 OperationDataDTO? operationDataDTO = apis.FindOperationDataById(new(operationDataId)).OperationDataDTO;
                 if (operationDataDTO != null) {
                     List<CurveDataDTO> curveDataDTOs = apis.FindCurveDataByOperationDataId(new(operationDataId)).CurveDataDTOs;
-                    CurveDataDTO? angleCurve = curveDataDTOs.Find(c => c.data_type == (int)CurveDataType.ANGLE);
-                    CurveDataDTO? torqueCurve = curveDataDTOs.Find(c => c.data_type == (int)CurveDataType.TORQUE);
+                    CurveDataDTO? angleCurve = curveDataDTOs.Find(c => c.data_type == (int) CurveDataType.ANGLE);
+                    CurveDataDTO? torqueCurve = curveDataDTOs.Find(c => c.data_type == (int) CurveDataType.TORQUE);
                     OpenOperationDataDetailsPopUpForm(operationDataDTO.bolt_serial_num.Value, angleCurve, torqueCurve);
                 } else {
                     string errorMsg = $"Can't find operation data by id = {operationDataId}, please check";
@@ -227,8 +227,8 @@ namespace OperationGuidance_new.Views {
             CurvePopUpForm curveForm = new(boltSerialNum, angleCurve, torqueCurve);
 
             curveForm.PretendToShowToCreateHandlesForChildren();
-            int contentWidth = (int)(WidgetUtils.MainSize.Width * .85);
-            int gridViewHeight = (int)(WidgetUtils.MainSize.Height * .65);
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .85);
+            int gridViewHeight = (int) (WidgetUtils.MainSize.Height * .65);
             // 感觉关闭按钮上面太空了，加一点高度
             curveForm.Chart.Size = new(contentWidth - curveForm.ContentPanel.Padding.Size.Width, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height / 4);
             curveForm.SetContentSizeAndSelfSize(new(contentWidth, gridViewHeight + curveForm.ContentPanel.Padding.Size.Height));
