@@ -862,9 +862,11 @@ namespace OperationGuidance_new.Views {
 
             private void OpenNewBoltPopUpForm(ProductBoltDTO boltDTO, Action? addNewBoltBtns, Action? cancelToAdd) {
                 bool added = false;
-                _boltPopUpForm = new(boltDTO) {
+                List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
+                _boltPopUpForm = new BoltEditionPopUpForm_SCII(boltDTO, barCodeMatchingRuleDTOs) {
                     Title = $"螺栓点位 - {boltDTO.name}",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                    MaxContentHeight = WidgetUtils.PopUpOrFloatingFormMaxHeight(),
                 };
                 _boltPopUpForm.HandleDestroyed += (s, e) => {
                     if (!added && cancelToAdd != null) {
@@ -894,114 +896,116 @@ namespace OperationGuidance_new.Views {
             }
 
             private bool saveBoltInfo(ProductBoltDTO boltDTO) {
+                BoltEditionPopUpForm_SCII popUpForm = (BoltEditionPopUpForm_SCII) _boltPopUpForm;
+
                 bool check = true;
                 string warningMsg = "";
                 int warningIndex = 1;
-                string serialNum = _boltPopUpForm.SerialNumBox.GetTextBox(0).Box.Text;
+                string serialNum = popUpForm.SerialNumBox.GetTextBox(0).Box.Text;
                 if (string.IsNullOrEmpty(serialNum) || int.Parse(serialNum) <= 0) {
                     check = false;
-                    _boltPopUpForm.SerialNumBox.GetTextBox(0).IsError = true;
+                    popUpForm.SerialNumBox.GetTextBox(0).IsError = true;
                     warningMsg += $"{warningIndex++}. 点位编号不能为空\r\n";
                 }
-                if (_boltPopUpForm.Workstation.Value == null) {
+                if (popUpForm.Workstation.Value == null) {
                     check = false;
-                    _boltPopUpForm.Workstation.SetError(true);
+                    popUpForm.Workstation.SetError(true);
                     warningMsg += $"{warningIndex++}. 站点不能为空\r\n";
                 } else {
                     foreach (KeyValuePair<int, List<BoltButton>> pair in _currentSideButton.BoltButtons) {
                         BoltButton? boltButton = pair.Value.Find(btn => btn.BoltDTO.serial_num == int.Parse(serialNum));
                         if (boltButton != null && boltButton.BoltDTO.id != boltDTO.id) {
                             check = false;
-                            _boltPopUpForm.SerialNumBox.GetTextBox(0).IsError = true;
+                            popUpForm.SerialNumBox.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 存在重复的点位编号\r\n";
                             break;
                         }
                     }
                 }
-                if (MainUtils.IsArmLocatingEnabled() && !_boltPopUpForm.PositionToggle.Checked) {
+                if (MainUtils.IsArmLocatingEnabled() && !popUpForm.PositionToggle.Checked) {
                     check = false;
                     warningMsg += $"{warningIndex++}. 已开启【力臂定位】，必须配置点位坐标\r\n";
                 }
-                if (_boltPopUpForm.PositionToggle.Checked) {
-                    string x = _boltPopUpForm.PositionBox.GetTextBox(0).Box.Text;
-                    string y = _boltPopUpForm.PositionBox.GetTextBox(1).Box.Text;
-                    string z = _boltPopUpForm.PositionBox.GetTextBox(2).Box.Text;
+                if (popUpForm.PositionToggle.Checked) {
+                    string x = popUpForm.PositionBox.GetTextBox(0).Box.Text;
+                    string y = popUpForm.PositionBox.GetTextBox(1).Box.Text;
+                    string z = popUpForm.PositionBox.GetTextBox(2).Box.Text;
                     if (string.IsNullOrEmpty(x) || string.IsNullOrEmpty(y) || string.IsNullOrEmpty(z)) {
                         check = false;
-                        _boltPopUpForm.PositionBox.GetTextBox(0).IsError = true;
-                        _boltPopUpForm.PositionBox.GetTextBox(1).IsError = true;
-                        _boltPopUpForm.PositionBox.GetTextBox(2).IsError = true;
+                        popUpForm.PositionBox.GetTextBox(0).IsError = true;
+                        popUpForm.PositionBox.GetTextBox(1).IsError = true;
+                        popUpForm.PositionBox.GetTextBox(2).IsError = true;
                         warningMsg += $"{warningIndex++}. 点位坐标字段开启后，不能为空\r\n";
                     }
                 } else {
                     boltDTO.position = null;
                 }
-                if (_boltPopUpForm.ParameterSetToggle.Checked) {
-                    string pset = _boltPopUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
+                if (popUpForm.ParameterSetToggle.Checked) {
+                    string pset = popUpForm.ParameterSetBox.GetTextBox(0).Box.Text;
                     if (string.IsNullOrEmpty(pset) || int.Parse(pset) <= 0) {
                         check = false;
-                        _boltPopUpForm.ParameterSetBox.GetTextBox(0).IsError = true;
+                        popUpForm.ParameterSetBox.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 程序号字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.parameters_set = null;
                 }
-                if (_boltPopUpForm.SpecificationToggle.Checked) {
+                if (popUpForm.SpecificationToggle.Checked) {
                     // Check arrangers
-                    DeviceIoDTO? ioDTO = _boltPopUpForm.ArrangerType.Value;
-                    DeviceIoDTO? ioDTO2 = _boltPopUpForm.ArrangerType2.Value;
+                    DeviceIoDTO? ioDTO = popUpForm.ArrangerType.Value;
+                    DeviceIoDTO? ioDTO2 = popUpForm.ArrangerType2.Value;
                     if (ioDTO == null && ioDTO2 == null) {
                         check = false;
-                        _boltPopUpForm.ArrangerType.SetError(true);
-                        _boltPopUpForm.ArrangerType2.SetError(true);
+                        popUpForm.ArrangerType.SetError(true);
+                        popUpForm.ArrangerType2.SetError(true);
                         warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，排列机组至少填一个\r\n";
                     }
 
                     // Check specifications
-                    string specification = _boltPopUpForm.SpecificationBox.GetTextBox(0).Box.Text;
-                    string specification2 = _boltPopUpForm.SpecificationBox2.GetTextBox(0).Box.Text;
+                    string specification = popUpForm.SpecificationBox.GetTextBox(0).Box.Text;
+                    string specification2 = popUpForm.SpecificationBox2.GetTextBox(0).Box.Text;
                     bool specificationIsNull = (string.IsNullOrEmpty(specification) || int.Parse(specification) <= 0);
                     bool specificationIsNull2 = (string.IsNullOrEmpty(specification2) || int.Parse(specification2) <= 0);
                     if (specificationIsNull && specificationIsNull2) {
                         check = false;
-                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
-                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 螺钉序号字段开启后，螺钉序号至少有一个不能为空且必须大于0\r\n";
                     }
 
                     // Check if them matches
                     if (ioDTO != null && specificationIsNull) {
                         check = false;
-                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 排列机组1有选中的值时，螺钉序号1不能为空且必须大于0\r\n";
                     }
                     if (ioDTO2 != null && specificationIsNull2) {
                         check = false;
-                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 排列机组2有选中的值时，螺钉序号2不能为空且必须大于0\r\n";
                     }
                     if (ioDTO == null && !specificationIsNull) {
                         check = false;
-                        _boltPopUpForm.ArrangerType.SetError(true);
+                        popUpForm.ArrangerType.SetError(true);
                         warningMsg += $"{warningIndex++}. 螺钉序号1不为空且大于0时，排列机组1不能为空\r\n";
                     }
                     if (ioDTO2 == null && !specificationIsNull2) {
                         check = false;
-                        _boltPopUpForm.ArrangerType2.SetError(true);
+                        popUpForm.ArrangerType2.SetError(true);
                         warningMsg += $"{warningIndex++}. 螺钉序号2不为空且大于0时，排列机组2不能为空\r\n";
                     }
                     if (ioDTO != null && ioDTO2 != null && ioDTO.id == ioDTO2.id && specification == specification2) {
                         check = false;
-                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = true;
-                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox.GetTextBox(0).IsError = true;
+                        popUpForm.SpecificationBox2.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 选择同一个排列机组时，螺钉序号不能重复\r\n";
                     }
 
                     if (check) {
-                        _boltPopUpForm.ArrangerType.SetError(false);
-                        _boltPopUpForm.ArrangerType2.SetError(false);
-                        _boltPopUpForm.SpecificationBox.GetTextBox(0).IsError = false;
-                        _boltPopUpForm.SpecificationBox2.GetTextBox(0).IsError = false;
+                        popUpForm.ArrangerType.SetError(false);
+                        popUpForm.ArrangerType2.SetError(false);
+                        popUpForm.SpecificationBox.GetTextBox(0).IsError = false;
+                        popUpForm.SpecificationBox2.GetTextBox(0).IsError = false;
                     }
                 } else {
                     boltDTO.arranger_id = null;
@@ -1009,43 +1013,43 @@ namespace OperationGuidance_new.Views {
                     boltDTO.specification = null;
                     boltDTO.specification2 = null;
                 }
-                if (_boltPopUpForm.BitSpecificationToggle.Checked) {
-                    DeviceIoDTO? ioDTO = _boltPopUpForm.SetterSelectorType.Value;
+                if (popUpForm.BitSpecificationToggle.Checked) {
+                    DeviceIoDTO? ioDTO = popUpForm.SetterSelectorType.Value;
                     if (ioDTO == null) {
                         check = false;
-                        _boltPopUpForm.SetterSelectorType.SetError(true);
+                        popUpForm.SetterSelectorType.SetError(true);
                         warningMsg += $"{warningIndex++}. 套筒位数字段开启后，套筒选择器不能为空\r\n";
                     }
-                    string bitSpecification = _boltPopUpForm.BitSpecificationBox.GetTextBox(0).Box.Text;
+                    string bitSpecification = popUpForm.BitSpecificationBox.GetTextBox(0).Box.Text;
                     if (string.IsNullOrEmpty(bitSpecification) || int.Parse(bitSpecification) <= 0) {
                         check = false;
-                        _boltPopUpForm.BitSpecificationBox.GetTextBox(0).IsError = true;
+                        popUpForm.BitSpecificationBox.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 套筒位数字段开启后，不能为空且必须大于0\r\n";
                     }
                 } else {
                     boltDTO.setter_selector_id = null;
                     boltDTO.bit_specification = null;
                 }
-                if (_boltPopUpForm.TorqueToggle.Checked) {
-                    string torqueMin = _boltPopUpForm.TorqueBox.GetTextBox(0).Box.Text;
-                    string torqueMax = _boltPopUpForm.TorqueBox.GetTextBox(1).Box.Text;
+                if (popUpForm.TorqueToggle.Checked) {
+                    string torqueMin = popUpForm.TorqueBox.GetTextBox(0).Box.Text;
+                    string torqueMax = popUpForm.TorqueBox.GetTextBox(1).Box.Text;
                     if (string.IsNullOrEmpty(torqueMin) || string.IsNullOrEmpty(torqueMax)) {
                         check = false;
-                        _boltPopUpForm.TorqueBox.GetTextBox(0).IsError = true;
-                        _boltPopUpForm.TorqueBox.GetTextBox(1).IsError = true;
+                        popUpForm.TorqueBox.GetTextBox(0).IsError = true;
+                        popUpForm.TorqueBox.GetTextBox(1).IsError = true;
                         warningMsg += $"{warningIndex++}. 扭矩上下限字段开启后，不能为空\r\n";
                     }
                 } else {
                     boltDTO.torque_min = null;
                     boltDTO.torque_max = null;
                 }
-                if (_boltPopUpForm.AngleToggle.Checked) {
-                    string AngleMin = _boltPopUpForm.AngleBox.GetTextBox(0).Box.Text;
-                    string AngleMax = _boltPopUpForm.AngleBox.GetTextBox(1).Box.Text;
+                if (popUpForm.AngleToggle.Checked) {
+                    string AngleMin = popUpForm.AngleBox.GetTextBox(0).Box.Text;
+                    string AngleMax = popUpForm.AngleBox.GetTextBox(1).Box.Text;
                     if (string.IsNullOrEmpty(AngleMin) || string.IsNullOrEmpty(AngleMax)) {
                         check = false;
-                        _boltPopUpForm.AngleBox.GetTextBox(0).IsError = true;
-                        _boltPopUpForm.AngleBox.GetTextBox(1).IsError = true;
+                        popUpForm.AngleBox.GetTextBox(0).IsError = true;
+                        popUpForm.AngleBox.GetTextBox(1).IsError = true;
                         warningMsg += $"{warningIndex++}. 扭矩上下限不能为空\r\n";
                     }
                 } else {
@@ -1053,21 +1057,40 @@ namespace OperationGuidance_new.Views {
                     boltDTO.angle_max = null;
                 }
 
+                // Check for parts bar code bindings
+                if (popUpForm.PartsBarCodesToggle.Checked) {
+                    List<int> ids = new();
+                    List<CustomComboBoxGroup<int>> idBoxes = popUpForm.PartsBarCodeIdBoxes;
+                    for (int i = 0; i < idBoxes.Count; i++) {
+                        CustomComboBoxGroup<int> combo = idBoxes[i];
+                        if (!combo.IsDefaultValue() && combo.Value > 0) {
+                            if (ids.IndexOf(combo.Value) >= 0) {
+                                check = false;
+                                warningMsg += $"{warningIndex++}. 存在重复的物条码匹配规则ID\r\n";
+                                break;
+                            }
+                            ids.Add(combo.Value);
+                        }
+                    }
+                }
+
+
                 if (!check) {
                     WidgetUtils.ShowWarningPopUp($"信息暂存失败：\r\n{warningMsg}");
                 } else {
                     // 根据校验结果判断可以保存
                     Modified = true;
-                    _boltPopUpForm.SaveTo(boltDTO);
+                    popUpForm.SaveTo(boltDTO);
                     WidgetUtils.ShowNoticePopUp("信息暂存成功！");
-                    _boltPopUpForm.Dispose();
+                    popUpForm.Dispose();
                 }
 
                 return check;
             }
 
             private void OpenBoltPopUpForm(ProductBoltDTO boltDTO) {
-                _boltPopUpForm = new(boltDTO) {
+                List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
+                _boltPopUpForm = new BoltEditionPopUpForm_SCII(boltDTO, barCodeMatchingRuleDTOs) {
                     Title = boltDTO.serial_num + " - " + boltDTO.name,
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                     MaxContentHeight = WidgetUtils.PopUpOrFloatingFormMaxHeight(),

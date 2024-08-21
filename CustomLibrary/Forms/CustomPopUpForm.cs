@@ -131,6 +131,7 @@ namespace CustomLibrary.Forms {
                 return false;
             };
             _contentOuterPanel = new(null, _contentPanel);
+            _contentOuterPanel.NeedsPadding = false;
             _contentOuterPanel.DoVisibleToTrue = () => { };
             // Buttons panel
             _buttonsPanel = new() {
@@ -258,22 +259,22 @@ namespace CustomLibrary.Forms {
         public void SetContentSizeAndSelfSize(Size contentSize) {
             ContentPanel.NewHeight = contentSize.Height;
             _contentOuterPanel.Width = contentSize.Width;
-            if (_maxContentHeight > 0) {
-                int contentHeight = _maxContentHeight;
-                if (TitlePanel.Visible) contentHeight -= TitlePanel.Height;
-                if (ButtonsPanel.Visible) contentHeight -= ButtonsPanel.Height;
-                if (_borderColor != null) contentHeight -= _borderThickness * 2;
+
+            int formHeight;
+            if (_maxContentHeight > 0 && _maxContentHeight <= contentSize.Height) {
                 _contentOuterPanel.Height -= 1;
-                _contentOuterPanel.Height = contentHeight;
-                Size = new(contentSize.Width, _maxContentHeight);
+                _contentOuterPanel.Height = _maxContentHeight;
+                _contentOuterPanel.ScrollToBottom();
+                formHeight = _maxContentHeight;
             } else {
                 _contentOuterPanel.Height = contentSize.Height;
-                int formHeight = ContentPanel.Height;
-                if (TitlePanel.Visible) formHeight += TitlePanel.Height;
-                if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
-                if (_borderColor != null) formHeight += _borderThickness * 2;
-                Size = new(contentSize.Width, formHeight);
+                formHeight = ContentPanel.Height;
             }
+
+            if (TitlePanel.Visible) formHeight += TitlePanel.Height;
+            if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
+            if (_borderColor != null) formHeight += _borderThickness * 2;
+            Size = new(contentSize.Width, formHeight);
         }
 
         protected override void OnHandleCreated(EventArgs e) {

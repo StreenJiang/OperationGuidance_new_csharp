@@ -13,12 +13,12 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltEditionPopUpForm: CustomPopUpForm {
-        private readonly int _columnCount = 2;
-        private readonly double _boxRatioOneLine = 8.5925;
-        private readonly double _boxRatio = 7.2;
+        protected readonly int _columnCount = 2;
+        protected readonly double _boxRatioOneLine = 8.5925;
+        protected readonly double _boxRatio = 7.2;
         protected OperationGuidanceApis apis;
-        private ProductBoltDTO _originalBoltDTO;
-        private ProductBoltDTO _modifiedBoltDTO;
+        protected ProductBoltDTO _originalBoltDTO;
+        protected ProductBoltDTO _modifiedBoltDTO;
 
         private int _boxHeight;
         private int _boxMargin;

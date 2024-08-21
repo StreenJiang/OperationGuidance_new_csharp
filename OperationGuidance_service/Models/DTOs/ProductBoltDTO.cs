@@ -22,6 +22,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public float? torque_max { get; set; }
         public float? angle_min { get; set; }
         public float? angle_max { get; set; }
+        public string? parts_bar_code_ids { get; set; }
         public int? enabled { get; set; }
     }
 }

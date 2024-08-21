@@ -123,6 +123,17 @@ namespace CustomLibrary.Panels.BaseClasses {
             WidgetUtils.CalculateScrollBar(_vScrollBar, _innerPanel.Height, _contentPanel.Height);
         }
 
+        public void ScrollToTop() => ScrollTo(0);
+
+        public void ScrollToBottom() => ScrollTo(_vScrollBar.Maximum - _vScrollBar.LargeChange);
+
+        protected void ScrollTo(int value) {
+            if (_vScrollBar.Visible) {
+                _vScrollBar.Value = value;
+                _contentPanel.Location = new Point(0, -value);
+            }
+        }
+
         public void ShowScrollBarAndResizing(bool flag = true) {
             _vScrollBar.Visible = flag;
             if (flag) {

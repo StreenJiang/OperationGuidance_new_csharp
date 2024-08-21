@@ -1,9 +1,12 @@
-﻿using OperationGuidance_service.Attributes;
+﻿using log4net;
+using OperationGuidance_service.Attributes;
 using System.Drawing.Imaging;
 using System.Reflection;
 
 namespace OperationGuidance_service.Utils {
     public static class CommonUtils {
+        private static ILog logger = SystemUtils.GetLogger(typeof(CommonUtils));
+
         public static string GetBaseDirectory() {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
@@ -49,14 +52,22 @@ namespace OperationGuidance_service.Utils {
         }
 
         public static string ListToString(List<int> list) {
-            return list.Count <= 0 ? "" : string.Join("|", list);
+            return !list.Any() ? "" : string.Join(",", list);
         }
 
         public static List<int> StringToList(string str) {
-            string[] strings = str.Split("|");
+            string[] strings = str.Split(",");
             List<int> list = new();
-            foreach (string item in strings) {
-                list.Add(int.Parse(item));
+
+            if (strings.Count() > 0) {
+                try {
+                    foreach (string item in strings) {
+                        list.Add(int.Parse(item));
+                    }
+                } catch (Exception e) {
+                    logger.Error($"Method[StringToList] throwing exception: e = {e}");
+                    throw e;
+                }
             }
             return list;
         }
@@ -75,7 +86,7 @@ namespace OperationGuidance_service.Utils {
                     ICollection<FROM> froms = (ICollection<FROM>) objFrom;
                     ICollection<TO> tos = (ICollection<TO>) objTo;
                     foreach (FROM from in froms) {
-                       if (from != null) {
+                        if (from != null) {
                             TO to = new();
                             ObjectConverter<FROM, TO>(from, to);
                             tos.Add(to);
