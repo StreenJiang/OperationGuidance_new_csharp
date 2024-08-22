@@ -24,20 +24,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected CustomContentPanel _productBarCodeContentPanel;
         protected TitlePanel _partsBarCodeTitle;
         protected CustomContentPanel _partsBarCodeContentPanel;
+        protected List<BarCodeMatchingRuleDTO> _rulesExcluded;
         protected string? _barCode;
 
         public CustomTextBoxButtonGroup ProductBarCodeBox { get => _productBarCodeBox; set => _productBarCodeBox = value; }
         public CustomContentPanel PartsBarCodeContentPanel { get => _partsBarCodeContentPanel; set => _partsBarCodeContentPanel = value; }
+        public List<BarCodeMatchingRuleDTO> RulesExcluded => _rulesExcluded;
 
         public ABarCodeInputPopUpForm(AWorkplaceContentPanel workplace, string initStr, ProductMissionDTO mission, bool activated,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
-                Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode) : base() {
+                Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode,
+                List<BarCodeMatchingRuleDTO> rulesExcluded) : base() {
             _workplace = workplace;
             _initStr = initStr;
             _mission = mission;
             _productBarCodeRules = productBarCodeRules;
             _partsBarCodeRules = partsBarCodeRules;
             _barCode = barCode;
+            _rulesExcluded = rulesExcluded;
 
             _productBarCodeTitle = new("产品条码") {
                 Parent = ContentPanel,
@@ -58,10 +62,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 根据任务ID找到其对应的物料码匹配规则，并根据此规则添加相应的输入框
-        private void AddPartsBoxes(int missionId) {
+        protected virtual void AddPartsBoxes(int missionId) {
             if (missionId > 0 && _partsBarCodeRules.ContainsKey(missionId)) {
-                for (int i = 0; i < _partsBarCodeRules[missionId].Count(); i++) {
-                    AddPartsBarCodeTextBox(_partsBarCodeRules[missionId][i].name);
+                List<BarCodeMatchingRuleDTO> rulesTemp = _partsBarCodeRules[missionId];
+
+                // Ignore excluded rules
+                if (_rulesExcluded.Count > 0) {
+                    rulesTemp = rulesTemp.Where(rule => _workplace.BarCodeObj.PartsMatchingRulesCached.Contains(rule.id) || !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
+                }
+
+                // Need to check the order
+                List<BarCodeMatchingRuleDTO> rulesTempNewOrder = new();
+                foreach (int id in _workplace.BarCodeObj.PartsMatchingRulesCached) {
+                    BarCodeMatchingRuleDTO? ruleTemp = rulesTemp.SingleOrDefault(rule => rule.id == id);
+                    if (ruleTemp != null) {
+                        rulesTempNewOrder.Add(ruleTemp);
+                    }
+                }
+                rulesTempNewOrder.AddRange(rulesTemp.Where(rule => !_workplace.BarCodeObj.PartsMatchingRulesCached.Contains(rule.id)));
+
+                // Add text boxes according to remaining rules
+                for (int i = 0; i < rulesTempNewOrder.Count(); i++) {
+                    AddPartsBarCodeTextBox(rulesTempNewOrder[i].name);
                 }
             }
         }
@@ -77,6 +99,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _productBarCodeBox.GetTextBox(0).Box.Focus();
                     ActiveControl = _productBarCodeBox.GetTextBox(0).Box;
                 } else if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
+                    CustomTextBoxButtonGroup focusingBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
+                    focusingBox.Enabled = true;
+                    focusingBox.GetTextBox(0).Box.Focus();
+                    ActiveControl = focusingBox.GetTextBox(0).Box;
+                }
+            } else {
+                if (_workplace.BarCodeObj.PartsBarCodes.Count < _partsBarCodeContentPanel.Controls.Count) {
                     CustomTextBoxButtonGroup focusingBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
                     focusingBox.Enabled = true;
                     focusingBox.GetTextBox(0).Box.Focus();
@@ -115,11 +144,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return box;
         }
         // 添加物料条码输入框
-        private CustomTextBoxButtonGroup AddPartsBarCodeTextBox(string? name) {
+        protected CustomTextBoxButtonGroup AddPartsBarCodeTextBox(string? name) {
             CustomTextBoxButtonGroup box;
             if (string.IsNullOrEmpty(name)) {
                 box = new($"物料条码{_partsIndex++}");
             } else {
+                _partsIndex++;
                 box = new(name);
             }
             box.Parent = _partsBarCodeContentPanel;
@@ -241,7 +271,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 mission = CommonUtils.CannotBeNull(mission);
                 SwitchToMission(mission);
                 if (_partsBarCodeRules.ContainsKey(_mission.id)) {
-                    _workplace.BarCodeObj.PartsRulesCount = _partsBarCodeRules[_mission.id].Count;
+                    RecalcPartsRemainingCount();
                 }
                 if (_workplace.BarCodeObj.PartsRulesCount > 0) {
                     CustomTextBoxButtonGroup firstPartsBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[0];
@@ -266,6 +296,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 校验条码
             ValidateProductBarCodeAsync();
         }
+        private void RecalcPartsRemainingCount() {
+            List<BarCodeMatchingRuleDTO> rulesTemp = _partsBarCodeRules[_mission.id];
+            // Filer out all rules that bound to bolts
+            rulesTemp = rulesTemp.Where(rule => !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
+
+            _workplace.BarCodeObj.PartsRulesCount = rulesTemp.Count;
+        }
 
         public async void ValidatePartsBarCode(CustomTextBoxButtonGroup box) {
             string barCode = box.GetTextBox(0).Box.Text;
@@ -289,9 +326,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             else {
                 bool checkPassed = true;
 
-                // Extra check before all
-                checkPassed = PartsBarCodeExtraCheck(ruleId);
-
                 // 如果存在前置物料任务，则先查询前置物料任务是否完成
                 if (checkPassed && _mission.predecessor_part_mission_ids != null) {
                     Dictionary<int, int>? idsDict = JsonConvert.DeserializeObject<Dictionary<int, int>>(_mission.predecessor_part_mission_ids);
@@ -308,6 +342,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     }
                 }
+
+                // Extra check
+                checkPassed = PartsBarCodeExtraCheck(ruleId);
 
                 // 物料码返工确认
                 if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
@@ -337,6 +374,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // 禁用当前输入框
                     box.Enabled = false;
                     // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
+                    RecalcPartsRemainingCount();
                     if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
                         CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
                         nextBox.Enabled = true;
@@ -345,9 +383,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                     // 检查是否可以激活任务
                     if (CheckCanActivateMission()) {
-                        // 激活任务
-                        _workplace.ActivateMission();
-                        await Task.Delay(1000);
+                        if (!_workplace.Activated) {
+                            // 激活任务
+                            _workplace.ActivateMission();
+                            await Task.Delay(1000);
+                        } else {
+                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                            _workplace.MissionRecord.parts_bar_code = string.Join(",", _workplace.BarCodeObj.PartsBarCodes);
+                            _workplace.Apis.AddOrUpdateMissionRecord(new(_workplace.MissionRecord));
+                            await Task.Delay(300);
+                        }
+
+                        // Hide/Close pop up form
                         Hide();
                     }
                 } else {
@@ -355,7 +402,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             }
         }
-        protected abstract bool PartsBarCodeExtraCheck(int ruleId);
+        protected virtual bool PartsBarCodeExtraCheck(int ruleId) {
+            // Check if current bar code is bound to a bolt (or current bolt)
+            if (_rulesExcluded.Count > 0 && _rulesExcluded.Any(rule => rule.id == ruleId)) {
+                if (!_workplace.Activated) {
+                    WidgetUtils.ShowWarningPopUp("此物料与点位绑定，任务进行时才需录入");
+                } else {
+                    WidgetUtils.ShowWarningPopUp("此物料不是当前点位绑定的物料，请重新录入");
+                }
+                return false;
+            }
+
+            return true;
+        }
         public void ValidatePartsBarCode(string barCode) {
             if (_focusedBox == null) {
                 _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
@@ -418,20 +477,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 检查是否可以激活任务
-        public bool CheckCanActivateMission() {
+        public virtual bool CheckCanActivateMission() {
             // 没选任务，pass
             if (_mission.id > 0) {
                 // 没录入产品码，pass
                 if (!string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
-                    // TODO: 如果存在后置物料码，则不检查后置物料码
                     // 配置了物料码但是录入的物料码与配置的数量不一致，pass
-                    if (!_partsBarCodeRules.ContainsKey(_mission.id) || _partsBarCodeRules[_mission.id].Count == _workplace.BarCodeObj.PartsBarCodes.Count) {
-                        // 重置所有带红框提示的输入框
-                        _productBarCodeBox.GetTextBox(0).IsError = false;
-                        foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
-                            ((CustomTextBoxButtonGroup) ctrl).GetTextBox(0).IsError = false;
+                    if (_partsBarCodeRules.ContainsKey(_mission.id)) {
+                        List<BarCodeMatchingRuleDTO> rulesTemp = _partsBarCodeRules[_mission.id];
+                        // Filer out all rules that bound to bolts
+                        rulesTemp = rulesTemp.Where(rule => _workplace.BarCodeObj.PartsMatchingRulesCached.Contains(rule.id) || !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
+                        if (rulesTemp.Count == _workplace.BarCodeObj.PartsBarCodes.Count) {
+                            // 重置所有带红框提示的输入框
+                            _productBarCodeBox.GetTextBox(0).IsError = false;
+                            foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
+                                ((CustomTextBoxButtonGroup) ctrl).GetTextBox(0).IsError = false;
+                            }
+                            return true;
                         }
-                        return true;
                     }
                 }
             }

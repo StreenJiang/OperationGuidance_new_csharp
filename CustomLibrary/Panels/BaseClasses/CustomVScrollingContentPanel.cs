@@ -127,7 +127,7 @@ namespace CustomLibrary.Panels.BaseClasses {
 
         public void ScrollToBottom() => ScrollTo(_vScrollBar.Maximum - _vScrollBar.LargeChange);
 
-        protected void ScrollTo(int value) {
+        public void ScrollTo(int value) {
             if (_vScrollBar.Visible) {
                 _vScrollBar.Value = value;
                 _contentPanel.Location = new Point(0, -value);

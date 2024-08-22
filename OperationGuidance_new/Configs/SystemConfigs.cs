@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Panels;
+using CustomLibrary.Panels;
 using OperationGuidance_new.Views;
 using OperationGuidance_new.Constants;
 using System.Diagnostics;

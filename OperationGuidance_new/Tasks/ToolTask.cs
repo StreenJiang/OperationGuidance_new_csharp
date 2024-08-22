@@ -16,8 +16,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 300;
-        private readonly int LockMaxTimes = 3;
-        private readonly int UnLockMaxTimes = 3;
+        private readonly int LockMaxTimes = 10;
+        private readonly int UnLockMaxTimes = 10;
         private readonly int LockWaitTime = 1000;
         private int SendMessageRecevingCount = 0;
         private bool _locked = false;

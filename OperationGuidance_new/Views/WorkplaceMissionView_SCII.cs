@@ -217,8 +217,14 @@ namespace OperationGuidance_new.Views {
             }
 
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                if (_activated && _currentWorkingBolt != null) {
+                    _rulesExcluded = GetCurrentExcludedRules(_currentWorkingBolt.BoltDTO);
+                } else {
+                    _rulesExcluded = GetCurrentExcludedRules();
+                }
+
                 _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
-                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode) {
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
@@ -831,6 +837,24 @@ namespace OperationGuidance_new.Views {
         //         ResetRightBottomTitleFont();
         //     }
         // }
+
+        protected override void OpenBoltPopUpForm(ProductBoltDTO boltDTO, BoltButton boltBtn) {
+            List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _mission.id }).BarCodeMatchingRuleDTOs;
+            _boltPopUpForm = new BoltPopUpForm_SCII(boltDTO, barCodeMatchingRuleDTOs) {
+                Title = boltDTO.serial_num + " - " + boltDTO.name,
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                ClickOutsideToClose = true,
+            };
+            // 添加按钮
+            AddBtnToBoltPopUpForm(boltDTO, boltBtn);
+
+            // Show form but make it transparent to create handles for its children
+            _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
+            // Resize all widgets
+            ResizeBoltPopUpForm();
+            // Real show
+            _boltPopUpForm.Show();
+        }
 
         protected override void ToolOperationPopUpFormExtraActions(ToolOperationPopUpForm popUpForm) {
             if (_activated) {

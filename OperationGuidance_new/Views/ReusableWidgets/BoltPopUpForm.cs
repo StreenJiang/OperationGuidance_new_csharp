@@ -11,16 +11,16 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltPopUpForm: CustomPopUpForm {
-        private readonly int _columnCount = 2;
-        private readonly double _boxRatioOneLine = 8.5925;
-        private readonly double _boxRatio = 7.2;
+        protected readonly int _columnCount = 2;
+        protected readonly double _boxRatioOneLine = 8.5925;
+        protected readonly double _boxRatio = 7.2;
         protected OperationGuidanceApis apis;
-        private ProductBoltDTO _originalBoltDTO;
+        protected ProductBoltDTO _originalBoltDTO;
 
         private int _boxHeight;
         private int _boxMargin;
         private int _buttonHeight;
-        private TableLayoutPanel _tablePanel;
+        protected TableLayoutPanel _tablePanel;
 
         private CustomTextBoxGroup _serialNumBox;
         private CustomTextBoxGroup _nameBox;

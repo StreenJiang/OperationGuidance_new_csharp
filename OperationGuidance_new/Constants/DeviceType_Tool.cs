@@ -102,24 +102,57 @@ namespace OperationGuidance_new.Constants {
             string dataMessageTemp = Encoding.ASCII.GetString(msgBytes);
             logger.Info($"Analyzing data from {this.Name}: [{dataMessageTemp}]");
 
+
             // Analyze msg one by one
             string[] msgs = dataMessageTemp.Split('\0');
-            foreach (string msg in msgs) {
+            for (int i = 0; i < msgs.Length; i++) {
+                string msg = msgs[i];
                 if (_getLengthOfOne(msg) > 0) {
-                    _analyzeData(msg);
+                    if (GetMid(msg) == "0900") {
+                        if (i == 0) {
+                            _analyzeData(msg, msgBytes);
+                        } else {
+                            List<byte> bytes = msgBytes.ToList();
+
+                            int index = -1;
+                            do {
+                                index = bytes.IndexOf(0);
+                                if (index > 0) {
+                                    string msgTemp = Encoding.ASCII.GetString(bytes.Take(index).ToArray());
+                                    if (GetMid(msgTemp) == "0900") {
+                                        _analyzeData(msgTemp, bytes.Skip(index).Take(bytes.Count).ToArray());
+                                        logger.Error("1111111111111111111111111111111111111111111111111111111111111111111111111111111111");
+                                        break;
+                                    }
+                                }
+
+                                bytes = bytes.Take(index).ToList();
+                                logger.Error("-000000000000000000000000000000000000000000");
+                            } while (index > 0);
+                        }
+
+                        break;
+                    } else {
+                        _analyzeData(msg);
+                    }
                 }
             }
 
             // Inner method that check and count length of msg
             int _getLengthOfOne(string msg) {
                 if (msg.Length >= 4) {
-                    return int.Parse(new String(msg.Take(4).ToArray()));
+                    try {
+                        return int.Parse(new String(msg.Take(4).ToArray()));
+                    } catch (FormatException fe) {
+                        logger.Warn($"Exception occurred while checking length of message got from controller: msg = {msg}, e = {fe}");
+                        return 0;
+                    }
                 }
                 return 0;
             }
 
             // Inner method that do analyze
-            void _analyzeData(string dataMessage) {
+            void _analyzeData(string dataMessage, byte[]? cureData = null) {
                 logger.Info($"Analyzing each data for {this.Name}: [{dataMessage}]");
 
                 string mid = GetMid(dataMessage);
@@ -217,18 +250,18 @@ namespace OperationGuidance_new.Constants {
                     }
                 } else if (mid == "0900") {
                     toolAction(null, null, null, null, true);
-                    if (_actionAfterCurveDataReceived != null) {
+                    if (_actionAfterCurveDataReceived != null && cureData != null) {
                         if (deviceId == null) {
                             string errorMsg = $"[Device] id can not be null while [actionAfterCurveDataReceived] is not null.";
                             logger.Error(errorMsg);
                             throw new NullReferenceException(errorMsg);
                         }
 
-                        string header = Encoding.ASCII.GetString(msgBytes.Take(msgBytes.ToList().IndexOf(0)).ToArray());
+                        string header = Encoding.ASCII.GetString(cureData.Take(cureData.ToList().IndexOf(0)).ToArray());
                         string id = new(header.Skip(20).Take(10).ToArray());
                         string time = $"{new(header.Skip(30).Take(10).ToArray())} {new(header.Skip(41).Take(8).ToArray())}";
                         string dataType = new(header.Skip(52).Take(2).ToArray());
-                        byte[] dataBytes = msgBytes.Skip(header.Length + 1).ToArray();
+                        byte[] dataBytes = cureData.Skip(header.Length + 1).ToArray();
                         double coefficient = double.Parse(new(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
                         int decimals = int.Parse(dataType) == (int) CurveDataType.TORQUE ? 2 : 0;
                         double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);

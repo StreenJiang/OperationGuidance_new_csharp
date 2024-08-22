@@ -109,6 +109,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected List<BarCodeMatchingRuleDTO> _barCodeMatchingRuleDTOs;
         protected Dictionary<int, List<BarCodeMatchingRuleDTO>> _productBarCodeMatchingRules;
         protected Dictionary<int, List<BarCodeMatchingRuleDTO>> _partsBarCodeMatchingRules;
+        protected List<BarCodeMatchingRuleDTO> _rulesExcluded;
+        protected List<int>? _ruleIdsCheckedCached;
 
         // 设备相关
         protected List<DeviceBlock> _deviceBlocks;
@@ -155,6 +157,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public int IsRedo { get => _isRedo; set => _isRedo = value; }
         public BarCodeObj BarCodeObj => _barCodeObj;
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
+        public MissionRecordDTO? MissionRecord => _missionRecord;
         #endregion
 
         public AWorkplaceContentPanel() { }
@@ -938,74 +941,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 Visible = false,
                             };
                             boltBtn.MissionIsActivated = () => _activated;
-                            boltBtn.Click += (s, e) => {
-                                _boltPopUpForm = new(boltDTO) {
-                                    Title = boltDTO.serial_num + " - " + boltDTO.name,
-                                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
-                                    ClickOutsideToClose = true,
-                                };
-                                // 添加按钮
-                                if (_currentWorkingBolt == null || _currentWorkingBolt.BoltDTO.serial_num != boltDTO.serial_num) {
-                                    CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
-                                    switchBtn.Click += (s, e) => {
-                                        if (!_activated) {
-                                            WidgetUtils.ShowErrorPopUp("任务未激活或已完成，无法切换点位！");
-                                            _boltPopUpForm.Dispose();
-                                        } else {
-                                            BoltButton? currentBoltBtn;
-                                            int sideId = _sides[_currentSideIndex].id;
-                                            int selectingBoltWorkstationId = boltBtn.BoltDTO.workstation_id;
-                                            if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                                currentBoltBtn = _currentWorkingBoltIndependence[selectingBoltWorkstationId];
-                                            } else {
-                                                currentBoltBtn = _currentWorkingBolt;
-                                            }
-                                            if (currentBoltBtn != null) {
-                                                // Switch to certain bolts
-                                                if (CheckIfIsMultiDeviceIndependenceMode()) {
-                                                    BoltButton boltButton = SwitchBolt(selectingBoltWorkstationId, _allBoltsIndependence[sideId][selectingBoltWorkstationId].IndexOf(boltBtn));
-
-                                                    // Change status of bolt
-                                                    ChangeBoltStatusToWorking(boltButton);
-
-                                                    // Cache it
-                                                    _currentWorkingBoltIndependence[selectingBoltWorkstationId] = boltButton;
-                                                } else {
-                                                    BoltButton boltButton = SwitchBolt(_allBolts[sideId].IndexOf(boltBtn));
-
-                                                    // Change status of bolt
-                                                    ChangeBoltStatusToWorking(boltButton);
-
-                                                    // Cache it
-                                                    _currentWorkingBolt = boltButton;
-                                                }
-                                                currentBoltBtn.ResetStatusWithoutChangingVisible();
-                                                currentBoltBtn.StopFlickering();
-                                                _boltPopUpForm.Dispose();
-
-                                                // 切换点位时，只能向后选择没有拧的点位，不能选择前面的。即只能跳过某些点，不能重新打某些点
-                                                // if (_allBolts.IndexOf(_currentWorkingBolt) > newIndex) {
-                                                //     WidgetUtils.ShowErrorPopUp("无法切换到已完成的螺栓点位！");
-                                                // } else {
-                                                //     _currentWorkingBolt.ResetStatusWithoutChangingVisible();
-                                                //     _currentWorkingBolt.StopFlickering();
-                                                //     _currentWorkingBolt = SwitchBoltAndChangeStatus(newIndex);
-                                                // }
-                                            }
-                                        }
-                                    };
-                                }
-                                CommonButton closeBtn = _boltPopUpForm.AddButton("关闭");
-                                closeBtn.Click += (s, e) => {
-                                    _boltPopUpForm.Dispose();
-                                };
-                                // Show form but make it transparent to create handles for its children
-                                _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
-                                // Resize all widgets
-                                ResizeBoltPopUpForm();
-                                // Real show
-                                _boltPopUpForm.Show();
-                            };
+                            boltBtn.Click += (s, e) => OpenBoltPopUpForm(boltDTO, boltBtn);
                             // Multi device independence: Group by workstation first, then group by side id
                             if (!dict.ContainsKey(boltDTO.workstation_id)) {
                                 dict.Add(boltDTO.workstation_id, new());
@@ -1033,6 +969,78 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 });
             }
         }
+        protected virtual void OpenBoltPopUpForm(ProductBoltDTO boltDTO, BoltButton boltBtn) {
+            _boltPopUpForm = new(boltDTO) {
+                Title = boltDTO.serial_num + " - " + boltDTO.name,
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                ClickOutsideToClose = true,
+            };
+            // 添加按钮
+            AddBtnToBoltPopUpForm(boltDTO, boltBtn);
+
+            // Show form but make it transparent to create handles for its children
+            _boltPopUpForm.PretendToShowToCreateHandlesForChildren();
+            // Resize all widgets
+            ResizeBoltPopUpForm();
+            // Real show
+            _boltPopUpForm.Show();
+        }
+        protected virtual void AddBtnToBoltPopUpForm(ProductBoltDTO boltDTO, BoltButton boltBtn) {
+            if (_currentWorkingBolt == null || _currentWorkingBolt.BoltDTO.serial_num != boltDTO.serial_num) {
+                CommonButton switchBtn = _boltPopUpForm.AddButton("切换到此点位");
+                switchBtn.Click += (s, e) => {
+                    if (!_activated) {
+                        WidgetUtils.ShowErrorPopUp("任务未激活或已完成，无法切换点位！");
+                        _boltPopUpForm.Dispose();
+                    } else {
+                        BoltButton? currentBoltBtn;
+                        int sideId = _sides[_currentSideIndex].id;
+                        int selectingBoltWorkstationId = boltBtn.BoltDTO.workstation_id;
+                        if (CheckIfIsMultiDeviceIndependenceMode()) {
+                            currentBoltBtn = _currentWorkingBoltIndependence[selectingBoltWorkstationId];
+                        } else {
+                            currentBoltBtn = _currentWorkingBolt;
+                        }
+                        if (currentBoltBtn != null) {
+                            // Switch to certain bolts
+                            if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                BoltButton boltButton = SwitchBolt(selectingBoltWorkstationId, _allBoltsIndependence[sideId][selectingBoltWorkstationId].IndexOf(boltBtn));
+
+                                // Change status of bolt
+                                ChangeBoltStatusToWorking(boltButton);
+
+                                // Cache it
+                                _currentWorkingBoltIndependence[selectingBoltWorkstationId] = boltButton;
+                            } else {
+                                BoltButton boltButton = SwitchBolt(_allBolts[sideId].IndexOf(boltBtn));
+
+                                // Change status of bolt
+                                ChangeBoltStatusToWorking(boltButton);
+
+                                // Cache it
+                                _currentWorkingBolt = boltButton;
+                            }
+                            currentBoltBtn.ResetStatusWithoutChangingVisible();
+                            currentBoltBtn.StopFlickering();
+                            _boltPopUpForm.Dispose();
+
+                            // 切换点位时，只能向后选择没有拧的点位，不能选择前面的。即只能跳过某些点，不能重新打某些点
+                            // if (_allBolts.IndexOf(_currentWorkingBolt) > newIndex) {
+                            //     WidgetUtils.ShowErrorPopUp("无法切换到已完成的螺栓点位！");
+                            // } else {
+                            //     _currentWorkingBolt.ResetStatusWithoutChangingVisible();
+                            //     _currentWorkingBolt.StopFlickering();
+                            //     _currentWorkingBolt = SwitchBoltAndChangeStatus(newIndex);
+                            // }
+                        }
+                    }
+                };
+            }
+            CommonButton closeBtn = _boltPopUpForm.AddButton("关闭");
+            closeBtn.Click += (s, e) => {
+                _boltPopUpForm.Dispose();
+            };
+        }
         protected virtual void ResizeBoltPopUpForm() {
             if (_boltPopUpForm != null) {
                 _boltPopUpForm.ResizeSelf();
@@ -1042,8 +1050,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 打开条码弹窗
         protected virtual void OpenBarCodePopUpForm(string? barCode = null) {
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                if (_activated && _currentWorkingBolt != null) {
+                    _rulesExcluded = GetCurrentExcludedRules(_currentWorkingBolt.BoltDTO);
+                } else {
+                    _rulesExcluded = GetCurrentExcludedRules();
+                }
+
                 _barCodePopUpForm = new BarCodeInputPopUpForm(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
-                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode) {
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
@@ -1076,6 +1090,55 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             _barCodePopUpForm.Show();
         }
+
+        protected virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
+            _rulesExcluded = new();
+
+            if (_mission.id > 0 && _mission.ProductSides != null && _partsBarCodeMatchingRules.ContainsKey(_mission.id)) {
+                List<int> ids = new();
+
+                // Collate all bolts of current mission into a List
+                List<ProductBoltDTO> allBolts = new();
+                foreach (ProductSideDTO side in _mission.ProductSides) {
+                    if (side.Bolts != null) {
+                        allBolts.AddRange(side.Bolts);
+                    }
+                }
+
+                // Check if any bolt needs to be excluded
+                // if (_ruleIdsCheckedCached != null && _ruleIdsCheckedCached.Count > 0) {
+                //     allBolts.RemoveAll(b => _ruleIdsCheckedCached.Contains(b.id));
+                // }
+                // Check if current bolt is not null and if it is not null, then remove current bolt from List[allBolts]
+                if (boltDTO != null) {
+                    allBolts.RemoveAll(b => b.id == boltDTO.id);
+
+                    // Add current bolt id into cache list
+                    if (_ruleIdsCheckedCached == null) {
+                        _ruleIdsCheckedCached = new();
+                    }
+                    _ruleIdsCheckedCached.Add(boltDTO.id);
+                }
+
+                // Check all bolts see if any rule needs to be excluded
+                List<string?> idsList = allBolts.Select(b => b.parts_bar_code_ids).ToList();
+                foreach (string? idsStr in idsList) {
+                    if (!string.IsNullOrEmpty(idsStr)) {
+                        ids.AddRange(CommonUtils.StringToList(idsStr));
+                    }
+                }
+
+                // Remove id(s) if it's duplicated in current bolt
+                if (boltDTO != null && !string.IsNullOrEmpty(boltDTO.parts_bar_code_ids)) {
+                    ids.RemoveAll(id => CommonUtils.StringToList(boltDTO.parts_bar_code_ids).Contains(id));
+                }
+
+                _rulesExcluded = _partsBarCodeMatchingRules[_mission.id].Where(rule => ids.Contains(rule.id)).ToList();
+            }
+
+            return _rulesExcluded;
+        }
+
         // 激活任务
         public virtual void ActivateMission() {
             // *0. Reset all before activating mission
@@ -1634,15 +1697,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Change status of bolt
         protected virtual void ChangeBoltStatusToWorking(BoltButton boltButton) {
+            // Clear all messages
+            // Do this first because some other lock message will occurred later
+            ClearLockMsgs();
+            ClearInformationMsgs();
+
             // Send signal to arrager if specification is not null and grater than 0
             SendSignalToArrager(boltButton);
 
             // Send signal to setter selector if bit_specification is not null and grater than 0
             SendSignalToSetterSelector(boltButton);
 
-            // Clear all messages
-            ClearLockMsgs();
-            ClearInformationMsgs();
+            // Check if any parts bar code bound to current bolt
+            CheckBoltBoundPartsBarCode(boltButton);
 
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value;
@@ -1656,6 +1723,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
+        }
+
+        // Check if any parts bar code bound to current bolt
+        protected virtual void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
+            if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
+                List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
+                if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
+                    AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                }
+            }
         }
 
         // Send pset to controller
@@ -2021,6 +2098,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Clear all cached bar codes
             _barCodeObj.Reset();
+            _ruleIdsCheckedCached = null;
+            _isRedo = (int) YesOrNo.NO;
 
             // Reset current operation data
             currentOperationData = null;
@@ -2216,6 +2295,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public static readonly string LockedArrangerNotDone = "{0}号螺丝送钉未完成";
         public static readonly string LockedSetterSelectorTimedOut = "{0}号螺丝套筒选择超时";
         public static readonly string LockedSetterSelectorNotMatched = "{0}号螺丝套筒选择错误";
+        public static readonly string LockedBoltBarCode = "{0}号螺丝需要录入绑定的物料码";
 
         private Image _clockwiseIcon;
         private Image _anticlockwiseIcon;

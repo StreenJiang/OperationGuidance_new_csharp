@@ -1072,6 +1072,8 @@ namespace OperationGuidance_new.Views {
                             ids.Add(combo.Value);
                         }
                     }
+                } else {
+                    popUpForm.ModifiedBoltDTO.parts_bar_code_ids = null;
                 }
 
 

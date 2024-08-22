@@ -23,8 +23,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public List<CustomTextBoxButtonGroup> PartsBarCodeNameBoxes { get => _partsBarCodeNameBoxes; set => _partsBarCodeNameBoxes = value; }
 
         public BoltEditionPopUpForm_SCII(ProductBoltDTO boltDTO, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) : base(boltDTO) {
-            Console.WriteLine($"boltDTO.parts_bar_code_ids = {boltDTO.parts_bar_code_ids}");
-
             _barCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs;
             foreach (BarCodeMatchingRuleDTO rule in barCodeMatchingRuleDTOs) {
                 if (rule.type == BarCodeTypes.PARTS.Id) {
@@ -59,6 +57,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 },
             };
             SignButton addButton = _partsBarCodeNameBoxes[0].AddButton<SignButton>();
+            addButton.Enabled = true;
             addButton.Icon = Properties.Resources.sign_plus;
             addButton.Click += (s, e) => AddPartsBarCodeAndFlush();
 
@@ -69,7 +68,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _partsBarCodesToggle.CheckedChanged += (s, e) => {
                 if (_partsBarCodesToggle.Checked) {
                     _partsBarCodesSubPanel.TablePanel.Show();
-                    if (!string.IsNullOrEmpty(boltDTO.parts_bar_code_ids)) {
+                    if (!string.IsNullOrEmpty(boltDTO.parts_bar_code_ids) && _partsBarCodeIdBoxes.Count == 1) {
                         List<int> partsBarCodeRuleIds = CommonUtils.StringToList(boltDTO.parts_bar_code_ids);
                         for (int i = 0; i < partsBarCodeRuleIds.Count; i++) {
                             int id = partsBarCodeRuleIds[i];
@@ -85,15 +84,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 } else {
                     _partsBarCodesSubPanel.TablePanel.Hide();
                 }
-                ResizeSelf();
                 for (int i = 0; i < _partsBarCodeIdBoxes.Count; i++) {
                     _partsBarCodeIdBoxes[i].ResizeChildren();
                     _partsBarCodeNameBoxes[i].ResizeChildren();
                 }
+
+                ResizeSelf();
             };
+        }
+
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
 
             // Back fill according to data
-            _partsBarCodesToggle.Checked = !string.IsNullOrEmpty(boltDTO.parts_bar_code_ids);
+            // Action asynchronously to avoid other controls to initialize
+            BackFillAsync();
+        }
+
+        private async void BackFillAsync() {
+            await Task.Run(() => {
+                BeginInvoke(() => {
+                    _partsBarCodesToggle.Checked = !string.IsNullOrEmpty(_modifiedBoltDTO.parts_bar_code_ids);
+                });
+            });
         }
 
         private void AddPartsBarCodeAndFlush() {
@@ -124,6 +137,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Enabled = false,
             };
             SignButton minusButton = box.AddButton<SignButton>();
+            minusButton.Enabled = true;
             minusButton.Icon = Properties.Resources.sign_minus;
             minusButton.Click += (s, e) => {
                 _partsBarCodeIdBoxes.Remove(comboBox);

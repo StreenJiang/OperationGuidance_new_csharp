@@ -321,6 +321,17 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_bolt` 
+        ///  ADD COLUMN `parts_bar_code_ids` varchar(64) NULL AFTER `angle_max`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20240822 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240822", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
