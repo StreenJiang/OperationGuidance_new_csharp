@@ -618,6 +618,30 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_bolt&quot; RENAME TO &quot;_product_bolt_old_20240822&quot;;
+        ///
+        ///CREATE TABLE &quot;product_bolt&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;side_id&quot; integer NOT NULL,
+        ///  &quot;serial_num&quot; integer NOT NULL,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;arranger_id&quot; integer,
+        ///  &quot;specification&quot; real(16),
+        ///  &quot;arranger_id2&quot; integer,
+        ///  &quot;specification2&quot; real(16),
+        ///  &quot;workstation_id&quot; integer,
+        ///  &quot;position&quot; text(32),
+        ///  &quot;location_x_percent&quot; real(8) NOT NULL,
+        ///  &quot;location_y_percent&quot; real(8) NOT NULL,
+        ///  &quot;setter_selector_id&quot; i [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240822 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240822", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
         ///-- ----------------------------
@@ -646,6 +670,16 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20240628 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20240628", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE [dbo].[product_bolt] ADD [parts_bar_code_ids] varchar(64) NULL
+        ///.
+        /// </summary>
+        internal static string modify_sqlserver_20240822 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20240822", resourceCulture);
             }
         }
     }
