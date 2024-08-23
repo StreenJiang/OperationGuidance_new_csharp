@@ -121,13 +121,13 @@ namespace OperationGuidance_new.Constants {
                                     string msgTemp = Encoding.ASCII.GetString(bytes.Take(index).ToArray());
                                     if (GetMid(msgTemp) == "0900") {
                                         _analyzeData(msgTemp, bytes.Skip(index).Take(bytes.Count).ToArray());
-                                        logger.Error("1111111111111111111111111111111111111111111111111111111111111111111111111111111111");
+                                        logger.Info("Curve data analysis done ...........");
                                         break;
                                     }
                                 }
 
                                 bytes = bytes.Take(index).ToList();
-                                logger.Error("-000000000000000000000000000000000000000000");
+                                logger.Info("Curve data looping ...........");
                             } while (index > 0);
                         }
 
