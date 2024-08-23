@@ -16,9 +16,9 @@ namespace OperationGuidance_new.Tasks {
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 300;
-        private readonly int LockMaxTimes = 10;
-        private readonly int UnLockMaxTimes = 10;
-        private readonly int LockWaitTime = 1000;
+        private readonly int LockMaxTimes = 2;
+        private readonly int UnLockMaxTimes = 2;
+        private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private bool _locked = false;
         private int? CurrentPSet = null;
@@ -345,6 +345,8 @@ namespace OperationGuidance_new.Tasks {
                     while (PSetOk == null && waitTimes < waitTimesMax) {
                         SendCommand(command);
                         waitTimes++;
+
+                        logger.Info("Waiting for pset ok .......");
                         await Task.Delay(PSetWaitTime);
                     }
 
@@ -352,7 +354,7 @@ namespace OperationGuidance_new.Tasks {
                         CurrentPSet = pSetNumber;
                     }
 
-                    logger.Info($"Setting pset [{PSetOk != null && PSetOk.Value}]!");
+                    logger.Info($"Setting pset to [{pSetNumber}] [{PSetOk != null && PSetOk.Value}]!");
                     return PSetOk != null && PSetOk.Value;
                 });
             }

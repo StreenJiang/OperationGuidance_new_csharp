@@ -796,7 +796,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     serialPortTask.ActionAfterDataReceived = async msg => {
                         await Task.Run(() => {
                             BeginInvoke(() => {
-                                if (!IsDisposed && !_activated) {
+                                if (!IsDisposed) {
                                     DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
                                     // 如果有空的数据进来，则跳过
                                     if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
@@ -1091,7 +1091,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _barCodePopUpForm.Show();
         }
 
-        protected virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
+        public virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
             _rulesExcluded = new();
 
             if (_mission.id > 0 && _mission.ProductSides != null && _partsBarCodeMatchingRules.ContainsKey(_mission.id)) {
@@ -1697,6 +1697,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Change status of bolt
         protected virtual void ChangeBoltStatusToWorking(BoltButton boltButton) {
+            logger.Info("ChangeBoltStatusToWorking start ............");
+
             // Clear all messages
             // Do this first because some other lock message will occurred later
             ClearLockMsgs();
@@ -1723,20 +1725,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
+
+            logger.Info("ChangeBoltStatusToWorking end ............");
         }
 
         // Check if any parts bar code bound to current bolt
-        protected virtual void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
-            if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
-                List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
-                if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
-                    AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
-                }
-            }
+        protected virtual async void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
+            await Task.Run(() => {
+                BeginInvoke(() => {
+                    if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
+                        List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
+                        if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
+                            AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                        }
+                    }
+                });
+            });
         }
 
         // Send pset to controller
         protected virtual async void SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
+            logger.Info("SendPSet start ......");
+
             // // Initialize pset text box first
             // SetPset();
             _pset.SetValue(0, null);
@@ -1748,109 +1758,109 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             // Do send pset to controller
-            await Task.Run(() => {
-                BeginInvoke(async () => {
-                    int sendTimes = 0;
-                    while (!IsDisposed) {
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        if (await task.SendPSetAsync(pset.Value)) {
-                            break;
-                        }
-                        if (boltButton.CurrentParameterSet != null) {
-                            return;
-                        }
+            int sendTimes = 0;
+            while (!IsDisposed) {
+                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                AddLockMsg(WorkingProcessPanel.LockedPsetSending);
+                if (await task.SendPSetAsync(pset.Value)) {
+                    break;
+                }
+                if (boltButton.CurrentParameterSet != null) {
+                    return;
+                }
 
-                        // Count failure times
-                        sendTimes++;
+                // Count failure times
+                sendTimes++;
 
-                        // If sending times reaches maximun, show pop up form
-                        if (_resendPsetMaxTimes > 0 && sendTimes >= _resendPsetMaxTimes) {
-                            WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，请检查配置或机器是否处于正常状态");
-                            return;
-                        }
+                // If sending times reaches maximun, show pop up form
+                if (_resendPsetMaxTimes > 0 && sendTimes >= _resendPsetMaxTimes) {
+                    WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，请检查配置或机器是否处于正常状态");
+                    return;
+                }
 
-                        // Show reason of sending failure
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                // Show reason of sending failure
+                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
 
-                        // // 实时显示pset到任务信息框
-                        // SetPset("程序号下发失败");
-                        _pset.SetValue(0, "程序号下发失败");
+                // // 实时显示pset到任务信息框
+                // SetPset("程序号下发失败");
+                _pset.SetValue(0, "程序号下发失败");
 
-                        // Confirm if retry needed
-                        if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
-                            return;
-                        }
-                    }
+                // Confirm if retry needed
+                if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
+                    return;
+                }
+            }
 
-                    // Send successfully if step to here
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                    boltButton.CurrentParameterSet = pset;
+            // Send successfully if step to here
+            RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+            RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+            boltButton.CurrentParameterSet = pset;
 
-                    // SetPset();
-                    _pset.SetValue(0, pset + "");
-                });
-            });
+            // SetPset();
+            _pset.SetValue(0, pset + "");
+
+            logger.Info("SendPSet end ......");
         }
 
         // Send bit position to arranger
-        protected virtual void SendSignalToArrager(BoltButton boltButton) {
-            BeginInvoke((Delegate) (() => {
-                Task.Run(() => {
-                    // Prepare all variables
-                    ProductBoltDTO boltDTO = boltButton.BoltDTO;
-                    _specifications = new List<float>();
-                    _arrangerIds = new List<int>();
-                    if (boltDTO.specification != null && boltDTO.specification > 0) {
-                        _specifications.Add(boltDTO.specification.Value);
-                        _arrangerIds.Add(boltDTO.arranger_id.Value);
-                    }
-                    if (boltDTO.specification2 != null && boltDTO.specification2 > 0) {
-                        _specifications.Add(boltDTO.specification2.Value);
-                        _arrangerIds.Add(boltDTO.arranger_id2.Value);
-                    }
+        protected virtual async void SendSignalToArrager(BoltButton boltButton) {
+            await Task.Run(() => {
+                BeginInvoke((Delegate) (() => {
+                    Task.Run(() => {
+                        // Prepare all variables
+                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                        _specifications = new List<float>();
+                        _arrangerIds = new List<int>();
+                        if (boltDTO.specification != null && boltDTO.specification > 0) {
+                            _specifications.Add(boltDTO.specification.Value);
+                            _arrangerIds.Add(boltDTO.arranger_id.Value);
+                        }
+                        if (boltDTO.specification2 != null && boltDTO.specification2 > 0) {
+                            _specifications.Add(boltDTO.specification2.Value);
+                            _arrangerIds.Add(boltDTO.arranger_id2.Value);
+                        }
 
-                    logger.Info($"Sending signal(s) to arranger(s) for specification(s) = [{string.Join(", ", _specifications)}]...");
+                        logger.Info($"Sending signal(s) to arranger(s) for specification(s) = [{string.Join(", ", _specifications)}]...");
 
-                    // Do action if specifications is not equal to 0
-                    if (_specifications.Count > 0) {
-                        // Initialize variables
-                        if (_arrangerPositionOk == null) {
-                            _arrangerPositionOk = new();
-                            foreach (float specification in _specifications) {
-                                _arrangerPositionOk.Add(specification, false);
-                            }
-                        } else {
-                            List<float>.Enumerator enumerator = _specifications.GetEnumerator();
-                            while (enumerator.MoveNext()) {
-                                float specification = enumerator.Current;
-                                if (_arrangerPositionOk.ContainsKey(specification)) {
-                                    if (_arrangerPositionOk[specification]) {
-                                        _arrangerIds.RemoveAt(_specifications.IndexOf(specification));
-                                        _specifications.Remove(specification);
-                                        continue;
-                                    }
+                        // Do action if specifications is not equal to 0
+                        if (_specifications.Count > 0) {
+                            // Initialize variables
+                            if (_arrangerPositionOk == null) {
+                                _arrangerPositionOk = new();
+                                foreach (float specification in _specifications) {
+                                    _arrangerPositionOk.Add(specification, false);
                                 }
-                                _arrangerPositionOk.Add(specification, false);
+                            } else {
+                                List<float>.Enumerator enumerator = _specifications.GetEnumerator();
+                                while (enumerator.MoveNext()) {
+                                    float specification = enumerator.Current;
+                                    if (_arrangerPositionOk.ContainsKey(specification)) {
+                                        if (_arrangerPositionOk[specification]) {
+                                            _arrangerIds.RemoveAt(_specifications.IndexOf(specification));
+                                            _specifications.Remove(specification);
+                                            continue;
+                                        }
+                                    }
+                                    _arrangerPositionOk.Add(specification, false);
+                                }
                             }
-                        }
 
-                        // Do send signal
-                        if (_arrangerIds.Distinct().Count() == 1) {
-                            SendSignal(_arrangerIds[0], _specifications);
-                        } else {
-                            for (int i = 0; i < _arrangerIds.Count; i++) {
-                                SendSignal(_arrangerIds[i], _specifications.Skip(i).Take(1).ToList());
+                            // Do send signal
+                            if (_arrangerIds.Distinct().Count() == 1) {
+                                SendSignal(_arrangerIds[0], _specifications);
+                            } else {
+                                for (int i = 0; i < _arrangerIds.Count; i++) {
+                                    SendSignal(_arrangerIds[i], _specifications.Skip(i).Take(1).ToList());
+                                }
                             }
+                        } else {
+                            _arrangerPositionOk = null;
+                            _arrangerPositionTimedOut = false;
                         }
-                    } else {
-                        _arrangerPositionOk = null;
-                        _arrangerPositionTimedOut = false;
-                    }
-                });
-            }));
+                    });
+                }));
+            });
 
             // Action of sending signal
             void SendSignal(int arrangerId, List<float> specifications) {
@@ -1872,30 +1882,32 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // Send bit position to setter selector
-        protected virtual void SendSignalToSetterSelector(BoltButton boltButton) {
-            BeginInvoke(() => {
-                Task.Run(() => {
-                    ProductBoltDTO boltDTO = boltButton.BoltDTO;
-                    if (boltDTO.bit_specification != null && boltDTO.bit_specification > 0) {
-                        DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.setter_selector_id);
-                        IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
-                        if (setterSelectorType != null) {
-                            _bitPositionOk = false;
+        protected virtual async void SendSignalToSetterSelector(BoltButton boltButton) {
+            await Task.Run(() => {
+                BeginInvoke(() => {
+                    Task.Run(() => {
+                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                        if (boltDTO.bit_specification != null && boltDTO.bit_specification > 0) {
+                            DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.setter_selector_id);
+                            IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
+                            if (setterSelectorType != null) {
+                                _bitPositionOk = false;
 
-                            if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
-                                _bitPositionTimedOut = false;
-                                boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => _bitPositionOk = isOk);
-                            } else {
-                                boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
-                                    _bitPositionOk = isOk;
-                                    _bitPositionTimedOut = isTimedOut;
-                                });
+                                if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
+                                    _bitPositionTimedOut = false;
+                                    boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => _bitPositionOk = isOk);
+                                } else {
+                                    boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
+                                        _bitPositionOk = isOk;
+                                        _bitPositionTimedOut = isTimedOut;
+                                    });
+                                }
                             }
+                        } else {
+                            _bitPositionOk = null;
+                            _bitPositionTimedOut = false;
                         }
-                    } else {
-                        _bitPositionOk = null;
-                        _bitPositionTimedOut = false;
-                    }
+                    });
                 });
             });
         }
@@ -1989,68 +2001,83 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual async void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreTighteningData start ........");
+
+            // Use task to store data asynchronously
+            StoreDataToDatabase(operationDataDTO);
+
+            // 先将VOs加入到实时显示数据列表中
+            OperationDataVO dataFormatted = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+            _tighteningDataVOs.Add(dataFormatted);
+
+            RefreshTighteningDataPanel();
+            logger.Info("StoreTighteningData showing to panel end ........");
+
+            // 最后再存进本地文件
+            StoreDataToFiles(operationDataDTO);
+
+            logger.Info("StoreTighteningData end ........");
+        }
+
+        protected virtual async void StoreDataToDatabase(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
-                BeginInvoke(() => {
-                    // 显示完后立马存入数据库
-                    currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
-
-                    // 先将VOs加入到实时显示数据列表中
-                    OperationDataVO dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-                    _tighteningDataVOs.Add(dataFormatted);
-                    RefreshTighteningDataPanel();
-
-                    // 最后再存进本地文件
-                    StoreDataToFiles(dataFormatted);
-                });
+                logger.Info("StoreTighteningData save to database start ........");
+                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+                logger.Info("StoreTighteningData save to database end ........");
             });
         }
 
-        protected virtual async void StoreDataToFiles(OperationDataVO dataFormatted) {
-            await Task.Run(() => {
-                BeginInvoke(() => {
-                    List<string>? headers = null;
-                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                    // 检查当前文件是否存在
-                    bool textFileExists = File.Exists(textFilePath);
-                    bool excelFileExists = File.Exists(excelFilePath);
-                    // 从配置文件读取配置
-                    List<int> sortConfig = MainUtils.GetSortConfig();
-                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                    // 检查当前是否存在正在使用的字段配置
-                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                        sortConfigCurr = sortConfig;
-                        MainUtils.SetSortConfigCurr(sortConfigCurr);
-                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                    }
-                    // 组装数据
-                    List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                    Dictionary<int, object?> record = new();
-                    for (int i = 0; i < propertyNames.Count; i++) {
-                        string pName = propertyNames[i];
-                        PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
-                        if (propertyInfo != null) {
-                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
-                        }
-                    }
-                    dataWithConfigFields.Add(record);
-                    // 组装最终数据
-                    List<List<object?>> finalData = new();
-                    dataWithConfigFields.ForEach(dict => {
-                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                    });
+        protected virtual void StoreDataToFiles(OperationDataDTO operationDataDTO) {
+            BeginInvoke(() => {
+                logger.Info("StoreDataToFiles start ........");
 
-                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                OperationDataVO dataFormatted = new();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+
+                List<string>? headers = null;
+                string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                // 检查当前文件是否存在
+                bool textFileExists = File.Exists(textFilePath);
+                bool excelFileExists = File.Exists(excelFilePath);
+                // 从配置文件读取配置
+                List<int> sortConfig = MainUtils.GetSortConfig();
+                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                // 检查当前是否存在正在使用的字段配置
+                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                    sortConfigCurr = sortConfig;
+                    MainUtils.SetSortConfigCurr(sortConfigCurr);
+                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
+                }
+                // 组装数据
+                List<Dictionary<int, object?>> dataWithConfigFields = new();
+                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                Dictionary<int, object?> record = new();
+                for (int i = 0; i < propertyNames.Count; i++) {
+                    string pName = propertyNames[i];
+                    PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
+                    if (propertyInfo != null) {
+                        record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+                    }
+                }
+                dataWithConfigFields.Add(record);
+                // 组装最终数据
+                List<List<object?>> finalData = new();
+                dataWithConfigFields.ForEach(dict => {
+                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
                 });
+
+                finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+
+                logger.Info("StoreDataToFiles end ........");
             });
         }
 

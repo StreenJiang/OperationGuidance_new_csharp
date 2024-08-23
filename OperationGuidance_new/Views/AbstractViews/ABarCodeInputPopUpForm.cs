@@ -118,11 +118,20 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _mission = mission;
             _workplace.SwitchToMission(mission);
             _partsIndex = 1;
-            // 自动回填产品码
+
+            // Back fill product bar code
             _productBarCodeBox.SetValue(0, _workplace.BarCodeObj.ProductBarCode);
-            // 清除所有物料码输入框并重新根据当前任务添加
+
+            // Clear all text boxes of parts
             _partsBarCodeContentPanel.Controls.Clear();
+
+            // Check excluded parts
+            _rulesExcluded = _workplace.GetCurrentExcludedRules();
+
+            // Add new text boxes of parts
             AddPartsBoxes(_mission.id);
+
+            // Resize
             ResizeSelf();
         }
         // 添加产品条码输入框
