@@ -18,5 +18,8 @@ namespace OperationGuidance_new.Configs {
         public static string PLCDBBitAddress => "plc_bit_address";
         public static string PLCBarCodeLength => "plc_bar_code_length";
         public static string AutoLockTool => "auto_lock_tool";
+        public static string MESEnabled => "mes_enabled";
+        public static string MatCodeApi => "mat_code_api";
+        public static string UploadDataApi => "upload_data_api";
     }
 }

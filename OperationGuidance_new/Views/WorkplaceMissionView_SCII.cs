@@ -887,8 +887,8 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override bool ValidationBeforeActivatingMission() {
-            if (base.ValidationBeforeActivatingMission()) {
+        protected override async Task<bool> ValidationBeforeActivatingMission() {
+            if (await base.ValidationBeforeActivatingMission()) {
                 // Count screw bit used time
                 ScrewBitCounterDTO screwBitCounter;
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
@@ -900,7 +900,7 @@ namespace OperationGuidance_new.Views {
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
 
                         // Check again to ensure no more screw bit needs to be replaced
-                        return ValidationBeforeActivatingMission();
+                        return await ValidationBeforeActivatingMission();
                     }
                     return false;
                 }

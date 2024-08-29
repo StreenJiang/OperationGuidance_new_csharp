@@ -123,7 +123,7 @@ namespace CustomLibrary.Panels {
         // Ratio of height of main menu panel in main form
         protected override float GetResizeRatio() {
             if (!this.OnlyIconMode) {
-                return 0.165F;
+                return 0.1775F;
             } else {
                 return 0.085F;
             }

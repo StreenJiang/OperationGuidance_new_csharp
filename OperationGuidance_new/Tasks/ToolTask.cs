@@ -122,42 +122,48 @@ namespace OperationGuidance_new.Tasks {
             });
 
             void AnalyzeData(byte[] msgBytes) {
-                // Analyse result
-                if (_toolType is ToolPFSeries toolPF2) {
-                    toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                        await Task.Run(() => {
-                            if (heartIsBeating != null) {
-                                if (!heartIsBeating.Value) {
-                                    throw new Exception("Heart is not beating...");
-                                } else {
-                                    logger.Info("Heart beating....");
+                try {
+                    logger.Info($"Analyzing msgBytes = [{string.Join(", ", msgBytes)}]");
+
+                    // Analyse result
+                    if (_toolType is ToolPFSeries toolPF2) {
+                        toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run(() => {
+                                if (heartIsBeating != null) {
+                                    if (!heartIsBeating.Value) {
+                                        throw new Exception("Heart is not beating...");
+                                    } else {
+                                        logger.Info("Heart beating....");
+                                    }
                                 }
-                            }
-                            if (pSetSendingOk != null) {
-                                PSetOk = pSetSendingOk.Value;
-                            }
-                            if (locked != null) {
-                                _locked = locked.Value;
-                            }
-                            if (dataReceived != null && dataReceived.Value) { }
-                            if (curveReceived != null && curveReceived.Value) {
-                                socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                            }
-                        });
-                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                        await Task.Run(() => {
-                            if (pSetSendingOk != null) {
-                                PSetOk = pSetSendingOk.Value;
-                            }
-                            if (locked != null) {
-                                _locked = locked.Value;
-                            }
-                            if (dataReceived != null && dataReceived.Value) { }
-                            if (curveReceived != null && curveReceived.Value) { }
-                        });
-                    }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                                if (pSetSendingOk != null) {
+                                    PSetOk = pSetSendingOk.Value;
+                                }
+                                if (locked != null) {
+                                    _locked = locked.Value;
+                                }
+                                if (dataReceived != null && dataReceived.Value) { }
+                                if (curveReceived != null && curveReceived.Value) {
+                                    socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                                }
+                            });
+                        }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run(() => {
+                                if (pSetSendingOk != null) {
+                                    PSetOk = pSetSendingOk.Value;
+                                }
+                                if (locked != null) {
+                                    _locked = locked.Value;
+                                }
+                                if (dataReceived != null && dataReceived.Value) { }
+                                if (curveReceived != null && curveReceived.Value) { }
+                            });
+                        }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                    }
+                } catch (Exception e) {
+                    logger.Warn($"Error while analyzing msgBytes, e = [{e}]");
                 }
             }
         }

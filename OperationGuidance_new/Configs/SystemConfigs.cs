@@ -34,6 +34,7 @@ namespace OperationGuidance_new.Configs {
                     {AppVersion.SCII, typeof(WorkplaceMissionView_SCII)},
                     {AppVersion.YF, typeof(WorkplaceMissionView_YF)},
                     {AppVersion.GLB, typeof(WorkplaceMissionView_GLB)},
+                    {AppVersion.WHYC, typeof(WorkplaceMissionView_WHYC)},
                 },
                 OpenFirst = true,
             },
@@ -100,6 +101,11 @@ namespace OperationGuidance_new.Configs {
                             {AppVersion.SCII, typeof(BarCodeMatchingRuleManagementView_SCII)},
                         },
                     },
+                    new(id: 512, name: "MatCode管理", icon: Properties.Resources.map_table) {
+                        ViewTypes = new() {
+                            {AppVersion.WHYC, typeof(MatCodeMapWhycView_WHYC)},
+                        },
+                    },
                     new(id: 508, name: "软件许可", icon: Properties.Resources.software_license) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(SoftwareLicenseView)},
@@ -110,6 +116,7 @@ namespace OperationGuidance_new.Configs {
                             {AppVersion.STANDARD, typeof(VariableSettingsView)},
                             {AppVersion.SCII, typeof(VariableSettingsView_SCII)},
                             {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
+                            {AppVersion.WHYC, typeof(VariableSettingsView_WHYC)},
                         },
                     },
                 },

@@ -731,7 +731,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _enableArmLocatingToggle.CheckedChanged += (s, e) => {
                 _armLocatingAccuracyBox.Enabled = _enableArmLocatingToggle.Checked;
                 if (_armLocatingAccuracyBox.Enabled) {
-                    _armLocatingAccuracyBox.SetValue(0, _armLocatingAccuracyOriginal + "");
+                    if (_armLocatingAccuracyOriginal == 0) {
+                        _armLocatingAccuracyBox.SetValue(0, MainUtils.GetDefaultArmLocatingAccuracy() + "");
+                    } else {
+                        _armLocatingAccuracyBox.SetValue(0, _armLocatingAccuracyOriginal + "");
+                    }
                 } else {
                     _armLocatingAccuracyBox.SetValue(0, "0");
                 }
@@ -758,11 +762,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // 修改初始值
             _enableArmLocatingOriginal = _enableArmLocatingToggle.Checked;
-            if (_enableArmLocatingOriginal) {
-                _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
-            } else {
-                _armLocatingAccuracyOriginal = 0;
-            }
+            _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
             _missionSelfLoopingModeOriginal = _missionSelfLoopingModeToggle.Checked;
             _autoLockToolOriginal = _autoLockToolToggle.Checked;
         }
@@ -895,7 +895,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     // 操作配置
                     _enableArmLocatingOriginal = MainUtils.IsArmLocatingEnabled();
-                    _armLocatingAccuracyOriginal = MainUtils.GetArmLocatingAccuracy();
+                    if (_enableArmLocatingOriginal) {
+                        _armLocatingAccuracyOriginal = MainUtils.GetArmLocatingAccuracy();
+                    } else {
+                        _armLocatingAccuracyOriginal = 0;
+                    }
                     _missionSelfLoopingModeOriginal = MainUtils.IsMissionSelfLoopingModeEnabled();
                     _autoLockToolOriginal = MainUtils.IsAutoLockToolEnabled();
                     _enableArmLocatingToggle.Checked = _enableArmLocatingOriginal;

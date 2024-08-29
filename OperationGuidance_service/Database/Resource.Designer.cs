@@ -332,6 +332,26 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for mat_code_map_whyc
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS `mat_code_map_whyc`;
+        ///CREATE TABLE `mat_code_map_whyc`  (
+        ///  `id` int NOT NULL AUTO_INCREMENT,
+        ///  `mat_code` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+        ///  `parameter_set` int NOT NULL,
+        ///  `macs_id` int(8) NULL DEFAULT NULL,
+        ///  `user_id` int NOT NULL,
+        ///  `deleted` int NOT NULL,
+        ///  `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci N [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20240828 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20240828", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -643,6 +663,29 @@ namespace OperationGuidance_service.Database {
         
         /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for mat_code_map_whyc
+        ///-- ----------------------------
+        ///DROP TABLE IF EXISTS &quot;mat_code_map_whyc&quot;;
+        ///CREATE TABLE &quot;mat_code_map_whyc&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;mat_code&quot; text(256) NOT NULL,
+        ///  &quot;parameter_set&quot; integer(2) NOT NULL,
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        ///  &quot;create_time&quot; text(64) NOT NULL,
+        ///  &quot;modify [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20240828 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20240828", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
         ///-- ----------------------------
         ///IF EXISTS (SELECT * FROM sys.all_objects WHERE object_id = OBJECT_ID(N&apos;[dbo].[screw_bit_counter]&apos;) AND type IN (&apos;U&apos;))
@@ -680,6 +723,28 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20240822 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20240822", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- ----------------------------
+        ///-- Table structure for mat_code_map_whyc
+        ///-- ----------------------------
+        ///IF EXISTS (SELECT * FROM sys.all_objects WHERE object_id = OBJECT_ID(N&apos;[dbo].[mat_code_map_whyc]&apos;) AND type IN (&apos;U&apos;))
+        ///	DROP TABLE [dbo].[mat_code_map_whyc]
+        ///GO
+        ///
+        ///CREATE TABLE [dbo].[mat_code_map_whyc] (
+        ///  [id] int  IDENTITY(1,1) NOT NULL,
+        ///  [mat_code] nvarchar(256) COLLATE Chinese_PRC_CI_AS  NOT NULL,
+        ///  [parameter_set] int  NOT NULL,
+        ///  [macs_id] int  NULL,
+        ///  [user_id] int  NOT NULL,
+        ///  [deleted [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlserver_20240828 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20240828", resourceCulture);
             }
         }
     }

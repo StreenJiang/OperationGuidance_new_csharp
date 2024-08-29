@@ -345,9 +345,14 @@ namespace OperationGuidance_new.Constants {
                         throw new NullReferenceException(errorMsg);
                     }
 
-                    float torque = (float) GetIntData(GetData(dataMessage, 14, 4)) / 1000;
-                    float torqueMin = (float) GetIntData(GetData(dataMessage, 52, 4)) / 1000;
-                    float torqueMax = (float) GetIntData(GetData(dataMessage, 48, 4)) / 1000;
+                    // Unit of torque
+                    int unit = GetIntData(GetData(dataMessage, 12, 2));
+
+                    // Use 1000 as divisor to always get N.m as unit
+                    int divisor = 1000;
+                    float torque = (float) GetIntData(GetData(dataMessage, 14, 4)) / divisor;
+                    float torqueMin = (float) GetIntData(GetData(dataMessage, 52, 4)) / divisor;
+                    float torqueMax = (float) GetIntData(GetData(dataMessage, 48, 4)) / divisor;
                     int torqueStatus = (int) TighteningCommonStatus.OK;
                     if (torque < torqueMin) {
                         torqueStatus = (int) TighteningCommonStatus.LOW;
@@ -392,6 +397,7 @@ namespace OperationGuidance_new.Constants {
                         resultType = (int) TightenOrLoosen.LOOSENING;
                     }
 
+                    int runDownTime = GetIntData(GetData(dataMessage, 30, 4));
 
                     TighteningData tighteningData = new() {
                         tightening_status = tighteningStatus,
@@ -412,6 +418,7 @@ namespace OperationGuidance_new.Constants {
                         rundown_angle = rundownAngle,
 
                         result_type = resultType,
+                        rundown_time = runDownTime,
                     };
 
                     actionAfterAnalysis(tighteningData, deviceId.Value);

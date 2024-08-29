@@ -427,7 +427,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public void ValidatePartsBarCode(string barCode) {
             if (_focusedBox == null) {
                 _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
+
+                // Check enabled and null of last text box, if is disabled or not null, then no need to process
+                if (!_focusedBox.Enabled || !string.IsNullOrEmpty(_focusedBox.GetTextBox(0).Text)) {
+                    // If it's disabled or not null, means it's already been back fill, no need to process
+                    return;
+                }
             }
+
             // 先回填，不然校验不到
             _focusedBox.SetValue(0, barCode);
             // 校验条码
@@ -504,6 +511,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                             return true;
                         }
+                    } else {
+                        // No parts bar code
+                        return true;
                     }
                 }
             }

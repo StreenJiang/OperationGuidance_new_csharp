@@ -528,6 +528,48 @@ namespace OperationGuidance_new.Utils {
         }
         public static int GetDefaultPLCBarCodeLength() => 0;
         public static void SetPLCBarCodeLength(int length) => Settings.Write(IniFileKeys.PLCBarCodeLength, length + "");
+        // Mes enabled
+        public static bool IsMESEnabled() {
+            string mesEnabled = Settings.Read(IniFileKeys.MESEnabled);
+            if (string.IsNullOrEmpty(mesEnabled)) {
+                bool flag = DefaultMESModeEnabled();
+                SetMESModeEnabled(flag);
+                return flag;
+            }
+            return int.Parse(mesEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultMESModeEnabled() => false;
+        public static void SetMESModeEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MESEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MESEnabled, (int) YesOrNo.NO + "");
+            }
+        }
+        // Get met code from MES
+        public static string GetMatCodeApi() {
+            string matCodeApi = Settings.Read(IniFileKeys.MatCodeApi);
+            if (string.IsNullOrEmpty(matCodeApi)) {
+                string matCodeApiTemp = GetDefaultMatCodeApi();
+                SetMatCodeApi(matCodeApiTemp);
+                return matCodeApiTemp;
+            }
+            return matCodeApi;
+        }
+        public static string GetDefaultMatCodeApi() => "";
+        public static void SetMatCodeApi(string matCodeApi) => Settings.Write(IniFileKeys.MatCodeApi, matCodeApi);
+        // Upload data to MES
+        public static string GetUploadDataApi() {
+            string uploadDataApi = Settings.Read(IniFileKeys.UploadDataApi);
+            if (string.IsNullOrEmpty(uploadDataApi)) {
+                string uploadDataApiTemp = GetDefaultUploadDataApi();
+                SetUploadDataApi(uploadDataApiTemp);
+                return uploadDataApiTemp;
+            }
+            return uploadDataApi;
+        }
+        public static string GetDefaultUploadDataApi() => "";
+        public static void SetUploadDataApi(string uploadDataApi) => Settings.Write(IniFileKeys.UploadDataApi, uploadDataApi);
 
         // Ping util method
         public static bool PingHost(string nameOrAddress) {

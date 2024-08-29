@@ -136,5 +136,7 @@ namespace OperationGuidance_new.Constants {
         public int torque_values_unit { get; set; }                // 415: 1=Nm, 2=Lbf, 3=Lbf.ln, 4=Kpm, 5=Kgf.cm, 6=ozf.in, 7=%, 8=Ncm
         // 418 - 419: 1=Tightening, 2=Loosening, 3=Batch Increment, 4=Batch Decrement, 5=Bypass parameter set result, 6=Abort Job result, 7=Sync tightening, 8=Reference setup
         public int result_type { get; set; }
+
+        public int? rundown_time { get; set; }                     // SuDong
     }
 }

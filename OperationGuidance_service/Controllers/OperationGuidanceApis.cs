@@ -52,6 +52,8 @@ namespace OperationGuidance_service.Controllers {
         private DapperDBService _dapperDBService;
         [Autowired]
         private ScrewBitCounterService _screwBitCounterService;
+        [Autowired]
+        private MatCodeMapWhycService _matCodeMapWhycService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -281,6 +283,8 @@ namespace OperationGuidance_service.Controllers {
             count += _workstationService.ExecuteSql(string.Format(sqlTemp, _workstationService.TableName, req.IdTo, req.IdFrom));
             // Outer database config glb
             count += _outerDatabaseConfigGlbService.ExecuteSql(string.Format(sqlTemp, _outerDatabaseConfigGlbService.TableName, req.IdTo, req.IdFrom));
+            // mat_code_map_whyc
+            count += _matCodeMapWhycService.ExecuteSql(string.Format(sqlTemp, _matCodeMapWhycService.TableName, req.IdTo, req.IdFrom));
 
             return new() {
                 UpdateRows = count,
@@ -1353,6 +1357,75 @@ namespace OperationGuidance_service.Controllers {
                 rsp.RsponseCode = HttpResponseCode.ERROR;
                 rsp.RsponseMessage = "Delete failed, don't know what happened.";
             }
+            return rsp;
+        }
+        #endregion
+
+        #region MatCodeMapWhyc related
+        // Query List
+        public QueryMatCodeMapWhycListRsp QueryMatCodeMapWhycList(QueryMatCodeMapWhycListReq req) {
+            List<MatCodeMapWhyc> deviceCategories;
+
+            Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
+            string sql = $"select * from {_matCodeMapWhycService.TableName} where 1 = 1";
+            Dictionary<string, object> parameters = new();
+            sql += " and deleted = @deleted";
+            parameters.Add("deleted", (int) YesOrNo.NO);
+            // Need to check macs_id if role is not Admin
+            if (role != null && role != Roles.DEVELOPER) {
+                sql += " and macs_id = @macs_id";
+                parameters.Add("macs_id", req.MacsId);
+            }
+            deviceCategories = _matCodeMapWhycService.FindBySql(sql, parameters);
+
+            List<MatCodeMapWhycDTO> deviceIoDTOs = new();
+            CommonUtils.ObjectConverter<MatCodeMapWhyc, MatCodeMapWhycDTO>(deviceCategories, deviceIoDTOs);
+
+            return new() {
+                MatCodeMapWhycDTOs = deviceIoDTOs,
+            };
+        }
+        // Add or update
+        public AddOrUpdateMatCodeMapWhycRsp AddOrUpdateMatCodeMapWhyc(AddOrUpdateMatCodeMapWhycReq req) {
+            MatCodeMapWhycDTO deviceIoDTO = req.MatCodeMapWhycDTO;
+            MatCodeMapWhyc deviceIo = new();
+            CommonUtils.ObjectConverter<MatCodeMapWhycDTO, MatCodeMapWhyc>(deviceIoDTO, deviceIo);
+            MatCodeMapWhyc? deviceIoNew = _matCodeMapWhycService.InsertOrUpdate(deviceIo);
+            if (deviceIoNew != null) {
+                deviceIoDTO.id = deviceIoNew.id;
+            }
+
+            return new() {
+                MatCodeMapWhycDTO = deviceIoDTO,
+            };
+        }
+        // Delete by ids
+        public DeleteMatCodeMapWhycByIdsRsp DeleteMatCodeMapWhyc(DeleteMatCodeMapWhycByIdsReq req) {
+            int deletedRows = _matCodeMapWhycService.DeleteByIds(req.Ids);
+
+            DeleteMatCodeMapWhycByIdsRsp rsp = new();
+            if (deletedRows < req.Ids.Count) {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"删除失败！应该删除{req.Ids.Count}条数据，实际只删除了{deletedRows}条数据，请检查！";
+            }
+            return rsp;
+        }
+        // Find by mat code
+        public FindMatCodeMapByMatCodeRsp FindMatCodeMapByMatCode(FindMatCodeMapByMatCodeReq req) {
+            FindMatCodeMapByMatCodeRsp rsp = new();
+
+            string sql = $"select * from {_matCodeMapWhycService.TableName} where {_matCodeMapWhycService.ConditionWithoutUserId} and mat_code = @mat_code";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("mat_code", req.MatCode);
+
+            List<MatCodeMapWhyc> matCodeMaps = _matCodeMapWhycService.FindBySql(sql, parameters);
+            List<MatCodeMapWhycDTO> matCodeMapDTOs = new();
+            CommonUtils.ObjectConverter<MatCodeMapWhyc, MatCodeMapWhycDTO>(matCodeMaps, matCodeMapDTOs);
+
+            if (matCodeMapDTOs.Count > 0) {
+                rsp.MatCodeMapWhycDTO = matCodeMapDTOs[0];
+            }
+
             return rsp;
         }
         #endregion
