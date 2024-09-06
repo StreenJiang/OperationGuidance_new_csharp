@@ -31,7 +31,7 @@ namespace OperationGuidance_new.Views {
             _backShowing = WidgetUtils.ResizeImage(_back, size);
             _afterLogin = afterLogin;
             _mainFormSize = mainFormSize;
-            ShowLoginForm();
+            ShowLoginForm(true);
         }
         #endregion
 
@@ -43,11 +43,11 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Initialization methods
-        public async void ShowLoginForm() {
+        public async void ShowLoginForm(bool firstLogin = false) {
             WidgetUtils.RefreshMainSize(MainUtils.GetSettingResolution());
             _isLoggedIn = false;
             await Task.Delay(300);
-            _loginForm = new(ClickLogin);
+            _loginForm = new(ClickLogin, firstLogin);
             WidgetUtils.MakeControlDraggable(_loginForm.ContentPanel, WidgetUtils.MainForm);
             _loginForm.TitlePanel.Hide();
             _loginForm.KeyDown += (s, e) => {
@@ -85,6 +85,12 @@ namespace OperationGuidance_new.Views {
                     Hide();
                     MainUtils.LoginFlag = true;
                     _afterLogin(_mainFormSize);
+
+                    // Store current account info
+                    if (MainUtils.IsAutoLoginEnabled()) {
+                        String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
+                        MainUtils.SetAutoLoginInfo(loginInfo);
+                    }
                 }
             }
         }
@@ -104,7 +110,7 @@ namespace OperationGuidance_new.Views {
             public CustomTextBoxGroup AccountBox { get => _accountBox; set => _accountBox = value; }
             public CustomTextBoxGroup PasswordBox { get => _passwordBox; set => _passwordBox = value; }
 
-            public LoginPopUpForm(Action clickLogin) {
+            public LoginPopUpForm(Action clickLogin, bool firstLogin) {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
                 ContentPanel.FlowDirection = FlowDirection.TopDown;
                 ButtonAlignment = HorizontalAlignment.Center;
@@ -135,11 +141,36 @@ namespace OperationGuidance_new.Views {
                 _passwordBox.GetTextBox(0).Box.PasswordChar = '*';
                 _passwordBox.GetTextBox(0).Box.KeyDown += (s, e) => ClickLogin(e);
 
+                CheckAutoLogin(clickLogin, firstLogin);
+
                 void ClickLogin(KeyEventArgs e) {
                     if (e.KeyCode == Keys.Enter) {
                         clickLogin();
                     }
                 }
+            }
+
+            private async void CheckAutoLogin(Action clickLogin, bool firstLogin) {
+                await Task.Run(async () => {
+                    while (!IsHandleCreated) {
+                        await Task.Delay(100);
+                    }
+
+                    Invoke(() => {
+                        if (firstLogin && MainUtils.IsAutoLoginEnabled()) {
+                            string loginInfo = MainUtils.GetAutoLoginInfo();
+                            if (!string.IsNullOrEmpty(loginInfo)) {
+                                string[] accountInfo = loginInfo.Split(",");
+                                var (accountStr, passwordStr) = (accountInfo[0], accountInfo[1]);
+
+                                _accountBox.SetValue(0, accountStr);
+                                _passwordBox.SetValue(0, passwordStr);
+
+                                clickLogin();
+                            }
+                        }
+                    });
+                });
             }
 
             public void ResizeSelf() {

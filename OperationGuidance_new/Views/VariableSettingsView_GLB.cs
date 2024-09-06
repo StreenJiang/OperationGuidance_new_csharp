@@ -34,10 +34,11 @@ namespace OperationGuidance_new.Views {
         public CustomTextBoxButtonGroup PLCBarCodeLengthBox { get => _plcBarCodeLengthBox; set => _plcBarCodeLengthBox = value; }
         public int PLCBarCodeLengthOriginal { get => _plcBarCodeLengthOriginal; set => _plcBarCodeLengthOriginal = value; }
 
-        protected override bool CheckSavedFunc() => base.CheckSavedFunc()
-            || _plcBarCodeSelfLoopingToggle.Checked != _plcBarCodeSelfLoopingOriginal
-            || _plcDBAddressBox.GetTextBox(0).Box.Text != _plcDBAddressOriginal + ""
-            || _plcBarCodeLengthBox.GetTextBox(0).Box.Text != _plcBarCodeLengthOriginal + "";
+        protected override bool CheckSavedFunc_detail() => base.CheckSavedFunc_detail()
+            && !(_plcBarCodeSelfLoopingToggle.Checked != _plcBarCodeSelfLoopingOriginal
+                || _plcDBAddressBox.GetTextBox(0).Box.Text != _plcDBAddressOriginal + ""
+                || _plcBarCodeLengthBox.GetTextBox(0).Box.Text != _plcBarCodeLengthOriginal + ""
+                );
 
         protected override void InitializeMissionSettings() {
             base.InitializeMissionSettings();

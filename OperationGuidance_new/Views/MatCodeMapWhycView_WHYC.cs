@@ -90,7 +90,7 @@ namespace OperationGuidance_new.Views {
             mat_code.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 mat_code.GetTextBox(0).IsError = string.IsNullOrEmpty(mat_code.GetTextBox(0).Box.Text);
             };
-            CustomTextBoxGroup parameter_set = _editEntityPopUpForm.AddTextBox("端口号", false,
+            CustomTextBoxGroup parameter_set = _editEntityPopUpForm.AddTextBox("程序号", false,
                 (MatCodeMapWhycDTO dto, int? value) => dto.parameter_set = value ?? 0);
             CustomTextBox parameter_setBox = parameter_set.GetTextBox(0);
             parameter_setBox.PositiveIntOnly = true;

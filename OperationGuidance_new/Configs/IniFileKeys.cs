@@ -21,5 +21,11 @@ namespace OperationGuidance_new.Configs {
         public static string MESEnabled => "mes_enabled";
         public static string MatCodeApi => "mat_code_api";
         public static string UploadDataApi => "upload_data_api";
+        public static string USBScannerEnabled => "usb_scanner";
+        public static string Line_WHYC => "line_whyc";
+        public static string Operator_WHYC => "operator_whyc";
+        public static string AutoLaunchEnabled => "auto_launch";
+        public static string AutoLoginEnabled => "auto_login";
+        public static string AutoLoginInfo => "auto_login_info";
     }
 }

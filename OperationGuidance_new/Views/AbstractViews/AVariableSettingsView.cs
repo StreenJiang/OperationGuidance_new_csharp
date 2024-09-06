@@ -8,12 +8,17 @@ using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using log4net;
+using Microsoft.Win32;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AVariableSettingsView: CustomContentPanel {
+        protected ILog logger;
+
         #region Fields
         private readonly float _contentHGapRatio = 0.025F;
         private readonly float _contentVGapRatio = 0.05F;
@@ -35,6 +40,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private CustomContentPanel _systemSettingsContentPanel;
         private CustomComboBoxButtonGroup<KeyValuePair<Size, SizeRatioNRectColor>> _resolutionOptionsBox;
         private Size _resolutionOriginal;
+        private ToggleButtonGroup _autoLaunchToggle;
+        private bool _autoLaunchOriginal;
+        private ToggleButtonGroup _autoLoginToggle;
+        private bool _autoLoginOriginal;
         // Storage panel
         private CustomContentPanel _storagePanel;
         private TitlePanel _storageTitlePanel;
@@ -78,6 +87,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomContentPanel SystemSettingsContentPanel { get => _systemSettingsContentPanel; set => _systemSettingsContentPanel = value; }
         public CustomComboBoxButtonGroup<KeyValuePair<Size, SizeRatioNRectColor>> ResolutionOptionsBox { get => _resolutionOptionsBox; set => _resolutionOptionsBox = value; }
         public Size ResolutionOriginal { get => _resolutionOriginal; set => _resolutionOriginal = value; }
+        public ToggleButtonGroup AutoLaunchToggle { get => _autoLaunchToggle; set => _autoLaunchToggle = value; }
+        public bool AutoLaunchOriginal { get => _autoLaunchOriginal; set => _autoLaunchOriginal = value; }
+        public ToggleButtonGroup AutoLoginToggle { get => _autoLoginToggle; set => _autoLoginToggle = value; }
+        public bool AutoLoginOriginal { get => _autoLoginOriginal; set => _autoLoginOriginal = value; }
         public CustomContentPanel StoragePanel { get => _storagePanel; set => _storagePanel = value; }
         public TitlePanel StorageTitlePanel { get => _storageTitlePanel; set => _storageTitlePanel = value; }
         public CustomContentPanel StorageContentPanel { get => _storageContentPanel; set => _storageContentPanel = value; }
@@ -101,11 +114,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         #region Constructors
         public AVariableSettingsView() {
+            logger = MainUtils.GetLogger(GetType());
+
             // Default values
             FlowDirection = FlowDirection.TopDown;
 
             // Initilizations
-            InitializeResolutionPanel();
+            InitializeSystemSettingsPanel();
             InitializeStoragePanel();
             InitializeMissionSettings();
 
@@ -133,7 +148,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     WidgetUtils.ShowErrorPopUp(error);
                 } else {
                     SaveStorageSettings();
-                    SaveResolution();
+                    SaveSystemSettings();
                     SaveMissionSettings();
                     WidgetUtils.ShowNoticePopUp("保存成功");
                 }
@@ -155,16 +170,30 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             WidgetUtils.CheckSavedFunc += CheckSavedFunc;
         }
-        protected virtual bool CheckSavedFunc() => WidgetUtils.CurrentPanel != this || !(
-            _resolutionOptionsBox.Value.Key != _resolutionOriginal
-            || _storageFileNameTextBox.GetTextBox(0).Box.Text != _sotrageFileNameOriginal
-            || _storagePathTextBox.GetTextBox(0).Box.Text != _sotragePathOriginal
-            || !SortConfig.SequenceEqual(_sortConfigOriginal)
-            || _storeLooseningDataToggle.Checked != _sotrageLooseningDataOriginal
-            || _enableArmLocatingToggle.Checked != _enableArmLocatingOriginal
-            || _armLocatingAccuracyBox.GetTextBox(0).Box.Text != _armLocatingAccuracyOriginal + ""
-            || _missionSelfLoopingModeToggle.Checked != _missionSelfLoopingModeOriginal
+        protected override void OnHandleDestroyed(EventArgs e) {
+            base.OnHandleDestroyed(e);
+            WidgetUtils.CheckSavedFunc -= CheckSavedFunc;
+        }
+        private bool CheckSavedFunc() => WidgetUtils.CurrentPanel != this || CheckSavedFunc_detail();
+        protected virtual bool CheckSavedFunc_detail() => !(
+            CheckSvedFuncSeparately(_resolutionOptionsBox.Value.Key != _resolutionOriginal, "分辨率")
+            || CheckSvedFuncSeparately(_storageFileNameTextBox.GetTextBox(0).Box.Text != _sotrageFileNameOriginal, "文件名格式")
+            || CheckSvedFuncSeparately(_storagePathTextBox.GetTextBox(0).Box.Text != _sotragePathOriginal, "文件保存路径")
+            || CheckSvedFuncSeparately(!SortConfig.SequenceEqual(_sortConfigOriginal), "字段排序")
+            || CheckSvedFuncSeparately(_storeLooseningDataToggle.Checked != _sotrageLooseningDataOriginal, "存储字段")
+            || CheckSvedFuncSeparately(_enableArmLocatingToggle.Checked != _enableArmLocatingOriginal, "是否开启力臂定位")
+            || CheckSvedFuncSeparately(_armLocatingAccuracyBox.GetTextBox(0).Box.Text != _armLocatingAccuracyOriginal + "", "力臂定位精度")
+            || CheckSvedFuncSeparately(_missionSelfLoopingModeToggle.Checked != _missionSelfLoopingModeOriginal, "任务自循环")
+            || CheckSvedFuncSeparately(_autoLockToolToggle.Checked != _autoLockToolOriginal, "自动锁枪")
+            || CheckSvedFuncSeparately(_autoLaunchToggle.Checked != _autoLaunchOriginal, "开机自动启动")
+            || CheckSvedFuncSeparately(_autoLoginToggle.Checked != _autoLoginOriginal, "自动登录")
         );
+        protected bool CheckSvedFuncSeparately(bool check, string msg) {
+            if (check) {
+                logger.Info($"[{msg}]修改未保存...");
+            }
+            return check;
+        }
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Control mainForm = WidgetUtils.MainForm;
             _titleHeight = WidgetUtils.ContentTitleHeight();
@@ -175,7 +204,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _contentVPadding = (int) (mainForm.Height * .03);
 
             // Resizes
-            ResizeResolutionPanel();
+            ResizeSystemSettingsPanel();
             ResizeStoragePanel();
             ResizeMissionSettings();
 
@@ -203,7 +232,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Initialization methods
-        protected virtual void InitializeResolutionPanel() {
+        protected virtual void InitializeSystemSettingsPanel() {
             _systemSettingsPanel = new() {
                 Parent = this,
                 FlowDirection = FlowDirection.TopDown,
@@ -219,8 +248,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Parent = _systemSettingsContentPanel,
                 Ratio = 8.5,
             };
+            _autoLaunchToggle = new("开机自动启动") {
+                Parent = _systemSettingsContentPanel,
+                Ratio = 6.95,
+            };
+            _autoLoginToggle = new("自动登录") {
+                Parent = _systemSettingsContentPanel,
+                Ratio = 6.95,
+            };
         }
-        protected virtual void SaveResolution() {
+        protected virtual void SaveSystemSettings() {
+            // Resolution
             Size screenSize = WidgetUtils.GetScreenResolution();
             KeyValuePair<Size, SizeRatioNRectColor> value = _resolutionOptionsBox.Value;
             if (value.Key == new Size(0, 0)) {
@@ -246,6 +284,38 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
                 ResizeChildren();
                 _resolutionOriginal = newSize;
+            }
+
+            // Auto launch
+            MainUtils.SetAutoLaunchEnabled(_autoLaunchToggle.Checked);
+            _autoLaunchOriginal = _autoLaunchToggle.Checked;
+            _addAutoRun();
+
+            // Auto login
+            MainUtils.SetAutoLoginEnabled(_autoLoginToggle.Checked);
+            _autoLoginOriginal = _autoLoginToggle.Checked;
+            if (!_autoLoginOriginal) {
+                MainUtils.SetAutoLoginInfo(MainUtils.GetDefaultAutoLoginInfo());
+            }
+
+            // Use asynchronous method to avoid UI fronzing
+            async void _addAutoRun() {
+                await Task.Run(() => {
+                    try {
+                        string keyName = "OperationGuidanceNew_AutoRun";
+                        RegistryKey? registryKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+                        if (registryKey == null) {
+                            registryKey = Registry.LocalMachine.CreateSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+                        }
+                        if (_autoLaunchOriginal) {
+                            registryKey.SetValue(keyName, Application.ExecutablePath);
+                        } else {
+                            registryKey.DeleteValue(keyName);
+                        }
+                    } catch (Exception e) {
+                        logger.Warn($"Added auto launch error, e = [{e}]");
+                    }
+                });
             }
         }
         protected virtual void InitializeStoragePanel() {
@@ -780,16 +850,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Resize methods
-        private void ResizeResolutionPanel() {
+        private void ResizeSystemSettingsPanel() {
             // Resize title
             _systemSettingsTitlePanel.Size = new(Width, _titleHeight);
-            int contentHeight = _boxNBtnHeight + _contentVPadding * 2;
+            int boxVMargin = this._boxNBtnHeight / 2;
+            int contentHeight = _boxNBtnHeight * 2 + _contentVPadding * 2 + boxVMargin;
+            int boxWidth = (Width - _contentHPadding * 3) / 2;
             // Resize Content
             _systemSettingsContentPanel.Size = new(Width, contentHeight);
             _systemSettingsContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
             // Resize box and button
             _resolutionOptionsBox.Size = new(Width - _systemSettingsContentPanel.Padding.Size.Width, _boxNBtnHeight);
             _resolutionOptionsBox.Margin = new(0, 0, _contentHGap / 2, 0);
+            _autoLaunchToggle.Size = new(boxWidth, this._boxNBtnHeight);
+            _autoLaunchToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _autoLoginToggle.Size = new(boxWidth, this._boxNBtnHeight);
+            _autoLoginToggle.Margin = new(0, boxVMargin, 0, 0);
             // Resize outer panel
             _systemSettingsPanel.Size = new(Width, _systemSettingsTitlePanel.Height + _systemSettingsContentPanel.Height);
         }
@@ -848,7 +924,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async void LoadSettings() {
             await Task.Run(() => {
                 BeginInvoke(() => {
-                    // 分辨率
+                    // System settings
                     Dictionary<Size, SizeRatioNRectColor>.Enumerator enumerator = WidgetsConfigs.Resolutions.GetEnumerator();
                     Size screenSize = WidgetUtils.GetScreenResolution();
                     bool hasFullScreenResolution = false;
@@ -870,7 +946,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (!hasFullScreenResolution) {
                         _resolutionOptionsBox.AddItem($"{screenSize.Width} x {screenSize.Height}（全屏）", new KeyValuePair<Size, SizeRatioNRectColor>(screenSize, new()));
                     }
-                    // 根据当前配置的分辨率修改分辨率
+                    // Change resolution option according to current resolution
                     List<KeyValuePair<Size, SizeRatioNRectColor>> items = _resolutionOptionsBox.Items;
                     for (int i = 0; i < items.Count; i++) {
                         KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
@@ -880,8 +956,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             break;
                         }
                     }
+                    _autoLaunchOriginal = MainUtils.IsAutoLaunchEnabled();
+                    _autoLoginOriginal = MainUtils.IsAutoLoginEnabled();
+                    _autoLaunchToggle.Checked = _autoLaunchOriginal;
+                    _autoLoginToggle.Checked = _autoLoginOriginal;
 
-                    // 存储配置
+                    // Storage settings
                     _sortConfigOriginal = MainUtils.GetSortConfig();
                     _sotrageFileNameOriginal = MainUtils.GetStorageFileName();
                     _sotragePathOriginal = MainUtils.GetStoragePath();
@@ -893,7 +973,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _storagePathTextBox.SetValue(0, _sotragePathOriginal);
                     _storeLooseningDataToggle.Checked = _sotrageLooseningDataOriginal;
 
-                    // 操作配置
+                    // Operation settings
                     _enableArmLocatingOriginal = MainUtils.IsArmLocatingEnabled();
                     if (_enableArmLocatingOriginal) {
                         _armLocatingAccuracyOriginal = MainUtils.GetArmLocatingAccuracy();
@@ -913,7 +993,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async void ResetAllToDefault() {
             await Task.Run(() => {
                 BeginInvoke(() => {
-                    // 分辨率
+                    // System settings
                     List<KeyValuePair<Size, SizeRatioNRectColor>> items = _resolutionOptionsBox.Items;
                     for (int i = 0; i < items.Count; i++) {
                         KeyValuePair<Size, SizeRatioNRectColor> item = items[i];
@@ -922,14 +1002,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             break;
                         }
                     }
-                    // 存储配置
+                    _autoLaunchToggle.Checked = MainUtils.DefaultAutoLaunchEnabled();
+                    _autoLoginToggle.Checked = MainUtils.DefaultAutoLoginEnabled();
+
+                    // Storage settings
                     SortConfig = MainUtils.GetDefaultSortConfig();
                     Fields = MainUtils.GetOperationDataFields(SortConfig);
                     _storageFileNameTextBox.SetValue(0, MainUtils.GetDefaultStorageFileName());
                     _storagePathTextBox.SetValue(0, MainUtils.GetDefaultStoragePath());
                     _storeLooseningDataToggle.Checked = MainUtils.GetDefaultStoreLooseningData();
 
-                    // 操作配置
+                    // Operation settings
                     _enableArmLocatingToggle.Checked = MainUtils.DefaultIsArmLocatingEnabled();
                     _armLocatingAccuracyBox.SetValue(0, MainUtils.GetDefaultArmLocatingAccuracy() + "");
                     _missionSelfLoopingModeToggle.Checked = MainUtils.DefaultMissionSelfLoopingModeEnabled();

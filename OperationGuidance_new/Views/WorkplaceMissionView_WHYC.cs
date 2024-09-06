@@ -9,6 +9,7 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Models.DTOs;
+using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_WHYC: AWorkplaceMissionView<WorkplaceContentPanel_WHYC, WorkplaceTopBar> {
@@ -29,6 +30,10 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _lineBox;
         private CustomTextBoxGroup _operatorBox;
 
+        private const int _delay = 1500;
+        private Timer _lineTimer;
+        private Timer _operatorTimer;
+
         public WorkplaceContentPanel_WHYC() { }
         public WorkplaceContentPanel_WHYC(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             _lineBox = new("线体") {
@@ -38,6 +43,43 @@ namespace OperationGuidance_new.Views {
             _operatorBox = new("操作人员") {
                 Ratio = 7.5,
                 NameAlignment = HorizontalAlignment.Right,
+            };
+
+            _lineBox.SetValue(0, MainUtils.GetLine_WHYC());
+            _operatorBox.SetValue(0, MainUtils.GetOperator_WHYC());
+
+            _lineTimer = new();
+            _lineTimer.Interval = _delay;
+            _lineTimer.Tick += (s, e) => {
+                string lineText = _lineBox.GetTextBox(0).Box.Text;
+                if (!string.IsNullOrEmpty(lineText)) {
+                    MainUtils.SetLine_WHYC(lineText);
+                }
+                _lineTimer.Stop();
+            };
+            _operatorTimer = new();
+            _operatorTimer.Interval = _delay;
+            _operatorTimer.Tick += (s, e) => {
+                string operatorText = _operatorBox.GetTextBox(0).Box.Text;
+                if (!string.IsNullOrEmpty(operatorText)) {
+                    MainUtils.SetOperator_WHYC(operatorText);
+                }
+                _operatorTimer.Stop();
+            };
+
+            _lineBox.GetTextBox(0).Box.TextChanged += (s, e) => {
+                // Debounce
+                if (_lineTimer.Enabled) {
+                    _lineTimer.Stop();
+                }
+                _lineTimer.Start();
+            };
+            _operatorBox.GetTextBox(0).Box.TextChanged += (s, e) => {
+                // Debounce
+                if (_operatorTimer.Enabled) {
+                    _operatorTimer.Stop();
+                }
+                _operatorTimer.Start();
             };
 
             _topRightBottom.Controls.Add(_lineBox);
@@ -72,6 +114,23 @@ namespace OperationGuidance_new.Views {
             _operatorBox.GetTextBox(0).IsError = false;
 
             base.OpenBarCodePopUpForm();
+        }
+
+        protected override async void ActivateMissionAutomatically() {
+            // If is self looping mode, then activate mission automatically
+            if (MainUtils.IsMissionSelfLoopingModeEnabled() && _mission.id > 0) {
+                // Wait for .5 seconds
+                await Task.Delay(500);
+
+                ActivateMission();
+            }
+            // If USB scanner is enabled, then open bar code input pop up form automatically
+            else if (MainUtils.IsUSBScannerEnabled()) {
+                while (!_barcodeRelatedDone) {
+                    await Task.Delay(50);
+                }
+                OpenBarCodePopUpForm();
+            }
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {

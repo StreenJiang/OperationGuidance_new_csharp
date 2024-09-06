@@ -532,14 +532,14 @@ namespace OperationGuidance_new.Utils {
         public static bool IsMESEnabled() {
             string mesEnabled = Settings.Read(IniFileKeys.MESEnabled);
             if (string.IsNullOrEmpty(mesEnabled)) {
-                bool flag = DefaultMESModeEnabled();
-                SetMESModeEnabled(flag);
+                bool flag = DefaultMESEnabled();
+                SetMESEnabled(flag);
                 return flag;
             }
             return int.Parse(mesEnabled) == (int) YesOrNo.YES;
         }
-        public static bool DefaultMESModeEnabled() => false;
-        public static void SetMESModeEnabled(bool flag) {
+        public static bool DefaultMESEnabled() => false;
+        public static void SetMESEnabled(bool flag) {
             if (flag) {
                 Settings.Write(IniFileKeys.MESEnabled, (int) YesOrNo.YES + "");
             } else {
@@ -570,6 +570,96 @@ namespace OperationGuidance_new.Utils {
         }
         public static string GetDefaultUploadDataApi() => "";
         public static void SetUploadDataApi(string uploadDataApi) => Settings.Write(IniFileKeys.UploadDataApi, uploadDataApi);
+        // USB scanner enabled
+        public static bool IsUSBScannerEnabled() {
+            string usbScannerEnabled = Settings.Read(IniFileKeys.USBScannerEnabled);
+            if (string.IsNullOrEmpty(usbScannerEnabled)) {
+                bool flag = DefaultUSBScannerEnabled();
+                SetUSBScannerEnabled(flag);
+                return flag;
+            }
+            return int.Parse(usbScannerEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultUSBScannerEnabled() => false;
+        public static void SetUSBScannerEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.USBScannerEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.USBScannerEnabled, (int) YesOrNo.NO + "");
+            }
+        }
+        // Get line text for whyc
+        public static string GetLine_WHYC() {
+            string line_WHYC = Settings.Read(IniFileKeys.Line_WHYC);
+            if (string.IsNullOrEmpty(line_WHYC)) {
+                string line_WHYCTemp = GetDefaultLine_WHYC();
+                SetLine_WHYC(line_WHYCTemp);
+                return line_WHYCTemp;
+            }
+            return line_WHYC;
+        }
+        public static string GetDefaultLine_WHYC() => "";
+        public static void SetLine_WHYC(string line_WHYC) => Settings.Write(IniFileKeys.Line_WHYC, line_WHYC);
+        // Get operator text for whyc
+        public static string GetOperator_WHYC() {
+            string operator_WHYC = Settings.Read(IniFileKeys.Operator_WHYC);
+            if (string.IsNullOrEmpty(operator_WHYC)) {
+                string operator_WHYCTemp = GetDefaultOperator_WHYC();
+                SetOperator_WHYC(operator_WHYCTemp);
+                return operator_WHYCTemp;
+            }
+            return operator_WHYC;
+        }
+        public static string GetDefaultOperator_WHYC() => "";
+        public static void SetOperator_WHYC(string operator_WHYC) => Settings.Write(IniFileKeys.Operator_WHYC, operator_WHYC);
+        // Auto launch enabled
+        public static bool IsAutoLaunchEnabled() {
+            string autoLaunchEnabled = Settings.Read(IniFileKeys.AutoLaunchEnabled);
+            if (string.IsNullOrEmpty(autoLaunchEnabled)) {
+                bool flag = DefaultAutoLaunchEnabled();
+                SetAutoLaunchEnabled(flag);
+                return flag;
+            }
+            return int.Parse(autoLaunchEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultAutoLaunchEnabled() => false;
+        public static void SetAutoLaunchEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.AutoLaunchEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.AutoLaunchEnabled, (int) YesOrNo.NO + "");
+            }
+        }
+        // Auto login enabled
+        public static bool IsAutoLoginEnabled() {
+            string autoLoginEnabled = Settings.Read(IniFileKeys.AutoLoginEnabled);
+            if (string.IsNullOrEmpty(autoLoginEnabled)) {
+                bool flag = DefaultAutoLoginEnabled();
+                SetAutoLoginEnabled(flag);
+                return flag;
+            }
+            return int.Parse(autoLoginEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultAutoLoginEnabled() => false;
+        public static void SetAutoLoginEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.AutoLoginEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.AutoLoginEnabled, (int) YesOrNo.NO + "");
+            }
+        }
+        // Auto login info
+        public static string GetAutoLoginInfo() {
+            string autoLoginInfo = Settings.Read(IniFileKeys.AutoLoginInfo);
+            if (string.IsNullOrEmpty(autoLoginInfo)) {
+                string autoLoginInfoTemp = GetDefaultAutoLoginInfo();
+                SetAutoLoginInfo(autoLoginInfoTemp);
+                return autoLoginInfoTemp;
+            }
+            return autoLoginInfo;
+        }
+        public static string GetDefaultAutoLoginInfo() => "";
+        public static void SetAutoLoginInfo(string autoLoginInfo) => Settings.Write(IniFileKeys.AutoLoginInfo, autoLoginInfo);
 
         // Ping util method
         public static bool PingHost(string nameOrAddress) {

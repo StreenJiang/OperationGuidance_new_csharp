@@ -2,8 +2,7 @@
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 
-namespace CustomLibrary.Buttons
-{
+namespace CustomLibrary.Buttons {
     public class CustomMenuButton: CustomImageTextButtonBase {
         private EventHandler? _onMenuButtonClick;
         private CustomContentPanelBase? _correspondingContentPanel;

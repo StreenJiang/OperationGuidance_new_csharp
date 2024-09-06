@@ -111,6 +111,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected Dictionary<int, List<BarCodeMatchingRuleDTO>> _partsBarCodeMatchingRules;
         protected List<BarCodeMatchingRuleDTO> _rulesExcluded;
         protected List<int>? _ruleIdsCheckedCached;
+        protected bool _barcodeRelatedDone;
 
         // 设备相关
         protected List<DeviceBlock> _deviceBlocks;
@@ -728,6 +729,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 获取条码匹配规则码匹配规则
         protected async void GetBarCodeMatchingRules() {
             await Task.Run(() => {
+                _barcodeRelatedDone = false;
+
                 _barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id)).BarCodeMatchingRuleDTOs;
                 _barCodeMatchingRuleDTOs = _barCodeMatchingRuleDTOs.OrderBy(dto => dto.id).ToList();
                 _productBarCodeMatchingRules = new();
@@ -763,6 +766,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         _partsBarCodeMatchingRules.Remove(currId);
                     }
                 }
+
+                _barcodeRelatedDone = true;
             });
         }
         // 载入设备
