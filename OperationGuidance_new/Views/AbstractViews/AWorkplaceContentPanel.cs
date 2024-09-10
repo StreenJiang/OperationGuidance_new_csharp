@@ -1767,7 +1767,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // SetPset();
                     _pset.SetValue(0, null);
 
-                    if (!string.IsNullOrEmpty(_matCode)) {
+                    if (pset == null && !string.IsNullOrEmpty(_matCode)) {
                         // Use MatCode to switch parameter program
                         MatCodeMapWhycDTO? matCodeMapWhycDTO = _apis.FindMatCodeMapByMatCode(new(_matCode)).MatCodeMapWhycDTO;
                         if (matCodeMapWhycDTO != null) {
@@ -1778,7 +1778,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
 
-                    // Check pset here
+                    // Check pset here again
                     if (pset == null) {
                         // If pset is null, show error message in working proccess panel
                         AddLockMsg(WorkingProcessPanel.LockedPsetNull);

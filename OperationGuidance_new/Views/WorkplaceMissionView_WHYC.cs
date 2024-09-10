@@ -137,15 +137,10 @@ namespace OperationGuidance_new.Views {
             if (!await base.ValidationBeforeActivatingMission()) {
                 return false;
             } else {
-                if (MainUtils.IsMESEnabled()) {
-                    string getMatCodeUri = MainUtils.GetMatCodeApi();
+                string getMatCodeUri = MainUtils.GetMatCodeApi();
 
-                    // Check uri
-                    if (string.IsNullOrEmpty(getMatCodeUri)) {
-                        WidgetUtils.ShowErrorPopUp($"请求MatCode的Uri地址有误，请检查配置信息");
-                        return false;
-                    }
-
+                // Check uri
+                if (!string.IsNullOrEmpty(getMatCodeUri)) {
                     // Send http request to get mat code
                     HttpRequestGetMatCode request = new(_barCodeObj.ProductBarCode);
                     HttpResponseGetMatCode response = await HttpUtils.SendPost<HttpRequestGetMatCode, HttpResponseGetMatCode>(getMatCodeUri, request);
@@ -167,35 +162,33 @@ namespace OperationGuidance_new.Views {
         }
 
         private async void UploadDataToMES(OperationDataDTO operationDataDTO) {
-            WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == operationDataDTO.workstation_id);
-
-            // Send http request to upload data to MES
-            HttpRequestUploadData request = new() {
-                QrCode = _barCodeObj.ProductBarCode,
-                Line = _lineBox.GetTextBox(0).Box.Text,
-                StationName = workstationDTO.name,
-                StaffName = _operatorBox.GetTextBox(0).Box.Text,
-                MatCode = _matCode,
-                Trosion = $"{_round_3(operationDataDTO.torque)}N.m",
-                TrosionStd = $"{_round_3(operationDataDTO.torque_final_target)}N.m",
-                TrosionUp = $"{_round_3(operationDataDTO.torque_max_limit)}N.m",
-                TrosionDow = $"{_round_3(operationDataDTO.torque_min_limit)}N.m",
-                Time = $"{_round_3((float) _rundownTime / 1000)}s",
-                Circle = $"{_round_3((float) operationDataDTO.angle / 360)}圈",
-                Angle = $"{operationDataDTO.angle}°",
-                Result = ((TighteningStatus) operationDataDTO.tightening_status.Value).ToString(),
-                Error = _errorMsg,
-                CreateTime = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF),
-                Seq = operationDataDTO.bolt_serial_num,
-                SumQty = _sumBoltDone,
-            };
-
             string uploadDataUri = MainUtils.GetUploadDataApi();
 
             // Check uri
-            if (string.IsNullOrEmpty(uploadDataUri)) {
-                WidgetUtils.ShowErrorPopUp($"请求MatCode的Uri地址有误，请检查配置信息");
-            } else {
+            if (!string.IsNullOrEmpty(uploadDataUri)) {
+                WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == operationDataDTO.workstation_id);
+
+                // Send http request to upload data to MES
+                HttpRequestUploadData request = new() {
+                    QrCode = _barCodeObj.ProductBarCode,
+                    Line = _lineBox.GetTextBox(0).Box.Text,
+                    StationName = workstationDTO.name,
+                    StaffName = _operatorBox.GetTextBox(0).Box.Text,
+                    MatCode = _matCode,
+                    Trosion = $"{_round_3(operationDataDTO.torque)}N.m",
+                    TrosionStd = $"{_round_3(operationDataDTO.torque_final_target)}N.m",
+                    TrosionUp = $"{_round_3(operationDataDTO.torque_max_limit)}N.m",
+                    TrosionDow = $"{_round_3(operationDataDTO.torque_min_limit)}N.m",
+                    Time = $"{_round_3((float) _rundownTime / 1000)}s",
+                    Circle = $"{_round_3((float) operationDataDTO.angle / 360)}圈",
+                    Angle = $"{operationDataDTO.angle}°",
+                    Result = ((TighteningStatus) operationDataDTO.tightening_status.Value).ToString(),
+                    Error = _errorMsg,
+                    CreateTime = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF),
+                    Seq = operationDataDTO.bolt_serial_num,
+                    SumQty = _sumBoltDone,
+                };
+
                 HttpResponseUploadData response = await HttpUtils.SendPost<HttpRequestUploadData, HttpResponseUploadData>(uploadDataUri, request);
                 if (response.unStatus == HttpStatus_WHYC.FAILURE) {
                     WidgetUtils.ShowErrorPopUp($"上传数据失败，{response.ucMsg}");

@@ -528,24 +528,6 @@ namespace OperationGuidance_new.Utils {
         }
         public static int GetDefaultPLCBarCodeLength() => 0;
         public static void SetPLCBarCodeLength(int length) => Settings.Write(IniFileKeys.PLCBarCodeLength, length + "");
-        // Mes enabled
-        public static bool IsMESEnabled() {
-            string mesEnabled = Settings.Read(IniFileKeys.MESEnabled);
-            if (string.IsNullOrEmpty(mesEnabled)) {
-                bool flag = DefaultMESEnabled();
-                SetMESEnabled(flag);
-                return flag;
-            }
-            return int.Parse(mesEnabled) == (int) YesOrNo.YES;
-        }
-        public static bool DefaultMESEnabled() => false;
-        public static void SetMESEnabled(bool flag) {
-            if (flag) {
-                Settings.Write(IniFileKeys.MESEnabled, (int) YesOrNo.YES + "");
-            } else {
-                Settings.Write(IniFileKeys.MESEnabled, (int) YesOrNo.NO + "");
-            }
-        }
         // Get met code from MES
         public static string GetMatCodeApi() {
             string matCodeApi = Settings.Read(IniFileKeys.MatCodeApi);
