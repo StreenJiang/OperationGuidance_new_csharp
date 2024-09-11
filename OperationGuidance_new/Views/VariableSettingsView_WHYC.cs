@@ -69,7 +69,7 @@ namespace OperationGuidance_new.Views {
             UsbScannerEnabledToggle.Size = new(boxWidth, BoxNBtnHeight);
             UsbScannerEnabledToggle.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             GetMatCodeApiBox.Size = new(boxWidth, BoxNBtnHeight);
-            GetMatCodeApiBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            GetMatCodeApiBox.Margin = new(0, boxVMargin, 0, 0);
             UploadDataApiBox.Size = new(boxWidth, BoxNBtnHeight);
             UploadDataApiBox.Margin = new(0, boxVMargin, 0, 0);
 
