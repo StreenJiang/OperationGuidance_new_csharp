@@ -1265,7 +1265,7 @@ namespace OperationGuidance_service.Controllers {
 
                         string fieldSql = "";
                         for (int i = 0; i < 50; i++) {
-                            fieldSql += $"torque{i + 1} float NULL, angle{i + 1} float NULL, ";
+                            fieldSql += $"torque{i + 1} float NULL, angle{i + 1} float NULL, no{i + 1} int NULL, coords{i + 1} nvarchar(255) NULL, ";
                         }
                         string sqlCreate = @$"CREATE TABLE [{tableName}] (
                             [id] int IDENTITY(1,1) NOT NULL, 
@@ -1288,7 +1288,7 @@ namespace OperationGuidance_service.Controllers {
                     }
 
                     string sql = $"insert into {tableName}";
-                    Dictionary<string, object> parameters = new();
+                    Dictionary<string, object?> parameters = new();
                     parameters.Add("Serial_Number", missionRecord.product_bar_code);
                     parameters.Add("Test_Date", missionRecord.create_time.ToString("yyyy-MM-dd"));
                     parameters.Add("Test_Time", missionRecord.create_time.ToString("HH:mm:ss"));
@@ -1303,12 +1303,22 @@ namespace OperationGuidance_service.Controllers {
                         // Torque
                         dataSql += $", torque{i + 1}";
                         paramNamesSql += $", @torque{i + 1}";
-                        parameters.Add($"torque{i + 1}", data.torque.Value);
+                        parameters.Add($"torque{i + 1}", data.torque);
 
                         // Angle
                         dataSql += $", angle{i + 1}";
                         paramNamesSql += $", @angle{i + 1}";
-                        parameters.Add($"angle{i + 1}", data.angle.Value);
+                        parameters.Add($"angle{i + 1}", data.angle);
+
+                        // No
+                        dataSql += $", no{i + 1}";
+                        paramNamesSql += $", @no{i + 1}";
+                        parameters.Add($"no{i + 1}", data.bolt_serial_num);
+
+                        // Coords
+                        dataSql += $", coords{i + 1}";
+                        paramNamesSql += $", @coords{i + 1}";
+                        parameters.Add($"coords{i + 1}", data.arm_position);
                     }
 
                     sql += $"(Serial_Number, Test_Date, Test_Time, Test_Result{dataSql}) values (@Serial_Number, @Test_Date, @Test_Time, @Test_Result{paramNamesSql})";
