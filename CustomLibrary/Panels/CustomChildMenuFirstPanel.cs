@@ -135,7 +135,7 @@ namespace CustomLibrary.Panels {
             }
             // Resize buttons
             int btnWholeHeight = (int) (this.Height * _childFirstButtonHeightRatio);
-            int margin = (int) (btnWholeHeight * .125);
+            int margin = (int) (btnWholeHeight * .135);
             int newBtnWidth = Width - margin * 2;
             int newBtnHeight = btnWholeHeight - margin * 2;
             _allMenuButtonHeight = 0;

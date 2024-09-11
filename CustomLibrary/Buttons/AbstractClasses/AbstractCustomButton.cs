@@ -185,7 +185,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             if (_toggleButton && _toggleBar) {
                 if (_toggleBar) {
                     // Draw toggle bar if needed
-                    int barHeight = (int) (Height * .6);
+                    int barHeight = (int) (Height * .5);
                     int coordinate = _conerRadius > 0 ? 1 : 0;
                     if (_toggleBarDirection == null) {
                         _toggleBarDirection = ToggleBarDirectionEnum.LEFT;

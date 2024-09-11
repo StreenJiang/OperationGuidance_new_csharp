@@ -403,7 +403,7 @@ namespace CustomLibrary.Utils {
             return new(hPadding, vPadding, hPadding, vPadding);
         }
         public static int ContainerRadius() => (int) (MainSize.Height * .015);
-        public static int ControlRadius() => (int) (MainSize.Height * .0085);
+        public static int ControlRadius() => (int) (MainSize.Height * .00925);
         public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .0425);
         public static int CommonButtonHeight() => (int) (MainSize.Height * .0425);
         public static int PictureBoxGroupBaseHeight() => (int) (MainSize.Height * .125);

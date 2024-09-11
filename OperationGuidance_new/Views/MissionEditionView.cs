@@ -1383,6 +1383,7 @@ namespace OperationGuidance_new.Views {
 
             protected override void OnSizeChanged(EventArgs e) {
                 _gapBetweenImageAndText = (int) (this.Height * .1);
+                ConerRadius = Height / 7;
                 base.OnSizeChanged(e);
             }
 

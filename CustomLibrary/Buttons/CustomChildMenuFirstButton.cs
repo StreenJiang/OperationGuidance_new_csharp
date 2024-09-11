@@ -3,11 +3,11 @@ using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
     public class CustomChildMenuFirstButton: CustomMenuButton {
-        private const float _imageSideRatio = 0.42F;
-        private const float _imageSideRatioOnlyIcon = 0.45F;
+        private const float _imageSideRatio = 0.44F;
+        private const float _imageSideRatioOnlyIcon = 0.47F;
 
         protected override void OnSizeChanged(EventArgs e) {
-            ConerRadius = Height / 7;
+            ConerRadius = Height / 4;
             base.OnSizeChanged(e);
         }
 
@@ -18,7 +18,7 @@ namespace CustomLibrary.Buttons {
                 if (!OnlyIcon) {
                     ExtraSize = new(ExtraSize.Width + BarThickness, ExtraSize.Height);
                 } else {
-                    ExtraSize = new(ExtraSize.Width + BarThickness / 2, ExtraSize.Height);
+                    ExtraSize = new(ExtraSize.Width + BarThickness, ExtraSize.Height);
                 }
             }
             base.PaintAfter(e);
@@ -30,7 +30,7 @@ namespace CustomLibrary.Buttons {
                 ImageShowing = WidgetUtils.ResizeImage(Icon, newImageSide, newImageSide);
                 // Recalculate image location
                 if (!OnlyIcon) {
-                    ImageX = (int) (Height * 0.04 + Width * .1);
+                    ImageX = (int) (Height * 0.07 + Width * .11);
                 } else {
                     ImageX = (Width - newImageSide) / 2;
                 }
@@ -40,9 +40,9 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (Label != null) {
-                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .315F, FontStyle.Bold, GraphicsUnit.Pixel);
+                Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .34F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
-                LabelX = (int) (Height * 0.75 + Width * .1);
+                LabelX = (int) (Height * 0.85 + Width * .1);
                 LabelY = (Height - Font.Height) / 2;
             }
         }

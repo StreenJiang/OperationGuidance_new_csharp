@@ -70,7 +70,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Height / 3.2F + 0.5F, FontStyle.Bold);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, this.Height * .5F, FontStyle.Bold, GraphicsUnit.Pixel);
             }
         }
     }

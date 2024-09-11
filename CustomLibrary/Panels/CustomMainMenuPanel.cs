@@ -50,7 +50,7 @@ namespace CustomLibrary.Panels {
         }
 
         protected override void ResizeButtons() {
-            int margin = (int) (Height * .06);
+            int margin = (int) (Height * .1);
             int newBtnSide = Height - margin * 2;
             foreach (Control button in this.Controls) {
                 button.Size = new(newBtnSide, newBtnSide);

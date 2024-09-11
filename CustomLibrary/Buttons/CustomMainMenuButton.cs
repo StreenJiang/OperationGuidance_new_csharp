@@ -3,8 +3,8 @@ using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
     public class CustomMainMenuButton: CustomMenuButton {
-        private const float _imageSideRatio = 0.335F;
-        private const float _imageSideRatioOnlyIcon = 0.455F;
+        private const float _imageSideRatio = 0.365F;
+        private const float _imageSideRatioOnlyIcon = 0.48F;
         private int _gapBetweenImageAndText;
         private bool _openFirst = false;
 
@@ -12,7 +12,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void OnSizeChanged(EventArgs e) {
             _gapBetweenImageAndText = this.Height / 15;
-            ConerRadius = Height / 9;
+            ConerRadius = Height / 7;
             base.OnSizeChanged(e);
         }
 
@@ -32,7 +32,7 @@ namespace CustomLibrary.Buttons {
 
         protected override void ResizeTextLabel() {
             if (this.Label != null) {
-                this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .155F, FontStyle.Bold, GraphicsUnit.Pixel);
+                this.Font = new Font(WidgetsConfigs.SystemFontFamily, Height * .175F, FontStyle.Bold, GraphicsUnit.Pixel);
                 // Recalculate label location
                 int newImageSide = CalcNewImageSide();
                 using (Graphics g = CreateGraphics()) {

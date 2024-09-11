@@ -7,7 +7,6 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
 using CustomLibrary.TextBoxes;
-using log4net.Repository.Hierarchy;
 using log4net;
 using OperationGuidance_new.Utils;
 
@@ -595,6 +594,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         #region Override methods
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            ConerRadius = WidgetUtils.ControlRadius();
+
             _headerHeight = WidgetUtils.GridViewHeaderHeight();
             _rowsHeight = WidgetUtils.GridViewContentRowHeight();
             _pageHeight = WidgetUtils.GridViewPageInfoHeight();
