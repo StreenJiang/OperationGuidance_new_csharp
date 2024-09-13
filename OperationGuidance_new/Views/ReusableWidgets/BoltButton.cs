@@ -266,10 +266,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             BeginInvoke(() => {
                 for (int i = 0; i < positions.Length; i++) {
                     int? position = positions[i];
-                    if (position != null) {
-                        bool? flag = _specificationsOk[position.Value];
+                    if (position != null && position.Value == 1) {
+                        bool? flag = _specificationsOk[i];
                         if (flag != null && !flag.Value) {
-                            _specificationsOk[position.Value] = true;
+                            _specificationsOk[i] = true;
                         }
                     }
                 }

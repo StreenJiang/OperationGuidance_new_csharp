@@ -272,6 +272,19 @@ namespace OperationGuidance_new.Constants {
                     logger.Debug($"dataMessage = {dataMessage}");
                     logger.Debug($"high = {high}");
                     logger.Debug($"binaryStr = {binaryStr}");
+
+                    string temp6 = string.Join("", dataMessage.Skip(6).Take(1));
+                    string temp7 = string.Join("", dataMessage.Skip(7).Take(1));
+                    string temp8 = string.Join("", dataMessage.Skip(8).Take(1));
+                    string temp9 = string.Join("", dataMessage.Skip(9).Take(1));
+                    logger.Debug($"temp6 = {new(MainUtils.ToBinaryString(temp6).ToArray())}");
+                    logger.Debug($"temp6 reversed = {new(MainUtils.ToBinaryString(temp6).Reverse().ToArray())}");
+                    logger.Debug($"temp7 = {new(MainUtils.ToBinaryString(temp7).ToArray())}");
+                    logger.Debug($"temp7 reversed = {new(MainUtils.ToBinaryString(temp7).Reverse().ToArray())}");
+                    logger.Debug($"temp8 = {new(MainUtils.ToBinaryString(temp8).ToArray())}");
+                    logger.Debug($"temp8 reversed = {new(MainUtils.ToBinaryString(temp8).Reverse().ToArray())}");
+                    logger.Debug($"temp9 = {new(MainUtils.ToBinaryString(temp9).ToArray())}");
+                    logger.Debug($"temp9 reversed = {new(MainUtils.ToBinaryString(temp9).Reverse().ToArray())}");
 #endif
 
                     for (int i = 0; i < binaryStr.Length; i++) {
@@ -282,6 +295,10 @@ namespace OperationGuidance_new.Constants {
                             _currentStatuses[i] = null;
                         }
                     }
+
+#if DEBUG
+                    logger.Debug($"_currentStatuses = {string.Join(",", _currentStatuses)}");
+#endif
 
                     if (_ioBoxActionAfterAnalysis != null) {
                         _ioBoxActionAfterAnalysis(_currentStatuses);
