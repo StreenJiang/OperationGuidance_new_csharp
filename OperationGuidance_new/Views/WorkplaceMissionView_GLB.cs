@@ -70,37 +70,39 @@ namespace OperationGuidance_new.Views {
                     if (_communicationTask != null && _communicationTask.Connected
                             && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
                             && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
-                        _communicationTask.Reading = true;
+                        if (WidgetUtils.ShowConfirmPopUp("是否立即读取PLC条码信息？")) {
+                            _communicationTask.Reading = true;
 
-                        // Wait for .5 seconds to ensure data is latest
-                        await Task.Delay(500);
+                            // Wait for .5 seconds to ensure data is latest
+                            await Task.Delay(500);
 
-                        int waitTime = 5000;
-                        int waitTimeCount = 0;
-                        int waitEach = 250;
+                            int waitTime = 5000;
+                            int waitTimeCount = 0;
+                            int waitEach = 250;
 
-                        bool readOk = false;
-                        while (waitTimeCount < waitTime) {
-                            if (_communicationTask.PlcServer.DataBytes == null) {
-                                await Task.Delay(waitEach);
-                                waitTimeCount += waitEach;
-                                continue;
+                            bool readOk = false;
+                            while (waitTimeCount < waitTime) {
+                                if (_communicationTask.PlcServer.DataBytes == null) {
+                                    await Task.Delay(waitEach);
+                                    waitTimeCount += waitEach;
+                                    continue;
+                                }
+
+                                string barCode = Encoding.ASCII.GetString(_communicationTask.PlcServer.DataBytes);
+                                barCode = barCode.Trim();
+                                logger.Info($"Get bar code[{barCode}] from plcs");
+                                readOk = true;
+
+                                // Analyze bar code
+                                ActionAfterRecevingBarCode(barCode);
+                                break;
+                            }
+                            if (!readOk) {
+                                WidgetUtils.ShowWarningPopUp($"Can't get any bar code from PLC[{_communicationTask.Name}]");
                             }
 
-                            string barCode = Encoding.ASCII.GetString(_communicationTask.PlcServer.DataBytes);
-                            barCode = barCode.Trim();
-                            logger.Info($"Get bar code[{barCode}] from plcs");
-                            readOk = true;
-
-                            // Analyze bar code
-                            ActionAfterRecevingBarCode(barCode);
-                            break;
+                            _communicationTask.Reading = false;
                         }
-                        if (!readOk) {
-                            WidgetUtils.ShowWarningPopUp($"Can't get any bar code from PLC[{_communicationTask.Name}]");
-                        }
-
-                        _communicationTask.Reading = false;
                     }
                 }
             }

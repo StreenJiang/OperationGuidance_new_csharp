@@ -14,7 +14,7 @@ namespace CustomLibrary.ComboBoxes {
         #region Fields
         private readonly int _timerInterval = 10; // How many milliseconds will the collapse cost
         private readonly int _collapseSpend = 50; // How many milliseconds will the collapse cost
-        private readonly int _maxItemsShown = 8; // Maximum of shown items, will has scroll bar if greater than this number
+        private int _maxItemsShown = 8; // Maximum of shown items, will has scroll bar if greater than this number
         private int _collapseStep; // How many pixels increase/decrease each interval
         private readonly int _borderThickness = 1;
         private ComboBoxSelectButton<T> _selectButton;
@@ -45,6 +45,7 @@ namespace CustomLibrary.ComboBoxes {
         #endregion
 
         #region Properties
+        public int MaxItemsShown { get => _maxItemsShown; set => _maxItemsShown = value; }
         public new bool Enabled {
             get => base.Enabled;
             set {

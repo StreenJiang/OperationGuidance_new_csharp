@@ -50,6 +50,7 @@ namespace OperationGuidance_new.Views {
             _plcModelComboBox = new("PLC型号") {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
+                MaxItemsShown = 4,
             };
             foreach (string model in Enum.GetNames<CpuType>()) {
                 _plcModelComboBox.AddItem(model, model);

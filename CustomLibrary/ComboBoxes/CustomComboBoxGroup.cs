@@ -13,6 +13,7 @@ namespace CustomLibrary.ComboBoxes {
         private FlowLayoutPanel _elementsPanel;
         private CustomComboBox<T> _comboBox;
 
+        public int MaxItemsShown { get => _comboBox.MaxItemsShown; set => _comboBox.MaxItemsShown = value; }
         public new bool Enabled { get => _comboBox.Enabled; set => _comboBox.Enabled = value; }
         public bool NeedDefaultLabel { get => _comboBox.NeedDefaultLabel; set => _comboBox.NeedDefaultLabel = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
