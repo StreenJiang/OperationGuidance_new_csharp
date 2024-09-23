@@ -220,8 +220,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OperationGuidanceNew"
-        "ProductCode" = "8:{62460135-7B03-4B1D-95F2-C1E5BE9AE34D}"
-        "PackageCode" = "8:{4E03947B-0014-43C4-AFAF-E0EB13556C75}"
+        "ProductCode" = "8:{F8EBEE01-F61F-4945-8EC6-C9429AC565A1}"
+        "PackageCode" = "8:{60733E65-96BC-4FA6-9406-766BC4AD41A0}"
         "UpgradeCode" = "8:{6775DFE9-DDBA-4867-BA9F-4A884E02C860}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
