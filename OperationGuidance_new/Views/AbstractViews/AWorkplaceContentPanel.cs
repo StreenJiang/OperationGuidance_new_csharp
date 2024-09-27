@@ -1182,10 +1182,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset status of working proccess panel
             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
 
+            // Reset other variables
+            _sumBoltDone = 0;
+
             // Reset all bolts
             foreach (int sideId in _allBolts.Keys) {
                 // Sort all bolts
                 _allBolts[sideId] = _allBolts[sideId].OrderBy(btn => btn.BoltDTO.serial_num).ToList();
+
+                // WHYC
+                _sumBoltDone += _allBolts[sideId].Count;
 
                 // Reset
                 _allBolts[sideId].ForEach(b => {
@@ -1202,9 +1208,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _allBoltsIndependence[sideId][workstationId] = _allBoltsIndependence[sideId][workstationId].OrderBy(btn => btn.BoltDTO.serial_num).ToList();
                 }
             }
-
-            // Reset other variables
-            _sumBoltDone = 0;
         }
 
         protected virtual async Task<bool> ValidationBeforeActivatingMission() {
@@ -2146,9 +2149,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
                                     nextIndex++;
                                 }
-
-                                // WHYC
-                                _sumBoltDone++;
 
                                 // Store data
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
