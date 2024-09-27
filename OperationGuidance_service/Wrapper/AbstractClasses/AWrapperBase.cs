@@ -45,33 +45,41 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             logger.Info("sql: " + sql);
             string newEntitySql = GenerateQueryNewestSql(entity);
             logger.Info("newEntitySql: " + newEntitySql);
+
+            int result;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
-                    conn.Execute(sql, entity);
+                    result = conn.Execute(sql, entity);
                     int id = conn.QueryFirst<int>(newEntitySql, entity);
                     entity.id = id;
-                    return entity;
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                _conn.Execute(sql, entity, _transaction);
+                result = _conn.Execute(sql, entity, _transaction);
                 int id = _conn.QueryFirst<int>(newEntitySql, entity, _transaction);
                 entity.id = id;
-                return entity;
             }
+
+            logger.Info("Result: " + result);
+            return entity;
         }
 
         public int AddBatch(List<T> entities) {
             string sql = GenerateInsertSql();
             logger.Info("sql: " + sql);
+
+            int result;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
-                    return conn.Execute(sql, entities);
+                    result = conn.Execute(sql, entities);
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                return _conn.Execute(sql, entities, _transaction);
+                result = _conn.Execute(sql, entities, _transaction);
             }
+
+            logger.Info("Result: " + result);
+            return result;
         }
 
         public T? FindById(int id) {
@@ -91,12 +99,13 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 // Don't use 'using' to release resource, probably is in a transaction
                 enumerable = _conn.Query<T>(sql, null, _transaction);
             }
+
+            logger.Info("Size of result: " + enumerable.Count());
             return enumerable.ToList();
         }
 
         public List<T> FindBySql(string sql, Dictionary<string, object>? @params) {
-            logger.Info("sql: " + sql);
-            logger.Info("@params: " + GetParamsStr(@params));
+            logger.Info($"sql: [{sql}], @params: [{GetParamsStr(@params)}]");
             IEnumerable<T> enumerable;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
@@ -106,6 +115,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 // Don't use 'using' to release resource, probably is in a transaction
                 enumerable = _conn.Query<T>(sql, @params, _transaction);
             }
+
+            logger.Info("Size of result: " + enumerable.Count());
             return enumerable.ToList();
         }
 
@@ -114,14 +125,18 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             entity.modify_time = DateTime.Now;
             string sql = GenerateUpdateSql(entity);
             logger.Info("sql: " + sql);
+
+            int result;
             if (_conn == null) {
                 using (DbConnection conn = DbConnector.GetConnection()) {
-                    conn.Execute(sql, entity);
+                    result = conn.Execute(sql, entity);
                 }
             } else {
                 // Don't use 'using' to release resource, probably is in a transaction
-                _conn.Execute(sql, entity, _transaction);
+                result = _conn.Execute(sql, entity, _transaction);
             }
+
+            logger.Info("Result: " + result);
             return entity;
         }
 
@@ -138,6 +153,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 // Don't use 'using' to release resource, probably is in a transaction
                 rows = _conn.Execute(sql, entities, _transaction);
             }
+
+            logger.Info("Result: " + rows);
             return rows;
         }
 
