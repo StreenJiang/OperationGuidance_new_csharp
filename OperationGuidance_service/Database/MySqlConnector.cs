@@ -87,7 +87,7 @@ namespace OperationGuidance_service.Database {
                 conn.Open();
                 return conn;
             } catch (Exception e) {
-                logger.Error($"Connect to mysql [server={Server}, port={Port}] failed, e: {e}");
+                logger.Error($"Connect to mysql [server={host}, port={port}] failed, e: {e}");
             }
             return null;
         }

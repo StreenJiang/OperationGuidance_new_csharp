@@ -40,6 +40,7 @@ namespace OperationGuidance_new.Views {
                     _apis.AddDataToOuterDatabaseGlb(new(database, _missionRecord, _operationDatasCached));
                 });
             }
+            _operationDatasCached = new();
         }
 
         protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
