@@ -872,12 +872,20 @@ namespace OperationGuidance_new.Views {
 
         protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
 
-        public override void ActivateMission() {
+        public override async void ActivateMission() {
             base.ActivateMission();
+
+            // Set delay to ensure if block below can run
+            int tryTimes = 10;
+            int tryCounts = 0;
+            do {
+                tryCounts++;
+                await Task.Delay(500);
+            } while (!_activated && tryCounts < tryTimes);
 
             if (_activated) {
                 // Clear data grid view
-                _tighteningDataVOs = new();
+                _tighteningDataVOs.Clear();
                 RefreshTighteningDataPanel(_tighteningDataVOs);
 
                 if (_missionRecord != null) {
