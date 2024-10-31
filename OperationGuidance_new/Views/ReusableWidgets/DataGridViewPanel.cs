@@ -356,13 +356,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 columnChanged = false;
             };
             _gridView.Scroll += (sender, eventArgs) => {
-                if (_vScrollBar != null && _vScrollBar.Visible && eventArgs.ScrollOrientation == ScrollOrientation.VerticalScroll) {
-                    _vScrollBar.Value = eventArgs.NewValue;
+                try {
+                    if (_vScrollBar != null && _vScrollBar.Visible && eventArgs.ScrollOrientation == ScrollOrientation.VerticalScroll) {
+                        _vScrollBar.Value = eventArgs.NewValue;
+                    }
+                } catch (Exception e) {
+                    logger.Error($"Exception occurred while scrolling data grid view: e = [{e}]");
+                    _gridView.Refresh();
                 }
-            };
-            _gridView.CellValueChanged += (sender, eventArgs) => {
-                DataGridViewCell cell = _gridView.Rows[eventArgs.RowIndex].Cells[eventArgs.ColumnIndex];
-                Console.WriteLine("Value change to: " + cell.Value);
             };
             _gridView.DataBindingComplete += (sender, eventArgs) => {
                 // Clear auto selection of first row

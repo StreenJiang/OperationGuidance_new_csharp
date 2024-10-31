@@ -877,8 +877,8 @@ namespace OperationGuidance_new.Views {
 
             if (_activated) {
                 // Clear data grid view
-                _tighteningDataVOs.Clear();
-                RefreshTighteningDataPanel();
+                _tighteningDataVOs = new();
+                RefreshTighteningDataPanel(_tighteningDataVOs);
 
                 if (_missionRecord != null) {
                     _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;

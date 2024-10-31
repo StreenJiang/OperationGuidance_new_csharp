@@ -222,22 +222,26 @@ namespace OperationGuidance_new.Utils {
             if (!File.Exists(imageFilePath)) {
                 return null;
             }
-            // 这个很奇怪，只会画出图片的一部分，真奇葩
-            // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
-            // using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
-            // using (Bitmap bitmap = new Bitmap(ms)) {
-            //     Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
-            //     using (Graphics g = Graphics.FromImage(newBitmap)) {
-            //         g.DrawImage(bitmap, Point.Empty);
-            //         g.Flush();
-            //     }
-            //     return newBitmap;
-            // }
 
-            Bitmap bitmap = new Bitmap(imageFilePath);
-            Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
-            bitmap.Dispose();
-            return image;
+            try {
+                // 这里居然出现过一次 Out of Memory，也很奇怪。。所以放到 try-catch 里面，然后下面用另一个方案
+                Bitmap bitmap = new Bitmap(imageFilePath);
+                Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
+                bitmap.Dispose();
+                return image;
+            } catch {
+                // 这个很奇怪，只会画出图片的一部分，真奇葩
+                // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
+                using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
+                using (Bitmap bitmap = new Bitmap(ms)) {
+                    Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
+                    using (Graphics g = Graphics.FromImage(newBitmap)) {
+                        g.DrawImage(bitmap, Point.Empty);
+                        g.Flush();
+                    }
+                    return newBitmap;
+                }
+            }
         }
         public static void SaveProductImage(Image? image, string? fileName) {
             if (image == null || string.IsNullOrEmpty(fileName)) {

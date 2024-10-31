@@ -637,15 +637,19 @@ namespace OperationGuidance_service.Controllers {
         // 根据任务记录 ids 查询对应的站点id和站点名称
         public QueryWorkstationInfoByMissionRecordIdsRsp QueryWorkstationInfoByMissionRecordIds(QueryWorkstationInfoByMissionRecordIdsReq req) {
             // 先查询到每条任务记录对应的 workstation_id
-            Dictionary<int, Dictionary<int, string>> workstationInfos = _operationDataService.GetWorkstationInfoByMissionRecordIds(req.MissionRecordIds);
-            // 根据所有 workstation_ids 查询到每个 id 对应的 name
-            List<int> workstationIds = new();
-            workstationInfos.Values.ToList().ForEach(dict => workstationIds.AddRange(dict.Keys));
-            Dictionary<int, string> workstationInfo = _workstationService.GetWorkstationNamesByIds(workstationIds);
-            foreach (var dict in workstationInfos.Values) {
-                foreach (var pair in dict) {
-                    if (workstationInfo.ContainsKey(pair.Key)) {
-                        dict[pair.Key] = workstationInfo[pair.Key];
+            Dictionary<int, Dictionary<int, string>> workstationInfos = new();
+            if (req.MissionRecordIds.Count > 0) {
+                workstationInfos = _operationDataService.GetWorkstationInfoByMissionRecordIds(req.MissionRecordIds);
+
+                // 根据所有 workstation_ids 查询到每个 id 对应的 name
+                List<int> workstationIds = new();
+                workstationInfos.Values.ToList().ForEach(dict => workstationIds.AddRange(dict.Keys));
+                Dictionary<int, string> workstationInfo = _workstationService.GetWorkstationNamesByIds(workstationIds);
+                foreach (var dict in workstationInfos.Values) {
+                    foreach (var pair in dict) {
+                        if (workstationInfo.ContainsKey(pair.Key)) {
+                            dict[pair.Key] = workstationInfo[pair.Key];
+                        }
                     }
                 }
             }
@@ -746,7 +750,11 @@ namespace OperationGuidance_service.Controllers {
         }
         // 根据站点 ids 查询对应的任务记录列表
         public QueryMissionRecordsByWorkstationIdsRsp QueryMissionRecordsByWorkstationIds(QueryMissionRecordsByWorkstationIdsReq req) {
-            return new(_operationDataService.GetMissionRecordIdsByWorkstationIds(req.WorkstationIds));
+            Dictionary<int, List<int>> result = new();
+            if (req.WorkstationIds.Count > 0) {
+                result = _operationDataService.GetMissionRecordIdsByWorkstationIds(req.WorkstationIds);
+            }
+            return new(result);
         }
         #endregion
 

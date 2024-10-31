@@ -2273,7 +2273,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
             _tighteningDataVOs.Add(dataFormatted);
 
-            RefreshTighteningDataPanel();
+            RefreshTighteningDataPanel(_tighteningDataVOs);
             logger.Info("StoreTighteningData showing to panel end ........");
 
             // 最后再存进本地文件
@@ -2342,8 +2342,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected void RefreshTighteningDataPanel() {
-            _tighteningDataPanel.DataSource = _tighteningDataVOs;
+        protected void RefreshTighteningDataPanel(List<OperationDataVO> vos) {
+            _tighteningDataPanel.DataSource = vos;
         }
 
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);

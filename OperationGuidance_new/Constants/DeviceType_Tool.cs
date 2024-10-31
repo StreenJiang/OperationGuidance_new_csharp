@@ -360,9 +360,9 @@ namespace OperationGuidance_new.Constants {
                         torqueStatus = (int) TighteningCommonStatus.NG;
                     }
 
-                    int angle = GetIntData(GetData(dataMessage, 22, 4));
-                    int angleMin = GetIntData(GetData(dataMessage, 68, 4));
-                    int angleMax = GetIntData(GetData(dataMessage, 64, 4));
+                    int angle = GetIntData(GetData(dataMessage, 26, 4));
+                    int angleMax = GetIntData(GetData(dataMessage, 56, 4));
+                    int angleMin = GetIntData(GetData(dataMessage, 60, 4));
                     int angleStatus = (int) TighteningCommonStatus.OK;
                     if (angle < angleMin) {
                         angleStatus = (int) TighteningCommonStatus.LOW;
@@ -370,9 +370,9 @@ namespace OperationGuidance_new.Constants {
                         angleStatus = (int) TighteningCommonStatus.NG;
                     }
 
-                    int rundownAngle = GetIntData(GetData(dataMessage, 26, 4));
-                    int rundownAngleMin = GetIntData(GetData(dataMessage, 60, 4));
-                    int rundownAngleMax = GetIntData(GetData(dataMessage, 56, 4));
+                    int rundownAngle = GetIntData(GetData(dataMessage, 22, 4));
+                    int rundownAngleMax = GetIntData(GetData(dataMessage, 64, 4));
+                    int rundownAngleMin = GetIntData(GetData(dataMessage, 68, 4));
                     int rundownAngleStatus = (int) TighteningCommonStatus.OK;
                     if (rundownAngle < rundownAngleMin) {
                         rundownAngleStatus = (int) TighteningCommonStatus.LOW;

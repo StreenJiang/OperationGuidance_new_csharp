@@ -68,41 +68,48 @@ namespace OperationGuidance_new.Views {
                     // Activate mission
                     ActivateMission();
                 } else if (MainUtils.IsPLCBarCodeSelfLoopingEnabled()) {
-                    if (_communicationTask != null && _communicationTask.Connected
-                            && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
-                            && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
-                        if (WidgetUtils.ShowConfirmPopUp("是否立即读取PLC条码信息？")) {
-                            _communicationTask.Reading = true;
-
+                    if (WidgetUtils.ShowConfirmPopUp("是否立即读取PLC条码信息？")) {
+                        bool readOk = false;
+                        while (!readOk) {
                             // Wait for .5 seconds to ensure data is latest
                             await Task.Delay(500);
 
-                            int waitTime = 5000;
-                            int waitTimeCount = 0;
-                            int waitEach = 250;
+                            if (_communicationTask != null && _communicationTask.Connected
+                                && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
+                                && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
+                                _communicationTask.Reading = true;
 
-                            bool readOk = false;
-                            while (waitTimeCount < waitTime) {
-                                if (_communicationTask.PlcServer.DataBytes == null) {
-                                    await Task.Delay(waitEach);
-                                    waitTimeCount += waitEach;
-                                    continue;
+                                int waitTime = 5000;
+                                int waitTimeCount = 0;
+                                int waitEach = 250;
+
+                                while (waitTimeCount < waitTime) {
+                                    if (_communicationTask.PlcServer.DataBytes == null) {
+                                        await Task.Delay(waitEach);
+                                        waitTimeCount += waitEach;
+                                        continue;
+                                    }
+
+                                    string barCode = Encoding.ASCII.GetString(_communicationTask.PlcServer.DataBytes);
+                                    barCode = barCode.Trim();
+                                    logger.Info($"Get bar code[{barCode}] from plcs");
+                                    readOk = true;
+
+                                    // Analyze bar code
+                                    ActionAfterRecevingBarCode(barCode);
+                                    break;
                                 }
 
-                                string barCode = Encoding.ASCII.GetString(_communicationTask.PlcServer.DataBytes);
-                                barCode = barCode.Trim();
-                                logger.Info($"Get bar code[{barCode}] from plcs");
-                                readOk = true;
+                                _communicationTask.Reading = false;
+                            } else {
+                                Load();
+                                logger.Warn("PLC connection is unstable, get bar code from PLC failed, trying to reload...");
+                            }
 
-                                // Analyze bar code
-                                ActionAfterRecevingBarCode(barCode);
+                            if (!readOk && !WidgetUtils.ShowConfirmPopUp("未读取到PLC条码信息，是否重新读取？")) {
+                                logger.Warn("Confirm not to reread bar code from PLC, break the loop...");
                                 break;
                             }
-                            if (!readOk) {
-                                WidgetUtils.ShowWarningPopUp($"Can't get any bar code from PLC[{_communicationTask.Name}]");
-                            }
-
-                            _communicationTask.Reading = false;
                         }
                     }
                 }
@@ -110,8 +117,12 @@ namespace OperationGuidance_new.Views {
         }
 
         // Initialize mod bus server
-        protected override void InitializeAfterHandelCreated() {
+        protected override void InitializeAfterHandelCreated() => Load();
+
+        // Load Communication tasks
+        private void Load() {
             if (MainUtils.IsPLCBarCodeSelfLoopingEnabled()) {
+                _communicationTasks = MainUtils.CommunicationTasks;
                 foreach (CommunicationTask task in _communicationTasks.Values) {
                     _communicationTask = task;
                     break;
