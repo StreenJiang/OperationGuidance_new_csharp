@@ -6,7 +6,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class MissionManagementView : CustomContentPanel {
+    public class MissionManagementView: CustomContentPanel {
         private MissionListPanel _missionListPanel;
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;

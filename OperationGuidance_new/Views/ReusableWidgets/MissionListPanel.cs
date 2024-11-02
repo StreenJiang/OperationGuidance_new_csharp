@@ -16,6 +16,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
         public ProductMissionBlock<ProductMissionDTO>? CurrentToggledMission { get => _currentToggledMission; set => _currentToggledMission = value; }
+        public TitlePanel? TitlePanel { get => _titlePanel; set => _titlePanel = value; }
+        public List<ProductMissionBlock<ProductMissionDTO>> MissionBlocks {
+            get {
+                List<ProductMissionBlock<ProductMissionDTO>> _missionBlocks = new();
+                foreach (Control ctrl in _contentPanel.MissionsTable.Controls) {
+                    _missionBlocks.Add((ProductMissionBlock<ProductMissionDTO>) ctrl);
+                }
+                return _missionBlocks;
+            }
+        }
 
         public MissionListPanel() : this(null, null, null) { }
         public MissionListPanel(string title) : this(title, null, null) { }

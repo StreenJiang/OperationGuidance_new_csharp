@@ -108,6 +108,7 @@ namespace OperationGuidance_new.Views {
             private CommonButton _buttonSave;
             private CommonButton _buttonNew;
             private CommonButton _buttonDelete;
+            private CommonButton _buttonDuplicate;
             private ImageButton _imageButtonChoose;
             private ImageButton _imageButtonZoomIn;
             private ImageButton _imageButtonZoomOut;
@@ -220,6 +221,7 @@ namespace OperationGuidance_new.Views {
                     _detialPopUpForm = new(_missionDTO, allOtherMissions, barCodeMatchingRuleDTOs, _screwBitCounterDTOs) {
                         Title = "编辑任务详情",
                     };
+                    _detialPopUpForm.MissionName.GetTextBox(0).Box.Select(0, 0);
                     _detialPopUpForm.AddButton("确定").Click += (s, e) => {
                         bool check = true;
                         string warningMsg = "";
@@ -494,6 +496,102 @@ namespace OperationGuidance_new.Views {
                         }
                     } else {
                         WidgetUtils.ShowNoticePopUp("此任务没有保存至数据库，无法执行删除操作");
+                    }
+                };
+
+                _buttonDuplicate = new() {
+                    Parent = _buttonsOuter,
+                    Label = "复制",
+                    BlockHoverUp = true,
+                };
+                _buttonDuplicate.Click += (sender, eventArgs) => {
+                    if (_missionDTO.id > 0) {
+                        DialogResult result = MessageBox.Show(null, "是否执行复制操作？", "复制任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        if (result == DialogResult.Yes) {
+                            ProductMissionDTO duplicatedMissionDTO = new() {
+                                name = _missionDTO.name + "_copy",
+                                pn_code = _missionDTO.pn_code,
+                                max_ng_num = _missionDTO.max_ng_num,
+                                password_need_time = _missionDTO.password_need_time,
+                                enabled = _missionDTO.enabled,
+                                predecessor_mission_id = _missionDTO.predecessor_mission_id,
+                                predecessor_part_mission_ids = _missionDTO.predecessor_part_mission_ids,
+                                multi_device_independence = _missionDTO.multi_device_independence,
+                            };
+
+                            if (_missionDTO.ProductSides != null && _missionDTO.ProductSides.Count > 0) {
+                                List<ProductSideDTO> duplicatedSideDTOs = new();
+                                _missionDTO.ProductSides.ForEach(side => {
+                                    ProductSideDTO sideTemp = new() {
+                                        name = side.name,
+                                        image = side.image,
+                                        max_rectangle_width = side.max_rectangle_width,
+                                        max_rectangle_height = side.max_rectangle_height,
+                                        max_rectangle_location = side.max_rectangle_location,
+                                        center_location = side.center_location,
+                                        location_offset = side.location_offset,
+                                        location_offset_moving = side.location_offset_moving,
+                                        zooming_ratio = side.zooming_ratio,
+                                        zooming_ratio_extra = side.zooming_ratio_extra,
+                                        rotate_angle = side.rotate_angle,
+                                        cropped = side.cropped,
+                                    };
+
+                                    if (side.Bolts != null && side.Bolts.Count > 0) {
+                                        List<ProductBoltDTO> duplicatedBoltDTOs = new();
+                                        side.Bolts.ForEach(bolt => {
+                                            duplicatedBoltDTOs.Add(new() {
+                                                serial_num = bolt.serial_num,
+                                                arranger_id = bolt.arranger_id,
+                                                specification = bolt.specification,
+                                                arranger_id2 = bolt.arranger_id2,
+                                                specification2 = bolt.specification2,
+                                                workstation_id = bolt.workstation_id,
+                                                workstation_name = bolt.workstation_name,
+                                                workstation_description = bolt.workstation_description,
+                                                position = bolt.position,
+                                                location_x_percent = bolt.location_x_percent,
+                                                location_y_percent = bolt.location_y_percent,
+                                                setter_selector_id = bolt.setter_selector_id,
+                                                bit_specification = bolt.bit_specification,
+                                                parameters_set = bolt.parameters_set,
+                                                torque_min = bolt.torque_min,
+                                                torque_max = bolt.torque_max,
+                                                angle_min = bolt.angle_min,
+                                                angle_max = bolt.angle_max,
+                                                parts_bar_code_ids = bolt.parts_bar_code_ids,
+                                                enabled = bolt.enabled,
+                                            });
+                                        });
+
+                                        sideTemp.Bolts = duplicatedBoltDTOs;
+                                    }
+
+                                    duplicatedSideDTOs.Add(sideTemp);
+                                });
+
+                                duplicatedMissionDTO.ProductSides = duplicatedSideDTOs;
+                            }
+
+                            AddOrUpdateProductMissionReq req = new(duplicatedMissionDTO);
+                            AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
+                            if (rsp.RsponseCode == HttpResponseCode.OK) {
+                                Modified = false;
+                                _missionDTO = rsp.ProductMissionDTO;
+                                // 数据复制并保存成功后，保存图片到本地（需要循环保存每一个side的图片）
+                                foreach (SideButton sideBtn in _sideButtons) {
+                                    MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                                }
+                                MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                // 复制成功后跳转至任务列表界面
+                                WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                                Dispose();
+                            } else {
+                                MessageBox.Show(null, "删除失败！错误信息：" + rsp.RsponseMessage, "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }
+                    } else {
+                        WidgetUtils.ShowNoticePopUp("此任务没有保存至数据库，无法执行复制操作");
                     }
                 };
 
@@ -1252,7 +1350,7 @@ namespace OperationGuidance_new.Views {
 
             private void ResizeTop() {
                 // Recalculate some variables
-                int textBoxWidth = (int) (_top.Width / 2.75);
+                int textBoxWidth = (int) (_top.Width * .275);
                 int textBoxHeight = WidgetUtils.TextOrComboBoxHeight();
                 int boxGap = (int) (textBoxHeight * .5);
                 int buttonsHeight = WidgetUtils.CommonButtonHeight();
@@ -1264,7 +1362,7 @@ namespace OperationGuidance_new.Views {
                 // _missionPnCode.Margin = new(boxGap, 0, 0, 0);
 
                 // Resize common buttons
-                _buttonsOuter.Size = new(_top.Width - textBoxWidth - boxGap, buttonsHeight);
+                _buttonsOuter.Size = new(_top.Width - textBoxWidth, buttonsHeight);
                 foreach (Control c in _buttonsOuter.Controls) {
                     if (c is CommonButton btn) {
                         btn.Height = buttonsHeight;
