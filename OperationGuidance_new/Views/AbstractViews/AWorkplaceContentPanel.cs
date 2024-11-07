@@ -1415,12 +1415,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual async void ActivateMissionAutomatically() {
-            // Wait for .5 seconds
-            await Task.Delay(500);
-
             // If is self looping mode, then activate mission automatically
             if (MainUtils.IsMissionSelfLoopingModeEnabled() && _mission.id > 0) {
+                // Wait for .5 seconds
+                await Task.Delay(500);
+
                 ActivateMission();
+            }
+            // If USB scanner is enabled, then open bar code input pop up form automatically
+            else if (MainUtils.IsUSBScannerEnabled()) {
+                while (!_barcodeRelatedDone) {
+                    await Task.Delay(50);
+                }
+                OpenBarCodePopUpForm();
             }
         }
 

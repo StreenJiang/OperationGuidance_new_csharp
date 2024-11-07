@@ -116,23 +116,6 @@ namespace OperationGuidance_new.Views {
             base.OpenBarCodePopUpForm();
         }
 
-        protected override async void ActivateMissionAutomatically() {
-            // If is self looping mode, then activate mission automatically
-            if (MainUtils.IsMissionSelfLoopingModeEnabled() && _mission.id > 0) {
-                // Wait for .5 seconds
-                await Task.Delay(500);
-
-                ActivateMission();
-            }
-            // If USB scanner is enabled, then open bar code input pop up form automatically
-            else if (MainUtils.IsUSBScannerEnabled()) {
-                while (!_barcodeRelatedDone) {
-                    await Task.Delay(50);
-                }
-                OpenBarCodePopUpForm();
-            }
-        }
-
         protected override async Task<bool> ValidationBeforeActivatingMission() {
             if (!await base.ValidationBeforeActivatingMission()) {
                 return false;

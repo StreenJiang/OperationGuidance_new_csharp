@@ -13,7 +13,6 @@ using Microsoft.Win32;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
-using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AVariableSettingsView: CustomContentPanel {
@@ -68,6 +67,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private bool _missionSelfLoopingModeOriginal;
         private ToggleButtonGroup _autoLockToolToggle;
         private bool _autoLockToolOriginal;
+        private ToggleButtonGroup _usbScannerEnabledToggle;
+        private bool _usbScannerEnabledOriginal;
         #endregion
 
         private List<OperationDataField> Fields { get; set; } = new();
@@ -111,6 +112,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public int ArmLocatingAccuracyOriginal { get => _armLocatingAccuracyOriginal; set => _armLocatingAccuracyOriginal = value; }
         public ToggleButtonGroup MissionSelfLoopingModeToggle { get => _missionSelfLoopingModeToggle; set => _missionSelfLoopingModeToggle = value; }
         public bool MissionSelfLoopingModeOriginal { get => _missionSelfLoopingModeOriginal; set => _missionSelfLoopingModeOriginal = value; }
+        public ToggleButtonGroup UsbScannerEnabledToggle { get => _usbScannerEnabledToggle; set => _usbScannerEnabledToggle = value; }
+        public bool UsbScannerEnabledOriginal { get => _usbScannerEnabledOriginal; set => _usbScannerEnabledOriginal = value; }
 
         #region Constructors
         public AVariableSettingsView() {
@@ -187,6 +190,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             || CheckSvedFuncSeparately(_autoLockToolToggle.Checked != _autoLockToolOriginal, "自动锁枪")
             || CheckSvedFuncSeparately(_autoLaunchToggle.Checked != _autoLaunchOriginal, "开机自动启动")
             || CheckSvedFuncSeparately(_autoLoginToggle.Checked != _autoLoginOriginal, "自动登录")
+            || CheckSvedFuncSeparately(_usbScannerEnabledToggle.Checked != _usbScannerEnabledOriginal, "USB扫码枪")
         );
         protected bool CheckSvedFuncSeparately(bool check, string msg) {
             if (check) {
@@ -823,18 +827,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Parent = _workContentPanel,
                 Ratio = 6.95,
             };
+            _usbScannerEnabledToggle = new("USB扫码枪") {
+                Parent = WorkContentPanel,
+                Ratio = 6.95,
+            };
         }
         protected virtual void SaveMissionSettings() {
             MainUtils.SetArmLocatingEnabled(_enableArmLocatingToggle.Checked);
             MainUtils.SetArmLocatingAccuracy(int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text));
             MainUtils.SetMissionSelfLoopingModeEnabled(_missionSelfLoopingModeToggle.Checked);
             MainUtils.SetAutoLockToolEnabled(_autoLockToolToggle.Checked);
+            MainUtils.SetUSBScannerEnabled(_usbScannerEnabledToggle.Checked);
 
             // 修改初始值
             _enableArmLocatingOriginal = _enableArmLocatingToggle.Checked;
             _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
             _missionSelfLoopingModeOriginal = _missionSelfLoopingModeToggle.Checked;
             _autoLockToolOriginal = _autoLockToolToggle.Checked;
+            _usbScannerEnabledOriginal = _usbScannerEnabledToggle.Checked;
         }
         protected virtual string? CheckBeforeSave() {
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
@@ -895,7 +905,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _workTitlePanel.Size = new(Width, _titleHeight);
             int boxWidth = (Width - _contentHPadding * 3) / 2;
             int boxVMargin = this._boxNBtnHeight / 2;
-            int contentHeight = this._boxNBtnHeight * 2 + _contentVPadding * 2 + boxVMargin * 1;
+            int contentHeight = this._boxNBtnHeight * 3 + _contentVPadding * 2 + boxVMargin * 2;
             // Resize Content
             _workContentPanel.Size = new(Width, contentHeight);
             _workContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
@@ -908,6 +918,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _missionSelfLoopingModeToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             _autoLockToolToggle.Size = new(boxWidth, this._boxNBtnHeight);
             _autoLockToolToggle.Margin = new(0, boxVMargin, 0, 0);
+            _usbScannerEnabledToggle.Size = new(boxWidth, BoxNBtnHeight);
+            _usbScannerEnabledToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
         }
@@ -960,6 +972,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _autoLoginOriginal = MainUtils.IsAutoLoginEnabled();
                     _autoLaunchToggle.Checked = _autoLaunchOriginal;
                     _autoLoginToggle.Checked = _autoLoginOriginal;
+                    _usbScannerEnabledOriginal = MainUtils.IsUSBScannerEnabled();
 
                     // Storage settings
                     _sortConfigOriginal = MainUtils.GetSortConfig();
@@ -987,6 +1000,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _armLocatingAccuracyBox.Enabled = _enableArmLocatingOriginal;
                     _missionSelfLoopingModeToggle.Checked = _missionSelfLoopingModeOriginal;
                     _autoLockToolToggle.Checked = _autoLockToolOriginal;
+                    _usbScannerEnabledToggle.Checked = _usbScannerEnabledOriginal;
                 });
             });
         }
@@ -1017,6 +1031,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _armLocatingAccuracyBox.SetValue(0, MainUtils.GetDefaultArmLocatingAccuracy() + "");
                     _missionSelfLoopingModeToggle.Checked = MainUtils.DefaultMissionSelfLoopingModeEnabled();
                     _autoLockToolToggle.Checked = MainUtils.DefaultAutoLockToolEnabled();
+                    _usbScannerEnabledToggle.Checked = MainUtils.DefaultUSBScannerEnabled();
                 });
             });
         }

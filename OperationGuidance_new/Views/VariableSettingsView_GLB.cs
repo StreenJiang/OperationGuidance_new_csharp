@@ -194,22 +194,26 @@ namespace OperationGuidance_new.Views {
 
         protected override void ResizeMissionSettings() {
             base.ResizeMissionSettings();
+
             int boxWidth = (Width - ContentHPadding * 3) / 2;
             int boxVMargin = BoxNBtnHeight / 2;
             int contentHeight = BoxNBtnHeight * 2 + ContentVPadding * 2 + boxVMargin * 1;
 
+            // Resize parent settings
+            UsbScannerEnabledToggle.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+
             _plcBarCodeSelfLoopingToggle.Size = new(boxWidth, BoxNBtnHeight);
-            _plcBarCodeSelfLoopingToggle.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _plcBarCodeSelfLoopingToggle.Margin = new(0, boxVMargin, 0, 0);
             _plcModelComboBox.Size = new(boxWidth, BoxNBtnHeight);
-            _plcModelComboBox.Margin = new(0, boxVMargin, 0, 0);
+            _plcModelComboBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _plcDBAddressBox.Size = new(boxWidth, BoxNBtnHeight);
-            _plcDBAddressBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _plcDBAddressBox.Margin = new(0, boxVMargin, 0, 0);
             _plcDBRegisterNoBox.Size = new(boxWidth, BoxNBtnHeight);
-            _plcDBRegisterNoBox.Margin = new(0, boxVMargin, 0, 0);
+            _plcDBRegisterNoBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _plcDBBitAddressBox.Size = new(boxWidth, BoxNBtnHeight);
-            _plcDBBitAddressBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _plcDBBitAddressBox.Margin = new(0, boxVMargin, 0, 0);
             _plcBarCodeLengthBox.Size = new(boxWidth, BoxNBtnHeight);
-            _plcBarCodeLengthBox.Margin = new(0, boxVMargin, 0, 0);
+            _plcBarCodeLengthBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
 
             WorkContentPanel.Height += (BoxNBtnHeight + boxVMargin) * 3;
             WorkPanel.Height = WorkTitlePanel.Height + WorkContentPanel.Height;
