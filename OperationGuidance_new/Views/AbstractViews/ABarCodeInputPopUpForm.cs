@@ -352,8 +352,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
 
-                // Extra check
-                checkPassed = PartsBarCodeExtraCheck(ruleId);
+                if (checkPassed) {
+                    // Extra check
+                    checkPassed = PartsBarCodeExtraCheck(ruleId);
+                }
 
                 // 物料码返工确认
                 if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
