@@ -60,16 +60,8 @@ namespace OperationGuidance_new.Views {
             };
 
             // 搜索条件
-            _dataGridView.AddTextBox("总成码/追溯码", false, (MissionRecordVO vo, string? value) => vo.product_bar_code = value).Ratio = 6.25;
-            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, List<int?>? value) => {
-                vo.ids = new();
-                if (value != null) {
-                    value.ForEach(v => vo.ids.Add(v));
-                } else {
-                    vo.ids.Add(null);
-                }
-            }, new());
-            RefreshWorkstationOptions();
+            _dataGridView.AddTextBox("总成码/追溯码", false, (MissionRecordVO vo, string? value) => vo.product_bar_code = value);
+            _dataGridView.AddTextBox("物料码", false, (MissionRecordVO vo, string? value) => vo.parts_bar_code = value);
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~",
                     (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (MissionRecordVO vo, DateTime? value) => vo.filter_create_time_max = value);
@@ -87,6 +79,15 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
                 }
             };
+            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, List<int?>? value) => {
+                vo.ids = new();
+                if (value != null) {
+                    value.ForEach(v => vo.ids.Add(v));
+                } else {
+                    vo.ids.Add(null);
+                }
+            }, new());
+            RefreshWorkstationOptions();
 
             // 添加详情按钮
             CommonButton detailBtn = _dataGridView.AddExtraButton("详情");
@@ -140,6 +141,7 @@ namespace OperationGuidance_new.Views {
                         || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0
                         && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
                     .Where(o => vo.product_bar_code == null || o.product_bar_code != null && o.product_bar_code.Contains(vo.product_bar_code))
+                    .Where(o => vo.parts_bar_code == null || o.parts_bar_code != null && o.parts_bar_code.Contains(vo.parts_bar_code))
                     .ToList();
             if (vo.ids != null) {
                 vos = vos.Where(o => {

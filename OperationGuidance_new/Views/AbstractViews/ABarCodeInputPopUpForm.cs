@@ -3,6 +3,7 @@ using CustomLibrary.Forms;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using log4net;
 using Newtonsoft.Json;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
@@ -12,6 +13,8 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class ABarCodeInputPopUpForm: CustomPopUpForm {
+        protected ILog logger;
+
         protected AWorkplaceContentPanel _workplace;
         protected string _initStr;
         protected ProductMissionDTO _mission;
@@ -35,6 +38,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode,
                 List<BarCodeMatchingRuleDTO> rulesExcluded) : base() {
+            logger = MainUtils.GetLogger(this.GetType());
+
             _workplace = workplace;
             _initStr = initStr;
             _mission = mission;
@@ -352,8 +357,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
 
-                // Extra check
-                checkPassed = PartsBarCodeExtraCheck(ruleId);
+                if (checkPassed) {
+                    // Extra check
+                    checkPassed = PartsBarCodeExtraCheck(ruleId);
+                }
 
                 // 物料码返工确认
                 if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
@@ -425,20 +432,33 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
         public void ValidatePartsBarCode(string barCode) {
-            if (_focusedBox == null) {
-                _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
+            try {
+                if (_focusedBox == null) {
+                    logger.Info($"Count on PopUp: {_partsBarCodeContentPanel.Controls.Count}");
+                    logger.Info($"Count on Saved: {_workplace.BarCodeObj.PartsBarCodes.Count}");
+                    logger.Info($"Saved Bar codes: [{String.Join(", ", _workplace.BarCodeObj.PartsBarCodes)}]");
 
-                // Check enabled and null of last text box, if is disabled or not null, then no need to process
-                if (!_focusedBox.Enabled || !string.IsNullOrEmpty(_focusedBox.GetTextBox(0).Text)) {
-                    // If it's disabled or not null, means it's already been back fill, no need to process
-                    return;
+                    if (_partsBarCodeContentPanel.Controls.Count > _workplace.BarCodeObj.PartsBarCodes.Count) {
+                        _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
+                    } else {
+                        return;
+                    }
+
+                    // Check enabled and null of last text box, if is disabled or not null, then no need to process
+                    if (!_focusedBox.Enabled || !string.IsNullOrEmpty(_focusedBox.GetTextBox(0).Text)) {
+                        // If it's disabled or not null, means it's already been back fill, no need to process
+                        return;
+                    }
                 }
-            }
 
-            // 先回填，不然校验不到
-            _focusedBox.SetValue(0, barCode);
-            // 校验条码
-            ValidatePartsBarCode(_focusedBox);
+                // 先回填，不然校验不到
+                _focusedBox.SetValue(0, barCode);
+                // 校验条码
+                ValidatePartsBarCode(_focusedBox);
+            } catch (Exception e) {
+                logger.Error($"Error occurred while focusing parts bar code input box, e = {e}");
+                throw e;
+            }
         }
         private void WriteBackBarCodes() {
             string barCodes = _workplace.BarCodeObj.ProductBarCode;

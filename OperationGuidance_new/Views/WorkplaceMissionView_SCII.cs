@@ -872,27 +872,16 @@ namespace OperationGuidance_new.Views {
 
         protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
 
-        public override async void ActivateMission() {
-            base.ActivateMission();
+        protected override async Task ActionAfterActivatingMission() {
+            await base.ActionAfterActivatingMission();
 
-            // Set delay to ensure if block below can run
-            int tryTimes = 10;
-            int tryCounts = 0;
-            do {
-                tryCounts++;
-                await Task.Delay(500);
-            } while (!_activated && tryCounts < tryTimes);
+            // Clear data grid view
+            _tighteningDataVOs.Clear();
+            RefreshTighteningDataPanel(_tighteningDataVOs);
 
-            if (_activated) {
-                // Clear data grid view
-                _tighteningDataVOs.Clear();
-                RefreshTighteningDataPanel(_tighteningDataVOs);
-
-                if (_missionRecord != null) {
-                    _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
-                    _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-                }
-            }
+            // Set product batch
+            _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
+            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
