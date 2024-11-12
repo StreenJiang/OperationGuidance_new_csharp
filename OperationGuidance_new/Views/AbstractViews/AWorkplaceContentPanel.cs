@@ -1162,7 +1162,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _activated = true;
 
                 // 4. Action after activating mission
-                ActionAfterActivatingMission();
+                await ActionAfterActivatingMission();
             } else {
                 // Clear current bolts
                 _currentWorkingBolt = null;
@@ -1356,7 +1356,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        protected virtual async void ActionAfterActivatingMission() {
+        protected virtual async Task ActionAfterActivatingMission() {
             // Add a new record into: mission_record
             _missionRecord = new() {
                 mission_id = _mission.id,
