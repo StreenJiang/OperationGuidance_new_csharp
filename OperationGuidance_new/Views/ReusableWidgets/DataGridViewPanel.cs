@@ -70,6 +70,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => _dataSource;
             set {
                 _dataSource = value;
+                _currentPage = 1;
                 _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
                 if (_totalPages == 0) {
                     _totalPages = 1;
@@ -557,7 +558,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
             }
         }
-        private void ResetPageInfo() {
+        public void ResetPageInfo() {
             _countPerPage.Text = $"{_pageSize} 条/页";
             _dataCountInfo.Text = $"共 {_dataSource.Count} 条";
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";

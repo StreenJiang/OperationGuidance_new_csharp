@@ -31,6 +31,7 @@ namespace OperationGuidance_new.Views {
         private EditEntityPopUpForm<MissionRecordDTO> _editEntityPopUpForm;
         private List<WorkstationDTO> _workstations;
         private CustomComboBoxGroup<List<int?>> _workstationNameComboBox;
+        private List<ProductMissionDTO> _missions;
         #endregion
 
         #region Constructors
@@ -79,6 +80,7 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
                 }
             };
+            _dataGridView.AddTextBox("任务名称", false, (MissionRecordVO vo, string? value) => vo.mission_name = value);
             _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, List<int?>? value) => {
                 vo.ids = new();
                 if (value != null) {
@@ -142,6 +144,7 @@ namespace OperationGuidance_new.Views {
                         && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
                     .Where(o => vo.product_bar_code == null || o.product_bar_code != null && o.product_bar_code.Contains(vo.product_bar_code))
                     .Where(o => vo.parts_bar_code == null || o.parts_bar_code != null && o.parts_bar_code.Contains(vo.parts_bar_code))
+                    .Where(o => vo.mission_name == null || vo.mission_name != null && o.mission_name != null && o.mission_name.Contains(vo.mission_name))
                     .ToList();
             if (vo.ids != null) {
                 vos = vos.Where(o => {
@@ -264,6 +267,15 @@ namespace OperationGuidance_new.Views {
                     Dictionary<int, string> dict = workstationInfos[vo.id.Value];
                     vo.workstation_id = dict.Keys.ToList()[0];
                     vo.workstation_name = dict.Values.ToList()[0];
+                }
+            });
+
+            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+            _missions = _missions.Where(m => vos.Select(v => v.mission_id).Distinct().ToList().Contains(m.id)).ToList();
+            vos.ForEach(vo => {
+                ProductMissionDTO? productMissionDTO = _missions.SingleOrDefault(m => m.id == vo.mission_id);
+                if (productMissionDTO != null) {
+                    vo.mission_name = productMissionDTO.name;
                 }
             });
 

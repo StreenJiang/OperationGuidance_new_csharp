@@ -1185,6 +1185,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset other variables
             _sumBoltDone = 0;
 
+            // Reset 'need loosening'
+            _needLoosening = false;
+
             // Reset all bolts
             foreach (int sideId in _allBolts.Keys) {
                 // Sort all bolts
@@ -1439,6 +1442,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                             ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
+                            CheckCurrentPSetForLockMsg();
+                            CheckAdminConfirmationForLockMsg();
+
                             string statusDesc = string.Empty;
                             if (lockMsgs.Count > 0) {
                                 statusDesc = string.Join("\r\n", lockMsgs);
@@ -1651,21 +1657,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             _realTimeArmCoordinates = armCoordinates;
 
                             if (CheckArmPosition(maxValue, armCoordinates, boltCoordinates)) {
-                                // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
-                                // // 当前下发的程序与点位的不匹配（可能是手动下发）
-                                // else if (_currentWorkingBolt.BoltDTO.parameters_set != _currentWorkingBolt.CurrentParameterSet) {
-                                //     toolTask.SendLock();
-                                //     WorkingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
-                                //     WorkingProcessPanel.SetDesc(WorkingProcessPanel.PsetNotMatchedError);
-                                // } 
-                                // // 检查是否是需要反松，“需要反松”这个字段用于判断当前点位是否有ng的情况，有时候有ng但不需要输入密码，因此需要保留错误信息
-                                // else if (_needLoosening) {
-                                //     toolTask.SendUnlock();
-                                //     WorkingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-                                //     WorkingProcessPanel.AppendDesc(WorkingProcessPanel.CustomError);
-                                // }
-                                // 所有检查正常
                             } else {
                                 if (CheckInformationMsg(WorkingProcessPanel.UnlockedManually)) {
                                     RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
@@ -1673,41 +1665,45 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     AddLockMsg(WorkingProcessPanel.LockedArmPosition);
                                 }
                             }
-
-                            // 需要管理员输入密码并确认
-                            if (_adminConfirmed != null) {
-                                // 管理员已确认
-                                if (_adminConfirmed.Value) {
-                                    RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
-                                    _adminConfirmed = null;
-                                }
-                                // 管理员未确认
-                                else {
-                                    AddLockMsg(WorkingProcessPanel.AdminConfirmation);
-                                    if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
-                                        _adminConfirmed = false;
-                                        BoltNGConfirmPopUp();
-                                    }
-                                }
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
-                            }
-
-                            // 当前点位没有设置程序号
-                            if (_currentWorkingBolt.CurrentParameterSet == null) {
-                                // 如果是没有配置就显示对应错误信息，否则可能是下发失败
-                                if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
-                                    AddLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                } else {
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                }
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                            }
                         }
                     }
                 });
             });
+        }
+
+        // 当前点位没有设置程序号
+        protected void CheckCurrentPSetForLockMsg() {
+            if (_currentWorkingBolt.CurrentParameterSet == null) {
+                // 如果是没有配置就显示对应错误信息，否则可能是下发失败
+                if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
+                    AddLockMsg(WorkingProcessPanel.LockedPsetNull);
+                } else {
+                    RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+                }
+            } else {
+                RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+            }
+        }
+
+        // 需要管理员输入密码并确认
+        protected void CheckAdminConfirmationForLockMsg() {
+            if (_adminConfirmed != null) {
+                // 管理员已确认
+                if (_adminConfirmed.Value) {
+                    RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
+                    _adminConfirmed = null;
+                }
+                // 管理员未确认
+                else {
+                    AddLockMsg(WorkingProcessPanel.AdminConfirmation);
+                    if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
+                        _adminConfirmed = false;
+                        BoltNGConfirmPopUp();
+                    }
+                }
+            } else {
+                RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
+            }
         }
 
         // Switch bolt according to index

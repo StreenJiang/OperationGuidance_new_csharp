@@ -8,7 +8,7 @@ using OperationGuidance_new.ViewObjects.AbstractClasses;
 using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewGroup<T> : CustomContentPanel where T : AVOBase, new() {
+    public class DataGridViewGroup<T>: CustomContentPanel where T : AVOBase, new() {
         #region Fields
         // Common fields
         private T _filterParametersVO;
@@ -199,7 +199,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             List<int> ids = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
             foreach (DataGridViewRow row in selectedRows) {
-                T dataBoundItem = (T)row.DataBoundItem;
+                T dataBoundItem = (T) row.DataBoundItem;
                 if (dataBoundItem.id != null) {
                     ids.Add(dataBoundItem.id.Value);
                 }
@@ -210,7 +210,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             List<T> items = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
             foreach (DataGridViewRow row in selectedRows) {
-                T dataBoundItem = (T)row.DataBoundItem;
+                T dataBoundItem = (T) row.DataBoundItem;
                 if (dataBoundItem.id != null) {
                     items.Add(dataBoundItem);
                 }
@@ -224,7 +224,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // Filters panel
             int filtersPanelHeight = 0;
             if (_filtersTablePanel.Controls.Count > 0) {
-                int lines = (int)Math.Ceiling(_filtersTablePanel.Controls.Count / (decimal)_filtersTableColumnNums);
+                int lines = (int) Math.Ceiling(_filtersTablePanel.Controls.Count / (decimal) _filtersTableColumnNums);
                 for (int i = 0; i < lines; i++) {
                     filtersPanelHeight += _textOrComboHeight;
                     if (i > 0) {
@@ -292,7 +292,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             int leftPanelWidht = 0;
             ControlCollection listLeft = _buttonsLeftInnerPanel.Controls;
             for (int i = 0; i < listLeft.Count; i++) {
-                CommonButton btn = (CommonButton)listLeft[i];
+                CommonButton btn = (CommonButton) listLeft[i];
                 btn.Height = _buttonHeight;
                 btn.Width = WidgetUtils.MeasureString(btn.Label, btn.Font).Width + _buttonHeight * 2;
                 leftPanelWidht += btn.Width;
@@ -327,8 +327,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             Size contentSize = new(Width - Padding.Size.Width, Height - Padding.Size.Height);
             // Calculate gaps
-            _contentVerticalGap = (int)(contentSize.Height * .015);
-            _contentHerticalGap = (int)(contentSize.Width * .015);
+            _contentVerticalGap = (int) (contentSize.Height * .015);
+            _contentHerticalGap = (int) (contentSize.Width * .015);
             // Calculate box and button Height
             _textOrComboHeight = WidgetUtils.TextOrComboBoxHeight();
             _buttonHeight = WidgetUtils.CommonButtonHeight();
