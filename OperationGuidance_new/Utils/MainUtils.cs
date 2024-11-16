@@ -37,7 +37,7 @@ namespace OperationGuidance_new.Utils {
         public static Dictionary<string, Socket> TCPClients { get; } = new();
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_CHINESE = "yyyy年MM月dd ddd HH:mm:ss";
-        public static readonly string DATETIME_FORMAT_FULL_NO_PUNCTUATION = "yyyyMMddHHmmss";
+        public static readonly string DATETIME_FORMAT_FULL_NO_PUNCTUATION = "yyyyMMddHHmmssfff";
 
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd HH:mm:ss";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF = "yyyy-MM-dd HH:mm:ss.fff";
@@ -254,6 +254,14 @@ namespace OperationGuidance_new.Utils {
                 File.Delete(imageFilePath);
             }
             image.Save(imageFilePath);
+        }
+        public static Image? DeepCopyImage(Image? image) {
+            if (image == null) {
+                return null;
+            }
+
+            string base64str = CommonUtils.ImageToBase64(image);
+            return CommonUtils.ImageBase64ToImage(base64str);
         }
 
         // Settings
@@ -1231,6 +1239,14 @@ namespace OperationGuidance_new.Utils {
 
         public static string Crc16ToString(IEnumerable<byte> data) {
             return ToHexString(Crc16ToBytes(data));
+        }
+
+        public static T DeepCopy<T>(T t) {
+            // 将对象序列化为 JSON 字符串
+            string jsonString = JsonConvert.SerializeObject(t);
+            
+            // 从 JSON 字符串反序列化为新的对象
+            return JsonConvert.DeserializeObject<T>(jsonString);
         }
     }
 }

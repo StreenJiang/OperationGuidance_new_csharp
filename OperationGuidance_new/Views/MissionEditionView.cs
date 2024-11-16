@@ -363,10 +363,17 @@ namespace OperationGuidance_new.Views {
 
                             if (_missionDTO.ProductSides != null && _missionDTO.ProductSides.Count > 0) {
                                 List<ProductSideDTO> duplicatedSideDTOs = new();
-                                _missionDTO.ProductSides.ForEach(side => {
+                                for (int i = 0; i < _missionDTO.ProductSides.Count; i++) {
+                                    ProductSideDTO side = _missionDTO.ProductSides[i];
+                                    SideButton sideButton = _sideButtons[i];
+
+                                    // Use new name to avoid affecting original images
+                                    string newImageName = MainUtils.GenerateProductImageName();
+                                    sideButton.ProductImageFileNew.ImageFileName = newImageName;
+
                                     ProductSideDTO sideTemp = new() {
                                         name = side.name,
-                                        image = side.image,
+                                        image = newImageName,
                                         max_rectangle_width = side.max_rectangle_width,
                                         max_rectangle_height = side.max_rectangle_height,
                                         max_rectangle_location = side.max_rectangle_location,
@@ -410,7 +417,7 @@ namespace OperationGuidance_new.Views {
                                     }
 
                                     duplicatedSideDTOs.Add(sideTemp);
-                                });
+                                }
 
                                 duplicatedMissionDTO.ProductSides = duplicatedSideDTOs;
                             }
