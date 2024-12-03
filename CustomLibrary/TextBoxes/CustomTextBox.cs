@@ -129,6 +129,7 @@ namespace CustomLibrary.TextBoxes {
 
         #region Constructors
         public CustomTextBox(ErrorProvider? errorProvider = null) : base() {
+            DoubleBuffered = true;
             Margin = new(0);
             _enabled = true;
             // If current widget is using in a group, probably not just one, all widgets can share one error provider to save sources

@@ -145,6 +145,7 @@ namespace CustomLibrary.TextBoxes {
         }
 
         public CustomTextBoxGroup(string textName) : base() {
+            DoubleBuffered = true;
             Margin = new(0);
             // Initialize fields
             _enabled = true;

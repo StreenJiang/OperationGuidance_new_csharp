@@ -39,6 +39,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode,
                 List<BarCodeMatchingRuleDTO> rulesExcluded) : base() {
             logger = MainUtils.GetLogger(this.GetType());
+            DoubleBuffered = true;
 
             _workplace = workplace;
             _initStr = initStr;

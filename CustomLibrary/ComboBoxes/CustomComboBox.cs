@@ -170,6 +170,7 @@ namespace CustomLibrary.ComboBoxes {
 
         #region Constructors
         public CustomComboBox() {
+            DoubleBuffered = true;
             Margin = new(0);
             _needDefaultLabel = true;
             _selectButton = new(this) {

@@ -56,6 +56,7 @@ namespace CustomLibrary.ComboBoxes {
         public T? Value => _comboBox.Value;
 
         public CustomComboBoxGroup(string textName) : base() {
+            DoubleBuffered = true;
             Margin = new(0);
             // Initialize fields
             _textName = textName;

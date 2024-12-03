@@ -41,44 +41,52 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public T Add(T entity) {
-            string sql = GenerateInsertSql();
-            logger.Info("sql: " + sql);
-            string newEntitySql = GenerateQueryNewestSql(entity);
-            logger.Info("newEntitySql: " + newEntitySql);
+            try {
+                string sql = GenerateInsertSql();
+                logger.Info("sql: " + sql);
+                string newEntitySql = GenerateQueryNewestSql(entity);
+                logger.Info("newEntitySql: " + newEntitySql);
 
-            int result;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    result = conn.Execute(sql, entity);
-                    int id = conn.QueryFirst<int>(newEntitySql, entity);
+                int result;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        result = conn.Execute(sql, entity);
+                        int id = conn.QueryFirst<int>(newEntitySql, entity);
+                        entity.id = id;
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    result = _conn.Execute(sql, entity, _transaction);
+                    int id = _conn.QueryFirst<int>(newEntitySql, entity, _transaction);
                     entity.id = id;
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                result = _conn.Execute(sql, entity, _transaction);
-                int id = _conn.QueryFirst<int>(newEntitySql, entity, _transaction);
-                entity.id = id;
-            }
 
-            logger.Info("Result: " + result);
+                logger.Info("Result: " + result);
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
             return entity;
         }
 
         public int AddBatch(List<T> entities) {
-            string sql = GenerateInsertSql();
-            logger.Info("sql: " + sql);
+            int result = 0;
+            try {
+                string sql = GenerateInsertSql();
+                logger.Info("sql: " + sql);
 
-            int result;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    result = conn.Execute(sql, entities);
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        result = conn.Execute(sql, entities);
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    result = _conn.Execute(sql, entities, _transaction);
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                result = _conn.Execute(sql, entities, _transaction);
-            }
 
-            logger.Info("Result: " + result);
+                logger.Info("Result: " + result);
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
             return result;
         }
 
@@ -89,72 +97,92 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public List<T> FindBySql(string sql) {
-            logger.Info("sql: " + sql);
-            IEnumerable<T> enumerable;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    enumerable = conn.Query<T>(sql);
+            List<T> result = new();
+            try {
+                logger.Info("sql: " + sql);
+                IEnumerable<T> enumerable;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        enumerable = conn.Query<T>(sql);
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    enumerable = _conn.Query<T>(sql, null, _transaction);
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                enumerable = _conn.Query<T>(sql, null, _transaction);
-            }
+                result = enumerable.ToList();
 
-            logger.Info("Size of result: " + enumerable.Count());
-            return enumerable.ToList();
+                logger.Info("Size of result: " + enumerable.Count());
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
+            return result;
         }
 
         public List<T> FindBySql(string sql, Dictionary<string, object>? @params) {
-            logger.Info($"sql: [{sql}], @params: [{GetParamsStr(@params)}]");
-            IEnumerable<T> enumerable;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    enumerable = conn.Query<T>(sql, @params);
+            List<T> result = new();
+            try {
+                logger.Info($"sql: [{sql}], @params: [{GetParamsStr(@params)}]");
+                IEnumerable<T> enumerable;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        enumerable = conn.Query<T>(sql, @params);
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    enumerable = _conn.Query<T>(sql, @params, _transaction);
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                enumerable = _conn.Query<T>(sql, @params, _transaction);
-            }
+                result = enumerable.ToList();
 
-            logger.Info("Size of result: " + enumerable.Count());
-            return enumerable.ToList();
+                logger.Info("Size of result: " + enumerable.Count());
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
+            return result;
         }
 
         public T Update(T entity) {
-            entity.modifier = SystemUtils.LoggedUserName;
-            entity.modify_time = DateTime.Now;
-            string sql = GenerateUpdateSql(entity);
-            logger.Info("sql: " + sql);
+            try {
+                entity.modifier = SystemUtils.LoggedUserName;
+                entity.modify_time = DateTime.Now;
+                string sql = GenerateUpdateSql(entity);
+                logger.Info("sql: " + sql);
 
-            int result;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    result = conn.Execute(sql, entity);
+                int result;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        result = conn.Execute(sql, entity);
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    result = _conn.Execute(sql, entity, _transaction);
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                result = _conn.Execute(sql, entity, _transaction);
-            }
 
-            logger.Info("Result: " + result);
+                logger.Info("Result: " + result);
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
             return entity;
         }
 
         public int UpdateBatch(List<T> entities) {
-            T entity = entities[0];
-            string sql = GenerateUpdateSql(entity);
-            logger.Info("sql: " + sql);
-            int rows;
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    rows = conn.Execute(sql, entities);
+            int rows = 0;
+            try {
+                T entity = entities[0];
+                string sql = GenerateUpdateSql(entity);
+                logger.Info("sql: " + sql);
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        rows = conn.Execute(sql, entities);
+                    }
+                } else {
+                    // Don't use 'using' to release resource, probably is in a transaction
+                    rows = _conn.Execute(sql, entities, _transaction);
                 }
-            } else {
-                // Don't use 'using' to release resource, probably is in a transaction
-                rows = _conn.Execute(sql, entities, _transaction);
-            }
 
-            logger.Info("Result: " + rows);
+                logger.Info("Result: " + rows);
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+            }
             return rows;
         }
 
@@ -296,9 +324,15 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         public int ExecuteSql(string sql) {
-            using (DbConnection conn = DbConnector.GetConnection()) {
-                return conn.Execute(sql);
+            int rows = 0;
+            try {
+                using (DbConnection conn = DbConnector.GetConnection()) {
+                    rows = conn.Execute(sql);
+                }
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
             }
+            return rows;
         }
 
     }

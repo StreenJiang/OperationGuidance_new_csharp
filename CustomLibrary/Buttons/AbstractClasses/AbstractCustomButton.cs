@@ -143,6 +143,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
         public AbstractCustomButton() {
             // 去掉黑框
             this.SetStyle(ControlStyles.Selectable, false);
+            DoubleBuffered = true;
 
             // Initialize fields with default value
             _conerRadius = 0;
