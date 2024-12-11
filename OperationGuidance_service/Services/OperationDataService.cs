@@ -30,7 +30,7 @@ namespace OperationGuidance_service.Services {
         public Dictionary<int, List<int>> GetMissionRecordIdsByWorkstationIds(List<int> workstationIds) {
             string sql = $"select mission_record_id, workstation_id from {TableName} where workstation_id in @workstation_ids group by mission_record_id, workstation_id";
 
-            List<OperationData> operationDatas = Wrapper.FindBySql(sql, new() { {"workstation_ids", workstationIds} });
+            List<OperationData> operationDatas = Wrapper.FindBySql(sql, new() { { "workstation_ids", workstationIds } });
 
             Dictionary<int, List<int>> result = new();
             operationDatas.ForEach(od => {
@@ -42,7 +42,6 @@ namespace OperationGuidance_service.Services {
                     }
                 }
             });
-            
             return result;
         }
 
@@ -50,15 +49,20 @@ namespace OperationGuidance_service.Services {
         public Dictionary<int, Dictionary<int, string>> GetWorkstationInfoByMissionRecordIds(List<int> missionRecordIds) {
             string sql = $"select distinct(mission_record_id), workstation_id from {TableName} where mission_record_id in @ids";
 
-            List<OperationData> operationDatas = Wrapper.FindBySql(sql, new() { {"ids", missionRecordIds} });
+            List<OperationData> operationDatas = Wrapper.FindBySql(sql, new() { { "ids", missionRecordIds } });
 
             Dictionary<int, Dictionary<int, string>> result = new();
             operationDatas.ForEach(od => {
                 if (od.workstation_id != null && od.mission_record_id != null) {
-                    result.Add(od.mission_record_id.Value, new() { { od.workstation_id.Value, "" } });
+                    if (result.ContainsKey(od.mission_record_id.Value)) {
+                        if (!result[od.mission_record_id.Value].ContainsKey(od.workstation_id.Value)) {
+                            result[od.mission_record_id.Value].Add(od.workstation_id.Value, "");
+                        }
+                    } else {
+                        result.Add(od.mission_record_id.Value, new() { { od.workstation_id.Value, "" } });
+                    }
                 }
             });
-            
             return result;
         }
 
