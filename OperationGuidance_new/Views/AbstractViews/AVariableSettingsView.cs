@@ -114,7 +114,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public bool MissionSelfLoopingModeOriginal { get => _missionSelfLoopingModeOriginal; set => _missionSelfLoopingModeOriginal = value; }
         public ToggleButtonGroup UsbScannerEnabledToggle { get => _usbScannerEnabledToggle; set => _usbScannerEnabledToggle = value; }
         public bool UsbScannerEnabledOriginal { get => _usbScannerEnabledOriginal; set => _usbScannerEnabledOriginal = value; }
-
+        public ToggleButtonGroup AutoLockToolToggle { get => _autoLockToolToggle; set => _autoLockToolToggle = value; }
         #region Constructors
         public AVariableSettingsView() {
             logger = MainUtils.GetLogger(GetType());
