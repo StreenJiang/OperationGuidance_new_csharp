@@ -352,6 +352,19 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `is_challenge_mission` int(1) NULL AFTER `multi_device_independence`;
+        ///ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `is_first_mission` int(1) NULL AFTER `is_challenge_mission`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20250315 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20250315", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -685,6 +698,29 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20250315&quot;;
+        ///
+        ///CREATE TABLE &quot;product_mission&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;pn_code&quot; text(64),
+        ///  &quot;max_ng_num&quot; integer(4),
+        ///  &quot;password_need_time&quot; integer(4),
+        ///  &quot;enabled&quot; integer(1),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;predecessor_mission_id&quot; integer,
+        ///  &quot;predecessor_part_mission_ids&quot; text(256),
+        ///  &quot;multi_device_independence&quot; integer(1),
+        ///  &quot;is_challenge_mission&quot; integer(1),
+        ///  &quot;is_first_mission&quot; integer(1), [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20250315 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20250315", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
         ///-- ----------------------------
@@ -745,6 +781,17 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20240828 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20240828", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE [dbo].[product_mission] ADD [is_challenge_mission] int NULL;
+        ///ALTER TABLE [dbo].[product_mission] ADD [is_first_mission] int NULL;
+        ///.
+        /// </summary>
+        internal static string modify_sqlserver_20250315 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20250315", resourceCulture);
             }
         }
     }
