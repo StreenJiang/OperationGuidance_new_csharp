@@ -14,5 +14,8 @@ namespace OperationGuidance_service.Models {
         public int? predecessor_mission_id { get; set; }
         public string? predecessor_part_mission_ids { get; set; }
         public int? multi_device_independence { get; set; }
+        public int is_challenge_mission { get; set; } = (int) YesOrNo.NO;
+        public int is_first_mission { get; set; } = (int) YesOrNo.NO;
+        public int challenge_mission_id { get; set; }
     }
 }

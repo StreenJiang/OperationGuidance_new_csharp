@@ -13,6 +13,7 @@ CREATE TABLE "product_mission" (
   "multi_device_independence" integer(1),
   "is_challenge_mission" integer(1),
   "is_first_mission" integer(1),
+  "challenge_mission_id" integer,
   "user_id" integer NOT NULL,
   "deleted" integer(1) NOT NULL,
   "creator" text(128) NOT NULL,
