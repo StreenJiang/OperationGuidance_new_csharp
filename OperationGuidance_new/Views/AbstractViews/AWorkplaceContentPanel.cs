@@ -1100,6 +1100,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _barCodePopUpForm.Show();
         }
 
+        public bool CheckErrorPromptForArmEnabled() {
+            if (!MainUtils.IsArmLocatingEnabled() && MainUtils.IsErrorPromptForArmEnabled()) {
+                WidgetUtils.ShowWarningPopUp("未开启【力臂定位】，请检查配置！");
+                return false;
+            }
+            return true;
+        }
+
         public virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
             _rulesExcluded = new();
 

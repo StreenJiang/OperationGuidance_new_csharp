@@ -69,6 +69,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private bool _autoLockToolOriginal;
         private ToggleButtonGroup _usbScannerEnabledToggle;
         private bool _usbScannerEnabledOriginal;
+        private ToggleButtonGroup _errorPromptForArmToggle;
+        private bool _errorPromptForArmOriginal;
         #endregion
 
         private List<OperationDataField> Fields { get; set; } = new();
@@ -115,7 +117,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public ToggleButtonGroup UsbScannerEnabledToggle { get => _usbScannerEnabledToggle; set => _usbScannerEnabledToggle = value; }
         public bool UsbScannerEnabledOriginal { get => _usbScannerEnabledOriginal; set => _usbScannerEnabledOriginal = value; }
         public ToggleButtonGroup AutoLockToolToggle { get => _autoLockToolToggle; set => _autoLockToolToggle = value; }
+        public ToggleButtonGroup ErrorPromptForArmToggle { get => _errorPromptForArmToggle; set => _errorPromptForArmToggle = value; }
+        public bool ErrorPromptForArmOriginal { get => _errorPromptForArmOriginal; set => _errorPromptForArmOriginal = value; }
         #region Constructors
+
         public AVariableSettingsView() {
             logger = MainUtils.GetLogger(GetType());
 
@@ -819,6 +824,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Ratio = 6.95,
                 PositiveIntOnly = true,
             };
+            _errorPromptForArmToggle = new("力臂定位警告") {
+                Parent = _workContentPanel,
+                Ratio = 6.95,
+                Visible = false,
+            };
             _missionSelfLoopingModeToggle = new("任务自循环模式") {
                 Parent = _workContentPanel,
                 Ratio = 6.95,
@@ -835,6 +845,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void SaveMissionSettings() {
             MainUtils.SetArmLocatingEnabled(_enableArmLocatingToggle.Checked);
             MainUtils.SetArmLocatingAccuracy(int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text));
+            MainUtils.SetErrorPromptForArmEnabled(_errorPromptForArmToggle.Checked);
             MainUtils.SetMissionSelfLoopingModeEnabled(_missionSelfLoopingModeToggle.Checked);
             MainUtils.SetAutoLockToolEnabled(_autoLockToolToggle.Checked);
             MainUtils.SetUSBScannerEnabled(_usbScannerEnabledToggle.Checked);
@@ -842,6 +853,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 修改初始值
             _enableArmLocatingOriginal = _enableArmLocatingToggle.Checked;
             _armLocatingAccuracyOriginal = int.Parse(_armLocatingAccuracyBox.GetTextBox(0).Box.Text);
+            _errorPromptForArmOriginal = _errorPromptForArmToggle.Checked;
             _missionSelfLoopingModeOriginal = _missionSelfLoopingModeToggle.Checked;
             _autoLockToolOriginal = _autoLockToolToggle.Checked;
             _usbScannerEnabledOriginal = _usbScannerEnabledToggle.Checked;
@@ -920,6 +932,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _autoLockToolToggle.Margin = new(0, boxVMargin, 0, 0);
             _usbScannerEnabledToggle.Size = new(boxWidth, BoxNBtnHeight);
             _usbScannerEnabledToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _errorPromptForArmToggle.Size = new(boxWidth, this._boxNBtnHeight);
             // Resize outer panel
             _workPanel.Size = new(Width, _workTitlePanel.Height + _workContentPanel.Height);
         }
@@ -972,7 +985,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _autoLoginOriginal = MainUtils.IsAutoLoginEnabled();
                     _autoLaunchToggle.Checked = _autoLaunchOriginal;
                     _autoLoginToggle.Checked = _autoLoginOriginal;
-                    _usbScannerEnabledOriginal = MainUtils.IsUSBScannerEnabled();
 
                     // Storage settings
                     _sortConfigOriginal = MainUtils.GetSortConfig();
@@ -993,11 +1005,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     } else {
                         _armLocatingAccuracyOriginal = 0;
                     }
+                    _errorPromptForArmOriginal = MainUtils.IsErrorPromptForArmEnabled();
                     _missionSelfLoopingModeOriginal = MainUtils.IsMissionSelfLoopingModeEnabled();
                     _autoLockToolOriginal = MainUtils.IsAutoLockToolEnabled();
+                    _usbScannerEnabledOriginal = MainUtils.IsUSBScannerEnabled();
                     _enableArmLocatingToggle.Checked = _enableArmLocatingOriginal;
                     _armLocatingAccuracyBox.SetValue(0, _armLocatingAccuracyOriginal + "");
                     _armLocatingAccuracyBox.Enabled = _enableArmLocatingOriginal;
+                    _errorPromptForArmToggle.Checked = _errorPromptForArmOriginal;
                     _missionSelfLoopingModeToggle.Checked = _missionSelfLoopingModeOriginal;
                     _autoLockToolToggle.Checked = _autoLockToolOriginal;
                     _usbScannerEnabledToggle.Checked = _usbScannerEnabledOriginal;
@@ -1029,6 +1044,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // Operation settings
                     _enableArmLocatingToggle.Checked = MainUtils.DefaultIsArmLocatingEnabled();
                     _armLocatingAccuracyBox.SetValue(0, MainUtils.GetDefaultArmLocatingAccuracy() + "");
+                    _errorPromptForArmToggle.Checked = MainUtils.DefaultIsErrorPromptForArmEnabled();
                     _missionSelfLoopingModeToggle.Checked = MainUtils.DefaultMissionSelfLoopingModeEnabled();
                     _autoLockToolToggle.Checked = MainUtils.DefaultAutoLockToolEnabled();
                     _usbScannerEnabledToggle.Checked = MainUtils.DefaultUSBScannerEnabled();

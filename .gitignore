@@ -370,6 +370,9 @@ FodyWeavers.xsd
 # Ignore *.ini files
 *.ini
 
+# Ignore *.res files
+*.res
+
 # Ignore operation data storage
 OperationGuidance_new/OperationDataStorage/
 OperationGuidance_new/ProductImages/

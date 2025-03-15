@@ -8,6 +8,7 @@ namespace OperationGuidance_new.Views {
             AutoLockToolToggle.Hide();
             EnableArmLocatingToggle.Hide();
             ArmLocatingAccuracyBox.Hide();
+            ErrorPromptForArmToggle.Show();
         }
 
         protected override void ResizeStoragePanel() {
@@ -34,6 +35,7 @@ namespace OperationGuidance_new.Views {
             // Resize title
             int boxVMargin = BoxNBtnHeight / 2;
             // Resize box
+            ErrorPromptForArmToggle.Margin = new(0, 0, ContentHGap / 2, 0);
             UsbScannerEnabledToggle.Margin = new(0, 0, 0, 0);
             // Resize Content
             WorkContentPanel.Size = new(Width, BoxNBtnHeight * 1 + ContentVPadding * 2 + boxVMargin * 0);

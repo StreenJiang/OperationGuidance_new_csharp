@@ -183,6 +183,7 @@ namespace OperationGuidance_new.Utils {
         }
 
         private static IniFileUtil Settings { get; } = new();
+        private static ChallengeTaskUtil ChallengeTaskResult { get; } = new();
         public static List<string> InvalidCharacters { get; } = new() {
             "\u0000","\u0001","\u0002","\u0003","\u0004","\u0005","\u0006","\u0007","\u0008",
             "\u000B","\u000C",
@@ -426,6 +427,24 @@ namespace OperationGuidance_new.Utils {
         }
         public static int GetDefaultArmLocatingAccuracy() => 100;
         public static void SetArmLocatingAccuracy(int accuracy) => Settings.Write(IniFileKeys.MissionArmLocatingAccuracy, accuracy + "");
+        // Error prompt for arm enabled
+        public static bool IsErrorPromptForArmEnabled() {
+            string armLocatingEnablederrorPromptForArmEnabled = Settings.Read(IniFileKeys.MissionErrorPromptForArmEnabled);
+            if (string.IsNullOrEmpty(armLocatingEnablederrorPromptForArmEnabled)) {
+                bool flag = DefaultIsErrorPromptForArmEnabled();
+                SetErrorPromptForArmEnabled(flag);
+                return flag;
+            }
+            return int.Parse(armLocatingEnablederrorPromptForArmEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultIsErrorPromptForArmEnabled() => false;
+        public static void SetErrorPromptForArmEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MissionErrorPromptForArmEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MissionErrorPromptForArmEnabled, (int) YesOrNo.NO + "");
+            }
+        }
         // Mission self looping mode
         public static bool IsMissionSelfLoopingModeEnabled() {
             string missionSelfLoopingModeEnabled = Settings.Read(IniFileKeys.MissionSelfLoopingMode);

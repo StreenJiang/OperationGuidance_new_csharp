@@ -203,6 +203,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
         }
         private async void ValidateProductBarCodeAsync() {
+            if (!_workplace.CheckErrorPromptForArmEnabled()) {
+                return;
+            }
             string barCode = _productBarCodeBox.GetTextBox(0).Box.Text;
             if (string.IsNullOrEmpty(barCode)) {
                 WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
