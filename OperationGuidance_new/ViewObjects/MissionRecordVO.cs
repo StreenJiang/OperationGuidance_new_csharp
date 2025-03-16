@@ -22,6 +22,7 @@ namespace OperationGuidance_new.ViewObjects {
 
         // 用于数据查询时的过滤
         public List<int?>? ids { get; set; }
+        public bool? is_challenge_mission { get; set; } = false;
         public DateTime? filter_create_time_min { get; set; }
         public DateTime? filter_create_time_max { get; set; }
 

@@ -42,6 +42,7 @@ namespace CustomLibrary.ComboBoxes {
         private bool _needDefaultLabel;
         private bool _noItem;
         private Action _itemSelected;
+        private bool _selectedTop = true;
         #endregion
 
         #region Properties
@@ -155,8 +156,9 @@ namespace CustomLibrary.ComboBoxes {
         }
         public string Key => GetShowingValue();
         public T? Value => GetChosenValue();
-        #endregion
 
+        public bool SelectedTop { get => _selectedTop; set => _selectedTop = value; }
+        #endregion
         #region Events
         public event Action ItemSelected {
             add => _itemSelected += value;
@@ -238,7 +240,7 @@ namespace CustomLibrary.ComboBoxes {
                     if (_itemsInnerPanel != null && !_itemsInnerPanel.IsDisposed && _itemsInnerPanel.Controls.Count == 0) {
                         foreach (ComboBoxItem<T> item in _itemButtons) {
                             _itemsInnerPanel.Controls.Add(item);
-                            if (item.Toggled) {
+                            if (_selectedTop && item.Toggled) {
                                 item.BringToFront();
                             }
                         }

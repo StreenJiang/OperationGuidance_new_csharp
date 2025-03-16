@@ -54,6 +54,7 @@ namespace CustomLibrary.ComboBoxes {
         public Dictionary<string, T?> NamesAndItems { get => _comboBox.NamesAndItems; }
         public string Key => _comboBox.Key;
         public T? Value => _comboBox.Value;
+        public bool SelectedTop { get => _comboBox.SelectedTop; set => _comboBox.SelectedTop = value; }
 
         public CustomComboBoxGroup(string textName) : base() {
             DoubleBuffered = true;

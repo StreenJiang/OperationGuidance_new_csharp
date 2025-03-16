@@ -11,6 +11,7 @@ using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
@@ -31,6 +32,7 @@ namespace OperationGuidance_new.Views {
         private EditEntityPopUpForm<MissionRecordDTO> _editEntityPopUpForm;
         private List<WorkstationDTO> _workstations;
         private CustomComboBoxGroup<List<int?>> _workstationNameComboBox;
+        private CustomComboBoxGroup<bool?> _isChallengMissionComboBox;
         private List<ProductMissionDTO> _missions;
         #endregion
 
@@ -89,6 +91,18 @@ namespace OperationGuidance_new.Views {
                     vo.ids.Add(null);
                 }
             }, new());
+            Dictionary<String, bool?> yesOrNos = new() {
+                { "是", true }, { "否", false }
+            };
+            _isChallengMissionComboBox = _dataGridView.AddComboBox("是否挑战任务", (MissionRecordVO vo, bool? value) => vo.is_challenge_mission = value, yesOrNos);
+            _isChallengMissionComboBox.SelectedTop = false;
+            int indexTemp = 0;
+            for (; indexTemp < _isChallengMissionComboBox.Items.Count; indexTemp++) {
+                if (_isChallengMissionComboBox.Items[indexTemp] == false) {
+                    break;
+                }
+            }
+            _isChallengMissionComboBox.SetCurrent(indexTemp);
             RefreshWorkstationOptions();
 
             // 添加详情按钮
@@ -145,6 +159,7 @@ namespace OperationGuidance_new.Views {
                     .Where(o => vo.product_bar_code == null || o.product_bar_code != null && o.product_bar_code.Contains(vo.product_bar_code))
                     .Where(o => vo.parts_bar_code == null || o.parts_bar_code != null && o.parts_bar_code.Contains(vo.parts_bar_code))
                     .Where(o => vo.mission_name == null || vo.mission_name != null && o.mission_name != null && o.mission_name.Contains(vo.mission_name))
+                    .Where(o => vo.is_challenge_mission == null || o.is_challenge_mission == vo.is_challenge_mission)
                     .ToList();
             if (vo.ids != null) {
                 vos = vos.Where(o => {
@@ -276,6 +291,7 @@ namespace OperationGuidance_new.Views {
                 ProductMissionDTO? productMissionDTO = _missions.SingleOrDefault(m => m.id == vo.mission_id);
                 if (productMissionDTO != null) {
                     vo.mission_name = productMissionDTO.name;
+                    vo.is_challenge_mission = productMissionDTO.is_challenge_mission == (int) YesOrNo.YES;
                 }
             });
 
