@@ -206,6 +206,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (!_workplace.CheckErrorPromptForArmEnabled()) {
                 return;
             }
+            if (!_workplace.CheckChallengeMissionConfirmation()) {
+                return;
+            }
+
             string barCode = _productBarCodeBox.GetTextBox(0).Box.Text;
             if (string.IsNullOrEmpty(barCode)) {
                 WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
@@ -227,6 +231,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         checkPassed = false;
                         WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与选择的任务不匹配");
                         _productBarCodeBox.GetTextBox(0).IsError = true;
+
+                        // Checks for challenge mission
+                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
+                        }
                     }
                     // 如果匹配到其他任务，则做出特定提示
                     else {
@@ -242,6 +251,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     checkPassed = false;
                     WidgetUtils.ShowWarningPopUp($"没有检索到匹配条码【{barCode}】的任务");
                     _productBarCodeBox.GetTextBox(0).IsError = true;
+
+                    // Checks for challenge mission
+                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
+                    }
                 }
             }
             // 条码校验通过，再检查下是否需要返工
@@ -254,6 +268,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (!yes) {
                         WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
+
+                        // Checks for challenge mission
+                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PREDECESSOR);
+                        }
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
@@ -264,6 +283,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         _workplace.AdminConfirmed = false;
                         _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
                         needRedo = _workplace.AdminConfirmed.Value;
+
+                        // Checks for challenge mission
+                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_REDO);
+                        }
                     } else {
                         needRedo = false;
                     }
@@ -339,6 +363,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (ruleId < 0) {
                 WidgetUtils.ShowWarningPopUp($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
                 box.GetTextBox(0).IsError = true;
+
+                // Checks for challenge mission
+                if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                    _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
+                }
             }
             // 物料条码校验通过
             else {
@@ -354,6 +383,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 if (!yes) {
                                     WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                                     checkPassed = false;
+
+                                    // Checks for challenge mission
+                                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PREDECESSOR);
+                                    }
                                 }
                             }
                         }
@@ -374,6 +408,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         _workplace.AdminConfirmed = false;
                         _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
                         needRedo = _workplace.AdminConfirmed.Value;
+
+                        // Checks for challenge mission
+                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
+                        }
                     } else {
                         needRedo = false;
                     }

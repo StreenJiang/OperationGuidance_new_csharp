@@ -199,6 +199,7 @@ namespace CustomLibrary.Forms {
         public new void Show() {
             // Sometimes cursor will hide and don't know why for now
             Cursor.Show();
+            BeginInvoke(() => AfterShown());
             base.Hide();
             _popUpFormBackboard.Show();
             if (_clickOutsideToClose) {
@@ -207,6 +208,8 @@ namespace CustomLibrary.Forms {
             Opacity = 1D;
             base.ShowDialog();
         }
+
+        protected virtual void AfterShown() { }
 
         public new void Hide() {
             Dispose();

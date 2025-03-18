@@ -131,7 +131,11 @@ namespace CustomLibrary.ComboBoxes {
             if (_nameAlignment == HorizontalAlignment.Right) {
                 x = _elementsPanel.Location.X - _nameWidth - _gapNameAndBox;
             }
-            e.Graphics.DrawString(_textName, Font, new SolidBrush(ForeColor), new Point(x, (Height - Font.Height) / 2));
+            Color colorTemp = ForeColor;
+            if (!Enabled) {
+                colorTemp = ControlPaint.Light(colorTemp, .85F);
+            }
+            e.Graphics.DrawString(_textName, Font, new SolidBrush(colorTemp), new Point(x, (Height - Font.Height) / 2));
         }
 
         protected override void OnForeColorChanged(EventArgs e) {

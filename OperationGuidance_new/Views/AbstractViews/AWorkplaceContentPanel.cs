@@ -7,6 +7,7 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
@@ -1108,6 +1109,99 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
 
+        public bool CheckChallengeMissionConfirmation() {
+            List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _mission.id).ToList();
+            ProductMissionDTO? challengeMission = allOtherMissions.Find(m => m.challenge_mission_id == _mission.id);
+
+            // Check if current mission has challenge mission
+            if (challengeMission != null) {
+                // Check if it's first mission
+                if (challengeMission.is_first_mission == (int) YesOrNo.YES) {
+                    // Check if current mission has predecessor_mission_id
+                    if (_mission.predecessor_mission_id != null) {
+                        WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 首档岗位】，但此任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
+                        return false;
+                    } else {
+                        // Check if challenge mission is finished
+                        if (!ChallengeChecks(challengeMission.id, false)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Check if current mission has predecessor_mission_id
+                    if (_mission.predecessor_mission_id != null) {
+                        if (challengeMission.predecessor_mission_id == null) {
+                            WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务存在前置任务，但挑战任务不存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
+                            return false;
+                        } else {
+                            // Check if challenge mission's predecessor mission is finished
+                            ProductMissionDTO? predecessorMissionForChallengeMission =
+                                allOtherMissions.Find(m => m.predecessor_mission_id == challengeMission.predecessor_mission_id);
+                            if (!ChallengeChecks(challengeMission.id, predecessorMissionForChallengeMission != null)) {
+                                return false;
+                            }
+                        }
+                    } else {
+                        if (challengeMission.predecessor_mission_id != null) {
+                            WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务不存在前置任务，但挑战任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
+                            return false;
+                        }
+
+                        // Check if challenge mission is finished
+                        if (!ChallengeChecks(challengeMission.id, false)) {
+                            WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务校验！");
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        private bool ChallengeChecks(int challengeMissionId, bool hasPredecessorMission) {
+            string jsonObj = MainUtils.ChallengeTaskUtil.Read(challengeMissionId.ToString());
+            ChallengeTask? task = JsonConvert.DeserializeObject<ChallengeTask>(jsonObj);
+            bool hasPartsBarCode = _barCodeObj.PartsBarCodes.Count() > 0;
+
+            if (task == null || !task.IsToday()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务校验！");
+                return false;
+            } else if (!task.ProductBarCodeErrorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-验证】校验！");
+                return false;
+            } else if (!task.ProductBarCodeRedoOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-重码】校验！");
+                return false;
+            } else if (hasPartsBarCode && !task.PartsBarCodeErrorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-验证】校验！");
+                return false;
+            } else if (hasPartsBarCode && !task.PartsBarCodeRedoOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-重码】校验！");
+                return false;
+            } else if (hasPredecessorMission && !task.PredecessorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【上一道岗位未完成】校验！");
+                return false;
+            } else if (!task.MissionOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务对应挑战任务未完成！");
+                return false;
+            }
+            return true;
+        }
+
+        public void AddChallengeResult(int challengeMissionId, ChallengeTaskEnum type) {
+            string jsonObj = MainUtils.ChallengeTaskUtil.Read(challengeMissionId.ToString());
+            ChallengeTask? task = JsonConvert.DeserializeObject<ChallengeTask>(jsonObj);
+
+            if (task == null) {
+                task = new();
+            }
+
+            task.MissionId = challengeMissionId;
+            task.AddResult(type);
+
+            MainUtils.ChallengeTaskUtil.Write(challengeMissionId.ToString(), JsonConvert.SerializeObject(task));
+        }
+
         public virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
             _rulesExcluded = new();
 
@@ -2201,6 +2295,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+
+                                        // Checks for challenge mission
+                                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                            AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
+                                        }
                                     }
                                 }
                             } else {
@@ -2296,8 +2395,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async void StoreDataToDatabase(OperationDataDTO operationDataDTO) {
             await Task.Run(() => {
                 logger.Info("StoreTighteningData save to database start ........");
-                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
-                logger.Info("StoreTighteningData save to database end ........");
+
+                try {
+                    currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+                } catch (Exception e) {
+                    logger.Error($"StoreTighteningData save to database error: {e}");
+                } finally {
+                    logger.Info("StoreTighteningData save to database end ........");
+                }
             });
         }
 
@@ -2305,51 +2410,55 @@ namespace OperationGuidance_new.Views.AbstractViews {
             BeginInvoke(() => {
                 logger.Info("StoreDataToFiles start ........");
 
-                OperationDataVO dataFormatted = new();
-                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                try {
+                    OperationDataVO dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                List<string>? headers = null;
-                string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                // 检查当前文件是否存在
-                bool textFileExists = File.Exists(textFilePath);
-                bool excelFileExists = File.Exists(excelFilePath);
-                // 从配置文件读取配置
-                List<int> sortConfig = MainUtils.GetSortConfig();
-                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                // 检查当前是否存在正在使用的字段配置
-                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                    sortConfigCurr = sortConfig;
-                    MainUtils.SetSortConfigCurr(sortConfigCurr);
-                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                }
-                // 组装数据
-                List<Dictionary<int, object?>> dataWithConfigFields = new();
-                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                Dictionary<int, object?> record = new();
-                for (int i = 0; i < propertyNames.Count; i++) {
-                    string pName = propertyNames[i];
-                    PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
-                    if (propertyInfo != null) {
-                        record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+                    List<string>? headers = null;
+                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
+                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
+                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
+                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
+                    // 检查当前文件是否存在
+                    bool textFileExists = File.Exists(textFilePath);
+                    bool excelFileExists = File.Exists(excelFilePath);
+                    // 从配置文件读取配置
+                    List<int> sortConfig = MainUtils.GetSortConfig();
+                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+                    // 检查当前是否存在正在使用的字段配置
+                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
+                        sortConfigCurr = sortConfig;
+                        MainUtils.SetSortConfigCurr(sortConfigCurr);
+                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                     }
+                    // 组装数据
+                    List<Dictionary<int, object?>> dataWithConfigFields = new();
+                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
+                    Dictionary<int, object?> record = new();
+                    for (int i = 0; i < propertyNames.Count; i++) {
+                        string pName = propertyNames[i];
+                        PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
+                        if (propertyInfo != null) {
+                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
+                        }
+                    }
+                    dataWithConfigFields.Add(record);
+                    // 组装最终数据
+                    List<List<object?>> finalData = new();
+                    dataWithConfigFields.ForEach(dict => {
+                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
+                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
+                    });
+
+                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
+                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
+                } catch (Exception e) {
+                    logger.Error($"StoreDataToFiles error: {e}");
+                } finally {
+                    logger.Info("StoreDataToFiles end ........");
                 }
-                dataWithConfigFields.Add(record);
-                // 组装最终数据
-                List<List<object?>> finalData = new();
-                dataWithConfigFields.ForEach(dict => {
-                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                });
-
-                finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-
-                logger.Info("StoreDataToFiles end ........");
             });
         }
 
