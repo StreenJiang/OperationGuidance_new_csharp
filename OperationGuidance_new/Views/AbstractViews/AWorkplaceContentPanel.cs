@@ -1149,7 +1149,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                         // Check if challenge mission is finished
                         if (!ChallengeChecks(challengeMission.id, false)) {
-                            WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务校验！");
                             return false;
                         }
                     }
@@ -2294,12 +2293,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
-                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
-
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
                                             AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
                                         }
+
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 }
                             } else {
@@ -2468,7 +2467,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
-        public virtual async void TerminateMission(WorkplaceProcessStatus status) {
+        public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();
@@ -2512,8 +2511,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset current operation data
             currentOperationData = null;
 
-            // If is self looping mode, then activate mission automatically
-            ActivateMissionAutomatically();
+            // If it's not challenge mission, then check auto activation logic
+            if (_mission.is_challenge_mission != (int) YesOrNo.YES
+                    && _missionRecord != null
+                    && _missionRecord.mission_result == (int) TighteningStatus.OK) {
+                // If is self looping mode, then activate mission automatically
+                ActivateMissionAutomatically();
+            }
         }
 
         protected async void LockAllTools() {

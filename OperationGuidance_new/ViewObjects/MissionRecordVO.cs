@@ -1,5 +1,7 @@
 using OperationGuidance_new.Attributes;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.ViewObjects {
     public class MissionRecordVO: AVOBase {
@@ -13,9 +15,37 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("任务名称")]
         public string? mission_name { get; set; }
         [GridColumn("任务结果")]
-        public int? mission_result { get; set; }
+        public string? mission_result_str { get; set; }
+        public int? _mission_result;
+        public int? mission_result {
+            get => _mission_result;
+            set {
+                _mission_result = value;
+                if (value != null) {
+                    if (value == (int) TighteningStatus.OK) {
+                        mission_result_str = Enum.GetName(TighteningStatus.OK);
+                    } else if (value == (int) TighteningStatus.NG) {
+                        mission_result_str = Enum.GetName(TighteningStatus.NG);
+                    }
+                }
+            }
+        }
         [GridColumn("是否返工")]
-        public int? is_redo { get; set; }
+        public string? is_redo_str { get; set; }
+        public int? _is_redo;
+        public int? is_redo {
+            get => _is_redo;
+            set {
+                _is_redo = value;
+                if (value != null) {
+                    if (value == (int) YesOrNo.YES) {
+                        is_redo_str = "是";
+                    } else if (value == (int) YesOrNo.NO) {
+                        is_redo_str = "否";
+                    }
+                }
+            }
+        }
         public int? workstation_id { get; set; }
         [GridColumn("站点名称")]
         public string? workstation_name { get; set; }

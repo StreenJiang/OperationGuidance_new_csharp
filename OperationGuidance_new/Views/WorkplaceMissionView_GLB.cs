@@ -48,9 +48,9 @@ namespace OperationGuidance_new.Views {
             _operationDatasCached.Add(operationDataDTO);
         }
 
-        public override void TerminateMission(WorkplaceProcessStatus status) {
+        public override async Task TerminateMission(WorkplaceProcessStatus status) {
             StoreTighteningDataToOuterDatabase();
-            base.TerminateMission(status);
+            await base.TerminateMission(status);
         }
 
         protected override void OnHandleDestroyed(EventArgs e) {

@@ -293,34 +293,81 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
-        public static Image RotateImage(Image image, float angle) {
-            angle = angle % 360; // 弧度转换
-            double radian = angle * Math.PI / 180.0;
-            double cos = Math.Cos(radian);
-            double sin = Math.Sin(radian);
+        public static Image RotateImage(Image image, float angle, ILog? logger = null) {
             // 原图的宽和高
             int w = image.Width;
             int h = image.Height;
-            int W = (int) (Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
-            int H = (int) (Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
-            // 目标位图
-            Image dsImage = new Bitmap(W, H);
-            using (Graphics g = Graphics.FromImage(dsImage)) {
-                g.InterpolationMode = InterpolationMode.Bilinear;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-                // 计算偏移量
-                Point Offset = new Point((W - w) / 2, (H - h) / 2);
-                // 构造图像显示区域：让图像的中心与窗口的中心点一致
-                Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
-                Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
-                g.TranslateTransform(center.X, center.Y);
-                g.RotateTransform(360 + angle);
-                // 恢复图像在水平和垂直方向的平移
-                g.TranslateTransform(-center.X, -center.Y);
-                g.DrawImage(image, rect);
-                // 重置绘图的所有变换
-                g.ResetTransform();
-                g.Save();
+            Image dsImage = new Bitmap(w, h);
+
+            int W = w;
+            int H = h;
+            try {
+                angle = angle % 360; // 弧度转换
+                double radian = angle * Math.PI / 180.0;
+                double cos = Math.Cos(radian);
+                double sin = Math.Sin(radian);
+
+                // INFO: need to varify
+                cos = Math.Round(cos, 10); // 保留 10 位小数
+                sin = Math.Round(sin, 10);
+
+                // Check for values
+                if (double.IsNaN(cos) || double.IsInfinity(cos) || double.IsNaN(sin) || double.IsInfinity(sin)) {
+                    throw new ArgumentException("Cosine or sine value is invalid.");
+                }
+
+                long W_long = (long) (Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
+                long H_long = (long) (Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
+
+                // Check for values again
+                if (W_long > int.MaxValue || H_long > int.MaxValue) {
+                    throw new ArgumentException("Calculated dimensions are too large.");
+                }
+
+                W = (int) W_long;
+                H = (int) H_long;
+
+                // Check for final values
+                if (W <= 0 || H <= 0) {
+                    throw new ArgumentException("Calculated dimensions must be positive.");
+                }
+
+                // 目标位图
+                dsImage = new Bitmap(W, H);
+            } catch (Exception e) {
+                if (logger != null) {
+                    logger.Error($"Error while rotating image, e = {e}");
+                }
+                throw e;
+            } finally {
+                try {
+                    using (Graphics g = Graphics.FromImage(dsImage)) {
+                        g.InterpolationMode = InterpolationMode.Bilinear;
+                        g.SmoothingMode = SmoothingMode.HighQuality;
+
+                        // 计算偏移量
+                        Point Offset = new Point((W - w) / 2, (H - h) / 2);
+
+                        // 构造图像显示区域：让图像的中心与窗口的中心点一致
+                        Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
+                        Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+                        g.TranslateTransform(center.X, center.Y);
+                        g.RotateTransform(360 + angle);
+
+                        // 恢复图像在水平和垂直方向的平移
+                        g.TranslateTransform(-center.X, -center.Y);
+                        g.DrawImage(image, rect);
+
+                        // 重置绘图的所有变换
+                        g.ResetTransform();
+                        g.Save();
+                    }
+                } catch (Exception e) {
+                    if (logger != null) {
+                        logger.Error($"Error while rotating image in finally block, e = {e}");
+                    }
+                    throw e;
+                }
             }
             return dsImage;
         }

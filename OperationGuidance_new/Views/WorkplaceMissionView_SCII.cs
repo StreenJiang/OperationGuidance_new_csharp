@@ -9,6 +9,7 @@ using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
@@ -24,11 +25,14 @@ namespace OperationGuidance_new.Views {
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND_2,
                 Margin = new Padding(0),
                 PaddingWithoutBorder = true,
+                View = this,
             };
         }
     }
 
     public class WorkplaceContentPanel_SCII: AWorkplaceContentPanel {
+        private WorkplaceMissionView_SCII _view;
+
         // 上方
         private CustomContentPanel _top;
         // 上方左边
@@ -56,6 +60,9 @@ namespace OperationGuidance_new.Views {
         // 下方
         private WorkplacePiece _bottom;
 
+        public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
+
+
 
         // private Label _productSideTitle;
         // private List<Image?> _smallSideImagesForShowing;
@@ -66,7 +73,6 @@ namespace OperationGuidance_new.Views {
         // private PageSwitchButton _forward;
         // private PageSwitchButton _last;
         // private Label _pageInfo;
-
         public WorkplaceContentPanel_SCII() { }
         public WorkplaceContentPanel_SCII(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             _actionAfterSendingPset = SetPset;
@@ -1130,6 +1136,17 @@ namespace OperationGuidance_new.Views {
                     }
                 });
             });
+        }
+
+        public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            await base.TerminateMission(status);
+
+            // If it's challenge mission, then switch mission automatically
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES
+                    && _missionRecord != null
+                    && _missionRecord.mission_result == (int) TighteningStatus.OK) {
+                _view.OpenWorkplaceView(_mission.challenge_mission_id);
+            }
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {

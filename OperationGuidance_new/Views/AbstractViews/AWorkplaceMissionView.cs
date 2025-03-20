@@ -74,7 +74,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        private void OpenWorkplaceView(int? missionId) {
+        public void OpenWorkplaceView(int? missionId) {
             if (_workplacePanel != null && !_workplacePanel.IsDisposed) {
                 _workplacePanel.Dispose();
             }

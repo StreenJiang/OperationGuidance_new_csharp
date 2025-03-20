@@ -37,7 +37,10 @@ namespace OperationGuidance_new.Utils {
             if (_checks == null) {
                 _checks = new();
             }
-            _checks.Add(type);
+
+            if (!_checks.Contains(type)) {
+                _checks.Add(type);
+            }
         }
     }
 }
