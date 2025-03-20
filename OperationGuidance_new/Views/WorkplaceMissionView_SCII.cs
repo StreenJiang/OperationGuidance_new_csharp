@@ -1141,12 +1141,12 @@ namespace OperationGuidance_new.Views {
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             await base.TerminateMission(status);
 
-            // If it's challenge mission, then switch mission automatically
-            if (_mission.is_challenge_mission == (int) YesOrNo.YES
-                    && _missionRecord != null
-                    && _missionRecord.mission_result == (int) TighteningStatus.OK) {
-                _view.OpenWorkplaceView(_mission.challenge_mission_id);
-            }
+            // // If it's challenge mission, then switch mission automatically
+            // if (_mission.is_challenge_mission == (int) YesOrNo.YES
+            //         && _missionRecord != null
+            //         && _missionRecord.mission_result == (int) TighteningStatus.OK) {
+            //     _view.OpenWorkplaceView(_mission.challenge_mission_id);
+            // }
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
