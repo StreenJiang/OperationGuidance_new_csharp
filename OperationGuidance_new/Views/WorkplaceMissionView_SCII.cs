@@ -1065,6 +1065,11 @@ namespace OperationGuidance_new.Views {
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
+                                        // Checks for challenge mission
+                                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                            AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
+                                        }
+
                                         // 重置任务信息
                                         ResetMissionDetails();
 
