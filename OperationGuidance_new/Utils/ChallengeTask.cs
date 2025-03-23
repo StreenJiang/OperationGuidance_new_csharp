@@ -22,8 +22,11 @@ namespace OperationGuidance_new.Utils {
         public bool PartsBarCodeRedoOK() => IsToday() && _checks != null
             && _checks.Contains(ChallengeTaskEnum.PARTS_BAR_CODE_REDO.ToString());
 
-        public bool PredecessorOK() => IsToday() && _checks != null
-            && _checks.Contains(ChallengeTaskEnum.PREDECESSOR.ToString());
+        public bool ProductPredecessorOK() => IsToday() && _checks != null
+            && _checks.Contains(ChallengeTaskEnum.PRODUCT_PREDECESSOR.ToString());
+
+        public bool PartsPredecessorOK() => IsToday() && _checks != null
+            && _checks.Contains(ChallengeTaskEnum.PARTS_PREDECESSOR.ToString());
 
         public bool MissionOK() => IsToday() && _checks != null
             && _checks.Contains(ChallengeTaskEnum.MISSION_OK.ToString());

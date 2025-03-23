@@ -1160,25 +1160,32 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private bool ChallengeChecks(int challengeMissionId, bool hasPredecessorMission) {
             string jsonObj = MainUtils.ChallengeTaskUtil.Read(challengeMissionId.ToString());
             ChallengeTask? task = JsonConvert.DeserializeObject<ChallengeTask>(jsonObj);
-            bool hasPartsBarCode = _barCodeObj.PartsBarCodes.Count() > 0;
+
+            bool hasPartsBarCode = false;
+            if (_partsBarCodeMatchingRules.ContainsKey(_mission.id)) {
+                hasPartsBarCode = _partsBarCodeMatchingRules[_mission.id].Count > 0;
+            }
 
             if (task == null || !task.IsToday()) {
                 WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务校验！");
                 return false;
-            } else if (!task.ProductBarCodeErrorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-验证】校验！");
+            } else if (!hasPredecessorMission && !task.ProductBarCodeErrorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-错码】校验！");
                 return false;
-            } else if (!task.ProductBarCodeRedoOK()) {
+            } else if (hasPredecessorMission && !task.ProductPredecessorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-上一道岗位未完成】校验！");
+                return false;
+            } else if (!hasPredecessorMission && !task.ProductBarCodeRedoOK()) {
                 WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-重码】校验！");
                 return false;
             } else if (hasPartsBarCode && !task.PartsBarCodeErrorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-验证】校验！");
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-错码】校验！");
+                return false;
+            } else if (hasPredecessorMission && !task.PartsPredecessorOK()) {
+                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-上一道岗位未完成】校验！");
                 return false;
             } else if (hasPartsBarCode && !task.PartsBarCodeRedoOK()) {
                 WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-重码】校验！");
-                return false;
-            } else if (hasPredecessorMission && !task.PredecessorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【上一道岗位未完成】校验！");
                 return false;
             } else if (!task.MissionOK()) {
                 WidgetUtils.ShowWarningPopUp("此任务对应挑战任务未完成！");

@@ -9,6 +9,7 @@ using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
@@ -264,13 +265,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 如果存在前置任务，则先查询前置任务是否完成
                 if (mission.predecessor_mission_id != null) {
-                    bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
-                    if (!yes) {
-                        // Checks for challenge mission
-                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PREDECESSOR);
-                        }
+                    CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
+                    bool yes = rsp.Yes;
 
+                    // Checks for challenge mission
+                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        if (rsp.Yes) {
+                            if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
+                                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
+                            }
+                        } else {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
+                        }
+                    }
+
+                    if (!yes) {
                         WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
                     }
@@ -303,7 +312,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             // 所有检查完毕，回填、或切换任务后再回填
             if (checkPassed) {
-
                 // 存入缓存并回填到主界面
                 _workplace.BarCodeObj.ProductBarCode = barCode;
                 WriteBackBarCodes();
@@ -379,13 +387,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (idsDict != null) {
                         foreach (KeyValuePair<int, int> pair in idsDict) {
                             if (pair.Key == ruleId) {
-                                bool yes = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode }).Yes;
-                                if (!yes) {
-                                    // Checks for challenge mission
-                                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PREDECESSOR);
-                                    }
+                                CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
+                                bool yes = rsp.Yes;
 
+                                // Checks for challenge mission
+                                if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                    if (rsp.Yes) {
+                                        if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
+                                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
+                                        }
+                                    } else {
+                                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
+                                    }
+                                }
+
+                                if (!yes) {
                                     WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                                     checkPassed = false;
                                 }
@@ -401,27 +417,29 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 // 物料码返工确认
-                if (checkPassed && _workplace._checkRedo && _workplace.IsRedo != (int) YesOrNo.YES && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
-                    bool needRedo;
-                    // Checks for challenge mission
-                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
-                    }
+                if (_workplace.IsRedo != (int) YesOrNo.YES || _mission.is_challenge_mission == (int) YesOrNo.YES) {
+                    if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                        bool needRedo;
+                        // Checks for challenge mission
+                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
+                        }
 
-                    if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
-                        // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
-                    } else {
-                        needRedo = false;
-                    }
-                    // 需要返工，修改是否返工的标识
-                    if (needRedo) {
-                        // 由于追溯码也有这个校验，因此如果不需要返工，则不动已经校验过的状态
-                        _workplace.IsRedo = (int) YesOrNo.YES;
-                    } else {
-                        checkPassed = false;
+                        if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
+                            // 需要管理员密码弹窗
+                            _workplace.AdminConfirmed = false;
+                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
+                            needRedo = _workplace.AdminConfirmed.Value;
+                        } else {
+                            needRedo = false;
+                        }
+                        // 需要返工，修改是否返工的标识
+                        if (needRedo) {
+                            // 由于追溯码也有这个校验，因此如果不需要返工，则不动已经校验过的状态
+                            _workplace.IsRedo = (int) YesOrNo.YES;
+                        } else {
+                            checkPassed = false;
+                        }
                     }
                 }
 

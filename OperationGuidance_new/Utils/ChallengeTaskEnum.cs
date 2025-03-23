@@ -4,7 +4,8 @@ namespace OperationGuidance_new.Utils {
         PRODUCT_BAR_CODE_REDO,
         PARTS_BAR_CODE_ERROR,
         PARTS_BAR_CODE_REDO,
-        PREDECESSOR,
+        PRODUCT_PREDECESSOR,
+        PARTS_PREDECESSOR,
         MISSION_OK,
     }
 }
