@@ -373,8 +373,10 @@ namespace OperationGuidance_new.Tasks {
                     logger.Info($"Locking tool...");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    _locked = true;
+                    if (!_locked) {
+                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                        _locked = true;
+                    }
                 } else {
                 }
 
@@ -387,8 +389,10 @@ namespace OperationGuidance_new.Tasks {
                     logger.Info($"Unlocking tool...");
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    _locked = false;
+                    if (_locked) {
+                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                        _locked = false;
+                    }
                 } else {
                 }
 
