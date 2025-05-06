@@ -84,6 +84,13 @@ namespace OperationGuidance_new.Views {
 
             _topRightBottom.Controls.Add(_lineBox);
             _topRightBottom.Controls.Add(_operatorBox);
+
+            _anglePanel.Hide();
+        }
+
+        protected override void ResizeTopRightMiddleRight(int panelPadding) {
+            Size panelSize = new(_topRightMiddleBottom.Width, _topRightMiddleBottom.Height);
+            _torquePanel.Size = panelSize;
         }
 
         protected override void OpenBarCodePopUpForm(string? barCode = null) {
@@ -163,8 +170,8 @@ namespace OperationGuidance_new.Views {
                     TrosionUp = $"{_round_3(operationDataDTO.torque_max_limit)}N.m",
                     TrosionDow = $"{_round_3(operationDataDTO.torque_min_limit)}N.m",
                     Time = $"{_round_3((float) _rundownTime / 1000)}s",
-                    Circle = $"{_round_3((float) operationDataDTO.angle / 360)}圈",
-                    Angle = $"{operationDataDTO.angle}°",
+                    Circle = $"{_round_3((float) operationDataDTO.rundown_angle / 360)}圈",
+                    Angle = $"{operationDataDTO.rundown_angle}°",
                     Result = ((TighteningStatus) operationDataDTO.tightening_status.Value).ToString(),
                     Error = _errorMsg,
                     CreateTime = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS_FFF),
