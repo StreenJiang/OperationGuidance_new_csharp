@@ -333,6 +333,7 @@ namespace OperationGuidance_new.Constants {
         public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
             string dataMessage = MainUtils.ToHexString(msgBytes);
             string head = GetHead(dataMessage);
+            logger.Info($"dataMessage = {dataMessage}");
 
             if (dataMessage == PSET_OK) {
                 toolAction(null, true, null, null, null);
@@ -350,6 +351,9 @@ namespace OperationGuidance_new.Constants {
 
                     // Use 1000 as divisor to always get N.m as unit
                     int divisor = 1000;
+                    if (unit == 0) {
+                        divisor = 100;
+                    }
                     float torque = (float) GetIntData(GetData(dataMessage, 14, 4)) / divisor;
                     float torqueMin = (float) GetIntData(GetData(dataMessage, 52, 4)) / divisor;
                     float torqueMax = (float) GetIntData(GetData(dataMessage, 48, 4)) / divisor;
@@ -388,6 +392,7 @@ namespace OperationGuidance_new.Constants {
                     } else {
                         tighteningStatus = (int) TighteningStatus.NG;
                     }
+                    int tighteningErrorStatus = GetIntData(GetData(dataMessage, 44, 2));
 
                     string resultTypeTemp = GetData(dataMessage, 34, 2);
                     int resultType;
@@ -401,6 +406,7 @@ namespace OperationGuidance_new.Constants {
 
                     TighteningData tighteningData = new() {
                         tightening_status = tighteningStatus,
+                        tightening_error_status = tighteningErrorStatus,
                         torque_status = torqueStatus,
                         angle_status = angleStatus,
                         rundown_status = rundownAngleStatus,

@@ -75,6 +75,14 @@ namespace OperationGuidance_new.Views {
             };
 
             // 搜索条件
+            // 搜索条件 - 条码
+            _dataGridView.AddTextBox("条码", false, (OperationDataVO vo, string? value) => vo.vin_number = value);
+
+            // 搜索条件 - 站点名称
+            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (OperationDataVO vo, int? value) => vo.workstation_id = value, new());
+            RefreshWorkstationOptions();
+
+            // 搜索条件 - 日期
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~",
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_min = value,
                     (OperationDataVO vo, DateTime? value) => vo.filter_create_time_max = value);
@@ -92,8 +100,6 @@ namespace OperationGuidance_new.Views {
                     WidgetUtils.ShowErrorPopUp("日期范围应为左早右晚！");
                 }
             };
-            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (OperationDataVO vo, int? value) => vo.workstation_id = value, new());
-            RefreshWorkstationOptions();
 
             CommonButton exportBtn = _dataGridView.AddExtraButton("导出");
             exportBtn.Click += (sender, eventArgs) => {
@@ -185,6 +191,7 @@ namespace OperationGuidance_new.Views {
         // 数据过滤（同时兼顾条件查询和数据导出）
         private List<OperationDataVO> DataFiltering(List<OperationDataVO> vos, OperationDataVO vo) {
             return vos
+                .Where(o => vo.vin_number == null || o.vin_number != null && o.vin_number.Contains(vo.vin_number))
                 .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
                         || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0
                             && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))

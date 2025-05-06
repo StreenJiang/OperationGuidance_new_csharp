@@ -2203,6 +2203,39 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             // Check tightening status
                             if (data.tightening_status != (int) TighteningStatus.OK) {
                                 tighteningOK = false;
+                                if (data.tightening_error_status != null &&
+                                        data.tightening_error_status != (int) TighteningErrorStatus_SuDong.NO_ERROR) {
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
+                                    }
+                                    string errorMsgTemp;
+                                    if (Enum.IsDefined(typeof(TighteningErrorStatus_SuDong), data.tightening_error_status)) {
+                                        TighteningErrorStatus_SuDong errorStatus_SuDong = (TighteningErrorStatus_SuDong) data.tightening_error_status;
+                                        switch (errorStatus_SuDong) {
+                                            case TighteningErrorStatus_SuDong.SLIPPAGE:
+                                                errorMsgTemp = "滑丝/滑牙";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.FALSE_LOCKING:
+                                                errorMsgTemp = "浮锁";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.TORQUE_NOK:
+                                                errorMsgTemp = "扭矩不良";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.ANGLE_NOK:
+                                                errorMsgTemp = "拧紧角度不良";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.SEND_UNLOCK_IN_TIGTHENING:
+                                                errorMsgTemp = "中途提前释放启动信号";
+                                                break;
+                                            default:
+                                                errorMsgTemp = $"未知错误代码【{data.tightening_error_status}】";
+                                                break;
+                                        }
+                                    } else {
+                                        errorMsgTemp = $"未知错误代码【{data.tightening_error_status}】";
+                                    }
+                                    errorMsg += $"拧紧出错，错误信息：{errorMsgTemp}";
+                                }
                                 if (data.torque_status != (int) TighteningCommonStatus.OK) {
                                     _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
                                     if (!string.IsNullOrEmpty(errorMsg)) {

@@ -130,7 +130,7 @@ namespace OperationGuidance_new.Views {
                     logger.Info($"ucData = [{JsonConvert.SerializeObject(response.ucData)}]");
 
                     if (response.unStatus == HttpStatus_WHYC.FAILURE) {
-                        WidgetUtils.ShowErrorPopUp($"请求MatCode失败，{response.ucMsg}");
+                        WidgetUtils.ShowErrorPopUp($"请求MatCode失败，返回信息：{response.ucMsg}");
                         return false;
                     } else if (response.ucData == null || response.ucData.MatCode == null) {
                         WidgetUtils.ShowErrorPopUp($"获取到的MatCode为空！");
@@ -174,7 +174,7 @@ namespace OperationGuidance_new.Views {
 
                 HttpResponseUploadData response = await HttpUtils.SendPost<HttpRequestUploadData, HttpResponseUploadData>(uploadDataUri, request);
                 if (response.unStatus == HttpStatus_WHYC.FAILURE) {
-                    WidgetUtils.ShowErrorPopUp($"上传数据失败，{response.ucMsg}");
+                    WidgetUtils.ShowErrorPopUp($"上传数据失败，返回信息：{response.ucMsg}");
                 }
             }
 

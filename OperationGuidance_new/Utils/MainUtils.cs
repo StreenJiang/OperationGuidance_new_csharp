@@ -337,7 +337,7 @@ namespace OperationGuidance_new.Utils {
             }
             return sortConfig;
         }
-        public static List<int> GetDefaultSortConfig() => new List<int>() { 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 45, 46, 47, 48 };
+        public static List<int> GetDefaultSortConfig() => new List<int>() { 33, 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 47, 48 };
         public static void SetSortConfig(List<int> fieldsSortConfig) => Settings.Write(IniFileKeys.DataStorageFieldsSort, JsonConvert.SerializeObject(fieldsSortConfig));
         // Fields sort config current
         public static List<int>? GetSortConfigCurr() => JsonConvert.DeserializeObject<List<int>>(Settings.Read(IniFileKeys.DataStorageFieldsSortCurr));
@@ -1263,7 +1263,7 @@ namespace OperationGuidance_new.Utils {
         public static T DeepCopy<T>(T t) {
             // 将对象序列化为 JSON 字符串
             string jsonString = JsonConvert.SerializeObject(t);
-            
+
             // 从 JSON 字符串反序列化为新的对象
             return JsonConvert.DeserializeObject<T>(jsonString);
         }
