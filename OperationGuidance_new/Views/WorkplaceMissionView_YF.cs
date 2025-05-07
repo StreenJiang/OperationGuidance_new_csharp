@@ -1,16 +1,16 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Views.AbstractViews;
-using CustomLibrary.TextBoxes;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_YF: AWorkplaceMissionView<WorkplaceContentPanel_YF, WorkplaceTopBar> {
@@ -854,7 +854,7 @@ namespace OperationGuidance_new.Views {
                 try {
                     ToolTask toolTask = _toolTasks[deviceId];
                     // Lock first
-                    toolTask.SendLock();
+                    toolTask.ForceSendLock();
                     if (toolTask.WorkstationId != null) {
                         int workstationId = toolTask.WorkstationId.Value;
 
@@ -960,7 +960,7 @@ namespace OperationGuidance_new.Views {
 
                                 // Lock the device
                                 if (_locating_enabled) {
-                                    toolTask.SendLock();
+                                    toolTask.ForceSendLock();
                                 }
 
                                 // Check next index
@@ -1004,7 +1004,9 @@ namespace OperationGuidance_new.Views {
 
                                     if (allDone) {
                                         // Lock all tools
-                                        LockAllTools();
+                                        if (MainUtils.IsArmLocatingEnabled()) {
+                                            LockAllTools();
+                                        }
 
                                         // All ok
                                         _activated = false;
@@ -1042,7 +1044,7 @@ namespace OperationGuidance_new.Views {
                                 // Lock first
                                 if (_locating_enabled) {
                                     // Lock all tools here
-                                    _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
+                                    _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.ForceSendLock());
                                 }
 
                                 // Change bolt status

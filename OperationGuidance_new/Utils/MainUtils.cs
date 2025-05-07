@@ -1,9 +1,4 @@
-﻿using System.Data.Common;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Reflection;
-using CustomLibrary.Constants;
+﻿using CustomLibrary.Constants;
 using CustomLibrary.Utils;
 using LicenseLib;
 using log4net;
@@ -21,6 +16,11 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
+using System.Data.Common;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Reflection;
 using IniFileKeys = OperationGuidance_new.Configs.IniFileKeys;
 using Timer = System.Windows.Forms.Timer;
 
@@ -704,7 +704,7 @@ namespace OperationGuidance_new.Utils {
             ToolTask task = new(toolId, toolName, ip, port, tool);
             task.Connect();
             if (IsAutoLockToolEnabled()) {
-                task.SendLock();
+                task.ForceSendLock();
             }
             _toolTasks.Add(toolId, task);
         }

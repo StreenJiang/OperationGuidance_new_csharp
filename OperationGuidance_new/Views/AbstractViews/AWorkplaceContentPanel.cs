@@ -1493,8 +1493,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 // Lock all tools here
-                List<int?> list = workstationDTOs.Select(dto => dto.tool_id).ToList();
-                _toolTasks.Values.Where(t => list.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.SendLock());
+                if (MainUtils.IsArmLocatingEnabled()) {
+                    List<int?> list = workstationDTOs.Select(dto => dto.tool_id).ToList();
+                    _toolTasks.Values.Where(t => list.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.ForceSendLock());
+                }
 
                 // Start listening coordinates
                 workstationDTOs.ForEach(dto => {
@@ -1561,7 +1563,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
 
                                 // Lock tools
-                                toolTask.SendLock();
+                                if (MainUtils.IsArmLocatingEnabled()) {
+                                    toolTask.ForceSendLock();
+                                }
                             } else {
                                 if (_needLoosening) {
                                     statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
@@ -1574,7 +1578,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
 
                                 // Unlock tools
-                                toolTask.SendUnlock();
+                                if (MainUtils.IsArmLocatingEnabled()) {
+                                    toolTask.ForceSendUnlock();
+                                }
                             }
 
                             // Add information
@@ -2126,7 +2132,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 try {
                     ToolTask toolTask = _toolTasks[deviceId];
                     // Lock first
-                    toolTask.SendLock();
+                    if (MainUtils.IsArmLocatingEnabled()) {
+                        toolTask.ForceSendLock();
+                    }
                     if (toolTask.WorkstationId != null) {
                         int workstationId = toolTask.WorkstationId.Value;
 
@@ -2274,6 +2282,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                             // Switch to next bolt
                             if (tighteningOK) {
+                                _errorMsg = null;
+
                                 // Reset tightening type to tightening in case somewhere did some changes
                                 _needLoosening = false;
                                 RemoveInformationMsg(_workingProcessPanel.NGReasons);
@@ -2360,6 +2370,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                                 // Set status of data to ng
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
+
+                                // Should not lock in the first place when it has error
+                                if (MainUtils.IsArmLocatingEnabled()) {
+                                    toolTask.ForceSendUnlock();
+                                }
                             }
                         } else {
                             _needLoosening = false;
@@ -2509,7 +2524,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
             // Lock all tools
-            if (MainUtils.IsAutoLockToolEnabled() && _activated) {
+            if (MainUtils.IsAutoLockToolEnabled() && MainUtils.IsArmLocatingEnabled() && _activated) {
                 LockAllTools();
             }
 
@@ -2566,7 +2581,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 int lockTimesSum = 3;
                 int lockTimes = 0;
                 while (lockTimes < lockTimesSum) {
-                    _toolTasks.Values.ToList().ForEach(toolTask => toolTask.SendLock());
+                    _toolTasks.Values.ToList().ForEach(toolTask => toolTask.ForceSendLock());
                     lockTimes++;
                 }
             });
@@ -2655,14 +2670,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
 
-            if (MainUtils.IsAutoLockToolEnabled()) {
+            if (MainUtils.IsAutoLockToolEnabled() && MainUtils.IsArmLocatingEnabled()) {
                 if (_toolTasks != null && _toolTasks.Count > 0) {
                     foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
                         // Clear all delegates once this workplace handle has been destroyed to ensure running performance
                         tool.Value.ActionAfterAnalysis = null;
                         // Lock all tools
                         if (_activated) {
-                            tool.Value.SendLock();
+                            tool.Value.ForceSendLock();
                         }
                     }
                 }
@@ -3356,7 +3371,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SendCommand(async toolTask => {
                     _workplace.RemoveInformationMsg(WorkingProcessPanel.UnlockedManually);
                     _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
-                    toolTask.SendLock();
+                    toolTask.ForceSendLock();
 
                     await Task.Delay(500);
                     if (toolTask.Locked) {
@@ -3371,7 +3386,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SendCommand(async toolTask => {
                     _workplace.ClearLockMsgs();
                     _workplace.AddInformationMsg(WorkingProcessPanel.UnlockedManually);
-                    toolTask.SendUnlock();
+                    toolTask.ForceSendUnlock();
 
                     await Task.Delay(500);
                     if (!toolTask.Locked) {

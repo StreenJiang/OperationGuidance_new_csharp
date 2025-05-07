@@ -179,7 +179,7 @@ namespace OperationGuidance_new.Tasks {
                     RunTask();
                     Status = CONNECTED;
 
-                    _locked = false;
+                    ForceSendUnlock();
                     break;
                 }
                 await Task.Delay(AutoReconnectingTrialDelay);
@@ -367,13 +367,16 @@ namespace OperationGuidance_new.Tasks {
             return PSetOk != null && PSetOk.Value;
         }
 
-        public void SendLock() {
+        private void SendLock() {
             if (Connected && LockCounter < LockMaxTimes) {
+                logger.Info($"Locking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    logger.Info($"Locking tool...");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    _locked = true;
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     if (!_locked) {
+                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                        Thread.Sleep(500);
                         SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
                         _locked = true;
                     }
@@ -381,15 +384,39 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 LockCounter++;
+            } else {
+                _locked = false;
+                logger.Info($"Locking failure, it's not connected...");
             }
         }
-        public void SendUnlock() {
-            if (Connected && UnLockCounter < UnLockMaxTimes) {
+        public void ForceSendLock() {
+            if (Connected) {
+                logger.Info($"Locking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    logger.Info($"Unlocking tool...");
+                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                    Thread.Sleep(500);
+                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                } else {
+                }
+
+                _locked = true;
+            } else {
+                _locked = false;
+                logger.Info($"Locking failure, it's not connected...");
+            }
+        }
+        private void SendUnlock() {
+            if (Connected && UnLockCounter < UnLockMaxTimes) {
+                logger.Info($"Unlocking tool...");
+                if (_toolType is ToolPFSeries toolPF) {
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    _locked = false;
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     if (_locked) {
+                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                        Thread.Sleep(500);
                         SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
                         _locked = false;
                     }
@@ -397,6 +424,27 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 UnLockCounter++;
+            } else {
+                _locked = true;
+                logger.Info($"Locking failure, it's not connected...");
+            }
+        }
+        public void ForceSendUnlock() {
+            if (Connected) {
+                logger.Info($"Unlocking tool...");
+                if (_toolType is ToolPFSeries toolPF) {
+                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    Thread.Sleep(500);
+                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                } else {
+                }
+
+                _locked = false;
+            } else {
+                _locked = true;
+                logger.Info($"Locking failure, it's not connected...");
             }
         }
         #endregion

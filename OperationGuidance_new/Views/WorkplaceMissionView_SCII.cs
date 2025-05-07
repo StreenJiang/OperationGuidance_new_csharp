@@ -944,7 +944,7 @@ namespace OperationGuidance_new.Views {
                     try {
                         ToolTask toolTask = _toolTasks[deviceId];
                         // Lock first
-                        toolTask.SendLock();
+                        toolTask.ForceSendLock();
                         if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
                             logger.Info($"Action running after received tightening data...");
 
