@@ -226,6 +226,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 校验不通过，检查是否匹配其他任务
                 if (!CheckBarCodeMatchedMission(barCode)) {
+                    // Add this because sometimes it will go inside this check after activated, no idea why, then add a check here 
+                    if (_workplace.Activated) {
+                        return;
+                    }
+
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
                         _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
@@ -369,6 +374,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 物料条码校验不通过
             int ruleId = CheckPartsBarCodeMatchedMission(barCode);
             if (ruleId < 0) {
+                // Add this because sometimes it will go inside this check after activated, no idea why, then add a check here 
+                if (_workplace.Activated) {
+                    return;
+                }
+
                 // Checks for challenge mission
                 if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
                     _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
