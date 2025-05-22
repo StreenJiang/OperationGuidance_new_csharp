@@ -138,21 +138,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected string? _errorMsg;
         protected int _sumBoltDone = 0;
         // Specification
-        private bool _arrangerNeeded = false;
+        protected bool _arrangerNeeded = false;
         protected Dictionary<float, bool>? _arrangerPositionOk = null;
         protected bool _arrangerPositionTimedOut = false;
         private int _resendSignalToArrangerTimes = 0;
         private List<float> _specifications;
         private List<int> _arrangerIds;
         // BitSpecification
-        private bool _setterSelectorNeeded = false;
+        protected bool _setterSelectorNeeded = false;
         protected bool? _bitPositionOk;
         protected bool _bitPositionTimedOut = false;
         protected int _resendSignalToSetterSelectorTimes = 0;
 
         // 任务相关
-        private List<String> lockMsgs = new();
-        private List<String> informationMsgs = new();
+        protected List<String> lockMsgs = new();
+        protected List<String> informationMsgs = new();
         protected OperationDataDTO? currentOperationData;
         #endregion
 
@@ -1544,7 +1544,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        private void StartLockCheckingTask() {
+        protected virtual void StartLockCheckingTask() {
             BeginInvoke(() => {
                 Task.Run(async () => {
                     while (!IsDisposed && _activated) {

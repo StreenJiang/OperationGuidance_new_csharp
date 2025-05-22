@@ -79,12 +79,10 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check any message is waiting for receving 
                         try {
-                            lock (SyncObject) {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen > 0) {
-                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
-                                }
+                            byte[] msgBytes = new byte[1024 * 1024];
+                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            if (msgLen > 0) {
+                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
@@ -168,21 +166,25 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
-        public override async void Connect() {
-            HeartBeatCounter = 0;
-            CloseConnectionManually = false;
+        public override void Connect() {
+            lock (SyncObject) {
+                Task.Run(async () => {
+                    HeartBeatCounter = 0;
+                    CloseConnectionManually = false;
 
-            while (!Connected) {
-                Status = CONNECTING;
+                    while (!Connected) {
+                        Status = CONNECTING;
 
-                if (await ConnectToServer()) {
-                    RunTask();
-                    Status = CONNECTED;
+                        if (await ConnectToServer()) {
+                            RunTask();
+                            Status = CONNECTED;
 
-                    ForceSendUnlock();
-                    break;
-                }
-                await Task.Delay(AutoReconnectingTrialDelay);
+                            ForceSendUnlock();
+                            break;
+                        }
+                        await Task.Delay(AutoReconnectingTrialDelay);
+                    }
+                });
             }
         }
         public override Task ConnectAsync() => Task.Run(() => Connect());
