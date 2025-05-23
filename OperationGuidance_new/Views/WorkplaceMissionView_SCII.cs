@@ -105,7 +105,14 @@ namespace OperationGuidance_new.Views {
             };
         }
 
-        protected override void ActivateMissionAutomatically() { }
+        protected override async void ActivateMissionAutomatically() {
+            if (MainUtils.IsUSBScannerEnabled()) {
+                while (!_barcodeRelatedDone) {
+                    await Task.Delay(50);
+                }
+                OpenBarCodePopUpForm();
+            }
+        }
 
         // 初始化所有外框
         private void InitializeOuters() {
