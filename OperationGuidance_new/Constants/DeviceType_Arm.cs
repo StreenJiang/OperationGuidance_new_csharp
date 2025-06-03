@@ -16,6 +16,7 @@ namespace OperationGuidance_new.Constants {
         public static ArmCF01 CF01 { get; } = AddNew<ArmCF01>();
         public static ArmCF02 CF02 { get; } = AddNew<ArmCF02>();
         public static ArmCF03 CF03 { get; } = AddNew<ArmCF03>();
+        public static ArmCF04 CF04 { get; } = AddNew<ArmCF04>();
 
         public static DeviceTypeArm GetById(int id) {
             foreach (DeviceTypeArm type in Elements) {
@@ -77,7 +78,7 @@ namespace OperationGuidance_new.Constants {
             }
         }
 
-        private int ParseResult(string result) {
+        protected virtual int ParseResult(string result) {
             int coordinate = 0;
             if (result != null && result != "") {
                 string lowData = result.Substring(6, 4);
@@ -101,5 +102,18 @@ namespace OperationGuidance_new.Constants {
 
     public class ArmCF03: DeviceTypeArm {
         public ArmCF03() : base(3, "CF03", new string[] { "010300000001840A", "0203000000018439", "03030000000185E8" }, 0) { }
+    }
+
+    public class ArmCF04: DeviceTypeArm {
+        public ArmCF04() : base(4, "CF04", new string[] { "01030019000155CD", "02030019000155FE" }, 0) { }
+
+        protected override int ParseResult(string result) {
+            int coordinate = 0;
+            if (result != null && result != "") {
+                string data = result.Substring(6, 4);
+                coordinate = int.Parse(data, NumberStyles.HexNumber) / 100;
+            }
+            return coordinate;
+        }
     }
 }
