@@ -389,6 +389,24 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- 1. Create new table
+        ///CREATE TABLE IF NOT EXISTS parts_bar_code (
+        ///    `id` INT AUTO_INCREMENT PRIMARY KEY,
+        ///    `mission_record_id` INT NOT NULL,
+        ///    `parts_bar_code` VARCHAR(255) NOT NULL,
+        ///    `user_id` int(11) NOT NULL,
+        ///    `deleted` int(1) NOT NULL,
+        ///    `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+        ///    `modifier` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+        ///    `create_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_c [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20250625_1 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20250625_1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
