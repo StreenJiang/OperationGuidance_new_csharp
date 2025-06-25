@@ -356,11 +356,35 @@ namespace OperationGuidance_service.Database {
         ///  ADD COLUMN `is_challenge_mission` int(1) NULL AFTER `multi_device_independence`;
         ///ALTER TABLE `product_mission` 
         ///  ADD COLUMN `is_first_mission` int(1) NULL AFTER `is_challenge_mission`;
+        ///ALTER TABLE `product_mission` 
+        ///  ADD COLUMN `challenge_mission_id` int(11) NULL AFTER `is_first_mission`;
         ///.
         /// </summary>
         internal static string modify_mysql_20250315 {
             get {
                 return ResourceManager.GetString("modify_mysql_20250315", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- operation_data
+        ///SET @sql := IF(
+        ///    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+        ///     WHERE TABLE_SCHEMA = DATABASE() 
+        ///     AND TABLE_NAME = &apos;operation_data&apos; 
+        ///     AND INDEX_NAME = &apos;idx_operation_data_deleted_user_id&apos;) = 0,
+        ///    &apos;CREATE INDEX idx_operation_data_deleted_user_id ON operation_data(deleted, user_id, id)&apos;,
+        ///    &apos;SELECT &apos;&apos;index idx_operation_data_deleted_user_id already exists, skip this&apos;&apos; AS message&apos;
+        ///);
+        ///PREPARE stmt FROM @sql;
+        ///EXECUTE stmt;
+        ///DEALLOCATE PREPARE stmt;
+        ///
+        ///-- missi [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_mysql_20250625 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20250625", resourceCulture);
             }
         }
         
@@ -721,6 +745,20 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- operation_data 表索引
+        ///CREATE INDEX IF NOT EXISTS idx_operation_data_deleted_user_id ON operation_data(deleted, user_id, id);
+        ///
+        ///-- mission_record 表索引
+        ///CREATE INDEX IF NOT EXISTS idx_mission_record_mission_id_parts ON mission_record(mission_id, parts_bar_code);
+        ///CREATE INDEX IF NOT EXISTS idx_mission_record_deleted_time_mission ON mission_record(deleted, create_time, mission_id);.
+        /// </summary>
+        internal static string modify_sqlite_20250625 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20250625", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
         ///-- ----------------------------
@@ -787,11 +825,28 @@ namespace OperationGuidance_service.Database {
         /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE [dbo].[product_mission] ADD [is_challenge_mission] int NULL;
         ///ALTER TABLE [dbo].[product_mission] ADD [is_first_mission] int NULL;
+        ///ALTER TABLE [dbo].[product_mission] ADD [challenge_mission_id] int NULL;
         ///.
         /// </summary>
         internal static string modify_sqlserver_20250315 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20250315", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to -- operation_data 表索引
+        ///IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = &apos;idx_operation_data_deleted_user_id&apos; AND object_id = OBJECT_ID(&apos;operation_data&apos;))
+        ///    CREATE INDEX idx_operation_data_deleted_user_id ON operation_data(deleted, user_id, id);
+        ///GO
+        ///
+        ///-- mission_record 表索引
+        ///IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = &apos;idx_mission_record_mission_id_parts&apos; AND object_id = OBJECT_ID(&apos;mission_record&apos;))
+        ///    CREATE INDEX idx_mission_record_mission_id_parts ON mission_record(mission_id, parts_ba [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlserver_20250625 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20250625", resourceCulture);
             }
         }
     }

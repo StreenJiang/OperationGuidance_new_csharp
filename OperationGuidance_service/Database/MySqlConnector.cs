@@ -17,7 +17,16 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetDbConnection() {
             try {
-                MySqlConnection conn = new($"server={Server}; port={Port}; database={Database}; user={User}; password={Password}; charset=UTF8; Connection Timeout=2;");
+                MySqlConnection conn = new($@"
+                        server={Server}; 
+                        port={Port}; 
+                        database={Database}; 
+                        user={User}; password={Password}; 
+                        charset=UTF8; 
+                        Connection Timeout=2;
+                        AllowUserVariables=True;
+                        AllowBatch=True;
+                        ");
                 conn.Open();
 
                 string sqlScriptPrefix = "modify_mysql";

@@ -172,6 +172,9 @@
   <data name="modify_mysql_20250315" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_mysql_20250315.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
+  <data name="modify_mysql_20250625" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20250625.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+  </data>
   <data name="modify_sqlite_20240407" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlite_20240407.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
@@ -217,6 +220,9 @@
   <data name="modify_sqlite_20250315" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlite_20250315.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
+  <data name="modify_sqlite_20250625" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20250625.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
   <data name="modify_sqlserver_20240627" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlserver_20240627.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
@@ -231,5 +237,8 @@
   </data>
   <data name="modify_sqlserver_20250315" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlserver_20250315.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+  </data>
+  <data name="modify_sqlserver_20250625" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20250625.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
 </root>

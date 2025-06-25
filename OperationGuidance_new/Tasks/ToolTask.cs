@@ -79,10 +79,12 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check any message is waiting for receving 
                         try {
-                            byte[] msgBytes = new byte[1024 * 1024];
-                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            if (msgLen > 0) {
-                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
+                            lock (SyncObject) {
+                                byte[] msgBytes = new byte[1024 * 1024];
+                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                if (msgLen > 0) {
+                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
+                                }
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
@@ -370,22 +372,23 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void SendLock() {
-            if (Connected && LockCounter < LockMaxTimes) {
-                logger.Info($"Locking tool...");
-                if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-                    _locked = true;
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    if (!_locked) {
-                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                        Thread.Sleep(500);
-                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                        _locked = true;
+            if (Connected) {
+                if (LockCounter < LockMaxTimes) {
+                    logger.Info($"Locking tool...");
+                    if (_toolType is ToolPFSeries toolPF) {
+                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        if (!_locked) {
+                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            Thread.Sleep(500);
+                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            _locked = true;
+                        }
+                    } else {
                     }
-                } else {
-                }
 
-                LockCounter++;
+                    LockCounter++;
+                }
             } else {
                 _locked = false;
                 logger.Info($"Locking failure, it's not connected...");
@@ -395,37 +398,39 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 logger.Info($"Locking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    if (!_locked) {
+                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    }
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
                     Thread.Sleep(500);
                     SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                    _locked = true;
                 } else {
                 }
-
-                _locked = true;
             } else {
                 _locked = false;
                 logger.Info($"Locking failure, it's not connected...");
             }
         }
         private void SendUnlock() {
-            if (Connected && UnLockCounter < UnLockMaxTimes) {
-                logger.Info($"Unlocking tool...");
-                if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-                    _locked = false;
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    if (_locked) {
-                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                        Thread.Sleep(500);
-                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                        _locked = false;
+            if (Connected) {
+                if (UnLockCounter < UnLockMaxTimes) {
+                    logger.Info($"Unlocking tool...");
+                    if (_toolType is ToolPFSeries toolPF) {
+                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        if (_locked) {
+                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            Thread.Sleep(500);
+                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            _locked = false;
+                        }
+                    } else {
                     }
-                } else {
-                }
 
-                UnLockCounter++;
+                    UnLockCounter++;
+                }
             } else {
                 _locked = true;
                 logger.Info($"Locking failure, it's not connected...");
@@ -435,15 +440,16 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 logger.Info($"Unlocking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    if (_locked) {
+                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    }
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
                     Thread.Sleep(500);
                     SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    _locked = false;
                 } else {
                 }
-
-                _locked = false;
             } else {
                 _locked = true;
                 logger.Info($"Locking failure, it's not connected...");

@@ -237,7 +237,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
         private string GenerateQueryNewestSql(T entity) {
             string tableName = GetTableName();
-            return $"select id from {tableName} where {nameof(entity.id)} = (select max(id) from {tableName} where {CommonCondition(entity)})";
+            return $"select max(id) from {tableName} where {CommonCondition(entity)}";
         }
 
         private string GenerateUpdateSql(T entity) {
