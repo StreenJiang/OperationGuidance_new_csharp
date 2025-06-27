@@ -20,7 +20,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int UnLockMaxTimes = 2;
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
-        private bool _locked = false;
+        private volatile bool _locked = false;
         private int? CurrentPSet = null;
         private bool? PSetOk = false;
         private Socket? socketClient = null;

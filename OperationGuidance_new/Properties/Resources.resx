@@ -316,6 +316,15 @@
   <data name="map_table" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\map_table.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="MES" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\MES.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="MES_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\MES_empty.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="MES_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Icons\MES_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="mission_edition" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Icons\mission_edition.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

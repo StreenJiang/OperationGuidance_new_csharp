@@ -529,6 +529,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
         }
 
+        protected virtual List<DeviceCategory>? CustomCategories() {
+            return null;
+        }
+
         private void InitializeDeviceBlocks() {
             _toolControlNeedAdminPasswor = false;
             _deviceBlocks = new();
@@ -537,6 +541,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
             for (int i = DeviceCategories.Elements.Count - 1; i >= 0; i--) {
                 deviceCategories.Add(DeviceCategories.Elements[i]);
             }
+
+            List<DeviceCategory>? customCategoreis = CustomCategories();
+            if (customCategoreis != null) {
+                deviceCategories.AddRange(customCategoreis);
+            }
+
             foreach (DeviceCategory category in deviceCategories) {
                 DeviceBlock deviceBlock = new(category) {
                     Margin = new(0),
@@ -864,7 +874,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (category == DeviceCategories.IOBOX_SETTERSELECTOR) {
                                 Check(block, _ioBoxTasks.Values.Where(task => task.SetterSelectorType != null).ToList());
                             } else {
-                                // TODO
+                                CheckCustomConnections(block, category);
                             }
                         }
                     }
@@ -894,6 +904,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // block.ResetIconByStatus(DeviceStatus.NORMAL);
             }
         }
+
+        protected virtual void CheckCustomConnections(DeviceBlock block, DeviceCategory category) { }
 
         // Reset io box status
         protected virtual void ReseetIoBox() {
@@ -2198,6 +2210,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
 
                         // WHYC
+                        // TZYX
                         _rundownTime = data.rundown_time;
 
                         // If result type is tightening
@@ -2363,13 +2376,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 AddInformationMsg(_workingProcessPanel.NGReasons);
 
                                 // WHYC
+                                // TZYX
                                 _errorMsg = errorMsg;
-
-                                // 记录数据
-                                StoreTighteningData(dataDTO);
 
                                 // Set status of data to ng
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
+
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
 
                                 // Should not lock in the first place when it has error
                                 if (MainUtils.IsArmLocatingEnabled()) {
