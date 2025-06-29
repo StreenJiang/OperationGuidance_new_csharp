@@ -1,7 +1,10 @@
 using CustomLibrary.Configs;
+using CustomLibrary.TextBoxes;
+using CustomLibrary.Utils;
 using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -16,24 +19,28 @@ namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_TZYX: AWorkplaceMissionView<WorkplaceContentPanel_TZYX, WorkplaceTopBar> {
         public WorkplaceMissionView_TZYX() {
             // Read to check if file exists
+            CheckConfig();
+        }
+        public WorkplaceMissionView_TZYX(bool operatorOpenning) : base(operatorOpenning) {
+            // Read to check if file exists
+            CheckConfig();
+        }
+
+        private void CheckConfig() {
             string stationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode);
             string ip = MainUtils.MesConfig_TZYX.Read(Config_TZYX.MESIP);
             string port = MainUtils.MesConfig_TZYX.Read(Config_TZYX.MESPort);
-            if ((stationCode == null || stationCode == "") && (ip == null || ip == "") && (port == null || port == "")) {
+            string barcodePopUpEnabled = MainUtils.MesConfig_TZYX.Read(Config_TZYX.BarcodePopUpEnabled);
+            if ((stationCode == null || stationCode == "")
+                    && (ip == null || ip == "")
+                    && (port == null || port == "")) {
                 MainUtils.MesConfig_TZYX.Write(Config_TZYX.StationCode, "");
                 MainUtils.MesConfig_TZYX.Write(Config_TZYX.MESIP, "");
                 MainUtils.MesConfig_TZYX.Write(Config_TZYX.MESPort, "0");
             }
-        }
-        public WorkplaceMissionView_TZYX(bool operatorOpenning) : base(operatorOpenning) {
-            // Read to check if file exists
-            string stationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode);
-            string ip = MainUtils.MesConfig_TZYX.Read(Config_TZYX.MESIP);
-            string port = MainUtils.MesConfig_TZYX.Read(Config_TZYX.MESPort);
-            if ((stationCode == null || stationCode == "") && (ip == null || ip == "") && (port == null || port == "")) {
-                MainUtils.MesConfig_TZYX.Write(Config_TZYX.StationCode, "");
-                MainUtils.MesConfig_TZYX.Write(Config_TZYX.MESIP, "");
-                MainUtils.MesConfig_TZYX.Write(Config_TZYX.MESPort, "0");
+
+            if (barcodePopUpEnabled == null || barcodePopUpEnabled == "") {
+                MainUtils.MesConfig_TZYX.Write(Config_TZYX.BarcodePopUpEnabled, "false");
             }
         }
 
@@ -55,6 +62,8 @@ namespace OperationGuidance_new.Views {
         private const int MAX_RETRY_COUNT = 3;
         private const int RETRY_DELAY_MS = 1000; // 1秒重试间隔
 
+        private volatile bool _clickEventAddedForBarcodePopUp = false;
+
         // Connection status
         private Socket _socketClient;
         private bool _isConnected;
@@ -64,25 +73,23 @@ namespace OperationGuidance_new.Views {
         private Task _heartbeatTask;
         private Task _receiveTask;
 
-
-        // Barcode handling status
-        private volatile bool _isProcessingBarcode;
-        private string _lastBarcode;
-
         // Data
         private string _stationCode;
+        private bool _barcodePopUpEnabled;
         private List<OperationDataDTO> OperationDataDTOs = new();
 
-        public WorkplaceContentPanel_TZYX() {
-            _stationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode);
-        }
-        public WorkplaceContentPanel_TZYX(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
-            _stationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode);
-        }
+        public WorkplaceContentPanel_TZYX() { }
+        public WorkplaceContentPanel_TZYX(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) { }
 
         // Initialize mod bus server
         protected override void InitializeAfterHandelCreated() {
             Task.Run(() => RunTCPClient(_cts.Token));
+        }
+
+        protected override void ActionAfterLoadingDevices() {
+            if (MainUtils.IsAutoLockToolEnabled()) {
+                _toolTasks.Values.ToList().ForEach(toolTask => toolTask.ForceSendLock());
+            }
         }
 
         // Connect to MES via TCP
@@ -95,13 +102,16 @@ namespace OperationGuidance_new.Views {
                     // 1. 检查并建立连接
                     await CheckAndConnectAsync(ip, port, ct);
 
+                    // 测试代码
+                    // testSendData();
+
                     // 2. 启动心跳任务
                     if (_heartbeatTask?.IsCompleted != false) {
                         _heartbeatTask = Task.Run(() => SendHeartbeatsAsync(ct), ct);
                     }
 
                     // 3. 启动接收任务
-                    if (_receiveTask?.IsCompleted != false && !_isProcessingBarcode) {
+                    if (_receiveTask?.IsCompleted != false) {
                         _receiveTask = Task.Run(() => ReceiveDataAsync(ct), ct);
                     }
 
@@ -118,6 +128,38 @@ namespace OperationGuidance_new.Views {
 
             // 清理资源
             CloseSocket();
+        }
+
+        // Test function
+        private void testSendData() {
+            MESMessage_TZYX mESMessage = new() {
+                StationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode),
+                BarCode = "barcode",
+                Product = "name",
+                Operator = SystemUtils.LoggedUserName,
+                Result = true,
+            };
+
+            string message;
+
+
+            double torque = 2.313449121;
+            mESMessage.Data.Add(new MESMessageData_TZYX() {
+                Index = 1,
+                TaskNo = 0,
+                Torsion = Math.Round((double) torque, 2),
+                Stroke = 0,
+                Result = true,
+                ResultMsg = "",
+                TightTime = 10213,
+                Unit = (int) Unit_TZYX.Nm,
+                NeedTorsion = 123123.451,
+            });
+
+            message = JsonConvert.SerializeObject(mESMessage);
+            logger.Info($"Data = {message}");
+            _ = SendDataAsync(Encoding.ASCII.GetBytes(message));
+
         }
 
         private async Task CheckAndConnectAsync(string ip, int port, CancellationToken ct) {
@@ -152,6 +194,27 @@ namespace OperationGuidance_new.Views {
             }
         }
 
+        protected override void InitializeBarCodePanel() {
+            _barCodeImage = Properties.Resources.bar_code_icon;
+            _barCodePictureBox = new() {
+                Margin = new(0),
+                Padding = new(0),
+            };
+            _barCodeTextBox = new() {
+                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
+                BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                DisabledBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
+                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
+            };
+            _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
+            _barCodeTextBox.Enabled = false;
+
+            if (bool.Parse(MainUtils.MesConfig_TZYX.Read(Config_TZYX.BarcodePopUpEnabled))) {
+                _barCodePictureBox.Click += barCodePopUp;
+                _barCodeTextBox.Click += barCodePopUp;
+            }
+        }
+
         private async Task SendHeartbeatsAsync(CancellationToken ct) {
             var heartbeatData = Encoding.ASCII.GetBytes("\0");
 
@@ -159,6 +222,7 @@ namespace OperationGuidance_new.Views {
                 while (!ct.IsCancellationRequested && IsConnected()) {
                     // 发送心跳包
                     await SendDataAsync(heartbeatData, ct);
+                    logger.Info("Sent heartbeat");
 
                     // 精确等待
                     await Task.Delay(HEART_BEATING_TIME, ct);
@@ -173,10 +237,10 @@ namespace OperationGuidance_new.Views {
         private async Task ReceiveDataAsync(CancellationToken ct) {
             var buffer = new byte[4096];
 
-            try {
-                while (!ct.IsCancellationRequested && IsConnected()) {
-                    if (_isProcessingBarcode) {
-                        await Task.Delay(1000);
+            while (!ct.IsCancellationRequested && IsConnected()) {
+                try {
+                    if (_activated) {
+                        await Task.Delay(500);
                         continue;
                     }
 
@@ -193,10 +257,12 @@ namespace OperationGuidance_new.Views {
 
                     // 处理接收到的数据
                     ProcessReceivedData(buffer, bytesRead);
-                }
-            } catch (Exception ex) {
-                if (!ct.IsCancellationRequested) {
-                    logger.Error("Data receiving error", ex);
+                } catch (Exception ex) {
+                    if (!ct.IsCancellationRequested) {
+                        logger.Error("Data receiving error", ex);
+                    } else {
+                        break;
+                    }
                 }
             }
         }
@@ -222,24 +288,9 @@ namespace OperationGuidance_new.Views {
                 string stationCode = parts[1].Trim();
 
                 // 处理条码
-                ProcessBarcode(barCode);
-            } catch (Exception ex) {
-                logger.Error("Data processing error", ex);
-            }
-        }
-
-        private void ProcessBarcode(string barCode) {
-            try {
-                // 设置处理标志
-                _isProcessingBarcode = true;
-                _lastBarcode = barCode;
-
-                // 处理条码
                 ActionAfterRecevingBarCode(barCode);
             } catch (Exception ex) {
-                logger.Error("Barcode processing error", ex);
-                // 处理失败后重置状态
-                ResetBarcodeProcessing();
+                logger.Error("Data processing error", ex);
             }
         }
 
@@ -335,12 +386,6 @@ namespace OperationGuidance_new.Views {
             return tcs.Task;
         }
 
-        // 重置条码处理状态（由外部调用）
-        public void ResetBarcodeProcessing() {
-            _isProcessingBarcode = false;
-            logger.Info("Barcode processing reset. Ready for next barcode.");
-        }
-
         private bool IsConnected() {
             lock (_syncLock) {
                 return _socketClient?.Connected == true;
@@ -402,6 +447,50 @@ namespace OperationGuidance_new.Views {
             }
         }
 
+        protected override void OpenBarCodePopUpForm(string? barCode = null) {
+            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                if (_activated && _currentWorkingBolt != null) {
+                    _rulesExcluded = GetCurrentExcludedRules(_currentWorkingBolt.BoltDTO);
+                } else {
+                    _rulesExcluded = GetCurrentExcludedRules();
+                }
+
+                _barCodePopUpForm = new BarCodeInputPopUpForm_TZYX(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
+                    Title = "录入条码",
+                    BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                    ShowInFront = false,
+                    TopMost = false,
+                };
+                if (!_activated) {
+                    _barCodePopUpForm.AddButton("激活任务").Click += (sender, eventArgs) => {
+                        if (!_activated) {
+                            if (!_barCodePopUpForm.CheckCanActivateMission()) {
+                                CustomTextBox customTextBox = _barCodePopUpForm.ProductBarCodeBox.GetTextBox(0);
+                                if (string.IsNullOrEmpty(_barCodeObj.ProductBarCode)) {
+                                    customTextBox.IsError = true;
+                                }
+                                for (int i = 0; i < _barCodePopUpForm.PartsBarCodeContentPanel.Controls.Count; i++) {
+                                    if (i >= _barCodeObj.PartsBarCodes.Count) {
+                                        ((CustomTextBoxButtonGroup) _barCodePopUpForm.PartsBarCodeContentPanel.Controls[i]).GetTextBox(0).IsError = true;
+                                    }
+                                }
+                                WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
+                            } else {
+                                ActivateMission();
+                                _barCodePopUpForm.Dispose();
+                            }
+                        } else {
+                            _barCodePopUpForm.Dispose();
+                        }
+                    };
+                }
+                _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
+                _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
+                _barCodePopUpForm.ResizeSelf();
+            }
+            _barCodePopUpForm.Show();
+        }
 
         protected override List<DeviceCategory>? CustomCategories() {
             DeviceCategory deviceCategory = new(7, "MES连接",
@@ -428,35 +517,337 @@ namespace OperationGuidance_new.Views {
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             if (_missionRecord != null) {
-                MESMessage_TZYX mESMessage = new() {
-                    StationCode = _stationCode,
-                    BarCode = _missionRecord.product_bar_code,
-                    Product = _mission.name,
-                    Operator = SystemUtils.LoggedUserName,
-                    Result = _missionRecord.mission_result == (int) YesOrNo.YES,
-                };
-
-                OperationDataDTOs.ForEach(data => {
-                    MESMessageData_TZYX mESMessageData = new() {
-                        Index = (int) data.bolt_serial_num,
-                        TaskNo = 0,
-                        Torsion = (double) data.torque,
-                        Stroke = (double) (data.rundown_angle / 360),
-                        Result = data.tightening_status == (int) TighteningStatus.OK,
-                        ResultMsg = _errorMsg,
-                        TightTime = (int) _rundownTime,
-                        Unit = (int) Unit_TZYX.Nm,
-                        NeedTorsion = (double) data.torque_final_target,
+                string message = "Not set";
+                try {
+                    MESMessage_TZYX mESMessage = new() {
+                        StationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode),
+                        BarCode = _missionRecord.product_bar_code,
+                        Product = _mission.name,
+                        Operator = SystemUtils.LoggedUserName,
+                        Result = _missionRecord.mission_result == (int) YesOrNo.YES,
                     };
 
-                    mESMessage.Data.Add(mESMessageData);
-                });
+                    foreach (OperationDataDTO data in OperationDataDTOs) {
+                        // They don't need NOK data
+                        if (data.tightening_status != (int) TighteningStatus.OK) {
+                            continue;
+                        }
 
-                string message = JsonConvert.SerializeObject(mESMessage);
-                _ = SendDataAsync(Encoding.ASCII.GetBytes(message));
+                        MESMessageData_TZYX mESMessageData = new() {
+                            Index = (int) data.bolt_serial_num,
+                            TaskNo = 0,
+                            Torsion = Math.Round((double) data.torque, 2),
+                            Stroke = Math.Round((double) (data.rundown_angle / 360), 2),
+                            Result = data.tightening_status == (int) TighteningStatus.OK,
+                            ResultMsg = _errorMsg,
+                            TightTime = (int) _rundownTime,
+                            Unit = (int) Unit_TZYX.Nm,
+                            NeedTorsion = Math.Round((double) data.torque_final_target, 2),
+                        };
+
+                        mESMessage.Data.Add(mESMessageData);
+                    }
+
+                    message = JsonConvert.SerializeObject(mESMessage);
+                    logger.Info($"Data = {message}");
+                    _ = SendDataAsync(Encoding.ASCII.GetBytes(message));
+
+                    OperationDataDTOs = new();
+                } catch (Exception e) {
+                    logger.Error($"Error while sending data to MES server, Data = {message}", e);
+                }
             }
 
             _ = base.TerminateMission(status);
+
+            _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
+        }
+
+        protected override void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
+            BeginInvoke(() => {
+                // Nonactivated or finished will not handle any received data
+                if (!_activated) {
+                    return;
+                }
+
+                try {
+                    ToolTask toolTask = _toolTasks[deviceId];
+                    // Lock first
+                    if (MainUtils.IsArmLocatingEnabled()) {
+                        toolTask.ForceSendLock();
+                    }
+                    if (toolTask.WorkstationId != null) {
+                        int workstationId = toolTask.WorkstationId.Value;
+
+                        List<WorkstationDTO> workstationDTOs;
+                        if (CheckIfIsMultiDeviceIndependenceMode()) {
+                            workstationDTOs = _workstationsDTOs.Where(dto => _currentWorkingBoltIndependence.Keys.Contains(dto.id)).ToList();
+                        } else {
+                            List<int> workstationIds = new();
+                            foreach (List<BoltButton> bolts in _allBolts.Values) {
+                                workstationIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id));
+                            }
+                            workstationIds = workstationIds.Distinct().ToList();
+                            workstationDTOs = _workstationsDTOs.Where(dto => workstationIds.Contains(dto.id) && dto.arm_id != null).ToList();
+                        }
+                        List<int?> toolIds = workstationDTOs.Select(dto => dto.tool_id).ToList();
+
+                        // Main display
+                        _torquePanel.Data = data.torque + "";
+                        _anglePanel.Data = data.angle + "";
+
+                        // Get current bolt
+                        BoltButton currentBolt;
+                        if (CheckIfIsMultiDeviceIndependenceMode()) {
+                            currentBolt = _currentWorkingBoltIndependence[workstationId];
+                        } else {
+                            currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
+                        }
+
+                        // Check if current showing side is equal to side of working bolt, if no then switch to the right side
+                        if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
+                            ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
+                            if (sideTemp != null) {
+                                _currentSideIndex = _sides.IndexOf(sideTemp);
+                                ChangeSideAndInvalidate();
+                            }
+                        }
+
+                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                        OperationDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
+                        // Set pset manualy if tool type is sudong x7
+                        if (toolTask.ToolType is ToolSudongX7 toolX7) {
+                            dataDTO.parameter_set_number = currentBolt.CurrentParameterSet;
+                        }
+
+                        WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
+                        dataDTO.workstation_id = workstationDTO.id;
+                        dataDTO.workstation_name = workstationDTO.name;
+
+                        DeviceToolDTO toolDTO = _tools.Single(t => t.id == deviceId);
+                        dataDTO.tool_name = toolDTO.name;
+                        dataDTO.tool_ip = $"{toolDTO.ip}:{toolDTO.port}";
+                        dataDTO.tool_type = DeviceType_Tool.GetById(toolDTO.type).Name;
+                        dataDTO.product_sied_id = _sides[_currentSideIndex].id;
+                        dataDTO.bolt_serial_num = boltDTO.serial_num;
+                        MissionRecordDTO missionRecord = CommonUtils.CannotBeNull(_missionRecord);
+                        dataDTO.mission_record_id = missionRecord.id;
+                        dataDTO.vin_number = missionRecord.product_bar_code;
+                        if (_realTimeArmCoordinates != null) {
+                            dataDTO.arm_position = _realTimeArmCoordinates.ToString();
+                        }
+
+                        // WHYC
+                        // TZYX
+                        _rundownTime = data.rundown_time;
+
+                        // If result type is tightening
+                        if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
+                            bool tighteningOK = true;
+                            string errorMsg = "";
+                            // Initialize color to ok
+                            _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+                            _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_OK;
+
+                            // Check tightening status
+                            if (data.tightening_status != (int) TighteningStatus.OK) {
+                                tighteningOK = false;
+                                if (data.tightening_error_status != null &&
+                                        data.tightening_error_status != (int) TighteningErrorStatus_SuDong.NO_ERROR) {
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
+                                    }
+                                    string errorMsgTemp;
+                                    if (Enum.IsDefined(typeof(TighteningErrorStatus_SuDong), data.tightening_error_status)) {
+                                        TighteningErrorStatus_SuDong errorStatus_SuDong = (TighteningErrorStatus_SuDong) data.tightening_error_status;
+                                        switch (errorStatus_SuDong) {
+                                            case TighteningErrorStatus_SuDong.SLIPPAGE:
+                                                errorMsgTemp = "滑丝/滑牙";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.FALSE_LOCKING:
+                                                errorMsgTemp = "浮锁";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.TORQUE_NOK:
+                                                errorMsgTemp = "扭矩不良";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.ANGLE_NOK:
+                                                errorMsgTemp = "拧紧角度不良";
+                                                break;
+                                            case TighteningErrorStatus_SuDong.SEND_UNLOCK_IN_TIGTHENING:
+                                                errorMsgTemp = "中途提前释放启动信号";
+                                                break;
+                                            default:
+                                                errorMsgTemp = $"未知错误代码【{data.tightening_error_status}】";
+                                                break;
+                                        }
+                                    } else {
+                                        errorMsgTemp = $"未知错误代码【{data.tightening_error_status}】";
+                                    }
+                                    errorMsg += $"拧紧出错，错误信息：{errorMsgTemp}";
+                                }
+                                if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                    _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
+                                    }
+                                    errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                }
+                                if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                    _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
+                                    }
+                                    errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                }
+                            }
+
+                            // Check torque
+                            if (boltDTO.torque_max > 0 && (data.torque < boltDTO.torque_min || data.torque > boltDTO.torque_max)) {
+                                tighteningOK = false;
+                                _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                if (!string.IsNullOrEmpty(errorMsg)) {
+                                    errorMsg += "\r\n";
+                                }
+                                errorMsg += "扭矩与配置范围不符";
+                            }
+
+                            // Check angle
+                            if (boltDTO.angle_max > 0 && (data.angle < boltDTO.angle_min || data.angle > boltDTO.angle_max)) {
+                                tighteningOK = false;
+                                _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NOK;
+                                if (!string.IsNullOrEmpty(errorMsg)) {
+                                    errorMsg += "\r\n";
+                                }
+                                errorMsg += "角度与配置范围不符";
+                            }
+
+                            // Switch to next bolt
+                            if (tighteningOK) {
+                                _errorMsg = null;
+
+                                // Reset tightening type to tightening in case somewhere did some changes
+                                _needLoosening = false;
+                                RemoveInformationMsg(_workingProcessPanel.NGReasons);
+                                _workingProcessPanel.NGReasons = null;
+
+                                currentBolt.BoltStatus = BoltStatus.DONE;
+
+                                // Check next index
+                                List<BoltButton> currentSideBolts;
+                                if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                    currentSideBolts = _allBoltsIndependence[_sides[_currentSideIndex].id][workstationId];
+                                } else {
+                                    currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
+                                }
+                                int nextIndex = currentSideBolts.IndexOf(currentBolt) + 1;
+                                // 检查是否存在跳点的情况
+                                while (nextIndex < currentSideBolts.Count && currentSideBolts[nextIndex].BoltStatus == BoltStatus.DONE) {
+                                    nextIndex++;
+                                }
+
+                                // Store data
+                                dataDTO.tightening_status = (int) TighteningStatus.OK;
+                                StoreTighteningData(dataDTO);
+
+                                if (nextIndex < currentSideBolts.Count) {
+                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                        _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
+                                    } else {
+                                        _currentWorkingBolt = SwitchBolt(nextIndex);
+                                        ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                    }
+                                } else {
+                                    bool allDone = true;
+                                    if (CheckIfIsMultiDeviceIndependenceMode()) {
+                                        foreach (int id in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
+                                            if (id != workstationId) {
+                                                BoltButton? boltButton = _allBoltsIndependence[_sides[_currentSideIndex].id][id].Find(b => b.BoltStatus != BoltStatus.DONE);
+                                                if (boltButton != null) {
+                                                    allDone = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        if (_currentSideIndex < _sides.Count - 1) {
+                                            _currentSideIndex++;
+                                            _currentWorkingBolt = SwitchBolt(0);
+                                            ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                            ChangeSideAndInvalidate();
+                                            allDone = false;
+                                        }
+                                    }
+
+                                    if (allDone) {
+                                        // Update mission result to ok
+                                        _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                        _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+                                        // Checks for challenge mission
+                                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                            AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
+                                        }
+
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+                                    }
+                                }
+                            } else {
+                                // Change bolt status
+                                currentBolt.BoltStatus = BoltStatus.ERROR;
+
+                                // Count ng times
+                                currentBolt.NgTimes++;
+
+                                // Set error message
+                                _workingProcessPanel.NGReasons = errorMsg;
+                                AddInformationMsg(_workingProcessPanel.NGReasons);
+
+                                // WHYC
+                                // TZYX
+                                _errorMsg = errorMsg;
+
+                                // Set status of data to ng
+                                dataDTO.tightening_status = (int) TighteningStatus.NG;
+
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
+
+                                // Should not lock in the first place when it has error
+                                if (MainUtils.IsArmLocatingEnabled()) {
+                                    toolTask.ForceSendUnlock();
+                                }
+                            }
+                        } else {
+                            _needLoosening = false;
+
+                            // 反松结束后把扭矩角度改回黑色
+                            _torquePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+                            _anglePanel.ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
+
+                            // Remove error message
+                            RemoveLockMsg(_workingProcessPanel.NGReasons);
+                            _workingProcessPanel.NGReasons = null;
+
+                            if (MainUtils.GetStoreLooseningData()) {
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.Error($"Error occurred while handling tightening data, e: {e}");
+                }
+            });
+        }
+
+        protected override void ToolOperationPopUpFormExtraActions(ToolOperationPopUpForm popUpForm) {
+            if (MainUtils.IsAutoLockToolEnabled()) {
+                popUpForm.BtnLock.Enabled = false;
+                popUpForm.BtnUnlock.Enabled = false;
+                popUpForm.BtnPSet.Enabled = false;
+            }
         }
     }
 }

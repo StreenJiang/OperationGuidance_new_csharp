@@ -433,7 +433,7 @@ namespace OperationGuidance_new.Tasks {
                 }
             } else {
                 _locked = true;
-                logger.Info($"Locking failure, it's not connected...");
+                logger.Info($"Unlocking failure, it's not connected...");
             }
         }
         public void ForceSendUnlock() {
@@ -452,7 +452,7 @@ namespace OperationGuidance_new.Tasks {
                 }
             } else {
                 _locked = true;
-                logger.Info($"Locking failure, it's not connected...");
+                logger.Info($"Unlocking failure, it's not connected...");
             }
         }
         #endregion
