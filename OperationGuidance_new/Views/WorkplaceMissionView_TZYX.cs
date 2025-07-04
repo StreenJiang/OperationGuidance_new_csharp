@@ -83,6 +83,7 @@ namespace OperationGuidance_new.Views {
 
         // Initialize mod bus server
         protected override void InitializeAfterHandelCreated() {
+            _stationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode);
             Task.Run(() => RunTCPClient(_cts.Token));
         }
 
@@ -133,7 +134,7 @@ namespace OperationGuidance_new.Views {
         // Test function
         private void testSendData() {
             MESMessage_TZYX mESMessage = new() {
-                StationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode),
+                StationCode = _stationCode,
                 BarCode = "barcode",
                 Product = "name",
                 Operator = SystemUtils.LoggedUserName,
@@ -235,8 +236,6 @@ namespace OperationGuidance_new.Views {
         }
 
         private async Task ReceiveDataAsync(CancellationToken ct) {
-            var buffer = new byte[4096];
-
             while (!ct.IsCancellationRequested && IsConnected()) {
                 try {
                     if (_activated) {
@@ -245,6 +244,7 @@ namespace OperationGuidance_new.Views {
                     }
 
                     // 接收数据
+                    var buffer = new byte[4096];
                     int bytesRead = await _socketClient.ReceiveAsync(
                         new ArraySegment<byte>(buffer),
                         SocketFlags.None);
@@ -254,6 +254,7 @@ namespace OperationGuidance_new.Views {
                         logger.Info("Connection closed by remote host");
                         break;
                     }
+                    logger.Info($"Data received with length = {bytesRead}");
 
                     // 处理接收到的数据
                     ProcessReceivedData(buffer, bytesRead);
@@ -287,8 +288,11 @@ namespace OperationGuidance_new.Views {
                 string barCode = parts[0].Trim();
                 string stationCode = parts[1].Trim();
 
-                // 处理条码
-                ActionAfterRecevingBarCode(barCode);
+                // Won't handle if station code not matched
+                if (_stationCode == stationCode) {
+                    // 处理条码
+                    ActionAfterRecevingBarCode(barCode);
+                }
             } catch (Exception ex) {
                 logger.Error("Data processing error", ex);
             }
