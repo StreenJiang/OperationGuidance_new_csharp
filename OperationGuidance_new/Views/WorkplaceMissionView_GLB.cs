@@ -78,6 +78,7 @@ namespace OperationGuidance_new.Views {
                                 && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
                                 && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
                                 _communicationTask.Reading = true;
+                                _communicationTask.PlcServer.DataBytes = null;
 
                                 int waitTime = 5000;
                                 int waitTimeCount = 0;
