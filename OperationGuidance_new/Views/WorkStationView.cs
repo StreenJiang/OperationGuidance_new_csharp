@@ -50,7 +50,7 @@ namespace OperationGuidance_new.Views {
         public WorkStationView() {
             // Default values
             FlowDirection = FlowDirection.TopDown;
-            
+
             // Get Apis
             apis = SystemUtils.GetApis();
 
@@ -157,7 +157,7 @@ namespace OperationGuidance_new.Views {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
             };
             // 添加字段
-            CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false, 
+            CustomTextBoxGroup stationName = _editEntityPopUpForm.AddTextBox("站点名称", false,
                 (WorkstationDTO dto, string? value) => dto.name = value ?? "");
             stationName.Ratio = null;
             _editEntityPopUpForm.TablePanel.SetColumnSpan(stationName, 2);
@@ -327,15 +327,15 @@ namespace OperationGuidance_new.Views {
             ToggleButton communicationToggle = communicationSubPanel.TitlePanel.AddRightButton<ToggleButton>();
             CustomComboBoxGroup<int> communicationOptions = communicationSubPanel.AddComboBox("选择设备", (WorkstationDTO dto, int value) => dto.communication_id = value, _communicationIdOptions);
             // 通讯设备类型
-            CustomComboBoxGroup<int?> communicationTypeTextBox = communicationSubPanel.AddComboBox("设备类型", 
-                (WorkstationDTO dto, int? value) => dto.communication_id = value, _communicationTypeOptions);
+            CustomComboBoxGroup<int?> communicationTypeTextBox = communicationSubPanel.AddComboBox("设备类型",
+                (WorkstationDTO dto, int? value) => dto.communication_type = value, _communicationTypeOptions);
             communicationTypeTextBox.Enabled = false;
             // 通讯设备IP
-            CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("设备IP", false, 
-                (WorkstationDTO dto, string? value) => dto.communication_ip = value ??"");
+            CustomTextBoxGroup communicationIPTextBox = communicationSubPanel.AddTextBox("设备IP", false,
+                (WorkstationDTO dto, string? value) => dto.communication_ip = value ?? "");
             communicationIPTextBox.Enabled = false;
             // 通讯设备端口
-            CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("设备端口", false, 
+            CustomTextBoxGroup communicationPortTextBox = communicationSubPanel.AddTextBox("设备端口", false,
                 (WorkstationDTO dto, int? value) => dto.communication_port = value == null ? 0 : value);
             communicationPortTextBox.Enabled = false;
             if (dto.communication_id != null) {
@@ -405,22 +405,22 @@ namespace OperationGuidance_new.Views {
             SubPanel<WorkstationDTO> serialPortSubPanel = _editEntityPopUpForm.AddSubPanel("串口设备");
             // 串口选择
             ToggleButton serialPortToggle = serialPortSubPanel.TitlePanel.AddRightButton<ToggleButton>();
-            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox("选择设备", 
+            CustomComboBoxGroup<int> serialPortOptions = serialPortSubPanel.AddComboBox("选择设备",
                 (WorkstationDTO dto, int value) => dto.serial_port_id = value, _serialPortIdOptions);
             // 串口类型
-            CustomComboBoxGroup<int?> serialPortTypeTextBox = serialPortSubPanel.AddComboBox("串口类型", 
+            CustomComboBoxGroup<int?> serialPortTypeTextBox = serialPortSubPanel.AddComboBox("串口类型",
                 (WorkstationDTO dto, int? value) => dto.serial_port_type = value, _serialPortTypeOptions);
             serialPortTypeTextBox.Enabled = false;
             // 串口号
-            CustomTextBoxGroup serialPortPortNameTextBox = serialPortSubPanel.AddTextBox("串口号", false, 
+            CustomTextBoxGroup serialPortPortNameTextBox = serialPortSubPanel.AddTextBox("串口号", false,
                 (WorkstationDTO dto, string? value) => dto.serial_port_port_name = value ?? "");
             serialPortPortNameTextBox.Enabled = false;
             // 波特率
-            CustomTextBoxGroup serialPortBaudRateTextBox = serialPortSubPanel.AddTextBox("波特率", false, 
+            CustomTextBoxGroup serialPortBaudRateTextBox = serialPortSubPanel.AddTextBox("波特率", false,
                 (WorkstationDTO dto, int? value) => dto.serial_port_baud_rate = value ?? 0);
             serialPortBaudRateTextBox.Enabled = false;
             // 数据位
-            CustomTextBoxGroup serialPortDataBitTextBox = serialPortSubPanel.AddTextBox("数据位", false, 
+            CustomTextBoxGroup serialPortDataBitTextBox = serialPortSubPanel.AddTextBox("数据位", false,
                 (WorkstationDTO dto, int? value) => dto.serial_port_data_bit = value == null ? 0 : value);
             serialPortDataBitTextBox.Enabled = false;
             // 校验位
