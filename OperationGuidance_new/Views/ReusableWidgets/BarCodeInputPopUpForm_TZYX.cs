@@ -10,7 +10,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private const uint SWP_NOZORDER = 0x0004;
         private const uint SWP_NOACTIVATE = 0x0010;
 
-        public BarCodeInputPopUpForm_TZYX(AWorkplaceContentPanel workplace, string initStr, ProductMissionDTO mission, bool activated, Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules, Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode, List<BarCodeMatchingRuleDTO> boltRules) : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules) {
+        public BarCodeInputPopUpForm_TZYX(AWorkplaceContentPanel workplace,
+                string initStr, ProductMissionDTO mission, bool activated,
+                Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
+                Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules,
+                string? barCode, List<BarCodeMatchingRuleDTO> boltRules, bool isForBolt)
+            : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules, isForBolt) {
         }
 
         protected override bool PartsBarCodeExtraCheck(int ruleId) => true;

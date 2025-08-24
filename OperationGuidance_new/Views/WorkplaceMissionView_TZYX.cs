@@ -460,7 +460,7 @@ namespace OperationGuidance_new.Views {
                 }
 
                 _barCodePopUpForm = new BarCodeInputPopUpForm_TZYX(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
-                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded, CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode)) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                     ShowInFront = false,

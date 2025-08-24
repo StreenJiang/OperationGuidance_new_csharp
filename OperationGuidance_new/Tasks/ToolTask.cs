@@ -71,10 +71,9 @@ namespace OperationGuidance_new.Tasks {
                                 // Send heart beat command to controller
                                 SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
                                 logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
-                            } else {
-                                // Reset heart beat counter even no command has been sent
-                                HeartBeatCounter = 0;
                             }
+                            // Reset heart beat counter even no command has been sent
+                            HeartBeatCounter = 0;
                         }
 
                         // Check any message is waiting for receving 
