@@ -12,7 +12,7 @@ namespace OperationGuidance_service.Database {
         private static readonly ADbConnector connector;
 
         static DbConnector() {
-            SystemUtils.InitMySqlConfigs();
+            SystemUtils.InitMySqlAndSqlServerConfigs();
             SystemUtils.InitSQLiteConfigs();
             switch (SystemUtils.GetDBTypes()) {
                 default:

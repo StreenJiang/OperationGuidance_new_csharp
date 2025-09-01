@@ -1,13 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using OperationGuidance_service.Controllers;
-using OperationGuidance_service.Configurations;
-using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Constants;
-using System.Text;
-using System.Security.Cryptography;
-using OperationGuidance_service.Database;
+﻿using log4net;
 using log4net.Config;
-using log4net;
+using Microsoft.Extensions.DependencyInjection;
+using OperationGuidance_service.Configurations;
+using OperationGuidance_service.Constants;
+using OperationGuidance_service.Controllers;
+using OperationGuidance_service.Database;
+using OperationGuidance_service.Models.DTOs;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace OperationGuidance_service.Utils {
     public static class SystemUtils {
@@ -49,8 +49,23 @@ namespace OperationGuidance_service.Utils {
             }
             return (DBTypes) Enum.Parse(typeof(DBTypes), dbType);
         }
+        public static bool GetDBInitEnabled() {
+            string initEnabled = DatabaseConfigs.Read(IniFileKeys.InitEnabled);
+            if (string.IsNullOrEmpty(initEnabled)) {
+                initEnabled = (int) YesOrNo.NO + "";
+                DatabaseConfigs.Write(IniFileKeys.InitEnabled, initEnabled);
+            }
+            return initEnabled == (int) YesOrNo.YES + "";
+        }
+        public static void SetDBInitEnabled(bool enabled) {
+            if (enabled) {
+                DatabaseConfigs.Write(IniFileKeys.InitEnabled, (int) YesOrNo.YES + "");
+            } else {
+                DatabaseConfigs.Write(IniFileKeys.InitEnabled, (int) YesOrNo.NO + "");
+            }
+        }
         // Mysql and SqlServer
-        public static void InitMySqlConfigs() {
+        public static void InitMySqlAndSqlServerConfigs() {
             string server = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_server);
             string port = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_port);
             string database = DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_database);
@@ -158,5 +173,10 @@ namespace OperationGuidance_service.Utils {
             }
             return count == length;
         }
+
+        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 }
