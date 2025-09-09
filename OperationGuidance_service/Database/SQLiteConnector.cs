@@ -18,74 +18,77 @@ namespace OperationGuidance_service.Database {
             string dataSource = dataSourcePath + Database;
 
             SQLiteConnection? conn = null;
-            if (!File.Exists(dataSource)) {
-                if (doubleChecked) {
-                    if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
-                        if (SystemUtils.GetDBInitEnabled()) {
-                            if (!ExecuteSqlFile()) {
-                                return null;
-                            }
-                            SystemUtils.SetDBInitEnabled(false);
-                            SystemUtils.ShowNoticePopUp("数据库初始化完成！已自动禁用数据库初始化功能！");
-                        } else {
-                            SystemUtils.ShowNoticePopUp("数据库初始化已经禁用，请联系管理员，检查配置！");
-                        }
-                    }
-                }
-                doubleChecked = true;
-            } else {
-                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
-                conn.Open();
-                string sqlScriptPrefix = "modify_sqlite";
-
-                // Check if any modification scripts hasn't been executed
-                List<string> executedFileNames = new();
-                using (SQLiteCommand command = conn.CreateCommand()) {
-                    command.CommandText = "Select file_name from sql_execute_record where deleted = 2";
-                    using (SQLiteDataReader reader = command.ExecuteReader()) {
-                        while (reader.Read()) {
-                            executedFileNames.Add(CommonUtils.CannotBeNull(reader["file_name"].ToString()));
-                        }
-                    }
-                }
-
-                // Execute scripts that didn't execute
-                List<string> newExecutedSqlFileName = new();
-                using (SQLiteCommand command = conn.CreateCommand()) {
-                    List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                    foreach (string fileName in fileNames) {
-                        try {
-                            if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                string? fileText = Resource.ResourceManager.GetString(fileName);
-                                if (!string.IsNullOrEmpty(fileText)) {
-                                    logger.Info($"Not executed sql script[{fileName}] found");
-                                    newExecutedSqlFileName.Add(fileName);
-                                    command.CommandText = fileText;
-                                    command.ExecuteNonQuery();
-
-                                    logger.Info($"Execute sql script[{fileName}] successfully");
-                                    // newExecutedSqlFileName.Add(fileName);
+            if (!ConnectionUtils.HealthChecked) {
+                if (!File.Exists(dataSource)) {
+                    if (doubleChecked) {
+                        if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
+                            if (SystemUtils.GetDBInitEnabled()) {
+                                if (!ExecuteSqlFile()) {
+                                    return null;
                                 }
+                                SystemUtils.SetDBInitEnabled(false);
+                                SystemUtils.ShowNoticePopUp("数据库初始化完成！已自动禁用数据库初始化功能！");
+                            } else {
+                                SystemUtils.ShowNoticePopUp("数据库初始化已经禁用，请联系管理员，检查配置！");
                             }
-                        } catch (Exception e) {
-                            logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                         }
                     }
-                }
+                    doubleChecked = true;
+                } else {
+                    conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
+                    conn.Open();
+                    string sqlScriptPrefix = "modify_sqlite";
 
-                if (newExecutedSqlFileName.Count > 0) {
+                    // Check if any modification scripts hasn't been executed
+                    List<string> executedFileNames = new();
                     using (SQLiteCommand command = conn.CreateCommand()) {
-                        string insertSql = "";
-                        foreach (string fileName in newExecutedSqlFileName) {
-                            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                            insertSql += $"insert into sql_execute_record(file_name, user_id, deleted, creator, modifier, create_time, modify_time) values('{fileName}', -1, 2, 'System', 'System', '{now}', '{now}');";
+                        command.CommandText = "Select file_name from sql_execute_record where deleted = 2";
+                        using (SQLiteDataReader reader = command.ExecuteReader()) {
+                            while (reader.Read()) {
+                                executedFileNames.Add(CommonUtils.CannotBeNull(reader["file_name"].ToString()));
+                            }
                         }
-                        command.CommandText = insertSql;
-                        command.ExecuteNonQuery();
+                    }
+
+                    // Execute scripts that didn't execute
+                    List<string> newExecutedSqlFileName = new();
+                    using (SQLiteCommand command = conn.CreateCommand()) {
+                        List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
+                        foreach (string fileName in fileNames) {
+                            try {
+                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
+                                    string? fileText = Resource.ResourceManager.GetString(fileName);
+                                    if (!string.IsNullOrEmpty(fileText)) {
+                                        logger.Info($"Not executed sql script[{fileName}] found");
+                                        newExecutedSqlFileName.Add(fileName);
+                                        command.CommandText = fileText;
+                                        command.ExecuteNonQuery();
+
+                                        logger.Info($"Execute sql script[{fileName}] successfully");
+                                        // newExecutedSqlFileName.Add(fileName);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
+                            }
+                        }
+                    }
+
+                    if (newExecutedSqlFileName.Count > 0) {
+                        using (SQLiteCommand command = conn.CreateCommand()) {
+                            string insertSql = "";
+                            foreach (string fileName in newExecutedSqlFileName) {
+                                string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                insertSql += $"insert into sql_execute_record(file_name, user_id, deleted, creator, modifier, create_time, modify_time) values('{fileName}', -1, 2, 'System', 'System', '{now}', '{now}');";
+                            }
+                            command.CommandText = insertSql;
+                            command.ExecuteNonQuery();
+                        }
                     }
                 }
             }
 
+            ConnectionUtils.HealthChecked = true;
             return conn;
         }
 

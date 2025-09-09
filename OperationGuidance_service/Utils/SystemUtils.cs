@@ -49,6 +49,7 @@ namespace OperationGuidance_service.Utils {
             }
             return (DBTypes) Enum.Parse(typeof(DBTypes), dbType);
         }
+        public static string GetDataBase() => DatabaseConfigs.Read(IniFileKeys.DatabaseConfigMYSQL_database);
         public static bool GetDBInitEnabled() {
             string initEnabled = DatabaseConfigs.Read(IniFileKeys.InitEnabled);
             if (string.IsNullOrEmpty(initEnabled)) {
