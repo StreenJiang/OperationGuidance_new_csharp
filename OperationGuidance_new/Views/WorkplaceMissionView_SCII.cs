@@ -1006,20 +1006,22 @@ namespace OperationGuidance_new.Views {
                                 // Check tightening status
                                 if (data.tightening_status != (int) TighteningStatus.OK) {
                                     tighteningOK = false;
-                                    if (data.torque_status != (int) TighteningCommonStatus.OK) {
-                                        _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                }
+                                if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                    tighteningOK = false;
+                                    _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
                                     }
-                                    if (data.angle_status != (int) TighteningCommonStatus.OK) {
-                                        _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                    errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                }
+                                if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                    tighteningOK = false;
+                                    _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
                                     }
+                                    errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
                                 }
 
                                 // Check torque
