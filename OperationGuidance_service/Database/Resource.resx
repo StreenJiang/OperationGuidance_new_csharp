@@ -176,7 +176,7 @@
     <value>sqls\modify_mysql_20250625.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
   </data>
   <data name="modify_mysql_20250625_1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>sqls\modify_mysql_20250625_1.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+    <value>sqls\modify_mysql_20250625_1.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="modify_sqlite_20240407" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlite_20240407.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>

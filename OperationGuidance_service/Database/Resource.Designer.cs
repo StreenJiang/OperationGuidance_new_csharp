@@ -389,16 +389,21 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to -- 1. Create new table
-        ///CREATE TABLE IF NOT EXISTS parts_bar_code (
-        ///    `id` INT AUTO_INCREMENT PRIMARY KEY,
-        ///    `mission_record_id` INT NOT NULL,
-        ///    `parts_bar_code` VARCHAR(255) NOT NULL,
-        ///    `user_id` int(11) NOT NULL,
-        ///    `deleted` int(1) NOT NULL,
-        ///    `creator` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-        ///    `modifier` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-        ///    `create_time` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_c [rest of string was truncated]&quot;;.
+        ///   Looks up a localized string similar to -- ===============
+        ///-- 1. 创建数字辅助表 (仅需一次)
+        ///-- ===============
+        ///DROP TABLE IF EXISTS numbers;
+        ///CREATE TABLE numbers (n INT PRIMARY KEY);
+        ///
+        ///-- 生成 1 到 1000 的数字（可根据需要调整上限）
+        ///INSERT INTO numbers (n)
+        ///SELECT @row := @row + 1
+        ///FROM (
+        ///    SELECT 0 UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL
+        ///    SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+        ///) t1,
+        ///(
+        ///    SELECT 0 UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELEC [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string modify_mysql_20250625_1 {
             get {

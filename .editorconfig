@@ -1,0 +1,5 @@
+root = true
+
+# 这会应用到 solution 下的所有文件，包括 .sql
+[*]
+charset = utf-8

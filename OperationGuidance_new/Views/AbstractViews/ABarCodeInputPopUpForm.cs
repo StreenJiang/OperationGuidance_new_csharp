@@ -270,7 +270,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 如果存在前置任务，则先查询前置任务是否完成
                 if (mission.predecessor_mission_id != null) {
-                    CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
+                    CheckIfBarCodeExistsInMissionRecordRsp rsp =
+                      _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(
+                          new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) {
+                              ProductBarCode = barCode
+                          }
+                      );
                     bool yes = rsp.Yes;
 
                     // Checks for challenge mission
@@ -290,7 +295,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo
+                      && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
                     bool needRedo;
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
@@ -397,7 +403,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (idsDict != null) {
                         foreach (KeyValuePair<int, int> pair in idsDict) {
                             if (pair.Key == ruleId) {
-                                CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
+                                CheckIfBarCodeExistsInMissionRecordRsp rsp =
+                                  _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(
+                                      new(pair.Value, (int) TighteningStatus.OK) {
+                                          ProductBarCode = barCode
+                                      });
                                 bool yes = rsp.Yes;
 
                                 // Checks for challenge mission
@@ -428,7 +438,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 物料码返工确认
                 if (_workplace.IsRedo != (int) YesOrNo.YES || _mission.is_challenge_mission == (int) YesOrNo.YES) {
-                    if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                    if (checkPassed && _workplace._checkRedo
+                          && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
                         bool needRedo;
                         // Checks for challenge mission
                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
