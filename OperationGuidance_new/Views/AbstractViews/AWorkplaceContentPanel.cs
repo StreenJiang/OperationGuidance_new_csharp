@@ -621,8 +621,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
                                         _adminConfirmed = false;
-                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
-                                        if (!_adminConfirmed.Value) {
+                                        bool isChecked = false;
+                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false, yes => isChecked = yes);
+                                        if (!isChecked) {
                                             _adminConfirmed = null;
                                             return;
                                         }
@@ -2082,7 +2083,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 打开管理员密码输入弹框
-        public void OpenAdminPasswordPopUpForm(string title, bool needExctraActions) {
+        public void OpenAdminPasswordPopUpForm(string title, bool needExctraActions, Action<bool>? actionAfterTrue = null) {
             _adminPasswordPopUpForm = new() {
                 Title = title,
             };
@@ -2128,6 +2129,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     WidgetUtils.ShowNoticePopUp("验证成功");
                     _adminConfirmed = true;
                     _adminPasswordPopUpForm.Dispose();
+
+                    if (actionAfterTrue != null) {
+                        actionAfterTrue(true);
+                    }
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;

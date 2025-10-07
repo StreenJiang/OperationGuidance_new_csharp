@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons;
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
@@ -11,6 +11,7 @@ using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
@@ -94,8 +95,9 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
                     _adminConfirmed = false;
-                    OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false);
-                    if (_adminConfirmed.Value) {
+                    bool isChecked = false;
+                    OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false, yes => isChecked = yes);
+                    if (isChecked) {
                         _adminConfirmed = null;
                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                     }
@@ -895,6 +897,17 @@ namespace OperationGuidance_new.Views {
             // Set product batch
             _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+            // Store patrs bar code
+            if (_barCodeObj.PartsBarCodes.Count > 0) {
+                foreach (string partsBarCode in _barCodeObj.PartsBarCodes) {
+                    PartsBarCodeDTO partsBarCodeDTO = new PartsBarCodeDTO() {
+                        mission_record_id = _missionRecord.id,
+                        parts_bar_code = partsBarCode,
+                    };
+                    _apis.AddOrUpdatePartsBarCode(new AddOrUpdatePartsBarCodeReq(partsBarCodeDTO));
+                }
+            }
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
@@ -903,8 +916,11 @@ namespace OperationGuidance_new.Views {
                 ScrewBitCounterDTO screwBitCounter;
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
                     _adminConfirmed = false;
-                    OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
-                    if (_adminConfirmed.Value) {
+                    bool isChecked = false;
+                    OpenAdminPasswordPopUpForm(
+                        $"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码",
+                        false, yes => isChecked = yes);
+                    if (isChecked) {
                         _adminConfirmed = null;
                         screwBitCounter.current_counts = 0;
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));

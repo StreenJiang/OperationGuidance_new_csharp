@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Services;
@@ -54,6 +54,8 @@ namespace OperationGuidance_service.Controllers {
         private ScrewBitCounterService _screwBitCounterService;
         [Autowired]
         private MatCodeMapWhycService _matCodeMapWhycService;
+        [Autowired]
+        private PartsBarCodeService _partsBarCodeService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -726,7 +728,6 @@ namespace OperationGuidance_service.Controllers {
                 parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
             }
 
-
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, parameters);
             CheckIfBarCodeExistsInMissionRecordRsp rsp = new() {
                 Yes = missionRecords.Count > 0,
@@ -755,6 +756,38 @@ namespace OperationGuidance_service.Controllers {
                 result = _operationDataService.GetMissionRecordIdsByWorkstationIds(req.WorkstationIds);
             }
             return new(result);
+        }
+        #endregion
+
+        #region 物料条码相关
+        public AddOrUpdatePartsBarCodeRsp AddOrUpdatePartsBarCode(AddOrUpdatePartsBarCodeReq req) {
+            PartsBarCode partsBarCode = new();
+            CommonUtils.ObjectConverter<PartsBarCodeDTO, PartsBarCode>(req.PartsBarCodeDTO, partsBarCode);
+
+            partsBarCode = _partsBarCodeService.InsertOrUpdate(partsBarCode);
+            PartsBarCodeDTO partsBarCodeDTO = new();
+            CommonUtils.ObjectConverter<PartsBarCode, PartsBarCodeDTO>(partsBarCode, partsBarCodeDTO);
+
+            return new AddOrUpdatePartsBarCodeRsp(partsBarCodeDTO);
+        }
+        public CheckPartsBarCodeRsp CheckPartsBarCode(CheckPartsBarCodeReq req) {
+            string sql = $"select * from {_partsBarCodeService.TableName} where parts_bar_code = @parts_bar_code";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("parts_bar_code", req.PartsBarCode);
+
+            List<PartsBarCode> partsBarCodes = _partsBarCodeService.FindBySql(sql, parameters);
+            if (partsBarCodes.Count > 0) {
+                string sql2 = $"select distinct(mission_id) from {_missionRecordService.TableName} where id in @id";
+                Dictionary<string, object> parameters2 = new();
+                parameters2.Add("id", partsBarCodes.Select(p => p.mission_record_id).Distinct().ToList());
+
+                List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql2, parameters2);
+                if (missionRecords.Count > 0) {
+                    return new CheckPartsBarCodeRsp(missionRecords.Select(m => m.mission_id).ToList().IndexOf(req.MissionId) != -1);
+                }
+            }
+
+            return new CheckPartsBarCodeRsp(false);
         }
         #endregion
 

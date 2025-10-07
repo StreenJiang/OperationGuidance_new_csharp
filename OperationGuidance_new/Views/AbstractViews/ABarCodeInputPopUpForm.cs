@@ -9,6 +9,7 @@ using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
@@ -331,8 +332,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                         // 需要管理员密码弹窗
                         _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
+                        needRedo = false;
+                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false, yes => needRedo = yes);
                     } else {
                         logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
@@ -482,7 +483,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 物料码返工确认
                 if (_workplace.IsRedo != (int) YesOrNo.YES || _mission.is_challenge_mission == (int) YesOrNo.YES) {
-                    if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                    if (checkPassed
+                            && _workplace.Apis.CheckPartsBarCode(new(_mission.id, barCode)).Yes) {
                         logger.Info($"Checking REDO from recordings for matched mission id [{_mission.id}], parts barcode = [{barCode}]...");
 
                         bool needRedo;
@@ -497,8 +499,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                             // 需要管理员密码弹窗
                             _workplace.AdminConfirmed = false;
-                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
-                            needRedo = _workplace.AdminConfirmed.Value;
+                            needRedo = false;
+                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false, yes => needRedo = yes);
                         } else {
                             logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;
@@ -542,9 +544,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             await Task.Delay(1000);
                         }
                     } else {
+                        // Check partsBarCode first, then updagte
+                        List<string> partsBarCodes = _workplace.MissionRecord.parts_bar_code.Split(",").ToList();
+                        if (_workplace.BarCodeObj.PartsBarCodes.Count > 0) {
+                            foreach (string partsBarCode in _workplace.BarCodeObj.PartsBarCodes) {
+                                if (partsBarCodes.IndexOf(partsBarCode) == -1) {
+                                    PartsBarCodeDTO partsBarCodeDTO = new PartsBarCodeDTO() {
+                                        mission_record_id = _workplace.MissionRecord.id,
+                                        parts_bar_code = partsBarCode,
+                                    };
+                                    _workplace.Apis.AddOrUpdatePartsBarCode(new AddOrUpdatePartsBarCodeReq(partsBarCodeDTO));
+                                }
+                            }
+                        }
+
                         _workplace.RemoveLockMsg(WorkingProcessPanel.LockedBoltBarCode);
                         _workplace.MissionRecord.parts_bar_code = string.Join(",", _workplace.BarCodeObj.PartsBarCodes);
                         _workplace.Apis.AddOrUpdateMissionRecord(new(_workplace.MissionRecord));
+
                         await Task.Delay(300);
                     }
 
