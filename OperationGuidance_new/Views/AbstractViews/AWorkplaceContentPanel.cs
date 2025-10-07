@@ -30,10 +30,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected ILog logger;
 
         #region Fields
+        private readonly object _syncLock = new object();
         protected OperationGuidanceApis _apis;
         public ProductMissionDTO _mission;
         protected Action<string> _resetMissionName;
-        protected bool _activated;
+        protected volatile bool _activated;
         public Image _defaultImage;
         protected readonly int _lockCheckingTaskDelay = 50;
         protected readonly int _checkDevicesConnectionDelay = 2000;
@@ -226,7 +227,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected virtual void ActionAfterAllInitialized() { }
 
-        private void InitializeBarCodePanel() {
+        protected virtual void InitializeBarCodePanel() {
             _barCodeImage = Properties.Resources.bar_code_icon;
             _barCodePictureBox = new() {
                 Margin = new(0),
@@ -529,6 +530,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
         }
 
+        protected virtual List<DeviceCategory>? CustomCategories() {
+            return null;
+        }
+
         private void InitializeDeviceBlocks() {
             _toolControlNeedAdminPasswor = false;
             _deviceBlocks = new();
@@ -537,6 +542,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
             for (int i = DeviceCategories.Elements.Count - 1; i >= 0; i--) {
                 deviceCategories.Add(DeviceCategories.Elements[i]);
             }
+
+            List<DeviceCategory>? customCategoreis = CustomCategories();
+            if (customCategoreis != null) {
+                deviceCategories.AddRange(customCategoreis);
+            }
+
             foreach (DeviceCategory category in deviceCategories) {
                 DeviceBlock deviceBlock = new(category) {
                     Margin = new(0),
@@ -793,6 +804,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (toolTask.ToolType is ToolPFSeries) {
                         toolTask.ActionAfterCurveDataReceived = DoAfterRecevingCurveDataAsync;
                     }
+                    if (MainUtils.IsAutoLockToolEnabled()) {
+                        toolTask.ForceSendLock();
+                    }
                 }
 
                 // Load io boxes, included arms
@@ -835,6 +849,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Keep listenging devices
             CheckDeviceConnections();
+
+            // Action after loading devices
+            ActionAfterLoadingDevices();
         }
         // 持续检查设备连接状态的task
         private async void CheckDeviceConnections() {
@@ -864,7 +881,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (category == DeviceCategories.IOBOX_SETTERSELECTOR) {
                                 Check(block, _ioBoxTasks.Values.Where(task => task.SetterSelectorType != null).ToList());
                             } else {
-                                // TODO
+                                CheckCustomConnections(block, category);
                             }
                         }
                     }
@@ -894,6 +911,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // block.ResetIconByStatus(DeviceStatus.NORMAL);
             }
         }
+
+        protected virtual void CheckCustomConnections(DeviceBlock block, DeviceCategory category) { }
+
+        protected virtual void ActionAfterLoadingDevices() { }
 
         // Reset io box status
         protected virtual void ReseetIoBox() {
@@ -1067,7 +1088,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 _barCodePopUpForm = new BarCodeInputPopUpForm(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
-                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded, CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode)) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
@@ -1493,9 +1514,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 // Lock all tools here
+                List<int?> list = workstationDTOs.Select(dto => dto.tool_id).ToList();
                 if (MainUtils.IsArmLocatingEnabled()) {
-                    List<int?> list = workstationDTOs.Select(dto => dto.tool_id).ToList();
                     _toolTasks.Values.Where(t => list.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.ForceSendLock());
+                } else {
+                    _toolTasks.Values.Where(t => list.Contains(t.DeviceId)).ToList().ForEach(toolTask => toolTask.ForceSendUnlock());
                 }
 
                 // Start listening coordinates
@@ -1563,9 +1586,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
 
                                 // Lock tools
-                                if (MainUtils.IsArmLocatingEnabled()) {
-                                    toolTask.ForceSendLock();
-                                }
+                                toolTask.ForceSendLock();
                             } else {
                                 if (_needLoosening) {
                                     statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
@@ -1578,9 +1599,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
 
                                 // Unlock tools
-                                if (MainUtils.IsArmLocatingEnabled()) {
-                                    toolTask.ForceSendUnlock();
-                                }
+                                toolTask.ForceSendUnlock();
                             }
 
                             // Add information
@@ -1627,7 +1646,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public void ClearLockMsgs() => lockMsgs.Clear();
         public void ClearInformationMsgs() => informationMsgs.Clear();
 
-        private void StartArrangerTask() {
+        protected void StartArrangerTask() {
             _resendSignalToArrangerTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _arrangerNeeded) {
@@ -1682,7 +1701,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        private void StartSetterSelectorTask() {
+        protected void StartSetterSelectorTask() {
             _resendSignalToSetterSelectorTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _setterSelectorNeeded) {
@@ -2198,6 +2217,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
 
                         // WHYC
+                        // TZYX
                         _rundownTime = data.rundown_time;
 
                         // If result type is tightening
@@ -2363,13 +2383,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 AddInformationMsg(_workingProcessPanel.NGReasons);
 
                                 // WHYC
+                                // TZYX
                                 _errorMsg = errorMsg;
-
-                                // 记录数据
-                                StoreTighteningData(dataDTO);
 
                                 // Set status of data to ng
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
+
+                                // 记录数据
+                                StoreTighteningData(dataDTO);
 
                                 // Should not lock in the first place when it has error
                                 if (MainUtils.IsArmLocatingEnabled()) {
@@ -2524,7 +2545,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
             // Lock all tools
-            if (MainUtils.IsAutoLockToolEnabled() && MainUtils.IsArmLocatingEnabled() && _activated) {
+            if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();
             }
 
@@ -2670,15 +2691,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void OnHandleDestroyed(EventArgs e) {
             base.OnHandleDestroyed(e);
 
-            if (MainUtils.IsAutoLockToolEnabled() && MainUtils.IsArmLocatingEnabled()) {
+            if (MainUtils.IsAutoLockToolEnabled() || MainUtils.IsArmLocatingEnabled()) {
                 if (_toolTasks != null && _toolTasks.Count > 0) {
                     foreach (KeyValuePair<int, ToolTask> tool in _toolTasks) {
                         // Clear all delegates once this workplace handle has been destroyed to ensure running performance
                         tool.Value.ActionAfterAnalysis = null;
                         // Lock all tools
-                        if (_activated) {
-                            tool.Value.ForceSendLock();
-                        }
+                        tool.Value.ForceSendLock();
                     }
                 }
             }
@@ -3316,6 +3335,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private CustomTextBoxGroup _parameterSetTextBox;
         private FunctionButton _btnLock;
         private FunctionButton _btnUnlock;
+        private CommonButton _btnPSet;
 
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         public Action? SetPset { get => _setPset; set => _setPset = value; }
@@ -3323,6 +3343,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
         public FunctionButton BtnLock { get => _btnLock; set => _btnLock = value; }
         public FunctionButton BtnUnlock { get => _btnUnlock; set => _btnUnlock = value; }
+        public CommonButton BtnPSet { get => _btnPSet; set => _btnPSet = value; }
 
         public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
                 bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
@@ -3397,8 +3418,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 });
             };
-            CommonButton btnPSet = AddButton("下发");
-            btnPSet.Click += (s, e) => {
+            _btnPSet = AddButton("下发");
+            _btnPSet.Click += (s, e) => {
                 SendCommand(async toolTask => {
                     string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
                     int pset = int.Parse(parameterSet);

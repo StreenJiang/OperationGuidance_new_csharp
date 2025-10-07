@@ -149,23 +149,23 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _saveBtn.MouseUp += SaveBtnMouseUp;
             _defaultValueBtn.MouseUp += DefaultValueBtnMouseUp;
 
-            void SaveBtnMouseUp(object? sender, MouseEventArgs e) {
-                // Check can save storage settings first
-                string? error = CheckBeforeSave();
-                if (!string.IsNullOrEmpty(error)) {
-                    WidgetUtils.ShowErrorPopUp(error);
-                } else {
-                    SaveStorageSettings();
-                    SaveSystemSettings();
-                    SaveMissionSettings();
-                    WidgetUtils.ShowNoticePopUp("保存成功");
-                }
-            }
             void DefaultValueBtnMouseUp(object? sender, MouseEventArgs e) {
                 if (WidgetUtils.ShowConfirmPopUp("是否将所有配置重置为默认值？")) {
                     ResetAllToDefault();
                     WidgetUtils.ShowNoticePopUp("已将所有配置重置为默认值");
                 }
+            }
+        }
+        protected virtual void SaveBtnMouseUp(object? sender, MouseEventArgs e) {
+            // Check can save storage settings first
+            string? error = CheckBeforeSave();
+            if (!string.IsNullOrEmpty(error)) {
+                WidgetUtils.ShowErrorPopUp(error);
+            } else {
+                SaveStorageSettings();
+                SaveSystemSettings();
+                SaveMissionSettings();
+                WidgetUtils.ShowNoticePopUp("保存成功");
             }
         }
         #endregion
@@ -376,7 +376,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Ratio = 8.5,
             };
         }
-        private void SaveStorageSettings() {
+        protected void SaveStorageSettings() {
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
             string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
             // Save

@@ -11,16 +11,35 @@ namespace OperationGuidance_service.Database {
         public static string Database = string.Empty;
         public static string Path = string.Empty;
 
+        private bool doubleChecked = false;
+
         public override DbConnection? GetDbConnection() {
             string dataSourcePath = GetCurrentDataSourcePath();
             string dataSource = dataSourcePath + Database;
 
+            logger.Info($"Using SQLite: {dataSource}");
+
             SQLiteConnection? conn = null;
-            if (!File.Exists(dataSource)) {
-                if (!ExecuteSqlFile()) {
-                    return null;
+            if (!ConnectionUtils.HealthChecked && !File.Exists(dataSource)) {
+                logger.Info($"Database does not exist: {dataSource}");
+
+                if (doubleChecked) {
+                    if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
+                        if (SystemUtils.GetDBInitEnabled()) {
+                            if (!ExecuteSqlFile()) {
+                                return null;
+                            }
+                            SystemUtils.SetDBInitEnabled(false);
+                            SystemUtils.ShowNoticePopUp("数据库初始化完成！已自动禁用数据库初始化功能！");
+                        } else {
+                            SystemUtils.ShowNoticePopUp("数据库初始化已经禁用，请联系管理员，检查配置！");
+                        }
+                    }
                 }
+                doubleChecked = true;
             } else {
+                logger.Info($"Database exists. Connecting: {dataSource}");
+
                 conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
                 conn.Open();
                 string sqlScriptPrefix = "modify_sqlite";
@@ -73,6 +92,9 @@ namespace OperationGuidance_service.Database {
                 }
             }
 
+            if (conn != null) {
+                ConnectionUtils.HealthChecked = true;
+            }
             return conn;
         }
 

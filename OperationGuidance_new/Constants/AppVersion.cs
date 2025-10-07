@@ -5,5 +5,6 @@ namespace OperationGuidance_new.Constants {
         YF = 2, // 延锋
         GLB = 3, // 格雷博
         WHYC = 4, // 芜湖毅昌
+        TZYX = 5, // 台州永欣
     }
 }

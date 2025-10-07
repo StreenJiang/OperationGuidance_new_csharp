@@ -30,6 +30,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected CustomContentPanel _partsBarCodeContentPanel;
         protected List<BarCodeMatchingRuleDTO> _rulesExcluded;
         protected string? _barCode;
+        protected bool _isForBolt = false;
 
         public CustomTextBoxButtonGroup ProductBarCodeBox { get => _productBarCodeBox; set => _productBarCodeBox = value; }
         public CustomContentPanel PartsBarCodeContentPanel { get => _partsBarCodeContentPanel; set => _partsBarCodeContentPanel = value; }
@@ -38,7 +39,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public ABarCodeInputPopUpForm(AWorkplaceContentPanel workplace, string initStr, ProductMissionDTO mission, bool activated,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules, string? barCode,
-                List<BarCodeMatchingRuleDTO> rulesExcluded) : base() {
+                List<BarCodeMatchingRuleDTO> rulesExcluded, bool isForBolt) : base() {
             logger = MainUtils.GetLogger(this.GetType());
             DoubleBuffered = true;
 
@@ -49,6 +50,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _partsBarCodeRules = partsBarCodeRules;
             _barCode = barCode;
             _rulesExcluded = rulesExcluded;
+            _isForBolt = isForBolt;
 
             _productBarCodeTitle = new("产品条码") {
                 Parent = ContentPanel,
@@ -122,6 +124,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
         // 切换任务
         private void SwitchToMission(ProductMissionDTO mission) {
+            logger.Info($"Switching mission [id = {_mission.id}] to new mission [id = {mission.id}]...");
+
             _mission = mission;
             _workplace.SwitchToMission(mission);
             _partsIndex = 1;
@@ -222,10 +226,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             ProductMissionDTO? mission = null;
             // 已选任务
             if (_mission.id > 0) {
+                logger.Info($"Already chosen mission, mission id = [{_mission.id}], barcode = [{barCode}]...");
+
                 mission = _mission;
 
                 // 校验不通过，检查是否匹配其他任务
                 if (!CheckBarCodeMatchedMission(barCode)) {
+                    logger.Info($"Validation fails for mission id = [{_mission.id}], barcode = [{barCode}], checking for other missions...");
+
                     // Add this because sometimes it will go inside this check after activated, no idea why, then add a check here 
                     if (_workplace.Activated) {
                         return;
@@ -233,29 +241,39 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}]...");
                         _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
                     }
 
+                    logger.Info($"Finding another mission that matchs this mission id [{_mission.id}], barcode = [{barCode}]...");
                     mission = FindBarCodeMatchedMission(barCode);
                     // 没匹配到其他任务，不专门提示，只提示与当前任务不匹配
                     if (mission == null) {
+                        logger.Info($"Can not find any other mission that match this barcode [{barCode}]...");
+
                         checkPassed = false;
                         WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与选择的任务不匹配");
                         _productBarCodeBox.GetTextBox(0).IsError = true;
                     }
                     // 如果匹配到其他任务，则做出特定提示
                     else {
+                        logger.Info($"Found another mission that matches this barcode [{barCode}], asking the user switch or not...");
                         checkPassed = WidgetUtils.ShowConfirmPopUp($"检测到当前条码【{barCode}】与另一任务【{mission.name}】匹配，是否切换任务？");
                     }
                 }
             }
             // 没选任务
             else {
+                logger.Info("Haven't chosen any mission, finding matching mission, barcode = [{barCode}]...");
+
                 mission = FindBarCodeMatchedMission(barCode);
                 // 匹配不到任何任务，则提示没匹配上
                 if (mission == null) {
+                    logger.Info($"Can not find any other mission that match this barcode [{barCode}]...");
+
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}], checking product bar code...");
                         _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
                     }
 
@@ -270,51 +288,61 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 如果存在前置任务，则先查询前置任务是否完成
                 if (mission.predecessor_mission_id != null) {
-                    CheckIfBarCodeExistsInMissionRecordRsp rsp =
-                      _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(
-                          new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) {
-                              ProductBarCode = barCode
-                          }
-                      );
+                    logger.Info($"Checking predecessor mission for mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
+
+                    CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
                     bool yes = rsp.Yes;
 
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        logger.Info($"*Current mission id = [{mission.id}] is a challenge mission, barcode = [{barCode}]...");
+
                         if (rsp.Yes) {
                             if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
+                                logger.Info($"*Checking predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
                                 _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
                             }
                         } else {
+                            logger.Info($"*Checking predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
                             _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
                         }
                     }
 
                     if (!yes) {
+                        logger.Info($"Validation fails for predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
+
                         WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo
-                      && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
+                    logger.Info($"Checking REDO from recordings for matched mission id [{mission.id}], barcode = [{barCode}]...");
+
                     bool needRedo;
                     // Checks for challenge mission
                     if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                        logger.Info($"*Current mission id = [{_mission.id}], barcode = [{barCode}] is a challenge mission, checking REDO...");
                         _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_REDO);
                     }
 
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
+                        logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], waiting for administrators to confirm...");
+
                         // 需要管理员密码弹窗
                         _workplace.AdminConfirmed = false;
                         _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
                         needRedo = _workplace.AdminConfirmed.Value;
                     } else {
+                        logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
                     }
                     // 需要返工，修改是否返工的标识
                     if (needRedo) {
                         _workplace.IsRedo = (int) YesOrNo.YES;
                     } else {
+                        logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], administrators refused to continue, so won't start this mission...");
+
                         _workplace.IsRedo = (int) YesOrNo.NO;
                         // 存在确认返工的情况但取消返工，则将校验结果改为不通过
                         checkPassed = false;
@@ -323,6 +351,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
             // 所有检查完毕，回填、或切换任务后再回填
             if (checkPassed) {
+                logger.Info($"All checks passed for product barcode = [{barCode}], will start for mission id = [{mission.id}]...");
+
                 // 存入缓存并回填到主界面
                 _workplace.BarCodeObj.ProductBarCode = barCode;
                 WriteBackBarCodes();
@@ -332,6 +362,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 mission = CommonUtils.CannotBeNull(mission);
                 SwitchToMission(mission);
                 if (_partsBarCodeRules.ContainsKey(_mission.id)) {
+                    logger.Info($"Recalculate count of parts barcodes for mission [id = {_mission.id}]...");
                     RecalcPartsRemainingCount();
                 }
                 if (_workplace.BarCodeObj.PartsRulesCount > 0) {
@@ -348,10 +379,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     Hide();
                 }
             } else {
+                logger.Info($"Check fails for mission = [id = {_mission.id}], barcode = [{barCode}]...");
                 _productBarCodeBox.GetTextBox(0).IsError = true;
             }
         }
         public void ValidateProductBarCode(string barCode) {
+            logger.Info($"Checking product barcode [{barCode}]...");
+
             // 先回填，不然校验不到
             _productBarCodeBox.SetValue(0, barCode);
             // 校验条码
@@ -363,10 +397,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             rulesTemp = rulesTemp.Where(rule => !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
 
             _workplace.BarCodeObj.PartsRulesCount = rulesTemp.Count;
+            logger.Info($"Count of all parts barcodes that not bound to any bolts = [{rulesTemp.Count}], mission id = [{_mission.id}]...");
         }
 
         public async void ValidatePartsBarCode(CustomTextBoxButtonGroup box) {
             string barCode = box.GetTextBox(0).Box.Text;
+            logger.Info($"Checking parts barcode = [{barCode}] for mission [id = {_mission.id}]...");
+
             if (string.IsNullOrEmpty(barCode)) {
                 WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
                 box.GetTextBox(0).IsError = true;
@@ -381,12 +418,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             int ruleId = CheckPartsBarCodeMatchedMission(barCode);
             if (ruleId < 0) {
                 // Add this because sometimes it will go inside this check after activated, no idea why, then add a check here 
-                if (_workplace.Activated) {
+                if (_workplace.Activated && !_isForBolt) {
                     return;
                 }
 
                 // Checks for challenge mission
                 if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                    logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, parts barcode = [{barCode}], checking parts bar code...");
                     _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
                 }
 
@@ -399,29 +437,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 如果存在前置物料任务，则先查询前置物料任务是否完成
                 if (checkPassed && _mission.predecessor_part_mission_ids != null) {
+                    logger.Info($"Checking predecessor parts mission for mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
+
                     Dictionary<int, int>? idsDict = JsonConvert.DeserializeObject<Dictionary<int, int>>(_mission.predecessor_part_mission_ids);
                     if (idsDict != null) {
                         foreach (KeyValuePair<int, int> pair in idsDict) {
                             if (pair.Key == ruleId) {
-                                CheckIfBarCodeExistsInMissionRecordRsp rsp =
-                                  _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(
-                                      new(pair.Value, (int) TighteningStatus.OK) {
-                                          ProductBarCode = barCode
-                                      });
+                                logger.Info($"Checking REDO from recordings for matched mission id [{_mission.id}], barcode = [{barCode}]...");
+
+                                CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
                                 bool yes = rsp.Yes;
 
                                 // Checks for challenge mission
                                 if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                    logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}]...");
+
                                     if (rsp.Yes) {
                                         if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
+                                            logger.Info($"*Checking parts predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
                                             _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
                                         }
                                     } else {
+                                        logger.Info($"*Checking parts predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
                                         _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
                                     }
                                 }
 
                                 if (!yes) {
+                                    logger.Info($"Validation fails for predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
+
                                     WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                                     checkPassed = false;
                                 }
@@ -438,20 +482,25 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // 物料码返工确认
                 if (_workplace.IsRedo != (int) YesOrNo.YES || _mission.is_challenge_mission == (int) YesOrNo.YES) {
-                    if (checkPassed && _workplace._checkRedo
-                          && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                    if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(_mission.id) { PartsBarCode = barCode }).Yes) {
+                        logger.Info($"Checking REDO from recordings for matched mission id [{_mission.id}], parts barcode = [{barCode}]...");
+
                         bool needRedo;
                         // Checks for challenge mission
                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                            logger.Info($"*Current mission id = [{_mission.id}], barcode = [{barCode}] is a challenge mission, checking REDO...");
                             _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
                         }
 
                         if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
+                            logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], waiting for administrators to confirm...");
+
                             // 需要管理员密码弹窗
                             _workplace.AdminConfirmed = false;
                             _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
                             needRedo = _workplace.AdminConfirmed.Value;
                         } else {
+                            logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;
                         }
                         // 需要返工，修改是否返工的标识
@@ -459,12 +508,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             // 由于追溯码也有这个校验，因此如果不需要返工，则不动已经校验过的状态
                             _workplace.IsRedo = (int) YesOrNo.YES;
                         } else {
+                            logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], administrators refused to continue, so won't start this mission...");
+
+                            // Don't set this here because it might be a REDO mission because of product barcode
+                            // _workplace.IsRedo = (int) YesOrNo.NO;
                             checkPassed = false;
                         }
                     }
                 }
 
                 if (checkPassed) {
+                    logger.Info($"All checks passed for parts barcode = [{barCode}], mission id = [{_mission.id}]...");
+
                     // 存入缓存并回填到主界面
                     _workplace.BarCodeObj.PartsBarCodes.Add(barCode);
                     _workplace.BarCodeObj.PartsMatchingRulesCached.Add(ruleId);
@@ -480,22 +535,23 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         ActiveControl = nextBox.GetTextBox(0).Box;
                     }
                     // 检查是否可以激活任务
-                    if (CheckCanActivateMission()) {
-                        if (!_workplace.Activated) {
+                    if (!_workplace.Activated) {
+                        if (CheckCanActivateMission()) {
                             // 激活任务
                             _workplace.ActivateMission();
                             await Task.Delay(1000);
-                        } else {
-                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedBoltBarCode);
-                            _workplace.MissionRecord.parts_bar_code = string.Join(",", _workplace.BarCodeObj.PartsBarCodes);
-                            _workplace.Apis.AddOrUpdateMissionRecord(new(_workplace.MissionRecord));
-                            await Task.Delay(300);
                         }
-
-                        // Hide/Close pop up form
-                        Hide();
+                    } else {
+                        _workplace.RemoveLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                        _workplace.MissionRecord.parts_bar_code = string.Join(",", _workplace.BarCodeObj.PartsBarCodes);
+                        _workplace.Apis.AddOrUpdateMissionRecord(new(_workplace.MissionRecord));
+                        await Task.Delay(300);
                     }
+
+                    // Hide/Close pop up form
+                    Hide();
                 } else {
+                    logger.Info($"Check fails for mission = [id = {_mission.id}], parts barcode = [{barCode}]...");
                     box.GetTextBox(0).IsError = true;
                 }
             }
@@ -504,8 +560,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Check if current bar code is bound to a bolt (or current bolt)
             if (_rulesExcluded.Count > 0 && _rulesExcluded.Any(rule => rule.id == ruleId)) {
                 if (!_workplace.Activated) {
+                    logger.Info($"Current parts barcode is bound to a bolt, can only enter after mission is activated...");
                     WidgetUtils.ShowWarningPopUp("此物料与点位绑定，任务进行时才需录入");
                 } else {
+                    logger.Info($"Current parts barcode is not bound to current bolt...");
                     WidgetUtils.ShowWarningPopUp("此物料不是当前点位绑定的物料，请重新录入");
                 }
                 return false;
@@ -514,12 +572,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
         public void ValidatePartsBarCode(string barCode) {
-            try {
-                if (_focusedBox == null) {
-                    logger.Info($"Count on PopUp: {_partsBarCodeContentPanel.Controls.Count}");
-                    logger.Info($"Count on Saved: {_workplace.BarCodeObj.PartsBarCodes.Count}");
-                    logger.Info($"Saved Bar codes: [{String.Join(", ", _workplace.BarCodeObj.PartsBarCodes)}]");
+            logger.Info($"Checking parts barcode [{barCode}]...");
 
+            try {
+                logger.Info($"Count on PopUp: {_partsBarCodeContentPanel.Controls.Count}");
+                logger.Info($"Count on Saved: {_workplace.BarCodeObj.PartsBarCodes.Count}");
+                logger.Info($"Saved Bar codes: [{string.Join(", ", _workplace.BarCodeObj.PartsBarCodes)}]");
+
+                if (_focusedBox == null) {
                     if (_partsBarCodeContentPanel.Controls.Count > _workplace.BarCodeObj.PartsBarCodes.Count) {
                         _focusedBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
                     } else {
@@ -585,41 +645,54 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 校验时需要剔除已经校验过的规则，以免扫过的码重复也能通过
                 foreach (BarCodeMatchingRuleDTO rule in _partsBarCodeRules[_mission.id].Where(r => !_workplace.BarCodeObj.PartsMatchingRulesCached.Contains(r.id))) {
                     if (MainUtils.CheckBarCodeIsMatched(barCode, rule)) {
+                        logger.Info($"Check passes for barcode = [{barCode}], mission [id = {_mission.id}], rule id = [{rule.id}]...");
                         return rule.id;
                     }
                 }
+
+                logger.Info($"Check fails for barcode = [{barCode}], mission [id = {_mission.id}]...");
                 return -1;
             }
+
             // 如果没有配置条码匹配规则，则也可以通过
+            logger.Info($"No any rules for parts barcodes, checking barcode = [{barCode}], mission [id = {_mission.id}]...");
             return 0;
         }
 
         // 检查是否可以激活任务
         public virtual bool CheckCanActivateMission() {
+            logger.Info($"Checking for mission [id = {_mission.id}] if can activate it, right now...");
+
             // 没选任务，pass
-            if (_mission.id > 0) {
-                // 没录入产品码，pass
-                if (!string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
-                    // 配置了物料码但是录入的物料码与配置的数量不一致，pass
-                    if (_partsBarCodeRules.ContainsKey(_mission.id)) {
-                        List<BarCodeMatchingRuleDTO> rulesTemp = _partsBarCodeRules[_mission.id];
-                        // Filer out all rules that bound to bolts
-                        rulesTemp = rulesTemp.Where(rule => _workplace.BarCodeObj.PartsMatchingRulesCached.Contains(rule.id) || !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
-                        if (rulesTemp.Count == _workplace.BarCodeObj.PartsBarCodes.Count) {
-                            // 重置所有带红框提示的输入框
-                            _productBarCodeBox.GetTextBox(0).IsError = false;
-                            foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
-                                ((CustomTextBoxButtonGroup) ctrl).GetTextBox(0).IsError = false;
-                            }
-                            return true;
-                        }
-                    } else {
-                        // No parts bar code
-                        return true;
-                    }
+            if (_mission.id <= 0) {
+                return false;
+            }
+
+            // 没录入产品码，pass
+            if (string.IsNullOrEmpty(_workplace.BarCodeObj.ProductBarCode)) {
+                logger.Info($"Haven't entered product barcode for mission [id = {_mission.id}]...");
+                return false;
+            }
+
+            if (_partsBarCodeRules.ContainsKey(_mission.id)) {
+                List<BarCodeMatchingRuleDTO> rulesTemp = _partsBarCodeRules[_mission.id];
+                // Filer out all rules that bound to bolts
+                rulesTemp = rulesTemp.Where(rule => _workplace.BarCodeObj.PartsMatchingRulesCached.Contains(rule.id) || !_rulesExcluded.Any(r => r.id == rule.id)).ToList();
+                // 配置了物料码但是录入的物料码与配置的数量不一致，fails
+                if (rulesTemp.Count != _workplace.BarCodeObj.PartsBarCodes.Count) {
+                    logger.Info($"Count of entered parts barcodes for mission [id = {_mission.id}] are not enough. rulesTemp.Count = [{rulesTemp.Count}], _workplace.BarCodeObj.PartsBarCodes.Count = [{_workplace.BarCodeObj.PartsBarCodes.Count}]...");
+                    return false;
+                }
+
+                // 重置所有带红框提示的输入框
+                _productBarCodeBox.GetTextBox(0).IsError = false;
+                foreach (Control ctrl in _partsBarCodeContentPanel.Controls) {
+                    ((CustomTextBoxButtonGroup) ctrl).GetTextBox(0).IsError = false;
                 }
             }
-            return false;
+
+            logger.Info($"All checks passed for mission = [id = {_mission.id}]...");
+            return true;
         }
         // 根据传入的条码智能校验
         public void ValidateBarCode(string barCode) {

@@ -24,7 +24,11 @@ namespace OperationGuidance_new.Utils {
         #endregion
 
         #region Constructors
-        public ASettingsFileUtil(string IniPath, string FileName, string FileType) {
+        public ASettingsFileUtil(string FileName, string FileType) : this(MainUtils.GetBaseDirectory(), FileName, FileType) { }
+        public ASettingsFileUtil(string? IniPath, string FileName, string FileType) {
+            if (IniPath == null) {
+                IniPath = MainUtils.GetBaseDirectory();
+            }
             _path = new FileInfo(IniPath + FileName + FileType).FullName;
             _fileName = FileName;
             _fileType = FileType;

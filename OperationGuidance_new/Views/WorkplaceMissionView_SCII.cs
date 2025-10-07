@@ -237,7 +237,7 @@ namespace OperationGuidance_new.Views {
                 }
 
                 _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
-                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded) {
+                        _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded, CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode)) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
@@ -1006,20 +1006,22 @@ namespace OperationGuidance_new.Views {
                                 // Check tightening status
                                 if (data.tightening_status != (int) TighteningStatus.OK) {
                                     tighteningOK = false;
-                                    if (data.torque_status != (int) TighteningCommonStatus.OK) {
-                                        _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                }
+                                if (data.torque_status != (int) TighteningCommonStatus.OK) {
+                                    tighteningOK = false;
+                                    _torque.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
                                     }
-                                    if (data.angle_status != (int) TighteningCommonStatus.OK) {
-                                        _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                        if (!string.IsNullOrEmpty(errorMsg)) {
-                                            errorMsg += "\r\n";
-                                        }
-                                        errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                    errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                }
+                                if (data.angle_status != (int) TighteningCommonStatus.OK) {
+                                    tighteningOK = false;
+                                    _angle.ForeColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
+                                    if (!string.IsNullOrEmpty(errorMsg)) {
+                                        errorMsg += "\r\n";
                                     }
+                                    errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
                                 }
 
                                 // Check torque

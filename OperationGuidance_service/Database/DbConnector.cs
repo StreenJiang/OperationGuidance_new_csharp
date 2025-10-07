@@ -12,7 +12,7 @@ namespace OperationGuidance_service.Database {
         private static readonly ADbConnector connector;
 
         static DbConnector() {
-            SystemUtils.InitMySqlConfigs();
+            SystemUtils.InitMySqlAndSqlServerConfigs();
             SystemUtils.InitSQLiteConfigs();
             switch (SystemUtils.GetDBTypes()) {
                 default:
@@ -33,14 +33,13 @@ namespace OperationGuidance_service.Database {
 
             int tryMaxTimes = 2;
             int tryTimes = 0;
-            while (tryTimes < tryMaxTimes) {
+            while (dbConnection == null && tryTimes < tryMaxTimes) {
                 try {
                     dbConnection = connector.GetDbConnection();
-                    if (dbConnection != null) {
-                        break;
+                    if (dbConnection == null) {
+                        tryTimes++;
+                        logger.Warn($"Can not connect to DB, reconnecting... tryTimes = {tryTimes}");
                     }
-                    tryTimes++;
-                    logger.Warn($"Can not connect to DB, reconnecting... tryTimes = {tryTimes}");
                 } catch (DatabaseException de) {
                     logger.Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
                     continue;

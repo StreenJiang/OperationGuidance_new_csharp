@@ -1,5 +1,5 @@
 namespace OperationGuidance_new.Utils {
     public class ChallengeTaskUtil: ASettingsFileUtil {
-        public ChallengeTaskUtil() : base(MainUtils.GetBaseDirectory(), "ChallengeResult", ".result") { }
+        public ChallengeTaskUtil() : base("ChallengeResult", ".result") { }
     }
 }

@@ -73,6 +73,7 @@ namespace CustomLibrary.Forms {
                 RelocateButtons();
             }
         }
+        public bool ShowInFront { get; set; } = true;
 
         public CustomPopUpForm() : base() {
             Control mainParent = WidgetUtils.MainForm;
@@ -206,7 +207,11 @@ namespace CustomLibrary.Forms {
                 EventFuncs.CurrentPopUpForm = this;
             }
             Opacity = 1D;
-            base.ShowDialog();
+            if (ShowInFront) {
+                base.ShowDialog();
+            } else {
+                base.Show();
+            }
         }
 
         protected virtual void AfterShown() { }
@@ -328,8 +333,10 @@ namespace CustomLibrary.Forms {
             base.OnHandleDestroyed(e);
             _popUpFormBackboard.Dispose();
             EventFuncs.CurrentPopUpForm = null;
-            WidgetUtils.MainForm.TopMost = true;
-            WidgetUtils.MainForm.TopMost = false;
+            if (ShowInFront) {
+                WidgetUtils.MainForm.TopMost = true;
+                WidgetUtils.MainForm.TopMost = false;
+            }
         }
     }
 

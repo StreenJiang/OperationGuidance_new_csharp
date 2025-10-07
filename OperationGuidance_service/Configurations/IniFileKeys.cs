@@ -1,6 +1,7 @@
 namespace OperationGuidance_service.Configurations {
     public static class IniFileKeys {
         public static string DatabaseType { get; set; } = "database_type";
+        public static string InitEnabled { get; set; } = "init_enabled";
 
         public static string DatabaseConfigMYSQL_server { get; set; } = "database_config_mysql_server";
         public static string DatabaseConfigMYSQL_port { get; set; } = "database_config_mysql_port";

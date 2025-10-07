@@ -1,4 +1,5 @@
-﻿using OperationGuidance_service.Constants;
+﻿using log4net;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
 using System.Collections;
 using System.Data.Common;
@@ -9,26 +10,47 @@ using WmiLight;
 
 namespace OperationGuidance_service.Utils {
     public class ConnectionUtils {
+        private static ILog log = LogManager.GetLogger(typeof(ConnectionUtils));
+        public static bool HealthChecked = false;
+
         public static ConnectionStatus CheckConnection(string ip, int port) {
             return ConnectionStatus.CONNECTED;
         }
 
         public static bool CheckTableExists(DbConnection conn, string tableName) {
+            string database = SystemUtils.GetDataBase();
+            if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(database)) {
+                log.Warn($"Invalid table name or database name: {tableName}, {database}");
+                return false;
+            }
+
             bool exists;
-            DbCommand dbCommand = conn.CreateCommand();
+            using DbCommand dbCommand = conn.CreateCommand();
 
             try {
                 // ANSI SQL way.  Works in PostgreSQL, MSSQL, MySQL.  
-                dbCommand.CommandText = "select case when exists((select * from information_schema.tables where table_name = '" + tableName + "')) then 1 else 0 end";
-                object? v = dbCommand.ExecuteScalar();
-                exists = (int) dbCommand.ExecuteScalar() == 1;
-            } catch {
+                dbCommand.CommandText = $"select count(1) from information_schema.tables where table_schema = '{database}' and table_name = '{tableName}'";
+                log.Info($"Checking table exists or not, sql: {dbCommand.CommandText}");
+
+                object? result = dbCommand.ExecuteScalar();
+                exists = result != null && Convert.ToInt32(result) > 0;
+
+                log.Info($"Checking table exists or not, result: {exists}");
+            } catch (Exception e) {
+                log.Warn($"Checking table exists or not, catching exception, e = {e}");
+
                 try {
                     // Other RDBMS.  Graceful degradation
-                    dbCommand.CommandText = "select 1 from " + tableName + " where 1 = 0";
+                    dbCommand.CommandText = $"select 1 from {tableName} where 1 = 0";
+                    log.Info($"Checking table exists or not inside catching block, sql: {dbCommand.CommandText}");
+
                     dbCommand.ExecuteNonQuery();
                     exists = true;
-                } catch {
+
+                    log.Info($"Checking table exists or not inside catching block, result: {exists}");
+                } catch (Exception e1) {
+                    log.Warn($"Checking table exists or not inside catching block, catching exception again, e1 = {e1}");
+
                     exists = false;
                 }
             }
