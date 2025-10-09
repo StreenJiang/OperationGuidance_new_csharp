@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons;
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Constants;
 using CustomLibrary.DateTimePickers;
@@ -148,11 +148,16 @@ namespace CustomLibrary.Utils {
         /// <param name="newWidth">New width of new Image.</param>
         /// <param name="newHeight">New height of new Image.</param>
         /// <returns>New image witdh new size.</returns>        
-        public static Image ResizeImage(Image image, int newWidth, int newHeight) {
+        public static Image ResizeImage(Image image, int newWidth, int newHeight, bool dispose = false) {
             lock (_imageLocker) {
                 if (newWidth <= 0 || newHeight <= 0) {
-                    return image;
+                    Bitmap bitmap = new Bitmap(image);
+                    if (dispose) {
+                        image.Dispose();
+                    }
+                    return bitmap;
                 }
+
                 Bitmap resultImage = new Bitmap(newWidth, newHeight);
                 using (Graphics g = Graphics.FromImage(resultImage)) {
                     g.CompositingMode = CompositingMode.SourceCopy;
@@ -164,11 +169,15 @@ namespace CustomLibrary.Utils {
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
                 }
+
+                if (dispose) {
+                    image.Dispose();
+                }
                 return resultImage;
             }
         }
-        public static Image ResizeImage(Image image, Size newSize) {
-            return ResizeImage(image, newSize.Width, newSize.Height);
+        public static Image ResizeImage(Image image, Size newSize, bool dispose = false) {
+            return ResizeImage(image, newSize.Width, newSize.Height, dispose);
         }
 
         /// <summary>
@@ -293,7 +302,7 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
-        public static Image RotateImage(Image image, float angle, ILog? logger = null) {
+        public static Image RotateImage(Image image, float angle, ILog? logger = null, bool dispose = true) {
             // 原图的宽和高
             int w = image.Width;
             int h = image.Height;
@@ -368,6 +377,10 @@ namespace CustomLibrary.Utils {
                     }
                     throw e;
                 }
+            }
+
+            if (dispose) {
+                image.Dispose();
             }
             return dsImage;
         }
@@ -717,9 +730,21 @@ namespace CustomLibrary.Utils {
             return pictureBoxGroup;
         }
 
-
         public static double GetTimeMillisec(DateTime time) {
             return time.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+        }
+
+        public static string GetBaseDirectory() {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string visualStudioDebugPath = "\\OperationGuidance_new\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath, "");
+            }
+            string visualStudioDebugPath2 = "\\bin\\Debug\\net6.0-windows";
+            if (baseDirectory.Contains(visualStudioDebugPath2)) {
+                baseDirectory = baseDirectory.Replace(visualStudioDebugPath2, "");
+            }
+            return baseDirectory;
         }
     }
 }

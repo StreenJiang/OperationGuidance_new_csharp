@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons.BaseClasses;
+using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Utils;
 
 namespace OperationGuidance_new.Views {

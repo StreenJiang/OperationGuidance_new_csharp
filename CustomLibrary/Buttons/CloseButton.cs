@@ -1,5 +1,4 @@
-﻿using CustomLibrary.Buttons.BaseClasses;
-using CustomLibrary.Resources;
+using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
@@ -8,7 +7,8 @@ namespace CustomLibrary.Buttons {
         public float ClosebuttonIconRatio { get => _closebuttonIconRatio; set => _closebuttonIconRatio = value; }
 
         public CloseButton() : base() {
-            Icon = CustomResources.button_close;
+            Icon = ResxUtils.Load("button_close");
+            ;
             BlockHoverUp = true;
         }
 
@@ -23,7 +23,13 @@ namespace CustomLibrary.Buttons {
             }
         }
 
-        protected override void ResizeTextLabel() {
+        protected override void ResizeTextLabel() { }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                Icon?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

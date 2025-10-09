@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Configs;
+using CustomLibrary.Configs;
 using CustomLibrary.Resources;
 using CustomLibrary.Utils;
 using System.ComponentModel;
@@ -263,9 +263,11 @@ namespace CustomLibrary.TextBoxes {
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
-                _iconShowing = WidgetUtils.ResizeImage(CustomResources.input_error, newIconSize);
-                _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
-                _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
+                using (Image imageTemp = ResxUtils.Load("input_error")) {
+                    _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize);
+                    _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
+                    _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
+                }
             }
             int boxErrorNewWidth = _boxOriginalWidth - newIconSize.Width;
             if (_boxErrorWidth != boxErrorNewWidth) {
@@ -427,6 +429,13 @@ namespace CustomLibrary.TextBoxes {
         protected override void OnBackColorChanged(EventArgs e) {
             base.OnBackColorChanged(e);
             _box.BackColor = BackColor;
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _iconShowing?.Dispose();
+            }
+            base.Dispose(disposing);
         }
         #endregion
     }

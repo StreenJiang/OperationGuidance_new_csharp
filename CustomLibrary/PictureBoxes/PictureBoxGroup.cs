@@ -31,17 +31,17 @@ namespace CustomLibrary.Buttons {
         public new int Height { get => base.Height; }
         public int PictureBoxHeightBase { get => _pictureBoxHeightBase; set => _pictureBoxHeightBase = value; }
         public string TextName { get => this._textName; set => this._textName = value; }
-        public string FileName { 
-            get => _fileName; 
+        public string FileName {
+            get => _fileName;
             set {
-                _fileName = value; 
+                _fileName = value;
                 Invalidate();
             }
         }
-        public Image Image { 
-            get => _image; 
+        public Image Image {
+            get => _image;
             set {
-                _image = value; 
+                _image = value;
                 _showingDefault = false;
                 Invalidate();
                 _iamgeChanged();
@@ -50,17 +50,17 @@ namespace CustomLibrary.Buttons {
         public double? Ratio { get => this._ratio; set => this._ratio = value; }
         public Color ForeColorExpectButton { get => _foreColorExpectButton; set => _foreColorExpectButton = value; }
         public new Color BackColor { get; private set; }
-        public new Control Parent { 
-            get => base.Parent; 
+        public new Control Parent {
+            get => base.Parent;
             set {
                 base.Parent = value;
                 BackColor = value.BackColor;
                 _picturePanel.BackColor = WidgetUtils.DarkenColor(BackColor, .1);
-            } 
+            }
         }
-        public Color ButtonBackColor { 
-            get => _selectButton.BackColor; 
-            set => _selectButton.BackColor = value; 
+        public Color ButtonBackColor {
+            get => _selectButton.BackColor;
+            set => _selectButton.BackColor = value;
         }
         public int GapBetweenNameNBoxes { get => this._gapNameAndButton; set => this._gapNameAndButton = value; }
         public HorizontalAlignment NameAlignment {
@@ -72,7 +72,7 @@ namespace CustomLibrary.Buttons {
                 this._nameAlignment = value;
             }
         }
-        public event Action ImageChanged{ add => _iamgeChanged += value; remove => _iamgeChanged -= value; }
+        public event Action ImageChanged { add => _iamgeChanged += value; remove => _iamgeChanged -= value; }
 
         public PictureBoxGroup(string textName) : base() {
             Margin = new(0);
@@ -93,7 +93,7 @@ namespace CustomLibrary.Buttons {
                 Margin = new(0),
             };
             _picturePanel.Paint += PicturePanelPaint;
-            _image = Resources.CustomResources.image_default;
+            _image = ResxUtils.Load("image_default");
             _showingDefault = true;
         }
 
@@ -166,7 +166,6 @@ namespace CustomLibrary.Buttons {
         private void PicturePanelPaint(object? sender, PaintEventArgs eventArgs) {
             Graphics g = eventArgs.Graphics;
             g.Clear(_picturePanel.BackColor);
-            
             Image imageShowing;
             if (_showingDefault) {
                 int side = _picturePanelHeight / 3;
@@ -188,6 +187,13 @@ namespace CustomLibrary.Buttons {
             base.OnParentBackColorChanged(e);
             BackColor = Parent.BackColor;
             _picturePanel.BackColor = WidgetUtils.DarkenColor(BackColor, .1);
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _image?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

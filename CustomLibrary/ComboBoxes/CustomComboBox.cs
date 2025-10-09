@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
@@ -671,8 +671,8 @@ namespace CustomLibrary.ComboBoxes {
                 BlockHoverUp = true;
                 BlockHoverDown = true;
                 _isCollapsed = true;
-                _iconExpand = Resources.CustomResources.combo_expand;
-                _iconCollapse = Resources.CustomResources.combo_collapse;
+                _iconExpand = ResxUtils.Load("combo_expand");
+                _iconCollapse = ResxUtils.Load("combo_collapse");
                 _iconPosition = new(0, 0);
                 // Need to register this first to make sure this 'Clicking' is fired before others
                 Click += Clicking;
@@ -748,6 +748,14 @@ namespace CustomLibrary.ComboBoxes {
 
             public void TriggerClick() {
                 OnClick(EventArgs.Empty);
+            }
+
+            protected override void Dispose(bool disposing) {
+                if (disposing) {
+                    _iconExpand?.Dispose();
+                    _iconCollapse?.Dispose();
+                }
+                base.Dispose(disposing);
             }
         }
 

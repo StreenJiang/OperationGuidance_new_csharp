@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using CustomLibrary.Configs;
 using CustomLibrary.Utils;
 
@@ -13,7 +13,7 @@ namespace CustomLibrary.DateTimePickers {
         private Color _originalBackColor;
         private Color _disabledBackColor;
         private Color? _borderColor;
-        private Image _icon = Resources.CustomResources.calendar_fill;
+        private Image _icon = ResxUtils.Load("calendar_fill");
         private Image? _iconShowing;
         private readonly int _borderThickness = 1;
         private Font _font;
@@ -186,6 +186,13 @@ namespace CustomLibrary.DateTimePickers {
             if (_iconShowing != null) {
                 g.DrawImage(_iconShowing, new Point(_iconAreaRect.Location.X, _iconAreaRect.Location.Y + _vPadding));
             }
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _icon?.Dispose();
+            }
+            base.Dispose(disposing);
         }
         #endregion
     }

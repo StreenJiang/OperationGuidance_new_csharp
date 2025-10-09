@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons;
+using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
@@ -642,7 +642,7 @@ namespace OperationGuidance_new.Views {
                 };
 
                 // 设置图片编辑时可撤回的次数（即可以回溯多少次操作）
-                _imageOperationBufferLength = 20;
+                _imageOperationBufferLength = 0;
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
                     _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
@@ -684,6 +684,7 @@ namespace OperationGuidance_new.Views {
                     _currentProductImageFile.ImageCrop();
                 });
                 _imageButtonUndo = GenerateImageButton("撤回操作", Properties.Resources.image_undo, (sender, eventArgs) => _currentProductImageFile.ImageUndo());
+                _imageButtonUndo.Hide();
                 _imageButtonReset = GenerateImageButton("重置图片", Properties.Resources.image_reset, (sender, eventArgs) => {
                     _currentProductImageFile.ClearBuffer();
                     _currentSideButton.ImageReset();

@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Buttons;
+using CustomLibrary.Buttons;
 using CustomLibrary.Buttons.AbstractClasses;
 using CustomLibrary.Constants;
 using CustomLibrary.Panels;
@@ -72,6 +72,9 @@ namespace OperationGuidance_new {
 
             // Check license
             MainUtils.CheckLicense();
+
+            // Init all images from reoursces
+            ResxUtils.Init();
 
             // 检查当前设备是否已存在于物理地址表，用于隔离物理机器
             SystemUtils.MacAddressesDTO = SystemUtils.GetApis().FindMacAddressesByMacs(new(MainUtils.Macs)).MacAddressesDTO;

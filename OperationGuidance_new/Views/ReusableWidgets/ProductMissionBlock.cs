@@ -109,6 +109,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void PerformClick(EventArgs e) {
             OnClick(e);
         }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _coverImage?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+        protected override void OnHandleDestroyed(EventArgs e) {
+            _coverImage?.Dispose();
+            base.OnHandleDestroyed(e);
+        }
     }
 
     public class InnerButton<T>: CustomImageTextButtonBase {

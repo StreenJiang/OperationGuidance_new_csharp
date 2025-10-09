@@ -1,4 +1,5 @@
-﻿using CustomLibrary.Utils;
+using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
@@ -6,7 +7,9 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class ProductImageFile {
+    public class ProductImageFile: IDisposable {
+        private ILog logger = LogManager.GetLogger(typeof(ProductImageFile));
+
         private AProductImageDisplayPanel _container;
         private ProductSideDTO _sideDTO;
         private string? _filePath;
@@ -23,7 +26,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Stack<ProductImageFile> _undoBuffer;
         private int _undoBufferLength;
         private Rectangle? _imageRange;
-
         public AProductImageDisplayPanel Container { get => _container; set => _container = value; }
         public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
         public string? FilePath { get => _filePath; set => _filePath = value; }
@@ -71,10 +73,31 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public ProductImageFile Copy() {
+            // 添加安全检查
+            Image? newImage = null;
+            if (_image != null) {
+                try {
+                    // 检查图像是否仍然有效
+                    if (_image.Width > 0 && _image.Height > 0) {
+                        newImage = new Bitmap(_image);
+                    } else {
+                        logger.Warn($"警告: 图像尺寸无效 - Width: {_image.Width}, Height: {_image.Height}");
+                    }
+                } catch (ArgumentException ex) {
+                    logger.Warn($"复制图像失败: {ex.Message}");
+                    // 尝试重新加载
+                    newImage = ReloadImage();
+                } catch (ObjectDisposedException ex) {
+                    logger.Warn($"图像已被释放: {ex.Message}");
+                    // 尝试重新加载
+                    newImage = ReloadImage();
+                }
+            }
+
             return new(_container, _sideDTO, _undoBufferLength) {
                 FilePath = _filePath,
                 ImageFileName = _imageFileName,
-                Image = _image != null ? new Bitmap(_image) : null,
+                Image = newImage,
                 CenterLocation = _centerLocation,
                 LocationOffset = _locationOffset,
                 LocationOffsetMoving = _locationOffsetMoving,
@@ -83,6 +106,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 RotateAngle = _rotateAngle,
                 Cropped = _cropped,
             };
+        }
+        private Image? ReloadImage() {
+            try {
+                return MainUtils.GetProductImage(_imageFileName);
+            } catch {
+                return null;
+            }
         }
 
         public void CopyFrom(ProductImageFile from) {
@@ -224,7 +254,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 if (_rotateAngle == 0) {
                     return imageTemp;
                 }
-                return WidgetUtils.RotateImage(imageTemp, _rotateAngle);
+                return imageTemp = WidgetUtils.RotateImage(imageTemp, _rotateAngle, logger);
             }
             return null;
         }
@@ -258,6 +288,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _sideDTO.location_offset_moving = _locationOffsetMoving.ToString();
             _sideDTO.rotate_angle = _rotateAngle;
             _sideDTO.cropped = _cropped ? (int) YesOrNo.YES : (int) YesOrNo.NO;
+        }
+
+        public void Dispose() {
+            _image?.Dispose();
         }
     }
 }

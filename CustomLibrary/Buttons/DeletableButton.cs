@@ -4,7 +4,7 @@ using CustomLibrary.Utils;
 
 namespace CustomLibrary.Buttons {
     public class DeletableButton: CommonButtonBase {
-        private Image _closeImage = Resources.CustomResources.button_close;
+        private Image _closeImage = ResxUtils.Load("button_close");
         private Rectangle? _imageRect;
         private Image? _imageShowing;
         private bool _down = false;
@@ -89,6 +89,13 @@ namespace CustomLibrary.Buttons {
             if (_imageShowing != null && _imageRect != null) {
                 e.Graphics.DrawImage(_imageShowing, _imageRect.Value.Location);
             }
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _closeImage?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

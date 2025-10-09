@@ -1,19 +1,21 @@
-﻿using CustomLibrary.Configs;
+using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
+        private ILog? logger = LogManager.GetLogger(typeof(MissionListPanel));
+
         private TitlePanel? _titlePanel;
         private CustomVScrollingContentPanel _contentOuterPanel;
         private ContentPanel _contentPanel;
         private List<ProductMissionDTO> _missionDTOs;
         private ProductMissionBlock<ProductMissionDTO>? _currentToggledMission = null;
         private int _titleHeight;
-
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
         public ProductMissionBlock<ProductMissionDTO>? CurrentToggledMission { get => _currentToggledMission; set => _currentToggledMission = value; }
         public TitlePanel? TitlePanel { get => _titlePanel; set => _titlePanel = value; }
@@ -90,7 +92,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                 coverImage = MainUtils.GetProductImage(sideDTO.image);
                                 if (coverImage != null) {
                                     if (sideDTO.rotate_angle != null) {
-                                        coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value);
+                                        coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value, logger);
                                     }
                                     break;
                                 }

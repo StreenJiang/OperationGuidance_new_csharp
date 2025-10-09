@@ -2770,6 +2770,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
     }
 
     public class WorkingProcessPanel: CustomContentPanel {
+        private ILog logger = LogManager.GetLogger(typeof(WorkingProcessPanel));
+
         private readonly int _loopingInterval = 50;
         public static readonly string UnlockedManually = "已手动解锁";
         public static readonly string TighteningDesc = "正在拧紧{0}号螺丝";
@@ -2914,9 +2916,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 } else {
                                     _rotateAngle -= 15;
                                 }
-                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle);
+                                Image oldImage = _pictureBox.Image;
+                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, logger);
                                 _pictureBox.Size = image.Size;
                                 _pictureBox.Image = image;
+                                oldImage.Dispose();
+
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
                             case WorkplaceProcessStatus.OPERATION_DISABLE:

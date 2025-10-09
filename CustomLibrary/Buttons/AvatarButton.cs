@@ -4,7 +4,7 @@ using CustomLibrary.Utils;
 namespace CustomLibrary.Buttons.BaseClasses {
     public class AvatarButton: AbstractCustomImageTextButton {
         #region Fields
-        private Image _defaultAvatar = Resources.CustomResources.avatar_default;
+        private Image _defaultAvatar = ResxUtils.Load("avatar_default");
         #endregion
 
         #region Properties
@@ -38,6 +38,12 @@ namespace CustomLibrary.Buttons.BaseClasses {
         protected override void OnMouseClick(MouseEventArgs e) { }
         protected override void OnMouseDown(MouseEventArgs mevent) { }
         protected override void OnMouseUp(MouseEventArgs mevent) { }
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _defaultAvatar?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
         #endregion
     }
 }
