@@ -136,7 +136,7 @@ namespace OperationGuidance_new.Views {
                 if (!string.IsNullOrEmpty(getMatCodeUri)) {
                     // Send http request to get mat code
                     HttpRequestGetMatCode request = new(_barCodeObj.ProductBarCode);
-                    HttpResponseGetMatCode response = await HttpUtils.SendPost<HttpRequestGetMatCode, HttpResponseGetMatCode>(getMatCodeUri, request);
+                    HttpResponseGetMatCode response = await HttpUtils.SendPost_WHYC<HttpRequestGetMatCode, HttpResponseGetMatCode>(getMatCodeUri, request);
                     logger.Info($"ucData = [{JsonConvert.SerializeObject(response.ucData)}]");
 
                     if (response.unStatus == HttpStatus_WHYC.FAILURE) {
@@ -556,7 +556,7 @@ namespace OperationGuidance_new.Views {
                     SumQty = _sumBoltDone,
                 };
 
-                HttpResponseUploadData response = await HttpUtils.SendPost<HttpRequestUploadData, HttpResponseUploadData>(uploadDataUri, request);
+                HttpResponseUploadData response = await HttpUtils.SendPost_WHYC<HttpRequestUploadData, HttpResponseUploadData>(uploadDataUri, request);
                 if (response.unStatus == HttpStatus_WHYC.FAILURE) {
                     WidgetUtils.ShowErrorPopUp($"上传数据失败，返回信息：{response.ucMsg}");
                 }

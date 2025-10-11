@@ -1,4 +1,4 @@
-﻿using log4net;
+using log4net;
 using MySql.Data.MySqlClient;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Models;

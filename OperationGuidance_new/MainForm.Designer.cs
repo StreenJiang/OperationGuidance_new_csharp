@@ -18,6 +18,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
+using OperationGuidance_service.HttpServer;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -45,6 +46,7 @@ namespace OperationGuidance_new {
         private BackgroundWorker backgroundWorker;
         public bool AllCreated { get; set; } = false;
         private OperatorView? _operatorView = null;
+        private RestfulHttpServer? _restfulHttpServer;
 
         //[System.Runtime.InteropServices.DllImport("user32")]
         //protected static extern bool AnimateWindow(IntPtr hWnd, int dwTime, int dwFlags);
@@ -205,6 +207,27 @@ namespace OperationGuidance_new {
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
+            // Initialize http server
+            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+            switch (appVersion) {
+                default:
+                case AppVersion.STANDARD:
+                    break;
+                case AppVersion.SCII:
+                    HttpConfig httpConfig = MainUtils.HttpConfig;
+                    string isHostStr = httpConfig.Read(ConfigName_Http.IsHost);
+                    bool isHost = false;
+                    if (string.IsNullOrEmpty(isHostStr)) {
+                        httpConfig.Write(ConfigName_Http.IsHost, (int) YesOrNo.NO + "");
+                    } else {
+                        isHost = isHostStr == (int) YesOrNo.YES + "";
+                    }
+                    if (isHost) {
+                        _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
+                    }
+                    break;
+            }
+
             if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                 OperatorOpenning();
             } else {
@@ -273,7 +296,6 @@ namespace OperationGuidance_new {
                                 Name = contentPanelTemp.Name
                             };
                         } else {
-                            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
                             Type type;
                             if (mainMenuConfig.ViewTypes.ContainsKey(appVersion)) {
                                 type = mainMenuConfig.ViewTypes[appVersion];
@@ -476,5 +498,16 @@ namespace OperationGuidance_new {
             }
         }
         #endregion
+
+        protected override void OnFormClosing(FormClosingEventArgs e) {
+            DialogResult result = MessageBox.Show(null, "确定要退出吗？", "退出程序", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes) {
+                _restfulHttpServer?.Stop();
+                _restfulHttpServer?.Dispose();
+                base.OnFormClosing(e);
+            } else {
+                e.Cancel = true;
+            }
+        }
     }
 }

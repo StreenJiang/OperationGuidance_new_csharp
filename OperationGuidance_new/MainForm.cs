@@ -38,15 +38,6 @@ namespace OperationGuidance_new {
             AllocConsole();
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e) {
-            DialogResult result = MessageBox.Show(null, "确定要退出吗？", "退出程序", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (result == DialogResult.Yes) {
-                base.OnFormClosing(e);
-            } else {
-                e.Cancel = true;
-            }
-        }
-
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool AllocConsole();
