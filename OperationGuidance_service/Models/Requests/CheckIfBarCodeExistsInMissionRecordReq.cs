@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class CheckIfBarCodeExistsInMissionRecordReq: HttpRequest {
+    public class CheckIfBarCodeExistsInMissionRecordReq: ControlRequest {
         public string? ProductBarCode { get; set; }
         public string? PartsBarCode { get; set; }
         public int MissionId { get; set; }

@@ -1,7 +1,7 @@
-﻿using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public partial class QueryProductMissionListReq: HttpRequest {
+    public partial class QueryProductMissionListReq: ControlRequest {
         public int MacsId { get; set; }
         public bool? IsEditing { get; set; }
 

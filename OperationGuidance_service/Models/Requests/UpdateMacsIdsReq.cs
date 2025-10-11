@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class UpdateMacsIdsReq: HttpRequest {
+    public class UpdateMacsIdsReq: ControlRequest {
         public int IdFrom { get; private set; }
         public int IdTo { get; private set; }
 

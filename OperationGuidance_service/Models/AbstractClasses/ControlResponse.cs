@@ -1,9 +1,9 @@
-﻿using OperationGuidance_service.Constants;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_service.Models.AbstractClasses {
-    public class HttpResponse {
+    public class ControlResponse {
         public HttpResponseCode RsponseCode {
-            get; set; 
+            get; set;
         } = HttpResponseCode.OK;
 
         public string RsponseMessage {

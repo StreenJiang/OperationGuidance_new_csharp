@@ -2,7 +2,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class AddOrUpdateWorkstationReq: HttpRequest {
+    public class AddOrUpdateWorkstationReq: ControlRequest {
         public WorkstationDTO WorkstationDTO { get; set; }
 
         public AddOrUpdateWorkstationReq(WorkstationDTO dto) {

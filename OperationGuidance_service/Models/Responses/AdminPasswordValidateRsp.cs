@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class AdminPasswordValidateRsp: HttpResponse {
+    public class AdminPasswordValidateRsp: ControlResponse {
         public bool Succeed { get; set; }
     }
 }

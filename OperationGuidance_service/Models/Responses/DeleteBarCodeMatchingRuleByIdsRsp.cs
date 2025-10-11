@@ -1,6 +1,6 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class DeleteBarCodeMatchingRuleByIdsRsp: HttpResponse {
+    public class DeleteBarCodeMatchingRuleByIdsRsp: ControlResponse {
     }
 }

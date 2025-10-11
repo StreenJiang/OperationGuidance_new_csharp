@@ -2,7 +2,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class AddOrUpdateDeviceArmReq: HttpRequest {
+    public class AddOrUpdateDeviceArmReq: ControlRequest {
         public DeviceArmDTO DeviceArmDTO { get; set; }
 
         public AddOrUpdateDeviceArmReq(DeviceArmDTO dto) {

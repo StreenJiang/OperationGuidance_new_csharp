@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class FindMacAddressesByIdReq: HttpRequest {
+    public class FindMacAddressesByIdReq: ControlRequest {
         public int Id { get; set; }
 
         public FindMacAddressesByIdReq(int id) => Id = id;

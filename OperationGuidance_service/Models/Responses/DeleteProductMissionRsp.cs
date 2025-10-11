@@ -1,6 +1,6 @@
-﻿using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class DeleteProductMissionRsp: HttpResponse {
+    public class DeleteProductMissionRsp: ControlResponse {
     }
 }

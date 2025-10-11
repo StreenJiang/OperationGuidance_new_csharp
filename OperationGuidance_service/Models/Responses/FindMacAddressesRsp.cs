@@ -2,7 +2,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class FindMacAddressesRsp: HttpResponse {
+    public class FindMacAddressesRsp: ControlResponse {
         public MacAddressesDTO? MacAddressesDTO { get; set; }
     }
 }

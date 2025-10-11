@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class FindOuterDatabaseConfigGlbForCheckingReq: HttpRequest {
+    public class FindOuterDatabaseConfigGlbForCheckingReq: ControlRequest {
         public int Id { get; set; }
         public string host { get; set; }
         public int port { get; set; }

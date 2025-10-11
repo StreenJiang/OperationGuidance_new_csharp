@@ -1,6 +1,6 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class DeleteDeviceArmByIdsRsp: HttpResponse {
+    public class DeleteDeviceArmByIdsRsp: ControlResponse {
     }
 }

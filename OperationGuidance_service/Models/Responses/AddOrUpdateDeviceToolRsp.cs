@@ -2,7 +2,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class AddOrUpdateDeviceToolRsp: HttpResponse {
-        public DeviceToolDTO DeviceToolDTO { get; set;} = new();
+    public class AddOrUpdateDeviceToolRsp: ControlResponse {
+        public DeviceToolDTO DeviceToolDTO { get; set; } = new();
     }
 }

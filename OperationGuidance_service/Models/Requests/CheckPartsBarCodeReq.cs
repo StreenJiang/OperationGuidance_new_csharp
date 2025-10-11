@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class CheckPartsBarCodeReq: HttpRequest {
+    public class CheckPartsBarCodeReq: ControlRequest {
         public int MissionId { get; set; }
         public string PartsBarCode { get; set; }
 

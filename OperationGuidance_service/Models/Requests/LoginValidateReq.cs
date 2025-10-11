@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class LoginValidateReq: HttpRequest {
+    public class LoginValidateReq: ControlRequest {
         public string Account { get; set; }
         public string Password { get; set; }
 
