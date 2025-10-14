@@ -65,6 +65,8 @@ namespace OperationGuidance_new {
             // Set icon
             Icon = Properties.Resources.ico;
 
+            // 执行一次这个开关检查，如果不存在就会默认插入一次
+            SystemUtils.GetDBInitEnabled();
             // 先连接一下数据库，看看数据库是否正常
             MainUtils.CheckDBConnection();
 

@@ -18,6 +18,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private string _tabelName;
         private DbConnection? _conn;
         private DbTransaction? _transaction;
+        private const int commandTimeout = 10;
 
         public string TableName { get => _tabelName; }
 
@@ -47,19 +48,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 string newEntitySql = GenerateQueryNewestSql(entity);
                 logger.Info("newEntitySql: " + newEntitySql);
 
-                int result;
-                if (_conn == null) {
-                    using (DbConnection conn = DbConnector.GetConnection()) {
-                        result = conn.Execute(sql, entity);
-                        int id = conn.QueryFirst<int>(newEntitySql, entity);
-                        entity.id = id;
-                    }
-                } else {
-                    // Don't use 'using' to release resource, probably is in a transaction
-                    result = _conn.Execute(sql, entity, _transaction);
-                    int id = _conn.QueryFirst<int>(newEntitySql, entity, _transaction);
-                    entity.id = id;
-                }
+                int result = ExecuteWithRetry(sql, entity);
+                entity.id = QueryFirstWithRetry(newEntitySql, entity);
 
                 logger.Info("Result: " + result);
             } catch (Exception e) {
@@ -74,15 +64,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 string sql = GenerateInsertSql();
                 logger.Info("sql: " + sql);
 
-                if (_conn == null) {
-                    using (DbConnection conn = DbConnector.GetConnection()) {
-                        result = conn.Execute(sql, entities);
-                    }
-                } else {
-                    // Don't use 'using' to release resource, probably is in a transaction
-                    result = _conn.Execute(sql, entities, _transaction);
-                }
-
+                result = ExecuteWithRetry(sql, entities);
                 logger.Info("Result: " + result);
             } catch (Exception e) {
                 logger.Warn($"Something wrong here, please check error: e = {e}");
@@ -147,16 +129,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 string sql = GenerateUpdateSql(entity);
                 logger.Info("sql: " + sql);
 
-                int result;
-                if (_conn == null) {
-                    using (DbConnection conn = DbConnector.GetConnection()) {
-                        result = conn.Execute(sql, entity);
-                    }
-                } else {
-                    // Don't use 'using' to release resource, probably is in a transaction
-                    result = _conn.Execute(sql, entity, _transaction);
-                }
-
+                int result = ExecuteWithRetry(sql, entity);
                 logger.Info("Result: " + result);
             } catch (Exception e) {
                 logger.Warn($"Something wrong here, please check error: e = {e}");
@@ -170,15 +143,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 T entity = entities[0];
                 string sql = GenerateUpdateSql(entity);
                 logger.Info("sql: " + sql);
-                if (_conn == null) {
-                    using (DbConnection conn = DbConnector.GetConnection()) {
-                        rows = conn.Execute(sql, entities);
-                    }
-                } else {
-                    // Don't use 'using' to release resource, probably is in a transaction
-                    rows = _conn.Execute(sql, entities, _transaction);
-                }
 
+                int result = ExecuteWithRetry(sql, entities);
                 logger.Info("Result: " + rows);
             } catch (Exception e) {
                 logger.Warn($"Something wrong here, please check error: e = {e}");
@@ -335,5 +301,80 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return rows;
         }
 
+        private int ExecuteWithRetry(string sql, object? param = null, DbTransaction? transaction = null) {
+            const int maxRetries = 5;
+
+            for (int attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    if (_conn == null) {
+                        using (DbConnection conn = DbConnector.GetConnection()) {
+                            return conn.Execute(sql, param, commandTimeout: commandTimeout);
+                        }
+                    } else {
+                        // Don't use 'using' to release resource, probably is in a transaction
+                        return _conn.Execute(sql, param, transaction, commandTimeout: commandTimeout);
+                    }
+                } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
+                    // 死锁或锁超时，指数退避重试
+                    int delayMs = 50 * (attempt + 1);
+                    Thread.Sleep(delayMs);
+                }
+            }
+
+            // 如果所有重试都失败了，重新抛出异常（保持原有异常处理逻辑）
+            if (_conn == null) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
+                    return conn.Execute(sql, param, commandTimeout: commandTimeout);
+                }
+            } else {
+                return _conn.Execute(sql, param, transaction, commandTimeout: commandTimeout);
+            }
+        }
+
+        private int QueryFirstWithRetry(string sql, object? param = null) {
+            const int maxRetries = 5;
+
+            for (int attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    if (_conn == null) {
+                        using (DbConnection conn = DbConnector.GetConnection()) {
+                            return conn.QueryFirst<int>(sql, param, commandTimeout: commandTimeout);
+                        }
+                    } else {
+                        return _conn.QueryFirst<int>(sql, param, _transaction, commandTimeout: commandTimeout);
+                    }
+                } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
+                    int delayMs = 50 * (attempt + 1);
+                    Thread.Sleep(delayMs);
+                }
+            }
+
+            // 最终尝试（保持原有逻辑）
+            if (_conn == null) {
+                using (DbConnection conn = DbConnector.GetConnection()) {
+                    return conn.QueryFirst<int>(sql, param, commandTimeout: commandTimeout);
+                }
+            } else {
+                return _conn.QueryFirst<int>(sql, param, _transaction, commandTimeout: commandTimeout);
+            }
+        }
+
+        private bool IsDeadlockOrLockTimeout(Exception ex) {
+            // MySQL 错误处理
+            if (ex is MySql.Data.MySqlClient.MySqlException mySqlEx) {
+                return mySqlEx.Number == 1213 || mySqlEx.Number == 1205;
+            }
+
+            // SQL Server 错误处理（兼容性）
+            if (ex is System.Data.SqlClient.SqlException sqlEx) {
+                return sqlEx.Number == 1205;
+            }
+
+            // // SQL Server 错误处理（兼容性）
+            // if (ex is Microsoft.Data.SqlClient.SqlException sqlEx) {
+            //     return sqlEx.Number == 1205;
+            // }
+            return false;
+        }
     }
 }

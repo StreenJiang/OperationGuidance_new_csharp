@@ -395,7 +395,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public void ForceSendLock() {
             if (Connected) {
-                logger.Info($"Locking tool...");
+                logger.Info($"Force locking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
                     if (!_locked) {
                         SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
@@ -409,7 +409,7 @@ namespace OperationGuidance_new.Tasks {
                 }
             } else {
                 _locked = false;
-                logger.Info($"Locking failure, it's not connected...");
+                logger.Info($"Force locking failure, it's not connected...");
             }
         }
         private void SendUnlock() {
@@ -437,7 +437,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public void ForceSendUnlock() {
             if (Connected) {
-                logger.Info($"Unlocking tool...");
+                logger.Info($"Force unlocking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
                     if (_locked) {
                         SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
@@ -451,7 +451,7 @@ namespace OperationGuidance_new.Tasks {
                 }
             } else {
                 _locked = true;
-                logger.Info($"Unlocking failure, it's not connected...");
+                logger.Info($"Force unlocking failure, it's not connected...");
             }
         }
         #endregion
