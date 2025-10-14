@@ -38,7 +38,7 @@ namespace OperationGuidance_service.Database {
                 if (!ConnectionUtils.HealthChecked) {
                     string sqlScriptPrefix = "modify_mysql";
                     if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
-                        if (doubleChecked) {
+                        if (!doubleChecked) {
                             if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
                                 if (SystemUtils.GetDBInitEnabled()) {
                                     using (MySqlCommand command = conn.CreateCommand()) {
@@ -53,51 +53,51 @@ namespace OperationGuidance_service.Database {
                             }
                         }
                         doubleChecked = true;
-                    } else {
-                        // Check if any modification scripts hasn't been executed
-                        List<string> executedFileNames = new();
-                        using (MySqlCommand command = conn.CreateCommand()) {
-                            command.CommandText = "Select file_name from sql_execute_record where deleted = 2";
-                            using (MySqlDataReader reader = command.ExecuteReader()) {
-                                while (reader.Read()) {
-                                    executedFileNames.Add(CommonUtils.CannotBeNull(reader["file_name"].ToString()));
-                                }
+                    }
+
+                    // Check if any modification scripts hasn't been executed
+                    List<string> executedFileNames = new();
+                    using (MySqlCommand command = conn.CreateCommand()) {
+                        command.CommandText = "Select file_name from sql_execute_record where deleted = 2";
+                        using (MySqlDataReader reader = command.ExecuteReader()) {
+                            while (reader.Read()) {
+                                executedFileNames.Add(CommonUtils.CannotBeNull(reader["file_name"].ToString()));
                             }
                         }
+                    }
 
-                        // Execute scripts that didn't execute
-                        List<string> newExecutedSqlFileName = new();
-                        using (MySqlCommand command = conn.CreateCommand()) {
-                            List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                            foreach (string fileName in fileNames) {
-                                try {
-                                    if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                        string? fileText = Resource.ResourceManager.GetString(fileName);
-                                        if (!string.IsNullOrEmpty(fileText)) {
-                                            logger.Info($"Not executed sql script[{fileName}] found");
-                                            command.CommandText = fileText;
-                                            command.ExecuteNonQuery();
+                    // Execute scripts that didn't execute
+                    List<string> newExecutedSqlFileName = new();
+                    using (MySqlCommand command = conn.CreateCommand()) {
+                        List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
+                        foreach (string fileName in fileNames) {
+                            try {
+                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
+                                    string? fileText = Resource.ResourceManager.GetString(fileName);
+                                    if (!string.IsNullOrEmpty(fileText)) {
+                                        logger.Info($"Not executed sql script[{fileName}] found");
+                                        command.CommandText = fileText;
+                                        command.ExecuteNonQuery();
 
-                                            logger.Info($"Execute sql script[{fileName}] successfully");
-                                            newExecutedSqlFileName.Add(fileName);
-                                        }
+                                        logger.Info($"Execute sql script[{fileName}] successfully");
+                                        newExecutedSqlFileName.Add(fileName);
                                     }
-                                } catch (Exception e) {
-                                    logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                                 }
+                            } catch (Exception e) {
+                                logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
                             }
                         }
+                    }
 
-                        if (newExecutedSqlFileName.Count > 0) {
-                            using (MySqlCommand command = conn.CreateCommand()) {
-                                string insertSql = "";
-                                foreach (string fileName in newExecutedSqlFileName) {
-                                    string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                                    insertSql += $"insert into sql_execute_record(file_name, user_id, deleted, creator, modifier, create_time, modify_time) values('{fileName}', -1, 2, 'System', 'System', '{now}', '{now}');";
-                                }
-                                command.CommandText = insertSql;
-                                command.ExecuteNonQuery();
+                    if (newExecutedSqlFileName.Count > 0) {
+                        using (MySqlCommand command = conn.CreateCommand()) {
+                            string insertSql = "";
+                            foreach (string fileName in newExecutedSqlFileName) {
+                                string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                insertSql += $"insert into sql_execute_record(file_name, user_id, deleted, creator, modifier, create_time, modify_time) values('{fileName}', -1, 2, 'System', 'System', '{now}', '{now}');";
                             }
+                            command.CommandText = insertSql;
+                            command.ExecuteNonQuery();
                         }
                     }
                 }

@@ -65,6 +65,8 @@ namespace OperationGuidance_new {
 
             // 先连接一下数据库，看看数据库是否正常
             MainUtils.CheckDBConnection();
+            // 执行一次这个开关检查，如果不存在就会默认插入一次
+            SystemUtils.GetDBInitEnabled();
 
             // 获取mac地址）
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
