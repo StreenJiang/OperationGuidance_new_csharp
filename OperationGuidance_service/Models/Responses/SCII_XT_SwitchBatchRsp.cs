@@ -1,5 +1,5 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Responses {
-    public class SwitchRecipeRsp_SCII: Response_SCII_XT { }
+    public class SCII_XT_SwitchBatchRsp: SCII_XT_Response { }
 }

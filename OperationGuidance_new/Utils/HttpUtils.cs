@@ -33,7 +33,8 @@ namespace OperationGuidance_new.Utils {
             }
         }
 
-        public static async Task<V> SendPost_SCII_XT<T, V>(string uri, T reqeust) where T : HttpRequestBase_SCII_XT where V : Response_SCII_XT, new() {
+        public static async Task<V> SendPost_SCII_XT<T, V>(string uri, T reqeust)
+          where T : HttpRequestBase_SCII_XT where V : SCII_XT_Response, new() {
             logger.Info($"SendPost: uri = [{uri}]");
 
             V? response = new();
@@ -50,10 +51,37 @@ namespace OperationGuidance_new.Utils {
                         logger.Info($"SendPost: rspContent = [{rspContent}]");
 
                         response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
+                    } else {
+                        logger.Warn($"POST request failed: {rspMsg.StatusCode}");
+                        return new V();
                     }
                 }
 
                 return response;
+            }
+        }
+
+        public static async Task<V> SendGet_SCII_XT<V>(string uri)
+          where V : SCII_XT_Response, new() {
+            logger.Info($"SendGet: uri = [{uri}]");
+
+            using (HttpClient client = new()) {
+                using (HttpResponseMessage rspMsg = await client.GetAsync(uri)) {
+                    logger.Info($"SendGet: StatusCode = [{rspMsg.StatusCode}]");
+
+                    if (rspMsg.IsSuccessStatusCode) {
+                        string rspContent = await rspMsg.Content.ReadAsStringAsync();
+                        logger.Info($"SendGet: rspContent = [{rspContent}]");
+
+                        var response = JsonConvert.DeserializeObject<V>(rspContent);
+                        return CommonUtils.CannotBeNull(response);
+                    } else {
+                        // 可选：根据业务决定是否抛异常，或返回默认 V
+                        // 这里保持和 POST 一致：返回 new V() 但日志警告
+                        logger.Warn($"GET request failed: {rspMsg.StatusCode}");
+                        return new V();
+                    }
+                }
             }
         }
     }

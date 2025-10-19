@@ -1,7 +1,7 @@
 using OperationGuidance_service.Models.AbstractClasses;
 
 namespace OperationGuidance_service.Models.Requests {
-    public class SwitchBatchReq_SCII_XT: HttpRequest {
+    public class SCII_XT_SwitchBatchReq: HttpRequest {
         public string batchNo { get; set; } = string.Empty;
     }
 }

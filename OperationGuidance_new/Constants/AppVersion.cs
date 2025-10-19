@@ -6,5 +6,6 @@ namespace OperationGuidance_new.Constants {
         GLB = 3, // 格雷博
         WHYC = 4, // 芜湖毅昌
         TZYX = 5, // 台州永欣
+        SCII_XT = 6, // 西艾爱 - 线体商
     }
 }

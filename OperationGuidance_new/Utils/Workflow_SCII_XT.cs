@@ -1,14 +1,122 @@
+using Newtonsoft.Json;
+using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
+using OperationGuidance_service.Constants;
+using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Models.DTOs;
+
 namespace OperationGuidance_new.Utils {
     public class Workflow_SCII_XT {
+        public string RequestPrefix;
+
+        public Workflow_SCII_XT() {
+            // TODO: Read host prefix from config file
+            RequestPrefix = "http://10.10.59.1:5400";
+        }
+
         // 1.员工登录
-        public bool OperatorLogin(string username, string password) {
-            return false;
+        public async Task<SCII_XT_OperatorLoginDTO> OperatorLogin(SCII_XT_OperatorLoginReq req) {
+            var api = "/api/employee/login";
+            var result = new SCII_XT_OperatorLoginDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_OperatorLoginReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.loginSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.loginSuccess = false;
+                result.message = $"登录出错，错误信息：{ex.Message}";
+            }
+
+            return result;
         }
 
         // 2.权限获取(客户要求权限就根据获取的权限做判断,不要求就无需请求)
+        public async Task<SCII_XT_UserPermissionDTO?> UserPermissions(int userId) {
+            var api = "/api/employee/permissions";
+            SCII_XT_UserPermissionDTO? result = new SCII_XT_UserPermissionDTO();
+
+            try {
+                var rsp = await HttpUtils.SendGet_SCII_XT<SCII_XT_Response>(RequestPrefix + api + $"/{userId}");
+                if (rsp.code == (int) SCII_XT_ResponseCode.OK) {
+                    if (rsp.datalnfo != null) {
+                        result = JsonConvert.DeserializeObject<SCII_XT_UserPermissionDTO>((string) rsp.datalnfo);
+                    } else {
+                        result.message = "获取用户权限出错，获取到的用户权限数据为 null";
+                    }
+                }
+            } catch (Exception ex) {
+                result.message = $"获取用户权限出错，错误信息：{ex.Message}";
+            }
+
+            return result;
+        }
+
         // 3.进站
+        public async Task<SCII_XT_InOrOutBoundStationDTO> InBoundStation(SCII_XT_InOrOutBoundStationReq req) {
+            var api = "/api/station-control/inbound";
+            var result = new SCII_XT_InOrOutBoundStationDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_InOrOutBoundStationReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.inOrOutSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.inOrOutSuccess = false;
+                result.message = $"进站出错，错误信息：{ex.Message}";
+            }
+
+            return result;
+        }
+
         // 4.绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
+        public async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
+            var api = "/api/product-accessory/bind";
+            var result = new SCII_XT_BindAccessoryDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_BindAccessoryReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.bindSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.bindSuccess = false;
+                result.message = $"进站出错，错误信息：{ex.Message}";
+            }
+
+            return result;
+        }
+
         // 5.产品数据绑定(绑定扭力枪的数据)
+        public async Task<SCII_XT_BindProductDataDTO> BindProductData(SCII_XT_BindProductDataReq req) {
+            var api = "/api/product-data/bind";
+            var result = new SCII_XT_BindProductDataDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_BindProductDataReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.bindSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.bindSuccess = false;
+                result.message = $"进站出错，错误信息：{ex.Message}";
+            }
+
+            return result;
+        }
+
         // 6.出站
+        public async Task<SCII_XT_InOrOutBoundStationDTO> OutBoundStation(SCII_XT_InOrOutBoundStationReq req) {
+            var api = "/api/station-control/outbound";
+            var result = new SCII_XT_InOrOutBoundStationDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_InOrOutBoundStationReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.inOrOutSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.inOrOutSuccess = false;
+                result.message = $"出站出错，错误信息：{ex.Message}";
+            }
+
+            return result;
+        }
     }
 }

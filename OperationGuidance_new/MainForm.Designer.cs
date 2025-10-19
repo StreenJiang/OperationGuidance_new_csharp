@@ -211,24 +211,7 @@ namespace OperationGuidance_new {
 
             // Initialize http server
             AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
-            switch (appVersion) {
-                default:
-                case AppVersion.STANDARD:
-                    break;
-                case AppVersion.SCII:
-                    HttpConfig httpConfig = MainUtils.HttpConfig;
-                    string isHostStr = httpConfig.Read(ConfigName_Http.IsHost);
-                    bool isHost = false;
-                    if (string.IsNullOrEmpty(isHostStr)) {
-                        httpConfig.Write(ConfigName_Http.IsHost, (int) YesOrNo.NO + "");
-                    } else {
-                        isHost = isHostStr == (int) YesOrNo.YES + "";
-                    }
-                    if (isHost) {
-                        _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
-                    }
-                    break;
-            }
+            CheckAndStartHttpServer(appVersion);
 
             if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                 OperatorOpenning();
@@ -497,6 +480,32 @@ namespace OperationGuidance_new {
             // 如果登录界面的分辨率与主界面一模一样，则会出现不触发 sizeChanged 事件的情况，因此这里手动触发一下
             if (!backgroundWorker.IsBusy) {
                 backgroundWorker.RunWorkerAsync();
+            }
+        }
+
+        private void CheckAndStartHttpServer(AppVersion appVersion) {
+            switch (appVersion) {
+                default:
+                case AppVersion.STANDARD:
+                    break;
+                case AppVersion.SCII_XT:
+                    bool isHost = _startServer();
+                    if (isHost) {
+                        _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
+                    }
+                    break;
+            }
+
+            // 单独将 ‘启动http服务拎出来以保证不同版本都可以复用
+            bool _startServer() {
+                HttpConfig httpConfig = MainUtils.HttpConfig;
+                string isHostStr = httpConfig.Read(ConfigName_Http.IsHost);
+                if (string.IsNullOrEmpty(isHostStr)) {
+                    httpConfig.Write(ConfigName_Http.IsHost, (int) YesOrNo.NO + "");
+                    return false;
+                } else {
+                    return isHostStr == (int) YesOrNo.YES + "";
+                }
             }
         }
         #endregion
