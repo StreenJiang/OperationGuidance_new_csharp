@@ -26,13 +26,11 @@ namespace OperationGuidance_new.Views {
                 BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND_2,
                 Margin = new Padding(0),
                 PaddingWithoutBorder = true,
-                View = this,
             };
         }
     }
 
     public class WorkplaceContentPanel_SCII: AWorkplaceContentPanel {
-        private WorkplaceMissionView_SCII _view;
 
         // 上方
         private CustomContentPanel _top;
@@ -61,7 +59,6 @@ namespace OperationGuidance_new.Views {
         // 下方
         private WorkplacePiece _bottom;
 
-        public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
 
 

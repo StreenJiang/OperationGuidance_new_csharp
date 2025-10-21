@@ -76,6 +76,10 @@ namespace OperationGuidance_new {
 
             // Check license
             MainUtils.CheckLicense();
+            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+
+            // Check some prechecks
+            PreCheckForAll(appVersion);
 
             // Init all images from reoursces
             ResxUtils.Init();
@@ -106,7 +110,17 @@ namespace OperationGuidance_new {
             ClientSize = loginViewSize;
             Rectangle workingArea = WidgetUtils.GetScreenWorkingArea();
             Location = new((workingArea.Width - loginViewSize.Width) / 2 + workingArea.Location.X, (workingArea.Height - loginViewSize.Height) / 2 + workingArea.Location.Y);
-            LoginView loginView = new(loginViewSize, Properties.Resources.login_back, AfterLogin, mainFormSize);
+
+            LoginView loginView;
+            switch (appVersion) {
+                default:
+                    loginView = new(loginViewSize, Properties.Resources.login_back, AfterLogin, mainFormSize);
+                    break;
+                case AppVersion.SCII_XT:
+                    loginView = new LoginView_SCII_XT(loginViewSize, Properties.Resources.login_back, AfterLogin, mainFormSize);
+                    break;
+            }
+
             loginView.Parent = this;
             MainUtils.LoginView = loginView;
             WidgetUtils.BackToLoginView = needToAsk => {
@@ -518,6 +532,31 @@ namespace OperationGuidance_new {
                 base.OnFormClosing(e);
             } else {
                 e.Cancel = true;
+            }
+        }
+
+        private void PreCheckForAll(AppVersion appVersion) {
+            switch (appVersion) {
+                default:
+                case AppVersion.STANDARD:
+                    break;
+                case AppVersion.SCII_XT:
+                    // MES host server 检查
+                    string httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
+                    if (string.IsNullOrEmpty(httpHost)) {
+                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.HttpHost, "");
+                    }
+                    // 默认工序编码检查
+                    string defaultProcedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultProcedureCode);
+                    if (string.IsNullOrEmpty(defaultProcedureCode)) {
+                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.DefaultProcedureCode, "");
+                    }
+                    // 默认批次号
+                    string defaultBatchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultBatchNo);
+                    if (string.IsNullOrEmpty(defaultBatchNo)) {
+                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.DefaultBatchNo, "");
+                    }
+                    break;
             }
         }
     }

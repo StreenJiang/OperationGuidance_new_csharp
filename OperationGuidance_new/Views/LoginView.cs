@@ -7,10 +7,13 @@ using OperationGuidance_service.Utils;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_new.Utils;
 using System.Diagnostics;
+using log4net;
 
 namespace OperationGuidance_new.Views {
     public class LoginView: CustomContentPanel {
         #region Fields
+        protected ILog log;
+
         private Image _back;
         private Image _backShowing;
         private LoginPopUpForm? _loginForm;
@@ -26,6 +29,8 @@ namespace OperationGuidance_new.Views {
 
         #region Constructors
         public LoginView(Size size, Image back, Action<Size> afterLogin, Size mainFormSize) {
+            log = LogManager.GetLogger(this.GetType());
+
             Size = size;
             _back = back;
             _backShowing = WidgetUtils.ResizeImage(_back, size);
@@ -74,25 +79,32 @@ namespace OperationGuidance_new.Views {
             void ClickLogin() {
                 string account = _loginForm.AccountBox.GetTextBox(0).Box.Text;
                 string password = _loginForm.PasswordBox.GetTextBox(0).Box.Text;
-                LoginValidateRsp rsp = SystemUtils.GetApis().LoginValidate(new(account, password));
-                if (!rsp.Succeed) {
-                    WidgetUtils.ShowErrorPopUp(rsp.FailedReason);
-                } else {
-                    SystemUtils.UserInfo = CommonUtils.CannotBeNull(rsp.UserAccountInfoDTO);
-                    _isLoggedIn = true;
-                    _loginForm.Dispose();
-                    // Dispose();
-                    Hide();
-                    MainUtils.LoginFlag = true;
-                    _afterLogin(_mainFormSize);
-
-                    // Store current account info
-                    if (MainUtils.IsAutoLoginEnabled()) {
-                        String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
-                        MainUtils.SetAutoLoginInfo(loginInfo);
-                    }
-                }
+                CheckLoginByApi(account, password);
             }
+        }
+        protected virtual void CheckLoginByApi(string account, string password) {
+            LoginValidateRsp rsp = SystemUtils.GetApis().LoginValidate(new(account, password));
+            if (!rsp.Succeed) {
+                WidgetUtils.ShowErrorPopUp(rsp.FailedReason);
+            } else {
+                SystemUtils.UserInfo = CommonUtils.CannotBeNull(rsp.UserAccountInfoDTO);
+                ActionAfterLogin();
+            }
+        }
+        protected void ActionAfterLogin() {
+            _isLoggedIn = true;
+            _loginForm.Dispose();
+            // Dispose();
+            Hide();
+            MainUtils.LoginFlag = true;
+            _afterLogin(_mainFormSize);
+
+            // Store current account info
+            if (MainUtils.IsAutoLoginEnabled()) {
+                String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
+                MainUtils.SetAutoLoginInfo(loginInfo);
+            }
+
         }
         #endregion
 

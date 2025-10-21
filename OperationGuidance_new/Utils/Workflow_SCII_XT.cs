@@ -1,20 +1,29 @@
+using log4net;
 using Newtonsoft.Json;
+using OperationGuidance_new.Configs;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Utils {
-    public class Workflow_SCII_XT {
-        public string RequestPrefix;
+    public static class Workflow_SCII_XT {
+        private static ILog log = LogManager.GetLogger(typeof(Workflow_SCII_XT));
+        private static string RequestPrefix;
 
-        public Workflow_SCII_XT() {
+        static Workflow_SCII_XT() {
             // TODO: Read host prefix from config file
-            RequestPrefix = "http://10.10.59.1:5400";
+            var httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
+            if (string.IsNullOrEmpty(httpHost)) {
+                log.Warn("未配置 MES 服务器地址，请检查配置（将使用默认写死的测试服务器地址）。");
+                RequestPrefix = "http://10.10.59.1:5400";
+            } else {
+                RequestPrefix = httpHost;
+            }
         }
 
-        // 1.员工登录
-        public async Task<SCII_XT_OperatorLoginDTO> OperatorLogin(SCII_XT_OperatorLoginReq req) {
+        // 1. 员工登录
+        public static async Task<SCII_XT_OperatorLoginDTO> OperatorLogin(SCII_XT_OperatorLoginReq req) {
             var api = "/api/employee/login";
             var result = new SCII_XT_OperatorLoginDTO();
 
@@ -24,14 +33,34 @@ namespace OperationGuidance_new.Utils {
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.loginSuccess = false;
-                result.message = $"登录出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;
         }
 
-        // 2.权限获取(客户要求权限就根据获取的权限做判断,不要求就无需请求)
-        public async Task<SCII_XT_UserPermissionDTO?> UserPermissions(int userId) {
+        // *1.1. 获取员工信息，用于存储到本地全局变量中
+        public static async Task<SCII_XT_UserInfoDTO?> UserInfo(int userId) {
+            var api = "/api/employee";
+            SCII_XT_UserInfoDTO? result = new SCII_XT_UserInfoDTO();
+
+            try {
+                var rsp = await HttpUtils.SendGet_SCII_XT<SCII_XT_Response>(RequestPrefix + api + $"/{userId}");
+                if (rsp.code == (int) SCII_XT_ResponseCode.OK) {
+                    if (rsp.datalnfo != null) {
+                        result = JsonConvert.DeserializeObject<SCII_XT_UserInfoDTO>((string) rsp.datalnfo);
+                    }
+                }
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.message = ex.Message;
+            }
+
+            return result;
+        }
+
+        // 2. 权限获取(客户要求权限就根据获取的权限做判断,不要求就无需请求)
+        public static async Task<SCII_XT_UserPermissionDTO?> UserPermissions(int userId) {
             var api = "/api/employee/permissions";
             SCII_XT_UserPermissionDTO? result = new SCII_XT_UserPermissionDTO();
 
@@ -40,19 +69,18 @@ namespace OperationGuidance_new.Utils {
                 if (rsp.code == (int) SCII_XT_ResponseCode.OK) {
                     if (rsp.datalnfo != null) {
                         result = JsonConvert.DeserializeObject<SCII_XT_UserPermissionDTO>((string) rsp.datalnfo);
-                    } else {
-                        result.message = "获取用户权限出错，获取到的用户权限数据为 null";
                     }
                 }
+                result.message = rsp.message;
             } catch (Exception ex) {
-                result.message = $"获取用户权限出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;
         }
 
-        // 3.进站
-        public async Task<SCII_XT_InOrOutBoundStationDTO> InBoundStation(SCII_XT_InOrOutBoundStationReq req) {
+        // 3. 进站
+        public static async Task<SCII_XT_InOrOutBoundStationDTO> InBoundStation(SCII_XT_InOrOutBoundStationReq req) {
             var api = "/api/station-control/inbound";
             var result = new SCII_XT_InOrOutBoundStationDTO();
 
@@ -62,14 +90,14 @@ namespace OperationGuidance_new.Utils {
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.inOrOutSuccess = false;
-                result.message = $"进站出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;
         }
 
-        // 4.绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
-        public async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
+        // 4. 绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
+        public static async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
             var api = "/api/product-accessory/bind";
             var result = new SCII_XT_BindAccessoryDTO();
 
@@ -79,14 +107,14 @@ namespace OperationGuidance_new.Utils {
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.bindSuccess = false;
-                result.message = $"进站出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;
         }
 
-        // 5.产品数据绑定(绑定扭力枪的数据)
-        public async Task<SCII_XT_BindProductDataDTO> BindProductData(SCII_XT_BindProductDataReq req) {
+        // 5. 产品数据绑定(绑定扭力枪的数据)
+        public static async Task<SCII_XT_BindProductDataDTO> BindProductData(SCII_XT_BindProductDataReq req) {
             var api = "/api/product-data/bind";
             var result = new SCII_XT_BindProductDataDTO();
 
@@ -96,14 +124,14 @@ namespace OperationGuidance_new.Utils {
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.bindSuccess = false;
-                result.message = $"进站出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;
         }
 
-        // 6.出站
-        public async Task<SCII_XT_InOrOutBoundStationDTO> OutBoundStation(SCII_XT_InOrOutBoundStationReq req) {
+        // 6. 出站
+        public static async Task<SCII_XT_InOrOutBoundStationDTO> OutBoundStation(SCII_XT_InOrOutBoundStationReq req) {
             var api = "/api/station-control/outbound";
             var result = new SCII_XT_InOrOutBoundStationDTO();
 
@@ -113,7 +141,7 @@ namespace OperationGuidance_new.Utils {
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.inOrOutSuccess = false;
-                result.message = $"出站出错，错误信息：{ex.Message}";
+                result.message = ex.Message;
             }
 
             return result;

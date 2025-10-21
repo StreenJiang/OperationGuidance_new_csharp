@@ -569,10 +569,47 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static bool ShowConfirmPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
-        public static DialogResult ShowNoticePopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        public static DialogResult ShowWarningPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        public static DialogResult ShowErrorPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public static bool ShowConfirmPopUp(string message) => ShowConfirmPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
+        public static DialogResult ShowNoticePopUp(string message) => ShowNoticePopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
+        public static DialogResult ShowWarningPopUp(string message) => ShowWarningPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
+        public static DialogResult ShowErrorPopUp(string message) => ShowErrorPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
+
+        public static bool ShowConfirmPopUp(Control? mainForm, string message) {
+            if (mainForm != null) {
+                IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
+                    return MessageBox.Show(message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+                });
+                return (bool) mainForm.EndInvoke(asyncResult);
+            }
+            return MessageBox.Show(message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        }
+        public static DialogResult ShowNoticePopUp(Control? mainForm, string message) {
+            if (mainForm != null) {
+                IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
+                    return MessageBox.Show(mainForm, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                });
+                return (DialogResult) mainForm.EndInvoke(asyncResult);
+            }
+            return MessageBox.Show(message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        public static DialogResult ShowWarningPopUp(Control? mainForm, string message) {
+            if (mainForm != null) {
+                IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
+                    return MessageBox.Show(mainForm, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                });
+                return (DialogResult) mainForm.EndInvoke(asyncResult);
+            }
+            return MessageBox.Show(message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        public static DialogResult ShowErrorPopUp(Control? mainForm, string message) {
+            if (mainForm != null) {
+                IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
+                    return MessageBox.Show(mainForm, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                });
+                return (DialogResult) mainForm.EndInvoke(asyncResult);
+            }
+            return MessageBox.Show(message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
 
         private static Point controlOriginalLocation;
         private static Point mouseDownLocation;

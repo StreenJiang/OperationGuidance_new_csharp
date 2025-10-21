@@ -350,6 +350,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
             }
+
+            if (checkPassed) {
+                // Extra check
+                checkPassed = ProductBarCodeExtraCheck(barCode);
+            }
+
             // 所有检查完毕，回填、或切换任务后再回填
             if (checkPassed) {
                 logger.Info($"All checks passed for product barcode = [{barCode}], will start for mission id = [{mission.id}]...");
@@ -384,6 +390,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _productBarCodeBox.GetTextBox(0).IsError = true;
             }
         }
+
         public void ValidateProductBarCode(string barCode) {
             logger.Info($"Checking product barcode [{barCode}]...");
 
@@ -573,6 +580,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             }
         }
+        protected virtual bool ProductBarCodeExtraCheck(string barCode) => true;
         protected virtual bool PartsBarCodeExtraCheck(int ruleId) {
             // Check if current bar code is bound to a bolt (or current bolt)
             if (_rulesExcluded.Count > 0 && _rulesExcluded.Any(rule => rule.id == ruleId)) {

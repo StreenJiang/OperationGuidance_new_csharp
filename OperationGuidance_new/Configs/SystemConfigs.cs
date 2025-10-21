@@ -36,6 +36,7 @@ namespace OperationGuidance_new.Configs {
                     {AppVersion.GLB, typeof(WorkplaceMissionView_GLB)},
                     {AppVersion.WHYC, typeof(WorkplaceMissionView_WHYC)},
                     {AppVersion.TZYX, typeof(WorkplaceMissionView_TZYX)},
+                    {AppVersion.SCII_XT, typeof(WorkplaceMissionView_SCII_XT)},
                 },
                 OpenFirst = true,
             },
