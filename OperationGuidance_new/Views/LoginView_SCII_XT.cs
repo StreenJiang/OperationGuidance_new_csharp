@@ -29,7 +29,7 @@ namespace OperationGuidance_new.Views {
                         userAccountInfoDTO.id = dto.userId;
                         userAccountInfoDTO.name = dto2.employeeName ?? "未知";
                         userAccountInfoDTO.position = dto2.roleName ?? "未知";
-                        userAccountInfoDTO.account = dto2.employeeNumber ?? "未知";
+                        userAccountInfoDTO.account = account;
                         SystemUtils.UserInfo = userAccountInfoDTO;
 
                         ActionAfterLogin();

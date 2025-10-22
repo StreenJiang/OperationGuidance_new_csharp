@@ -18,12 +18,14 @@ namespace OperationGuidance_new.Configs {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(MissionManagementView)},
                             {AppVersion.SCII, typeof(MissionManagementView_SCII)},
+                            {AppVersion.SCII_XT, typeof(MissionManagementView_SCII_XT)},
                         },
                     },
                     new(id: 102, name: "任务编辑", icon: Properties.Resources.mission_edition) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(MissionEditionView)},
                             {AppVersion.SCII, typeof(MissionEditionView_SCII)},
+                            {AppVersion.SCII_XT, typeof(MissionEditionView_SCII_XT)},
                         },
                     },
                 },
@@ -44,6 +46,7 @@ namespace OperationGuidance_new.Configs {
                 ViewTypes = new() {
                     {AppVersion.STANDARD, typeof(DataQueryView)},
                     {AppVersion.SCII, typeof(DataQueryView_SCII)},
+                    {AppVersion.SCII_XT, typeof(DataQueryView_SCII)},
                 },
             },
             new(id: 400, name: "事件日志", icon: Properties.Resources.event_log) {
@@ -65,6 +68,7 @@ namespace OperationGuidance_new.Configs {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(WorkStationView)},
                             {AppVersion.SCII, typeof(WorkStationView_SCII)},
+                            {AppVersion.SCII_XT, typeof(WorkStationView_SCII)},
                         },
                     },
                     new(id: 503, name: "工具管理", icon: Properties.Resources.device_screw_gun) {
@@ -101,6 +105,7 @@ namespace OperationGuidance_new.Configs {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(BarCodeMatchingRuleManagementView)},
                             {AppVersion.SCII, typeof(BarCodeMatchingRuleManagementView_SCII)},
+                            {AppVersion.SCII_XT, typeof(BarCodeMatchingRuleManagementView_SCII)},
                         },
                     },
                     new(id: 512, name: "MatCode管理", icon: Properties.Resources.map_table) {
@@ -120,6 +125,7 @@ namespace OperationGuidance_new.Configs {
                             {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
                             {AppVersion.WHYC, typeof(VariableSettingsView_WHYC)},
                             {AppVersion.TZYX, typeof(VariableSettingsView_TZYX)},
+                            {AppVersion.SCII_XT, typeof(VariableSettingsView_SCII)},
                         },
                     },
                 },

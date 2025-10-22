@@ -9,6 +9,7 @@ namespace OperationGuidance_service.Models {
         public string? ip { get; set; }
         public int? port { get; set; }
         public int? type { get; set; }
+        public string? barcode { get; set; }
         public int macs_id { get; set; }
     }
 }

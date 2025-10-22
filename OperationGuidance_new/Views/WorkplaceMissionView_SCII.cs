@@ -33,31 +33,31 @@ namespace OperationGuidance_new.Views {
     public class WorkplaceContentPanel_SCII: AWorkplaceContentPanel {
 
         // 上方
-        private CustomContentPanel _top;
+        protected CustomContentPanel _top;
         // 上方左边
-        private CustomContentPanel _topLeft;
+        protected CustomContentPanel _topLeft;
         // 上方左边上面
-        private WorkplacePiece _barCodeOuter;
+        protected WorkplacePiece _barCodeOuter;
         // 上方左边下面
-        private WorkplacePiece _imageDisplayOuter;
+        protected WorkplacePiece _imageDisplayOuter;
         // 上方右边
-        private CustomContentPanel _topRight;
+        protected CustomContentPanel _topRight;
         // 上方右边的上面
-        private WorkplacePiece _topRightTop;
+        protected WorkplacePiece _topRightTop;
         // 上方右边的中间
-        private CustomContentPanel _topRightMiddle;
+        protected CustomContentPanel _topRightMiddle;
         // 上方右边的中间的左边
-        private WorkplacePiece _topRightMiddleLeft;
+        protected WorkplacePiece _topRightMiddleLeft;
         // 上方右边的中间的右边
-        private WorkplacePiece _topRightMiddleRight;
+        protected WorkplacePiece _topRightMiddleRight;
         // 上方右边的下面
-        private WorkplacePiece _topRightBottom;
+        protected WorkplacePiece _topRightBottom;
 
         // 中间
-        private WorkplacePiece _middle;
+        protected WorkplacePiece _middle;
 
         // 下方
-        private WorkplacePiece _bottom;
+        protected WorkplacePiece _bottom;
 
 
 
@@ -306,7 +306,7 @@ namespace OperationGuidance_new.Views {
         }
 
         // 初始化顶部右侧的底部
-        private void InitializeTopRightBottom() {
+        protected virtual void InitializeTopRightBottom() {
             _topRightBottom.Controls.Add(_missionDetailTitle);
             _topRightBottom.Controls.Add(_missionSelectedName);
             _topRightBottom.Controls.Add(_productBatch);
@@ -527,7 +527,7 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 外框
-        private void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
+        protected virtual void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
             int padding = Padding.Left / 2;
             int workplaceWidth = Width - Padding.Left * 2;
             int workplaceHeight = Height - Padding.Top * 2;
@@ -686,7 +686,7 @@ namespace OperationGuidance_new.Views {
         }
 
         // 计算尺寸： 任务信息框
-        private void ResizeTopRightBottom(int boxHeight, int titleHeight, int contentVPadding,
+        protected virtual void ResizeTopRightBottom(int boxHeight, int titleHeight, int contentVPadding,
                 int contentHPadding, Font titleFont) {
             // Resize title and font
             _missionDetailTitle.Size = new(_operatorInfoTitle.Parent.Width, titleHeight);
@@ -909,27 +909,31 @@ namespace OperationGuidance_new.Views {
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
             if (await base.ValidationBeforeActivatingMission()) {
-                // Count screw bit used time
-                ScrewBitCounterDTO screwBitCounter;
-                if (!CountScrewBitUsedTime(out screwBitCounter)) {
-                    _adminConfirmed = false;
-                    bool isChecked = false;
-                    OpenAdminPasswordPopUpForm(
-                        $"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码",
-                        false, yes => isChecked = yes);
-                    if (isChecked) {
-                        _adminConfirmed = null;
-                        screwBitCounter.current_counts = 0;
-                        _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
-
-                        // Check again to ensure no more screw bit needs to be replaced
-                        return await ValidationBeforeActivatingMission();
-                    }
-                    return false;
-                }
-                return true;
+                return await CheckScrewBitCount();
             }
             return false;
+        }
+
+        protected virtual async Task<bool> CheckScrewBitCount() {
+            // Count screw bit used time
+            ScrewBitCounterDTO screwBitCounter;
+            if (!CountScrewBitUsedTime(out screwBitCounter)) {
+                _adminConfirmed = false;
+                bool isChecked = false;
+                OpenAdminPasswordPopUpForm(
+                    $"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码",
+                    false, yes => isChecked = yes);
+                if (isChecked) {
+                    _adminConfirmed = null;
+                    screwBitCounter.current_counts = 0;
+                    _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
+
+                    // Check again to ensure no more screw bit needs to be replaced
+                    return await ValidationBeforeActivatingMission();
+                }
+                return false;
+            }
+            return true;
         }
 
         private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {
@@ -1059,6 +1063,8 @@ namespace OperationGuidance_new.Views {
 
                                 // Switch to next bolt
                                 if (tighteningOK) {
+                                    DoAfterTighteningOk();
+
                                     // Reset tightening type to tightening in case somewhere did some changes
                                     _needLoosening = false;
                                     RemoveInformationMsg(_workingProcessPanel.NGReasons);
@@ -1165,6 +1171,7 @@ namespace OperationGuidance_new.Views {
             });
         }
 
+        protected virtual void DoAfterTighteningOk() { }
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             await base.TerminateMission(status);
 

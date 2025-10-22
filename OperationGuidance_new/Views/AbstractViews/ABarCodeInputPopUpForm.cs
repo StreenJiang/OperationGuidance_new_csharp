@@ -283,6 +283,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _productBarCodeBox.GetTextBox(0).IsError = true;
                 }
             }
+
+            if (checkPassed) {
+                // Extra check
+                checkPassed = ProductBarCodeExtraCheck(barCode);
+            }
+
             // 条码校验通过，再检查下是否需要返工
             if (checkPassed) {
                 mission = CommonUtils.CannotBeNull(mission);
@@ -349,11 +355,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         checkPassed = false;
                     }
                 }
-            }
-
-            if (checkPassed) {
-                // Extra check
-                checkPassed = ProductBarCodeExtraCheck(barCode);
             }
 
             // 所有检查完毕，回填、或切换任务后再回填

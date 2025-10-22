@@ -11,6 +11,7 @@ namespace OperationGuidance_service.Models {
         public string? key_char { get; set; }
         public int type { get; set; }
         public int mission_id { get; set; }
+        public string? part_no { get; set; }
         public int macs_id { get; set; }
     }
 }

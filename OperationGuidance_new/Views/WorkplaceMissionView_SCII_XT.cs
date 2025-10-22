@@ -3,8 +3,11 @@ using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Tasks.DeviceTypes;
+using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_SCII_XT: AWorkplaceMissionView<WorkplaceContentPanel_SCII_XT, WorkplaceTopBar_SCII> {
@@ -25,17 +28,221 @@ namespace OperationGuidance_new.Views {
 
     public class WorkplaceContentPanel_SCII_XT: WorkplaceContentPanel_SCII {
         private WorkplaceMissionView_SCII_XT _view;
-        public new WorkplaceMissionView_SCII_XT View { get => _view; set => _view = value; }
+        public WorkplaceMissionView_SCII_XT View { get => _view; set => _view = value; }
+
+        private Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
+        private Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
 
         public WorkplaceContentPanel_SCII_XT() { }
-        public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) { }
+        public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
+            _productBatch.Enabled = false; // Will fetch from config file for SCII XT
+
+            Task.Run(() => {
+                string batchNo = _getBatchNo();
+                if (string.IsNullOrEmpty(batchNo)) {
+                    _productBatch.GetTextBox(0).IsError = true;
+
+                    // Looping to check config and back-fill
+                    _ = _loopingToCheckBatchNo();
+                }
+
+                _productBatch.GetTextBox(0).Box.Text = batchNo;
+            });
+        }
+
+        // Send bit position to setter selector
+        protected override async void SendSignalToSetterSelector(BoltButton boltButton) {
+            await Task.Run(() => {
+                BeginInvoke(() => {
+                    Task.Run(() => {
+                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                        if (boltDTO.bit_specification != null && boltDTO.bit_specification > 0) {
+                            DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.setter_selector_id);
+                            IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
+                            if (setterSelectorType != null) {
+                                _bitPositionOk = false;
+
+                                if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
+                                    _bitPositionTimedOut = false;
+                                    boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => {
+                                        _bitPositionOk = isOk;
+                                        _updateCounter((int) boltDTO.bit_specification.Value, isOk);
+                                    });
+                                } else {
+                                    boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
+                                        _bitPositionOk = isOk;
+                                        _bitPositionTimedOut = isTimedOut;
+                                        _updateCounter((int) boltDTO.bit_specification.Value, isOk);
+                                    });
+                                }
+                            }
+                        } else {
+                            _bitPositionOk = null;
+                            _bitPositionTimedOut = false;
+                        }
+                    });
+                });
+            });
+
+            void _updateCounter(int bitPosition, bool isOk) {
+                if (isOk && _screwBitCounterBoxes.ContainsKey(bitPosition)) {
+                    int counts = int.Parse(_screwBitCounterBoxes[bitPosition].GetTextBox(0).Box.Text);
+
+                    _screwBitCounterBoxes[bitPosition].GetTextBox(0).Box.Text = ++counts + "";
+
+                    if (_screwBitCounterDtos.Count > 0) {
+                        ScrewBitCounterDTO dto = _screwBitCounterDtos[bitPosition];
+                        dto.current_counts = counts;
+                        _apis.AddOrUpdateScrewBitCounter(new(dto));
+                    }
+                }
+            }
+        }
+
+        protected override void DoAfterTighteningOk() {
+            int counts = int.Parse(_screwBitCounterBoxes[-1].GetTextBox(0).Box.Text);
+            _screwBitCounterBoxes[-1].GetTextBox(0).Box.Text = ++counts + "";
+            ScrewBitCounterDTO dto = _screwBitCounterDtos[-1];
+            dto.current_counts = counts;
+            _apis.AddOrUpdateScrewBitCounter(new(dto));
+        }
+
+        protected override Task<bool> CheckScrewBitCount() => Task.FromResult(true);
+
+        protected override void InitializeTopRightBottom() {
+            base.InitializeTopRightBottom();
+
+            _screwBitCounterBoxes = new();
+            _screwBitCounterDtos = new();
+
+            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            if (screwBitCounterDTOs.Count > 0) {
+                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
+                    if (i >= 4) { // More than 4 are not supported.
+                        break;
+                    }
+                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
+                    _screwBitCounterDtos.Add(dto.bit_position, dto);
+
+                    CustomTextBoxGroup boxGroup = new("批头计数" + dto.bit_position) {
+                        ReadOnly = true,
+                        Enabled = false,
+                        NameAlignment = HorizontalAlignment.Right,
+                        Ratio = 6.8,
+                    };
+                    boxGroup.GetTextBox(0).Box.Text = dto.current_counts > 0 ? dto.current_counts + "" : "0";
+
+                    _screwBitCounterBoxes.Add(dto.bit_position, boxGroup);
+                    _topRightBottom.Controls.Add(boxGroup);
+                }
+            } else {
+                CustomTextBoxGroup boxGroup = new("批头计数") {
+                    ReadOnly = true,
+                    Enabled = false,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Ratio = 6.8,
+                };
+                boxGroup.GetTextBox(0).Box.Text = "0";
+
+                _screwBitCounterBoxes.Add(-1, boxGroup);
+                _topRightBottom.Controls.Add(boxGroup);
+
+                ScrewBitCounterDTO dto = new() {
+                    mission_id = _mission.id,
+                    bit_position = -1,
+                    count_each_time = 1,
+                    current_counts = 0,
+                };
+                _apis.AddOrUpdateScrewBitCounter(new(dto));
+                _screwBitCounterDtos.Add(dto.bit_position, dto);
+            }
+
+            _productSumPerDay.Ratio = 6.8;
+            _okSumPerDay.Ratio = 6.8;
+            _ngRatePerDay.Ratio = 6.8;
+            _pset.Ratio = 6.8;
+
+            _missionSelectedName.Ratio = 8.425;
+            _productBatch.Ratio = 8.425;
+        }
+
+        protected override void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
+            int padding = Padding.Left / 2;
+            int workplaceWidth = Width - Padding.Left * 2;
+            int workplaceHeight = Height - Padding.Top * 2;
+            int barCodeHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
+            int imagePanelHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
+            int topHeight = barCodeHeight + imagePanelHeight + padding;
+            int bottomHeight = (int) (workplaceHeight * .045);
+            int middleHeight = workplaceHeight - topHeight - bottomHeight - padding * 2; // 为了取整
+            int topLeftWidth = (int) (workplaceWidth * WidgetUtils.WorkplaceLeftWidthRatio());
+            int topRightWidth = workplaceWidth - topLeftWidth - padding;
+            int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
+            int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
+            if (_screwBitCounterBoxes.Count > 0 && _screwBitCounterBoxes.Count <= 2) {
+                topRightBottomHeight += boxHeight + contentVPadding;
+            } else if (_screwBitCounterBoxes.Count > 2) {
+                topRightBottomHeight += boxHeight * 2 + contentVPadding * 2;
+            }
+            int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
+            int topRightMiddleLeftWidth = (int) (topRightWidth * .55);
+            int topRightMiddleRightWidth = topRightWidth - topRightMiddleLeftWidth - padding;
+
+            // 上方
+            _top.Size = new(workplaceWidth, topHeight);
+            _top.Margin = new(0, 0, 0, padding);
+            // 上方左边
+            _topLeft.Size = new(topLeftWidth, topHeight);
+            _topLeft.Margin = new(0, 0, padding, 0);
+            // 上方左边上面
+            _barCodeOuter.Size = new(topLeftWidth, barCodeHeight);
+            _barCodeOuter.Margin = new(0, 0, 0, padding);
+            // 上方左边下面
+            _imageDisplayOuter.Size = new(topLeftWidth, imagePanelHeight);
+            // 上方右边
+            _topRight.Size = new(topRightWidth, topHeight);
+            // 上方右边的上面
+            _topRightTop.Size = new(topRightWidth, topRightTopHeight);
+            _topRightTop.Margin = new(0, 0, 0, padding);
+            // 上方右边的中间
+            _topRightMiddle.Size = new(topRightWidth, topRightMiddleHeight);
+            _topRightMiddle.Margin = new(0, 0, 0, padding);
+            // 上方右边的中间的左边
+            _topRightMiddleLeft.Size = new(topRightMiddleLeftWidth, topRightMiddleHeight);
+            _topRightMiddleLeft.Margin = new(0, 0, padding, 0);
+            // 上方右边的中间的右边
+            _topRightMiddleRight.Size = new(topRightMiddleRightWidth, topRightMiddleHeight);
+            // 上方右边的下面
+            _topRightBottom.Size = new(topRightWidth, topRightBottomHeight);
+
+            // 中间
+            _middle.Size = new(workplaceWidth, middleHeight);
+            _middle.Margin = new(0, 0, 0, padding);
+
+            // 下方
+            _bottom.Size = new(workplaceWidth, bottomHeight);
+            _bottom.Padding = new(0, 0, 1, 0);
+        }
+
+        // 计算尺寸： 任务信息框
+        protected override void ResizeTopRightBottom(int boxHeight, int titleHeight, int contentVPadding,
+                int contentHPadding, Font titleFont) {
+            base.ResizeTopRightBottom(boxHeight, titleHeight, contentVPadding, contentHPadding, titleFont);
+
+            int boxWidth = (_operatorInfoTitle.Parent.Width - contentHPadding * 3) / 2;
+            foreach (KeyValuePair<int, CustomTextBoxGroup> pair in _screwBitCounterBoxes) {
+                CustomTextBoxGroup boxGroup = pair.Value;
+                boxGroup.Size = new(boxWidth, boxHeight);
+                boxGroup.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            }
+        }
 
         protected override void OpenBarCodePopUpForm(string? barCode = null) {
             string batchNum = "";
             if (!_activated) {
                 batchNum = _productBatch.GetTextBox(0).Box.Text;
                 if (string.IsNullOrEmpty(batchNum)) {
-                    WidgetUtils.ShowErrorPopUp("产品批次还没有填写");
+                    WidgetUtils.ShowErrorPopUp("批次号还未配置");
                     if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                         _barCodePopUpForm.Hide();
                     }
@@ -93,6 +300,33 @@ namespace OperationGuidance_new.Views {
                 _barCodePopUpForm.ResizeSelf();
             }
             _barCodePopUpForm.Show();
+        }
+
+        private string _getBatchNo() {
+            string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+            if (string.IsNullOrEmpty(batchNo)) {
+                WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置信息。");
+            }
+            return batchNo;
+        }
+
+        private async Task _loopingToCheckBatchNo() {
+            await Task.Run(() => {
+                BeginInvoke(async () => {
+                    string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+                    while (string.IsNullOrEmpty(batchNo)) {
+                        _productBatch.GetTextBox(0).IsError = true;
+
+                        await Task.Delay(1000);
+
+                        // Fetch again
+                        batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+                    }
+
+                    _productBatch.GetTextBox(0).IsError = false;
+                    _productBatch.GetTextBox(0).Box.Text = batchNo;
+                });
+            });
         }
     }
 }

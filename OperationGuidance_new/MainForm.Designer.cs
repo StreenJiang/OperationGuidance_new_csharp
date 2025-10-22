@@ -78,9 +78,6 @@ namespace OperationGuidance_new {
             MainUtils.CheckLicense();
             AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
 
-            // Check some prechecks
-            PreCheckForAll(appVersion);
-
             // Init all images from reoursces
             ResxUtils.Init();
 
@@ -226,6 +223,9 @@ namespace OperationGuidance_new {
             // Initialize http server
             AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
             CheckAndStartHttpServer(appVersion);
+
+            // Check some prechecks
+            _ = PreCheckForAll(appVersion);
 
             if (SystemUtils.UserInfo.role_type == (int) Roles.OPERATOR) {
                 OperatorOpenning();
@@ -535,29 +535,48 @@ namespace OperationGuidance_new {
             }
         }
 
-        private void PreCheckForAll(AppVersion appVersion) {
-            switch (appVersion) {
-                default:
-                case AppVersion.STANDARD:
-                    break;
-                case AppVersion.SCII_XT:
-                    // MES host server 检查
-                    string httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
-                    if (string.IsNullOrEmpty(httpHost)) {
-                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.HttpHost, "");
-                    }
-                    // 默认工序编码检查
-                    string defaultProcedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultProcedureCode);
-                    if (string.IsNullOrEmpty(defaultProcedureCode)) {
-                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.DefaultProcedureCode, "");
-                    }
-                    // 默认批次号
-                    string defaultBatchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultBatchNo);
-                    if (string.IsNullOrEmpty(defaultBatchNo)) {
-                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.DefaultBatchNo, "");
-                    }
-                    break;
-            }
+        private async Task<bool> PreCheckForAll(AppVersion appVersion) {
+            bool checkOk = true;
+
+            await Task.Run(() => {
+                switch (appVersion) {
+                    default:
+                    case AppVersion.STANDARD:
+                        break;
+                    case AppVersion.SCII_XT:
+                        // MES host server 检查
+                        string httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
+                        if (string.IsNullOrEmpty(httpHost)) {
+                            checkOk = false;
+                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.HttpHost, "");
+                            WidgetUtils.ShowWarningPopUp("Http 服务未配置，请检查配置。");
+                        }
+                        // 工序编码检查
+                        string defaultProcedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+                        if (string.IsNullOrEmpty(defaultProcedureCode)) {
+                            checkOk = false;
+                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.ProcedureCode, "");
+                            WidgetUtils.ShowWarningPopUp("【工序编码】未配置，请检查配置。");
+                        }
+                        // 设备编码检查
+                        string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
+                        if (string.IsNullOrEmpty(equipmentCode)) {
+                            checkOk = false;
+                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.EquipmentCode, "");
+                            WidgetUtils.ShowWarningPopUp("【设备编码】未配置，请检查配置。");
+                        }
+                        // 批次号
+                        string defaultBatchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+                        if (string.IsNullOrEmpty(defaultBatchNo)) {
+                            checkOk = false;
+                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.BatchNo, "");
+                            WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置。");
+                        }
+                        break;
+                }
+            });
+
+            return checkOk;
         }
     }
 }

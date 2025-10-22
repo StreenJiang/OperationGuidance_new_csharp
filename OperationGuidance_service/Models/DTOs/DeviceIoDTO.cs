@@ -8,6 +8,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public string ip { get; set; } = string.Empty;
         public int port { get; set; }
         public int type { get; set; }
+        public string? barcode { get; set; }
         public int macs_id { get; set; } = SystemUtils.MacAddressesDTO.id;
     }
 }

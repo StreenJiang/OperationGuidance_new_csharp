@@ -412,6 +412,20 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `aneng`.`device_io` 
+        ///  ADD COLUMN `barcode` varchar(512) NULL AFTER `type`;
+        ///
+        ///ALTER TABLE `aneng`.`bar_code_matching_rule` 
+        ///  ADD COLUMN `part_no` varchar(128) NULL AFTER `mission_id`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20251022 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20251022", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -778,6 +792,31 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20250625 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20250625", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to CREATE TABLE &quot;main&quot;.&quot;Untitled&quot; (
+        ///  &quot;id&quot; INTEGER(11) NOT NULL,
+        ///  &quot;mission_record_id&quot; INTEGER(11),
+        ///  &quot;parts_bar_code&quot; TEXT(255),
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        ///  &quot;create_time&quot; text(64) NOT NULL,
+        ///  &quot;modify_time&quot; text(64) NOT NULL,
+        ///  PRIMARY KEY (&quot;id&quot;)
+        ///);
+        ///
+        ///ALTER TABLE &quot;main&quot;.&quot;device_io&quot; RENAME TO &quot;_device_io_old_20251023&quot;;
+        ///
+        ///CREATE TABLE &quot;main&quot;.&quot;device_io&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINC [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20251022 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20251022", resourceCulture);
             }
         }
         

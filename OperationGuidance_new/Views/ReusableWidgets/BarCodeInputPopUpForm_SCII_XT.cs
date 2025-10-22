@@ -5,6 +5,7 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BarCodeInputPopUpForm_SCII_XT: BarCodeInputPopUpForm_SCII {
@@ -19,14 +20,27 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _productBatch = productBatch;
         }
 
+        protected override async void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+
+            await Task.Run(() => {
+                if (string.IsNullOrEmpty(_getProcedureCode()) || string.IsNullOrEmpty(_getEquipmentCode())) {
+                    // this.Close(); // Don't use this, this will cause thread error
+                    _ = this.BeginInvoke((Action) (() => this.Close()));
+                }
+            });
+        }
+
         public override bool CheckCanActivateMission() {
             if (base.CheckCanActivateMission()) {
                 // 向 MES 发送配件绑定请求
                 if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
                     var req = new SCII_XT_BindAccessoryReq() {
                         productCode = _workplace.BarCodeObj.ProductBarCode,
-                        procedureCode = "", // TODO: 工序编码
+                        procedureCode = _getProcedureCode(),
                         recipeCode = _mission.name,
+                        createBy = SystemUtils.UserInfo.id,
+                        employeeNumber = SystemUtils.UserInfo.account,
                     };
                     var accessorys = new List<SCII_XT_BindAccessoryReq.Accessory>();
 
@@ -37,8 +51,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         accessorys.Add(new() {
                             accessoryCode = partsBarCode,
                             accessoryType = rule.name ?? "",
-                            partNo = "?", // TODO: 需要澄清
-                            orderId = i + 1, // TODO: 同上
+                            partNo = rule.part_no ?? "",
+                            orderId = i + 1,
                         });
                     }
                     req.accessorys = accessorys;
@@ -64,8 +78,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 productCode = barCode,
                 passType = (int) SCII_XT_ProductType.PRODUCT,
                 recipeCode = _mission.name,
-                procedureCode = "", // TODO: 工序编码
-                equipmentCode = "", // TODO: 设备编码
+                procedureCode = _getProcedureCode(),
+                equipmentCode = _getEquipmentCode(),
                 batchNo = _productBatch,
             };
 
@@ -81,19 +95,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override bool PartsBarCodeExtraCheck(int ruleId) => true;
 
         private string _getProcedureCode() {
-            string defaultProcedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultProcedureCode);
-            if (string.IsNullOrEmpty(defaultProcedureCode)) {
-                WidgetUtils.ShowWarningPopUp("【默认工序编码】未配置，请检查配置信息。");
+            string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+            if (string.IsNullOrEmpty(procedureCode)) {
+                WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
             }
-            return defaultProcedureCode;
+            return procedureCode;
         }
 
-        private string _getBatchNo() {
-            string defaultBatchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.DefaultBatchNo);
-            if (string.IsNullOrEmpty(defaultBatchNo)) {
-                WidgetUtils.ShowWarningPopUp("【默认批次号】未配置，请检查配置信息。");
+        private string _getEquipmentCode() {
+            string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
+            if (string.IsNullOrEmpty(equipmentCode)) {
+                WidgetUtils.ShowWarningPopUp(this, "【设备编码】未配置，请检查配置信息。");
             }
-            return defaultBatchNo;
+            return equipmentCode;
         }
     }
 }
