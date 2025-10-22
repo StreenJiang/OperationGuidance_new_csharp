@@ -94,6 +94,7 @@ namespace OperationGuidance_new.Configs {
                     new(id: 510, name: "IO设备管理", icon: Properties.Resources.device_io_box) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(DeviceIoView)},
+                            {AppVersion.SCII_XT, typeof(DeviceIoView_SCII_XT)},
                         },
                     },
                     new(id: 511, name: "外部数据库管理", icon: Properties.Resources.database) {
@@ -105,7 +106,7 @@ namespace OperationGuidance_new.Configs {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(BarCodeMatchingRuleManagementView)},
                             {AppVersion.SCII, typeof(BarCodeMatchingRuleManagementView_SCII)},
-                            {AppVersion.SCII_XT, typeof(BarCodeMatchingRuleManagementView_SCII)},
+                            {AppVersion.SCII_XT, typeof(BarCodeMatchingRuleManagementView_SCII_XT)},
                         },
                     },
                     new(id: 512, name: "MatCode管理", icon: Properties.Resources.map_table) {
