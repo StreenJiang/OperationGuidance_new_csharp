@@ -2,13 +2,18 @@
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_SCII_XT: AWorkplaceMissionView<WorkplaceContentPanel_SCII_XT, WorkplaceTopBar_SCII> {
@@ -49,6 +54,54 @@ namespace OperationGuidance_new.Views {
 
                 _productBatch.GetTextBox(0).Box.Text = batchNo;
             });
+        }
+
+        protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreTighteningData start ........");
+
+            // Use task to store data asynchronously
+            StoreDataToDatabase(operationDataDTO);
+
+            // 将数据发送给 MES
+            _ = SendDataToMES(operationDataDTO);
+
+            // 先将VOs加入到实时显示数据列表中
+            OperationDataVO dataFormatted = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+            _tighteningDataVOs.Add(dataFormatted);
+
+            RefreshTighteningDataPanel(_tighteningDataVOs);
+            logger.Info("StoreTighteningData showing to panel end ........");
+
+            // 最后再存进本地文件
+            StoreDataToFiles(operationDataDTO);
+
+            logger.Info("StoreTighteningData end ........");
+        }
+
+        private async Task SendDataToMES(OperationDataDTO operationDataDTO) {
+            var data = new OperationDataDTO_SCII_XT();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
+
+            SCII_XT_BindProductDataReq req = new() {
+                bingType = (int) SCII_XT_ProductType.PRODUCT,
+                productInfos = new(),
+                procedureCode = _getProcedureCode(),
+                recipeCode = _mission.name,
+            };
+            SCII_XT_BindProductDataReq.ProductInfo productInfos = new() {
+                productCode = operationDataDTO.vin_number,
+                attributeList = new(),
+            };
+            productInfos.attributeList.Add(new() {
+                value = JsonConvert.SerializeObject(data),
+            });
+            req.productInfos.Add(productInfos);
+
+            var dto = await Workflow_SCII_XT.BindProductData(req);
+            if (!dto.bindSuccess) {
+                logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}，点位：{data.bolt_serial_num}] 错误信息：{dto.message}");
+            }
         }
 
         protected override void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
@@ -368,6 +421,14 @@ namespace OperationGuidance_new.Views {
                     _productBatch.GetTextBox(0).Box.Text = batchNo;
                 });
             });
+        }
+
+        private string _getProcedureCode() {
+            string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+            if (string.IsNullOrEmpty(procedureCode)) {
+                WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
+            }
+            return procedureCode;
         }
     }
 }
