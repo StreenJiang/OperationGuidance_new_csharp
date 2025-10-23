@@ -3,6 +3,7 @@ using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
@@ -48,6 +49,46 @@ namespace OperationGuidance_new.Views {
 
                 _productBatch.GetTextBox(0).Box.Text = batchNo;
             });
+        }
+
+        protected override void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
+            SerialPortTask serialPortTask = pair.Value;
+            serialPortTask.ActionAfterDataReceived = async msg => {
+                await Task.Run(() => {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            DeviceIoDTO? deviceIoDTO = _ioBoxes.SingleOrDefault(dto => dto.barcode == msg);
+                            if (deviceIoDTO != null) {
+                                IoBoxTask ioBoxTask = _ioBoxTasks[MainUtils.GetTCPClientKey(deviceIoDTO.ip, deviceIoDTO.port)];
+                                if (ioBoxTask != null) {
+                                    IoBoxTypeArranger? arrangerType = ioBoxTask.ArrangerType;
+                                    if (arrangerType != null) {
+                                        arrangerType.OpenDoor();
+                                    }
+                                }
+                            } else {
+                                DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                                // 如果有空的数据进来，则跳过
+                                if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                    logger.Warn("Message is null from serial port device, please check.");
+                                    return;
+                                }
+                                if (dto.invalid_char != null) {
+                                    msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                                }
+
+                                // 交给弹窗处理
+                                if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                    OpenBarCodePopUpForm(msg);
+                                } else {
+                                    _barCodePopUpForm.ValidateBarCode(msg);
+                                }
+                            }
+                        }
+                    });
+                });
+            };
+
         }
 
         // Send bit position to setter selector

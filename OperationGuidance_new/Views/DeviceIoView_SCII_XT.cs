@@ -135,10 +135,9 @@ namespace OperationGuidance_new.Views {
             Dictionary<string, int> ioTypes = DeviceType_IoBox.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("IO设备类型",
                 (DeviceIoDTO dto, int value) => dto.type = value, ioTypes);
-            type.SetCurrent(type.IndexOf(dto.type));
             type.ItemSelected += () => {
                 type.SetError(type.IsDefaultValue());
-                if (type.Value != DeviceType_IoBox.Arranger.Id) {
+                if (type.Value == DeviceType_IoBox.Arranger.Id) {
                     barCode.Show();
                     barCode.ResizeChildren();
                 } else {
@@ -151,8 +150,8 @@ namespace OperationGuidance_new.Views {
             barCode = _editEntityPopUpForm.AddTextBox("开盖条码", false,
                 (DeviceIoDTO dto, string? value) => dto.barcode = value ?? null);
             barCode.Hide();
-            if (!string.IsNullOrEmpty(dto.name)) {
-                barCode.SetValue(0, dto.name);
+            if (!string.IsNullOrEmpty(dto.barcode)) {
+                barCode.SetValue(0, dto.barcode);
             }
 
             // 添加按钮
@@ -214,6 +213,10 @@ namespace OperationGuidance_new.Views {
             };
             // Show form but make it transparent to create handles for its children
             _editEntityPopUpForm.PretendToShowToCreateHandlesForChildren();
+
+            // 回填放置在show下面才可以保证 UI 不出问题
+            type.SetCurrent(type.IndexOf(dto.type));
+
             // Resize all widgets
             ResizePopUpForm();
             // Real show

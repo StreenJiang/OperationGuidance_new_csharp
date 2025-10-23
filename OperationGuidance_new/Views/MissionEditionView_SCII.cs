@@ -24,9 +24,9 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace OperationGuidance_new.Views {
     public partial class MissionEditionView_SCII: CustomContentPanel {
-        private readonly OperationGuidanceApis apis;
-        private ProductMissionDTO? _missionDTO;
-        private MissionEditionPage_SCII? _editionPage;
+        protected readonly OperationGuidanceApis apis;
+        protected ProductMissionDTO? _missionDTO;
+        protected MissionEditionPage_SCII? _editionPage;
 
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage_SCII? EditionPage { get => _editionPage; set => _editionPage = value; }
@@ -36,11 +36,11 @@ namespace OperationGuidance_new.Views {
             CreateANewOne();
         }
 
-        public MissionEditionPage_SCII CreateANewOne() {
+        public virtual MissionEditionPage_SCII CreateANewOne() {
             return OpenEditionPage(null);
         }
 
-        public MissionEditionPage_SCII OpenEditionPage(int? missionId) {
+        public virtual MissionEditionPage_SCII OpenEditionPage(int? missionId) {
             ProductMissionDTO NewMission() {
                 return new() {
                     name = "新建任务",
@@ -87,64 +87,64 @@ namespace OperationGuidance_new.Views {
         public class MissionEditionPage_SCII: CustomContentPanel {
             protected ILog logger = MainUtils.GetLogger(typeof(MissionEditionPage_SCII));
 
-            private OperationGuidanceApis _apis;
-            private MissionEditionView_SCII _parentView;
-            private ProductMissionDTO _missionDTO;
+            protected OperationGuidanceApis _apis;
+            protected MissionEditionView_SCII _parentView;
+            protected ProductMissionDTO _missionDTO;
 
             // Contents
-            private CustomContentPanel _top;
-            private CustomContentPanel _bottom;
-            private WorkplacePiece _bottomLeft;
-            private WorkplacePiece _bottomRight;
-            private int _littleTitleHeight;
+            protected CustomContentPanel _top;
+            protected CustomContentPanel _bottom;
+            protected WorkplacePiece _bottomLeft;
+            protected WorkplacePiece _bottomRight;
+            protected int _littleTitleHeight;
 
             // top
-            private CustomTextBoxGroup _missionName;
-            private CustomTextBoxGroup _missionPnCode;
-            private CustomContentPanel _buttonsOuter;
-            private CommonButton _editDetail;
-            private List<ScrewBitCounterDTO> _screwBitCounterDTOs;
-            private MissionDetailPopUpForm _detialPopUpForm;
-            private CommonButton _buttonSave;
-            private CommonButton _buttonNew;
-            private CommonButton _buttonDelete;
-            private CommonButton _buttonDuplicate;
-            private ImageButton _imageButtonChoose;
-            private ImageButton _imageButtonZoomIn;
-            private ImageButton _imageButtonZoomOut;
-            private ImageButton _imageButtonRotateAntiClockwise;
-            private ImageButton _imageButtonRotateClockwise;
-            private ImageButton _imageButtonMoveUp;
-            private ImageButton _imageButtonMoveDown;
-            private ImageButton _imageButtonMoveLeft;
-            private ImageButton _imageButtonMoveRight;
-            private ImageButton _imageButtonCrop;
-            private ImageButton _imageButtonUndo;
-            private ImageButton _imageButtonReset;
+            protected CustomTextBoxGroup _missionName;
+            protected CustomTextBoxGroup _missionPnCode;
+            protected CustomContentPanel _buttonsOuter;
+            protected CommonButton _editDetail;
+            protected List<ScrewBitCounterDTO> _screwBitCounterDTOs;
+            protected MissionDetailPopUpForm _detialPopUpForm;
+            protected CommonButton _buttonSave;
+            protected CommonButton _buttonNew;
+            protected CommonButton _buttonDelete;
+            protected CommonButton _buttonDuplicate;
+            protected ImageButton _imageButtonChoose;
+            protected ImageButton _imageButtonZoomIn;
+            protected ImageButton _imageButtonZoomOut;
+            protected ImageButton _imageButtonRotateAntiClockwise;
+            protected ImageButton _imageButtonRotateClockwise;
+            protected ImageButton _imageButtonMoveUp;
+            protected ImageButton _imageButtonMoveDown;
+            protected ImageButton _imageButtonMoveLeft;
+            protected ImageButton _imageButtonMoveRight;
+            protected ImageButton _imageButtonCrop;
+            protected ImageButton _imageButtonUndo;
+            protected ImageButton _imageButtonReset;
 
             // Left side title panel: needs to be alone, don't need any margin
-            private CustomContentPanel _sideTitlePanel;
-            private List<SideButton> _sideButtons;
-            private SideButton _currentSideButton;
-            private AddNewSideButton _addNewSideButton;
-            private readonly float _sideButtonWidthRatio = 1.4F;
-            private readonly float _boltButtonRadiusRatio = .05F;
+            protected CustomContentPanel _sideTitlePanel;
+            protected List<SideButton> _sideButtons;
+            protected SideButton _currentSideButton;
+            protected AddNewSideButton _addNewSideButton;
+            protected readonly float _sideButtonWidthRatio = 1.4F;
+            protected readonly float _boltButtonRadiusRatio = .05F;
 
             // Bottom left
-            private LeftBottomContentPanel _leftBottomContentPanel;
-            private ProductImageFile _currentProductImageFile;
-            private int _imageOperationBufferLength;
-            private Point _mouseDownLocation;
-            private bool _mouseLeftDown;
-            private bool _controlDown;
-            private bool _needSaveBuffer;
-            private BoltEditionPopUpForm _boltPopUpForm;
+            protected LeftBottomContentPanel _leftBottomContentPanel;
+            protected ProductImageFile _currentProductImageFile;
+            protected int _imageOperationBufferLength;
+            protected Point _mouseDownLocation;
+            protected bool _mouseLeftDown;
+            protected bool _controlDown;
+            protected bool _needSaveBuffer;
+            protected BoltEditionPopUpForm _boltPopUpForm;
 
             // Bottom right
-            private CustomContentPanel _boltTitlePanel;
-            private Label _boltTitleLabel;
-            private RightContentPanel _rightContentPanel;
-            private CustomVScrollingContentPanel _autoScrollContentOuterPanel;
+            protected CustomContentPanel _boltTitlePanel;
+            protected Label _boltTitleLabel;
+            protected RightContentPanel _rightContentPanel;
+            protected CustomVScrollingContentPanel _autoScrollContentOuterPanel;
 
             public bool Modified { get; set; } = false;
 
@@ -215,257 +215,7 @@ namespace OperationGuidance_new.Views {
                     BlockHoverUp = true,
                 };
                 _screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_missionDTO.id)).ScrewBitCounterDTOs;
-                _editDetail.Click += (s, e) => {
-                    List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
-                    List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
-                    _detialPopUpForm = new(_missionDTO, allOtherMissions, barCodeMatchingRuleDTOs, _screwBitCounterDTOs) {
-                        Title = "编辑任务详情",
-                    };
-                    _detialPopUpForm.MissionName.GetTextBox(0).Box.Select(0, 0);
-                    _detialPopUpForm.AddButton("确定").Click += (s, e) => {
-                        bool check = true;
-                        string warningMsg = "";
-                        int warningIndex = 1;
-
-                        string missionName = _detialPopUpForm.MissionName.GetTextBox(0).Box.Text;
-                        if (string.IsNullOrEmpty(missionName)) {
-                            check = false;
-                            _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
-                        }
-
-                        string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
-                        if (string.IsNullOrEmpty(maxNGNum)) {
-                            check = false;
-                            _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
-                        }
-
-                        string passwordNeedTime = _detialPopUpForm.PasswordNeedTime.GetTextBox(0).Box.Text;
-                        if (string.IsNullOrEmpty(passwordNeedTime)) {
-                            check = false;
-                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
-                        }
-
-                        int int_maxNGNum = int.Parse(maxNGNum);
-                        int int_passwordNeedTime = int.Parse(passwordNeedTime);
-                        if (int_maxNGNum > 0 && int_passwordNeedTime >= int_maxNGNum) {
-                            check = false;
-                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
-                            warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
-                        }
-
-                        // Check challenge mission settings
-                        if (_detialPopUpForm.IsChallengeMission.Checked) {
-                            // Check challenge mission is empty or not
-                            if (_detialPopUpForm.ChallengMission.IsDefaultValue()) {
-                                check = false;
-                                _detialPopUpForm.ChallengMission.SetError(true);
-                                warningMsg += $"{warningIndex++}. 挑战任务必须对应一个普通任务\r\n";
-                            } else {
-                                int selectedMissionId = _detialPopUpForm.ChallengMission.Value;
-
-                                // Check if current selected challenge mission is already a challenge mission
-                                if (allOtherMissions.SingleOrDefault(m => m.challenge_mission_id == selectedMissionId) != null) {
-                                    check = false;
-                                    _detialPopUpForm.ChallengMission.SetError(true);
-                                    warningMsg += $"{warningIndex++}. 当前选择的对应普通任务已存在挑战任务\r\n";
-                                } else {
-                                    ProductMissionDTO selectedMission = allOtherMissions.Single(m => m.id == selectedMissionId);
-
-                                    // Check if setting isFirstMission = true
-                                    if (_detialPopUpForm.IsFirstMission.Checked) {
-                                        if (selectedMission.predecessor_mission_id != null || selectedMission.predecessor_mission_id > 0) {
-                                            check = false;
-                                            _detialPopUpForm.ChallengMission.SetError(true);
-                                            warningMsg += $"{warningIndex++}. 当前选择的对应普通任务存在前置任务，无法设置成首道岗位\r\n";
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Check part predecessor mission
-                        if (_detialPopUpForm.PredecessorPartMissionMaps.Count > 0) {
-                            List<int> ids = new();
-                            bool flag = false;
-                            foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
-                                if (map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
-                                    flag = true;
-                                    map.BarCodeRuleId.SetError(true);
-                                } else {
-                                    map.BarCodeRuleId.SetError(false);
-                                }
-
-                                if (!map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
-                                    flag = true;
-                                    map.MissionId.SetError(true);
-                                } else {
-                                    map.MissionId.SetError(false);
-                                }
-
-                                if (map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
-                                    map.BarCodeRuleId.SetError(false);
-                                    map.MissionId.SetError(false);
-                                }
-                            }
-
-                            if (flag) {
-                                check = false;
-                                warningMsg += $"{warningIndex++}. 物料前置任务需要选择要限制的物料匹配规则ID\r\n";
-                            }
-
-                            List<int> missionIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.MissionId.IsDefaultValue()).Select(map => map.MissionId.Value).ToList();
-                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                missionIds.Add(_detialPopUpForm.PredecessorMission.Value);
-                            }
-
-                            Dictionary<int, int> idsDict = missionIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
-                            List<int> idKeys = idsDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
-                            if (idKeys.Count > 0) {
-                                check = false;
-                                _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
-                                    if (idKeys.Contains(map.MissionId.Value)) {
-                                        map.MissionId.SetError(true);
-                                    } else if (!map.MissionId.IsError) {
-                                        map.MissionId.SetError(false);
-                                    }
-                                });
-                                if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                    _detialPopUpForm.PredecessorMission.SetError(true);
-                                }
-                                warningMsg += $"{warningIndex++}. 任务的“前置任务”与“物料前置任务”无法选择重复的任务\r\n";
-                            } else {
-                                if (_detialPopUpForm.IsFirstMission.Checked && !_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                    check = false;
-                                    _detialPopUpForm.PredecessorMission.SetError(true);
-                                    warningMsg += $"{warningIndex++}. 首道岗位挑战任务无法设置前置任务\r\n";
-                                } else {
-                                    _detialPopUpForm.PredecessorMission.SetError(false);
-                                }
-                            }
-
-                            List<int> barCodeRuleIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.BarCodeRuleId.IsDefaultValue()).Select(map => map.BarCodeRuleId.Value).ToList();
-                            Dictionary<int, int> barCodeRulesDict = barCodeRuleIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
-                            List<int> ruleKeys = barCodeRulesDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
-                            if (ruleKeys.Count > 0) {
-                                check = false;
-                                _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
-                                    if (ruleKeys.Contains(map.BarCodeRuleId.Value)) {
-                                        map.BarCodeRuleId.SetError(true);
-                                    } else if (!map.BarCodeRuleId.IsError) {
-                                        map.BarCodeRuleId.SetError(false);
-                                    }
-                                });
-                                warningMsg += $"{warningIndex++}. 物料条码规则不能重复设置\r\n";
-                            }
-                        }
-
-                        // Check screw bit counter boxes
-                        List<CustomTextBox> bitPositions = new();
-                        List<CustomTextBox> counters = new();
-                        _detialPopUpForm.ScrewBitCounters.ForEach(box => {
-                            if (!box.GetTextBox(0).IsEmpty()) {
-                                if (int.Parse(box.GetTextBox(0).Box.Text) <= 0) {
-                                    bitPositions.Add(box.GetTextBox(0));
-                                }
-
-                                if (box.GetTextBox(1).IsEmpty()) {
-                                    counters.Add(box.GetTextBox(1));
-                                }
-
-                                if (box.GetTextBox(2).IsEmpty()) {
-                                    counters.Add(box.GetTextBox(2));
-                                }
-                            }
-                        });
-                        if (bitPositions.Count > 0) {
-                            check = false;
-                            foreach (CustomTextBox box in bitPositions) {
-                                box.IsError = true;
-                            }
-                            warningMsg += $"{warningIndex++}. 套筒位不能小于0\r\n";
-                        }
-                        if (counters.Count > 0) {
-                            check = false;
-                            foreach (CustomTextBox box in counters) {
-                                box.IsError = true;
-                            }
-                            warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限及每次任务计数也不能为空\r\n";
-                        }
-
-                        // Check if can save
-                        if (!check) {
-                            WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
-                        } else {
-                            _missionName.SetValue(0, missionName);
-                            _missionDTO.name = missionName;
-                            _missionDTO.is_challenge_mission = (int) (_detialPopUpForm.IsChallengeMission.Checked ? YesOrNo.YES : YesOrNo.NO);
-                            _missionDTO.is_first_mission = (int) (_detialPopUpForm.IsFirstMission.Checked ? YesOrNo.YES : YesOrNo.NO);
-                            _missionDTO.challenge_mission_id = _detialPopUpForm.ChallengMission.Value;
-                            _missionDTO.max_ng_num = int.Parse(maxNGNum);
-                            _missionDTO.password_need_time = int.Parse(passwordNeedTime);
-                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
-                            } else {
-                                _missionDTO.predecessor_mission_id = null;
-                            }
-                            Dictionary<int, int> idsDict = new();
-                            foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
-                                if (!map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
-                                    idsDict.Add(map.BarCodeRuleId.Value, map.MissionId.Value);
-                                }
-                            }
-
-                            if (idsDict.Count > 0) {
-                                _missionDTO.predecessor_part_mission_ids = JsonConvert.SerializeObject(idsDict);
-                            } else {
-                                _missionDTO.predecessor_part_mission_ids = null;
-                            }
-
-                            _detialPopUpForm.ScrewBitCounters.ForEach(box => {
-                                if (!box.GetTextBox(0).IsEmpty()
-                                        && !box.GetTextBox(1).IsEmpty()
-                                        && !box.GetTextBox(2).IsEmpty()) {
-                                    int bitPosition = int.Parse(box.GetTextBox(0).Box.Text);
-                                    int maxNum = int.Parse(box.GetTextBox(1).Box.Text);
-                                    int countEachTime = int.Parse(box.GetTextBox(2).Box.Text);
-
-                                    ScrewBitCounterDTO? temp = _screwBitCounterDTOs.Find(dto => dto.bit_position == bitPosition);
-                                    if (temp == null) {
-                                        temp = new() {
-                                            mission_id = _missionDTO.id,
-                                        };
-                                        _screwBitCounterDTOs.Add(temp);
-                                    }
-
-                                    temp.bit_position = bitPosition;
-                                    temp.max_num = maxNum;
-                                    temp.count_each_time = countEachTime;
-                                }
-                            });
-                            ScrewBitCounterDTO? screwBitCounterDTO = _screwBitCounterDTOs.Find(dto =>
-                                    _detialPopUpForm.ScrewBitCounters.Find(box =>
-                                        !box.GetTextBox(0).IsEmpty() && dto.bit_position == int.Parse(box.GetTextBox(0).Box.Text)) == null);
-                            if (screwBitCounterDTO != null) {
-                                screwBitCounterDTO.deleted = (int) YesOrNo.YES;
-                            }
-
-                            _detialPopUpForm.Hide();
-
-                            // Reset all serial numbers of all bolts
-                            _sideButtons.ForEach(side => side.ResetSerialNumbers());
-                            ForceResizeRight();
-                        }
-                    };
-                    _detialPopUpForm.AddButton("关闭").Click += (s, e) => {
-                        _detialPopUpForm.Hide();
-                    };
-                    _detialPopUpForm.PretendToShowToCreateHandlesForChildren();
-                    _detialPopUpForm.ResizeSelf();
-                    _detialPopUpForm.Show();
-                };
+                _editDetail.Click += OpenMissionDetailPopUp;
                 _buttonSave = new() {
                     Parent = _buttonsOuter,
                     Label = "保存",
@@ -689,6 +439,258 @@ namespace OperationGuidance_new.Views {
                     _currentProductImageFile.ClearBuffer();
                     _currentSideButton.ImageReset();
                 });
+            }
+
+            protected virtual void OpenMissionDetailPopUp(object? s, EventArgs e) {
+                List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
+                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+                _detialPopUpForm = new MissionDetailPopUpForm(_missionDTO, allOtherMissions, barCodeMatchingRuleDTOs, _screwBitCounterDTOs) {
+                    Title = "编辑任务详情",
+                };
+                _detialPopUpForm.MissionName.GetTextBox(0).Box.Select(0, 0);
+                _detialPopUpForm.AddButton("确定").Click += (s, e) => {
+                    bool check = true;
+                    string warningMsg = "";
+                    int warningIndex = 1;
+
+                    string missionName = _detialPopUpForm.MissionName.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(missionName)) {
+                        check = false;
+                        _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
+                    }
+
+                    string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(maxNGNum)) {
+                        check = false;
+                        _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
+                    }
+
+                    string passwordNeedTime = _detialPopUpForm.PasswordNeedTime.GetTextBox(0).Box.Text;
+                    if (string.IsNullOrEmpty(passwordNeedTime)) {
+                        check = false;
+                        _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
+                    }
+
+                    int int_maxNGNum = int.Parse(maxNGNum);
+                    int int_passwordNeedTime = int.Parse(passwordNeedTime);
+                    if (int_maxNGNum > 0 && int_passwordNeedTime >= int_maxNGNum) {
+                        check = false;
+                        _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
+                    }
+
+                    // Check challenge mission settings
+                    if (_detialPopUpForm.IsChallengeMission.Checked) {
+                        // Check challenge mission is empty or not
+                        if (_detialPopUpForm.ChallengMission.IsDefaultValue()) {
+                            check = false;
+                            _detialPopUpForm.ChallengMission.SetError(true);
+                            warningMsg += $"{warningIndex++}. 挑战任务必须对应一个普通任务\r\n";
+                        } else {
+                            int selectedMissionId = _detialPopUpForm.ChallengMission.Value;
+
+                            // Check if current selected challenge mission is already a challenge mission
+                            if (allOtherMissions.SingleOrDefault(m => m.challenge_mission_id == selectedMissionId) != null) {
+                                check = false;
+                                _detialPopUpForm.ChallengMission.SetError(true);
+                                warningMsg += $"{warningIndex++}. 当前选择的对应普通任务已存在挑战任务\r\n";
+                            } else {
+                                ProductMissionDTO selectedMission = allOtherMissions.Single(m => m.id == selectedMissionId);
+
+                                // Check if setting isFirstMission = true
+                                if (_detialPopUpForm.IsFirstMission.Checked) {
+                                    if (selectedMission.predecessor_mission_id != null || selectedMission.predecessor_mission_id > 0) {
+                                        check = false;
+                                        _detialPopUpForm.ChallengMission.SetError(true);
+                                        warningMsg += $"{warningIndex++}. 当前选择的对应普通任务存在前置任务，无法设置成首道岗位\r\n";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Check part predecessor mission
+                    if (_detialPopUpForm.PredecessorPartMissionMaps.Count > 0) {
+                        List<int> ids = new();
+                        bool flag = false;
+                        foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
+                            if (map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
+                                flag = true;
+                                map.BarCodeRuleId.SetError(true);
+                            } else {
+                                map.BarCodeRuleId.SetError(false);
+                            }
+
+                            if (!map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
+                                flag = true;
+                                map.MissionId.SetError(true);
+                            } else {
+                                map.MissionId.SetError(false);
+                            }
+
+                            if (map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
+                                map.BarCodeRuleId.SetError(false);
+                                map.MissionId.SetError(false);
+                            }
+                        }
+
+                        if (flag) {
+                            check = false;
+                            warningMsg += $"{warningIndex++}. 物料前置任务需要选择要限制的物料匹配规则ID\r\n";
+                        }
+
+                        List<int> missionIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.MissionId.IsDefaultValue()).Select(map => map.MissionId.Value).ToList();
+                        if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                            missionIds.Add(_detialPopUpForm.PredecessorMission.Value);
+                        }
+
+                        Dictionary<int, int> idsDict = missionIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+                        List<int> idKeys = idsDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
+                        if (idKeys.Count > 0) {
+                            check = false;
+                            _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
+                                if (idKeys.Contains(map.MissionId.Value)) {
+                                    map.MissionId.SetError(true);
+                                } else if (!map.MissionId.IsError) {
+                                    map.MissionId.SetError(false);
+                                }
+                            });
+                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                                _detialPopUpForm.PredecessorMission.SetError(true);
+                            }
+                            warningMsg += $"{warningIndex++}. 任务的“前置任务”与“物料前置任务”无法选择重复的任务\r\n";
+                        } else {
+                            if (_detialPopUpForm.IsFirstMission.Checked && !_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                                check = false;
+                                _detialPopUpForm.PredecessorMission.SetError(true);
+                                warningMsg += $"{warningIndex++}. 首道岗位挑战任务无法设置前置任务\r\n";
+                            } else {
+                                _detialPopUpForm.PredecessorMission.SetError(false);
+                            }
+                        }
+
+                        List<int> barCodeRuleIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.BarCodeRuleId.IsDefaultValue()).Select(map => map.BarCodeRuleId.Value).ToList();
+                        Dictionary<int, int> barCodeRulesDict = barCodeRuleIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+                        List<int> ruleKeys = barCodeRulesDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
+                        if (ruleKeys.Count > 0) {
+                            check = false;
+                            _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
+                                if (ruleKeys.Contains(map.BarCodeRuleId.Value)) {
+                                    map.BarCodeRuleId.SetError(true);
+                                } else if (!map.BarCodeRuleId.IsError) {
+                                    map.BarCodeRuleId.SetError(false);
+                                }
+                            });
+                            warningMsg += $"{warningIndex++}. 物料条码规则不能重复设置\r\n";
+                        }
+                    }
+
+                    // Check screw bit counter boxes
+                    List<CustomTextBox> bitPositions = new();
+                    List<CustomTextBox> counters = new();
+                    _detialPopUpForm.ScrewBitCounters.ForEach(box => {
+                        if (!box.GetTextBox(0).IsEmpty()) {
+                            if (int.Parse(box.GetTextBox(0).Box.Text) <= 0) {
+                                bitPositions.Add(box.GetTextBox(0));
+                            }
+
+                            if (box.GetTextBox(1).IsEmpty()) {
+                                counters.Add(box.GetTextBox(1));
+                            }
+
+                            if (box.GetTextBox(2).IsEmpty()) {
+                                counters.Add(box.GetTextBox(2));
+                            }
+                        }
+                    });
+                    if (bitPositions.Count > 0) {
+                        check = false;
+                        foreach (CustomTextBox box in bitPositions) {
+                            box.IsError = true;
+                        }
+                        warningMsg += $"{warningIndex++}. 套筒位不能小于0\r\n";
+                    }
+                    if (counters.Count > 0) {
+                        check = false;
+                        foreach (CustomTextBox box in counters) {
+                            box.IsError = true;
+                        }
+                        warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限及每次任务计数也不能为空\r\n";
+                    }
+
+                    // Check if can save
+                    if (!check) {
+                        WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
+                    } else {
+                        _missionName.SetValue(0, missionName);
+                        _missionDTO.name = missionName;
+                        _missionDTO.is_challenge_mission = (int) (_detialPopUpForm.IsChallengeMission.Checked ? YesOrNo.YES : YesOrNo.NO);
+                        _missionDTO.is_first_mission = (int) (_detialPopUpForm.IsFirstMission.Checked ? YesOrNo.YES : YesOrNo.NO);
+                        _missionDTO.challenge_mission_id = _detialPopUpForm.ChallengMission.Value;
+                        _missionDTO.max_ng_num = int.Parse(maxNGNum);
+                        _missionDTO.password_need_time = int.Parse(passwordNeedTime);
+                        if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
+                            _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
+                        } else {
+                            _missionDTO.predecessor_mission_id = null;
+                        }
+                        Dictionary<int, int> idsDict = new();
+                        foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
+                            if (!map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
+                                idsDict.Add(map.BarCodeRuleId.Value, map.MissionId.Value);
+                            }
+                        }
+
+                        if (idsDict.Count > 0) {
+                            _missionDTO.predecessor_part_mission_ids = JsonConvert.SerializeObject(idsDict);
+                        } else {
+                            _missionDTO.predecessor_part_mission_ids = null;
+                        }
+
+                        _detialPopUpForm.ScrewBitCounters.ForEach(box => {
+                            if (!box.GetTextBox(0).IsEmpty()
+                                    && !box.GetTextBox(1).IsEmpty()
+                                    && !box.GetTextBox(2).IsEmpty()) {
+                                int bitPosition = int.Parse(box.GetTextBox(0).Box.Text);
+                                int maxNum = int.Parse(box.GetTextBox(1).Box.Text);
+                                int countEachTime = int.Parse(box.GetTextBox(2).Box.Text);
+
+                                ScrewBitCounterDTO? temp = _screwBitCounterDTOs.Find(dto => dto.bit_position == bitPosition);
+                                if (temp == null) {
+                                    temp = new() {
+                                        mission_id = _missionDTO.id,
+                                    };
+                                    _screwBitCounterDTOs.Add(temp);
+                                }
+
+                                temp.bit_position = bitPosition;
+                                temp.max_num = maxNum;
+                                temp.count_each_time = countEachTime;
+                            }
+                        });
+                        ScrewBitCounterDTO? screwBitCounterDTO = _screwBitCounterDTOs.Find(dto =>
+                                _detialPopUpForm.ScrewBitCounters.Find(box =>
+                                    !box.GetTextBox(0).IsEmpty() && dto.bit_position == int.Parse(box.GetTextBox(0).Box.Text)) == null);
+                        if (screwBitCounterDTO != null) {
+                            screwBitCounterDTO.deleted = (int) YesOrNo.YES;
+                        }
+
+                        _detialPopUpForm.Hide();
+
+                        // Reset all serial numbers of all bolts
+                        _sideButtons.ForEach(side => side.ResetSerialNumbers());
+                        ForceResizeRight();
+                    }
+                };
+                _detialPopUpForm.AddButton("关闭").Click += (s, e) => {
+                    _detialPopUpForm.Hide();
+                };
+                _detialPopUpForm.PretendToShowToCreateHandlesForChildren();
+                _detialPopUpForm.ResizeSelf();
+                _detialPopUpForm.Show();
             }
 
             private ImageButton GenerateImageButton(string label, Image icon, EventHandler eventHandler) {
@@ -1523,33 +1525,33 @@ namespace OperationGuidance_new.Views {
                 _autoScrollContentOuterPanel.Size = new(controlWidth, contentHeight);
             }
 
-            private void ForceResizeRight() {
+            protected void ForceResizeRight() {
                 _autoScrollContentOuterPanel.Width -= 1;
                 ResizeBottomRight();
             }
         }
 
         public class MissionDetailPopUpForm: CustomPopUpForm {
-            private readonly int _columnCount = 2;
-            private readonly double _boxRatioOneLine = 7.9;
-            private readonly double _boxRatio = 5.75;
-            private readonly int _screwBitCounterMax = 10;
-            private ProductMissionDTO _missionDTO;
-            private TableLayoutPanel _tablePanel;
-            private CustomTextBoxGroup _missionName;
-            private ToggleButtonGroup _isChallengeMission;
-            private ToggleButtonGroup _isFirstMission;
-            private CustomComboBoxGroup<int> _challengMission;
-            private CustomTextBoxGroup _maxNGNum;
-            private CustomTextBoxGroup _passwordNeedTime;
-            private CustomTextBoxGroup _productsBarCodeNum;
-            private CustomComboBoxGroup<int> _predecessorMission;
-            private CustomTextBoxGroup _partsBarCodeNum;
-            private List<ProductMissionDTO> _allOtherMissions;
-            private List<BarCodeMatchingRuleDTO> _barCodeMatchingRuleDTOs;
-            private List<ScrewBitCounterDTO> _screwBitCounterDTOs;
-            private List<PredecessorPartMissionMap> _predecessorPartMissionMaps;
-            private List<CustomTextBoxButtonGroup> _screwBitCounters;
+            protected readonly int _columnCount = 2;
+            protected readonly double _boxRatioOneLine = 7.9;
+            protected readonly double _boxRatio = 5.75;
+            protected readonly int _screwBitCounterMax = 10;
+            protected ProductMissionDTO _missionDTO;
+            protected TableLayoutPanel _tablePanel;
+            protected CustomTextBoxGroup _missionName;
+            protected ToggleButtonGroup _isChallengeMission;
+            protected ToggleButtonGroup _isFirstMission;
+            protected CustomComboBoxGroup<int> _challengMission;
+            protected CustomTextBoxGroup _maxNGNum;
+            protected CustomTextBoxGroup _passwordNeedTime;
+            protected CustomTextBoxGroup _productsBarCodeNum;
+            protected CustomComboBoxGroup<int> _predecessorMission;
+            protected CustomTextBoxGroup _partsBarCodeNum;
+            protected List<ProductMissionDTO> _allOtherMissions;
+            protected List<BarCodeMatchingRuleDTO> _barCodeMatchingRuleDTOs;
+            protected List<ScrewBitCounterDTO> _screwBitCounterDTOs;
+            protected List<PredecessorPartMissionMap> _predecessorPartMissionMaps;
+            protected List<CustomTextBoxButtonGroup> _screwBitCounters;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
@@ -1712,6 +1714,28 @@ namespace OperationGuidance_new.Views {
                 }
 
                 // This declaration should be placed here then we can have correct ordered boxes
+                InitScrewCounterBoxes();
+
+                _tablePanel.SetColumnSpan(_missionName, _columnCount);
+                _tablePanel.SetColumnSpan(_challengMission, _columnCount);
+                _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
+                _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
+                _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
+                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
+
+                async void ShowWarningIfHasAsync(string errorMsg) {
+                    if (!string.IsNullOrEmpty(errorMsg)) {
+                        await Task.Run(() => {
+                            WidgetUtils.MainForm.BeginInvoke(async () => {
+                                await Task.Delay(500);
+                                WidgetUtils.ShowWarningPopUp($"物料前置任务配置有误：\r\n{errorMsg}");
+                            });
+                        });
+                    }
+                }
+            }
+
+            protected virtual void InitScrewCounterBoxes() {
                 _screwBitCounters = new() {
                     new("批头计数器1") {
                         Parent = _tablePanel,
@@ -1732,24 +1756,51 @@ namespace OperationGuidance_new.Views {
                 SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
                 addButton.Icon = Properties.Resources.sign_plus;
                 addButton.Click += (s, e) => AddScrewBitCounter();
+            }
 
-                _tablePanel.SetColumnSpan(_missionName, _columnCount);
-                _tablePanel.SetColumnSpan(_challengMission, _columnCount);
-                _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
-                _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
-                _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
-                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
-
-                async void ShowWarningIfHasAsync(string errorMsg) {
-                    if (!string.IsNullOrEmpty(errorMsg)) {
-                        await Task.Run(() => {
-                            WidgetUtils.MainForm.BeginInvoke(async () => {
-                                await Task.Delay(500);
-                                WidgetUtils.ShowWarningPopUp($"物料前置任务配置有误：\r\n{errorMsg}");
-                            });
-                        });
-                    }
+            protected virtual void AddScrewBitCounter() {
+                int currentCount = _screwBitCounters.Count;
+                if (currentCount >= _screwBitCounterMax) {
+                    WidgetUtils.ShowWarningPopUp($"批头计数器每个任务最多支持配置{_screwBitCounterMax}个");
+                    return;
                 }
+
+                CustomTextBoxButtonGroup box = new($"批头计数器{currentCount + 1}") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
+                    PositiveIntOnly = true,
+                    Separator = "->",
+                };
+                box.AddTextBox();
+                box.AddTextBox();
+
+                box.GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(0));
+                box.GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(1));
+                box.GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(2));
+                box.SetDefaultText(0, "套筒位");
+                box.SetDefaultText(1, "批头使用上限");
+                box.SetDefaultText(2, "单次计数量");
+
+                SignButton minusButton = box.AddButton<SignButton>();
+                minusButton.Icon = Properties.Resources.sign_minus;
+                minusButton.Click += (s, e) => {
+                    _screwBitCounters.Remove(box);
+                    box.Dispose();
+                    for (int i = 0; i < _screwBitCounters.Count; i++) {
+                        _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
+                        _screwBitCounters[i].ResizeChildren();
+                    }
+                    ResizeSelf();
+                };
+
+                _screwBitCounters.Add(box);
+                for (int i = 0; i < _screwBitCounters.Count; i++) {
+                    _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
+                }
+                _tablePanel.SetColumnSpan(box, _columnCount);
+
+                ResizeSelf();
             }
 
             protected override void AfterShown() {
@@ -1795,52 +1846,7 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            private void AddScrewBitCounter() {
-                int currentCount = _screwBitCounters.Count;
-                if (currentCount >= _screwBitCounterMax) {
-                    WidgetUtils.ShowWarningPopUp($"批头计数器每个任务最多支持配置{_screwBitCounterMax}个");
-                    return;
-                }
-
-                CustomTextBoxButtonGroup box = new($"批头计数器{currentCount + 1}") {
-                    Parent = _tablePanel,
-                    Ratio = _boxRatioOneLine,
-                    NameAlignment = HorizontalAlignment.Right,
-                    PositiveIntOnly = true,
-                    Separator = "->",
-                };
-                box.AddTextBox();
-                box.AddTextBox();
-
-                box.GetTextBox(0).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(0));
-                box.GetTextBox(1).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(1));
-                box.GetTextBox(2).Box.TextChanged += (s, e) => NotErrorIfNotEmpty(box.GetTextBox(2));
-                box.SetDefaultText(0, "套筒位");
-                box.SetDefaultText(1, "批头使用上限");
-                box.SetDefaultText(2, "单次计数量");
-
-                SignButton minusButton = box.AddButton<SignButton>();
-                minusButton.Icon = Properties.Resources.sign_minus;
-                minusButton.Click += (s, e) => {
-                    _screwBitCounters.Remove(box);
-                    box.Dispose();
-                    for (int i = 0; i < _screwBitCounters.Count; i++) {
-                        _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
-                        _screwBitCounters[i].ResizeChildren();
-                    }
-                    ResizeSelf();
-                };
-
-                _screwBitCounters.Add(box);
-                for (int i = 0; i < _screwBitCounters.Count; i++) {
-                    _screwBitCounters[i].TextName = $"批头计数器{i + 1}";
-                }
-                _tablePanel.SetColumnSpan(box, _columnCount);
-
-                ResizeSelf();
-            }
-
-            private void NotErrorIfNotEmpty(CustomTextBox box) {
+            protected void NotErrorIfNotEmpty(CustomTextBox box) {
                 if (!string.IsNullOrEmpty(box.Box.Text)) {
                     box.IsError = false;
                 }

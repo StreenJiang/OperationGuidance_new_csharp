@@ -1,4 +1,4 @@
-﻿using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils;
 using System.Text;
 
 namespace OperationGuidance_new.Constants {

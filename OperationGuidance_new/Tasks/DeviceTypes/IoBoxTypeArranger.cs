@@ -10,5 +10,6 @@ namespace OperationGuidance_new.Tasks.DeviceTypes {
 
         public string WritePosition(int?[] position) => _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage());
         public void Reset() => _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
+        public void OpenDoor() { } // TODO: 螺丝机开盖
     }
 }
