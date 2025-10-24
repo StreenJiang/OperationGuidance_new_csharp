@@ -169,15 +169,17 @@ namespace OperationGuidance_new.Views {
                     keyCharBox.IsError = false;
                 }
 
-                if (string.IsNullOrEmpty(partsNameStr)) {
-                    partsNameBox.IsError = true;
-                    check = false;
-                    warningMsg += $"{warningIndex++}. 物料名称（物料类型）为必填项\r\n";
-                }
-                if (string.IsNullOrEmpty(partNoStr)) {
-                    partNoBox.IsError = true;
-                    check = false;
-                    warningMsg += $"{warningIndex++}. 料号为必填项\r\n";
+                if (type.Value == BarCodeTypes.PARTS.Id) {
+                    if (string.IsNullOrEmpty(partsNameStr)) {
+                        partsNameBox.IsError = true;
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 物料名称（物料类型）为必填项\r\n";
+                    }
+                    if (string.IsNullOrEmpty(partNoStr)) {
+                        partNoBox.IsError = true;
+                        check = false;
+                        warningMsg += $"{warningIndex++}. 料号为必填项\r\n";
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(keyPosition) && string.IsNullOrEmpty(keyChar)) {
