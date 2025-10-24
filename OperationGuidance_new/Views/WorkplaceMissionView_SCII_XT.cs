@@ -1,9 +1,11 @@
-
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.HttpObjects;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.DeviceTypes;
@@ -30,6 +32,14 @@ namespace OperationGuidance_new.Views {
                 View = this,
             };
         }
+
+        protected override void OpenMissionListView() {
+            // Initialize
+            _missionListPanel = new("任务列表", "进入工作台", (s, e) => OpenWorkplaceViewDirectly()) {
+                Margin = new Padding(0),
+                Parent = this,
+            };
+        }
     }
 
     public class WorkplaceContentPanel_SCII_XT: WorkplaceContentPanel_SCII {
@@ -52,6 +62,51 @@ namespace OperationGuidance_new.Views {
                     _ = _loopingToCheckBatchNo();
                 }
 
+                _productBatch.GetTextBox(0).Box.Text = batchNo;
+            });
+
+            SciiXtController.ActionAfterReceivedRecipe = ActionAfterReceivedRecipe;
+            SciiXtController.ActionAfterReceivedBatch = ActionAfterReceivedBatch;
+        }
+
+        public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            await TerminateMission(status);
+
+            SwitchMissionByRecipe(_getRecipeCode());
+        }
+
+        protected override void InitializeAfterHandelCreated() {
+            base.InitializeAfterHandelCreated();
+
+            _missionSelectedName.DeleteButton<CommonButton>(0);
+
+            SwitchMissionByRecipe(_getRecipeCode());
+        }
+
+        private void SwitchMissionByRecipe(string recipeCode) {
+            if (_activated) {
+                WidgetUtils.ShowWarningPopUp("接收到配方变更请求，将在当前未结束任务结束以后自动切换至指定配方所对应的任务。");
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(recipeCode) && (_mission == null || _mission.name != recipeCode)) {
+                var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
+                if (rsp != null && rsp.ProductMissionDTO != null) {
+                    BeginInvoke(() => {
+                        SwitchToMission(rsp.ProductMissionDTO);
+                    });
+                } else {
+                    WidgetUtils.ShowWarningPopUp($"未找到配方[{recipeCode}]对应的任务，请检查是否配置了该任务。");
+                }
+            }
+        }
+
+        private void ActionAfterReceivedRecipe(string recipeCode) {
+            SwitchMissionByRecipe(recipeCode);
+        }
+
+        private void ActionAfterReceivedBatch(string batchNo) {
+            BeginInvoke(() => {
                 _productBatch.GetTextBox(0).Box.Text = batchNo;
             });
         }
@@ -396,14 +451,6 @@ namespace OperationGuidance_new.Views {
             _barCodePopUpForm.Show();
         }
 
-        private string _getBatchNo() {
-            string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
-            if (string.IsNullOrEmpty(batchNo)) {
-                WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置信息。");
-            }
-            return batchNo;
-        }
-
         private async Task _loopingToCheckBatchNo() {
             await Task.Run(() => {
                 BeginInvoke(async () => {
@@ -429,6 +476,22 @@ namespace OperationGuidance_new.Views {
                 WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
             }
             return procedureCode;
+        }
+
+        private string _getBatchNo() {
+            string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+            if (string.IsNullOrEmpty(batchNo)) {
+                WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置信息。");
+            }
+            return batchNo;
+        }
+
+        private string _getRecipeCode() {
+            string recipeCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.RecipeCode);
+            if (string.IsNullOrEmpty(recipeCode)) {
+                WidgetUtils.ShowWarningPopUp(this, "【配方编码】未配置，请检查配置信息。");
+            }
+            return recipeCode;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using CustomLibrary.Configs;
+using CustomLibrary.Configs;
 using CustomLibrary.Constants;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
@@ -9,11 +9,11 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AWorkplaceMissionView<T, V>: CustomContentPanel where T : AWorkplaceContentPanel where V : WorkplaceTopBar, new() {
-        private MissionListPanel? _missionListPanel;
-        private List<ProductMissionDTO>? _productMissionDTOs;
-        private OperationGuidanceApis? apis;
-        private T? _workplacePanel;
-        private bool _operatorOpenning = false;
+        protected MissionListPanel? _missionListPanel;
+        protected List<ProductMissionDTO>? _productMissionDTOs;
+        protected OperationGuidanceApis? apis;
+        protected T? _workplacePanel;
+        protected bool _operatorOpenning = false;
 
         public AWorkplaceMissionView() => Initialize(false);
         public AWorkplaceMissionView(bool operatorOpenning) : base() {
@@ -32,16 +32,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        private void OpenMissionListView() {
+        protected virtual void OpenMissionListView() {
             // Initialize
             _missionListPanel = new("选择任务", "直接进入工作台", (s, e) => OpenWorkplaceViewDirectly()) {
                 Margin = new Padding(0),
                 Parent = this,
             };
         }
-        private void OpenWorkplaceViewDirectly() => OpenWorkplaceView(null);
+        protected void OpenWorkplaceViewDirectly() => OpenWorkplaceView(null);
 
-        private void CheckAndDisplay() {
+        protected void CheckAndDisplay() {
             if (_missionListPanel != null) {
                 // Fetch data
                 FetchData();

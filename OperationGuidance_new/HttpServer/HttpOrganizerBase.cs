@@ -1,4 +1,4 @@
-namespace OperationGuidance_service.HttpServer {
+namespace OperationGuidance_new.HttpServer {
     public abstract class HttpOrganizer {
         protected RestfulHttpServer? _restfulHttpServer;
         private int? _port;

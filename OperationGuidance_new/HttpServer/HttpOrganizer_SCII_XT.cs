@@ -1,6 +1,6 @@
-using OperationGuidance_service.Controllers;
+using OperationGuidance_new.HttpObjects;
 
-namespace OperationGuidance_service.HttpServer {
+namespace OperationGuidance_new.HttpServer {
     public class HttpOrganizer_SCII_XT: HttpOrganizer {
         protected override void AddControllers() {
             if (_restfulHttpServer != null) {

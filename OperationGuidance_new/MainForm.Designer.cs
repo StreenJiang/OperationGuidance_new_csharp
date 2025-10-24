@@ -18,7 +18,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
-using OperationGuidance_service.HttpServer;
+using OperationGuidance_new.HttpServer;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -552,8 +552,8 @@ namespace OperationGuidance_new {
                             WidgetUtils.ShowWarningPopUp("Http 服务未配置，请检查配置。");
                         }
                         // 工序编码检查
-                        string defaultProcedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
-                        if (string.IsNullOrEmpty(defaultProcedureCode)) {
+                        string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+                        if (string.IsNullOrEmpty(procedureCode)) {
                             checkOk = false;
                             MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.ProcedureCode, "");
                             WidgetUtils.ShowWarningPopUp("【工序编码】未配置，请检查配置。");
@@ -566,11 +566,18 @@ namespace OperationGuidance_new {
                             WidgetUtils.ShowWarningPopUp("【设备编码】未配置，请检查配置。");
                         }
                         // 批次号
-                        string defaultBatchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
-                        if (string.IsNullOrEmpty(defaultBatchNo)) {
+                        string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+                        if (string.IsNullOrEmpty(batchNo)) {
                             checkOk = false;
                             MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.BatchNo, "");
                             WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置。");
+                        }
+                        // 配方编码
+                        string recipeCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.RecipeCode);
+                        if (string.IsNullOrEmpty(recipeCode)) {
+                            checkOk = false;
+                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.RecipeCode, "");
+                            WidgetUtils.ShowWarningPopUp("【配方编码】未配置，请检查配置。");
                         }
                         break;
                 }

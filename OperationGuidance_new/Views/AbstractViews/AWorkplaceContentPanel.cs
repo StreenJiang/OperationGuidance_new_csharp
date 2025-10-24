@@ -1302,7 +1302,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _currentWorkingBolt = null;
                 _currentWorkingBoltIndependence.Clear();
 
-                TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
+                _ = TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
             }
         }
         protected virtual void PrepareBeforeActivatingMission() {
@@ -1684,14 +1684,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         }
                                     } else {
                                         // Retry times reaches max, stop the mission
-                                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                                        _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
 
                                         // Show notice
                                         WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                     }
                                 } else {
                                     // Do not have any retry chance then terminate mission
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                                    _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                 }
                             }
                         } else {
@@ -2550,7 +2550,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _tighteningDataPanel.DataSource = vos;
         }
 
-        protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
+        protected virtual void ResetMissionToDefault() => _ = TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
             // Lock all tools

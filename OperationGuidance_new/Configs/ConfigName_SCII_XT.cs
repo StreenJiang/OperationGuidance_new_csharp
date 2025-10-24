@@ -4,5 +4,6 @@ namespace OperationGuidance_new.Configs {
         public static string ProcedureCode => "procedure_code";
         public static string BatchNo => "batch_no";
         public static string EquipmentCode => "equipment_code";
+        public static string RecipeCode => "recipe_code";
     }
 }

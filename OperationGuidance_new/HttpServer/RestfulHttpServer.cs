@@ -5,7 +5,7 @@ using log4net;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
 
-namespace OperationGuidance_service.HttpServer {
+namespace OperationGuidance_new.HttpServer {
     /// <summary>
     /// 基于 HttpListener 的轻量级 RESTful API 服务器
     /// </summary>

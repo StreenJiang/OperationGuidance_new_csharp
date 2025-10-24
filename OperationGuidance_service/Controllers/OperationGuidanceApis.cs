@@ -394,12 +394,23 @@ namespace OperationGuidance_service.Controllers {
         }
         public QueryProductMissionDetailRsp QueryProductMissionDetail(QueryProductMissionDetailReq req) {
             // 先查询任务
-            ProductMission? productMission = _productMissionService.FindById(req.MissionId);
+            ProductMission? productMission = null;
+            if (req.MissionId != -1) {
+                productMission = _productMissionService.FindById(req.MissionId);
+            } else if (!string.IsNullOrEmpty(req.MissionName)) {
+                Dictionary<string, object> parameters = new();
+                parameters.Add("name", req.MissionName);
+                var productMissions = _productMissionService
+                                        .FindBySql($"select * from {_productMissionService.TableName} where name = @name", parameters);
+                if (productMissions != null && productMissions.Count > 0) {
+                    productMission = productMissions[0];
+                }
+            }
             if (productMission != null) {
                 ProductMissionDTO productMissionDTO = new();
                 CommonUtils.ObjectConverter<ProductMission, ProductMissionDTO>(productMission, productMissionDTO);
 
-                List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new() { { "@mission_id", req.MissionId } }).ToList();
+                List<ProductSide> sides = _productSideService.FindBySql($"select * from {_productSideService.TableName} where mission_id = @mission_id", new() { { "@mission_id", productMission.id } }).ToList();
                 sides = sides.Where(s => s.deleted != (int) YesOrNo.YES).ToList();
                 List<ProductBolt> bolts = new();
                 if (sides.Count > 0) {

@@ -59,6 +59,28 @@ namespace CustomLibrary.TextBoxes {
             throw new InvalidCastException($"Button type of _buttons[{index}] is not <{typeof(T).Name}>, please make sure the index is correct.");
         }
 
+        public void DeleteButton<T>(int index) where T : AbstractCustomButton {
+            if (index < 0 || index >= _buttons.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            var button = _buttons[index];
+            if (button is not T typedButton)
+                throw new InvalidCastException($"Expected {typeof(T)}, but got {button?.GetType()}");
+
+            // 从 UI 移除
+            TextBoxesPanel.Controls.Remove(typedButton);
+
+            // 从逻辑列表移除
+            _buttons.RemoveAt(index);
+
+            // 可选：释放资源（如果按钮持有非托管资源）
+            typedButton.Dispose(); // 通常不需要，除非你自定义了 Dispose
+
+            if (IsHandleCreated) {
+                ResizeChildren();
+            }
+        }
+
         protected override int GetBoxesRange() {
             int boxesRangeTemp = base.GetBoxesRange();
             // New range for just boxes
