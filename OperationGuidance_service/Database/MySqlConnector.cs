@@ -19,20 +19,21 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetDbConnection() {
             try {
-                MySqlConnection conn = new($@"
-                        server={Server}; 
-                        port={Port}; 
-                        database={Database}; 
-                        user={User}; password={Password}; 
-                        charset=UTF8; 
-                        Connection Timeout=2;
-                        AllowUserVariables=True;
-                        AllowBatch=True;
-                        Pooling=true;
-                        MinPoolSize=10;
-                        MaxPoolSize=200;
-                        ConnectionLifeTime=300;
-                        ");
+                string connStr = string.Join(";",
+                    $"server={Server}",
+                    $"port={Port}",
+                    $"database={Database}",
+                    $"user={User}",
+                    $"password={Password}",
+                    "charset=utf8",
+                    "Connection Timeout=2",
+                    "Allow User Variables=True",
+                    "AllowBatch=True",
+                    "Pooling=true",
+                    "Max Pool Size=200",
+                    "Connection Lifetime=300"
+                );
+                MySqlConnection conn = new(connStr);
                 conn.Open();
 
                 if (!ConnectionUtils.HealthChecked) {
