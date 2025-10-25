@@ -24,8 +24,10 @@ namespace OperationGuidance_new {
                 // Run main form
                 try {
                     MainForm mainForm = new MainForm();
-                    mainForm.HandleDestroyed += (s, e) => MainUtils.AppRunning = false;
-                    Application.Run(mainForm);
+                    if (!mainForm.IsDisposed) {
+                        mainForm.HandleDestroyed += (s, e) => MainUtils.AppRunning = false;
+                        Application.Run(mainForm);
+                    }
                 } catch (Exception e) {
                     MainUtils.logger.Error($"Error while runing application, e = {e}");
 

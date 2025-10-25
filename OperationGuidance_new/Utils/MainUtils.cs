@@ -126,7 +126,7 @@ namespace OperationGuidance_new.Utils {
 
         }
 
-        public static void CheckDBConnection() {
+        public static bool CheckDBConnection() {
             Form formPopup = new Form() {
                 StartPosition = FormStartPosition.CenterScreen,
                 FormBorderStyle = FormBorderStyle.None,
@@ -167,7 +167,14 @@ namespace OperationGuidance_new.Utils {
             DbConnection? dbConnection = null;
             formPopup.BeginInvoke(async () => {
                 await Task.Run(() => {
-                    dbConnection = DbConnector.GetConnection();
+                    try {
+                        dbConnection = DbConnector.GetConnection();
+                        if (dbConnection == null) {
+                            throw new Exception("Cannot connect to DB, throw this error manually...");
+                        }
+                    } catch (Exception ex) {
+                        logger.Error("Failed to connect to DB and getting Error...", ex);
+                    }
                 });
                 timer.Stop();
                 formPopup.Dispose();
@@ -178,13 +185,10 @@ namespace OperationGuidance_new.Utils {
             formPopup.Opacity = 1;
             formPopup.ShowDialog();
 
-            // Check after pop up form is closed
-            if (dbConnection == null) {
-                throw new DatabaseException("数据库连接失败，请检查数据库配置或网络连接状态");
-            }
-
             // Release connection because this is just for testing
-            dbConnection.Close();
+            dbConnection?.Close();
+
+            return dbConnection != null;
         }
 
         private static IniFileUtil Settings { get; } = new();

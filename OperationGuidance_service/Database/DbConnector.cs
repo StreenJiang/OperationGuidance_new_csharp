@@ -29,9 +29,9 @@ namespace OperationGuidance_service.Database {
         }
 
         public static DbConnection GetConnection() {
-            DbConnection? dbConnection = connector.GetDbConnection();
+            DbConnection? dbConnection = null;
 
-            int tryMaxTimes = 2;
+            int tryMaxTimes = 3;
             int tryTimes = 0;
             while (dbConnection == null && tryTimes < tryMaxTimes) {
                 try {
@@ -40,7 +40,7 @@ namespace OperationGuidance_service.Database {
                         tryTimes++;
                         logger.Warn($"Can not connect to DB, reconnecting... tryTimes = {tryTimes}");
                     }
-                } catch (DatabaseException de) {
+                } catch (Exception de) {
                     logger.Error($"Can not connect to DB, please check DB config or network status. Error message: {de}");
                     continue;
                 }
