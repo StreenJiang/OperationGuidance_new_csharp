@@ -50,7 +50,10 @@ namespace OperationGuidance_service.Database {
                                     SystemUtils.ShowNoticePopUp("数据库初始化完成！已自动禁用数据库初始化功能！");
                                 } else {
                                     SystemUtils.ShowNoticePopUp("数据库初始化已经禁用，请联系管理员，检查配置！");
+                                    return null;
                                 }
+                            } else {
+                                return null;
                             }
                         }
                         doubleChecked = true;

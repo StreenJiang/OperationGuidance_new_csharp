@@ -1,5 +1,6 @@
 ﻿using log4net;
 using OperationGuidance_service.Database.AbstractClasses;
+using OperationGuidance_service.Models;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
 using System.Data.SQLite;
@@ -20,7 +21,18 @@ namespace OperationGuidance_service.Database {
             logger.Info($"Using SQLite: {dataSource}");
 
             SQLiteConnection? conn = null;
-            if (!ConnectionUtils.HealthChecked && !File.Exists(dataSource)) {
+            bool needToInit = false;
+            bool dbExists = File.Exists(dataSource);
+            if (dbExists) {
+                logger.Info($"Connecting: {dataSource}");
+                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
+                conn.Open();
+                bool tableExists = ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName());
+                needToInit = !tableExists;
+            } else {
+                needToInit = true;
+            }
+            if (!ConnectionUtils.HealthChecked && needToInit) {
                 logger.Info($"Database does not exist: {dataSource}");
 
                 if (!doubleChecked) {
@@ -33,15 +45,20 @@ namespace OperationGuidance_service.Database {
                             SystemUtils.ShowNoticePopUp("数据库初始化完成！已自动禁用数据库初始化功能！");
                         } else {
                             SystemUtils.ShowNoticePopUp("数据库初始化已经禁用，请联系管理员，检查配置！");
+                            return null;
                         }
+                    } else {
+                        return null;
                     }
                 }
                 doubleChecked = true;
             }
 
-            logger.Info($"Connecting: {dataSource}");
-            conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
-            conn.Open();
+            if (!dbExists) {
+                logger.Info($"Connecting: {dataSource}");
+                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
+                conn.Open();
+            }
             string sqlScriptPrefix = "modify_sqlite";
 
             // Check if any modification scripts hasn't been executed
