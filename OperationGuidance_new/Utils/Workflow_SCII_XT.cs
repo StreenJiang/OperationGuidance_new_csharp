@@ -30,6 +30,9 @@ namespace OperationGuidance_new.Utils {
             try {
                 var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_OperatorLoginReq, SCII_XT_Response>(RequestPrefix + api, req);
                 result.loginSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                if (result.loginSuccess && rsp.datalnfo != null) {
+                    result.userId = (int) rsp.datalnfo;
+                }
                 result.message = rsp.message;
             } catch (Exception ex) {
                 result.loginSuccess = false;

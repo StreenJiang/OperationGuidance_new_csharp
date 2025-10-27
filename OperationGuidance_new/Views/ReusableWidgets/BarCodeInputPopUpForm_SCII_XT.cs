@@ -10,6 +10,8 @@ using OperationGuidance_service.Utils;
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BarCodeInputPopUpForm_SCII_XT: BarCodeInputPopUpForm_SCII {
         private string _productBatch;
+        private bool inBoundStationOk;
+        private bool bindAccessoryOk;
 
         public BarCodeInputPopUpForm_SCII_XT(AWorkplaceContentPanel workplace,
                 string initStr, ProductMissionDTO mission, bool activated,
@@ -18,6 +20,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 string? barCode, List<BarCodeMatchingRuleDTO> boltRules, bool isForBolt, string productBatch)
             : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules, isForBolt) {
             _productBatch = productBatch;
+            inBoundStationOk = false;
+            bindAccessoryOk = false;
         }
 
         protected override async void OnHandleCreated(EventArgs e) {
@@ -32,7 +36,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public override bool CheckCanActivateMission() {
-            if (base.CheckCanActivateMission()) {
+            if (base.CheckCanActivateMission() && inBoundStationOk) {
                 // 向 MES 发送配件绑定请求
                 if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
                     var req = new SCII_XT_BindAccessoryReq() {
@@ -63,13 +67,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                   .GetResult();
                     if (!dto.bindSuccess) {
                         WidgetUtils.ShowWarningPopUp($"配件绑定请求失败，详细信息：{dto.message}");
+                    } else {
+                        bindAccessoryOk = true;
                     }
                     return dto.bindSuccess;
                 }
+
+                logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
+                return true;
             }
 
-            logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
-            return true;
+            return false;
         }
 
         protected override bool ProductBarCodeExtraCheck(string barCode) {
@@ -89,6 +97,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                           .GetResult();
             if (!dto.inOrOutSuccess) {
                 WidgetUtils.ShowWarningPopUp($"进站请求失败，详细信息：{dto.message}");
+            } else {
+                inBoundStationOk = true;
             }
             return dto.inOrOutSuccess;
         }

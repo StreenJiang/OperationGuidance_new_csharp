@@ -436,8 +436,8 @@ namespace OperationGuidance_new.Views {
                                 }
                                 WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
                             } else {
-                                ActivateMission();
-                                _barCodePopUpForm.Dispose();
+                                // ActivateMission();
+                                // _barCodePopUpForm.Dispose();
                             }
                         } else {
                             _barCodePopUpForm.Dispose();

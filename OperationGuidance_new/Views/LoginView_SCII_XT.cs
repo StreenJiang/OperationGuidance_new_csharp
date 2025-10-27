@@ -27,8 +27,8 @@ namespace OperationGuidance_new.Views {
                     if (dto2 != null) {
                         var userAccountInfoDTO = new UserAccountInfoDTO();
                         userAccountInfoDTO.id = dto.userId;
-                        userAccountInfoDTO.name = dto2.employeeName ?? "未知";
-                        userAccountInfoDTO.position = dto2.roleName ?? "未知";
+                        userAccountInfoDTO.name = !string.IsNullOrEmpty(dto2.employeeName) ? dto2.employeeName : "未知";
+                        userAccountInfoDTO.position = !string.IsNullOrEmpty(dto2.roleName) ? dto2.roleName : "未知";
                         userAccountInfoDTO.account = account;
                         SystemUtils.UserInfo = userAccountInfoDTO;
 
