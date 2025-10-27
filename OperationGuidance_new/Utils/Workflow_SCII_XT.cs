@@ -30,8 +30,8 @@ namespace OperationGuidance_new.Utils {
             try {
                 var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_OperatorLoginReq, SCII_XT_Response>(RequestPrefix + api, req);
                 result.loginSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
-                if (result.loginSuccess && rsp.datalnfo != null) {
-                    result.userId = (int) rsp.datalnfo;
+                if (result.loginSuccess && rsp.dataInfo != null) {
+                    result.userId = Convert.ToInt32(rsp.dataInfo);
                 }
                 result.message = rsp.message;
             } catch (Exception ex) {
@@ -50,8 +50,8 @@ namespace OperationGuidance_new.Utils {
             try {
                 var rsp = await HttpUtils.SendGet_SCII_XT<SCII_XT_Response>(RequestPrefix + api + $"/{userId}");
                 if (rsp.code == (int) SCII_XT_ResponseCode.OK) {
-                    if (rsp.datalnfo != null) {
-                        result = JsonConvert.DeserializeObject<SCII_XT_UserInfoDTO>((string) rsp.datalnfo);
+                    if (rsp.dataInfo != null) {
+                        result = JsonConvert.DeserializeObject<SCII_XT_UserInfoDTO>((string) rsp.dataInfo);
                     }
                 }
                 result.message = rsp.message;
@@ -70,8 +70,8 @@ namespace OperationGuidance_new.Utils {
             try {
                 var rsp = await HttpUtils.SendGet_SCII_XT<SCII_XT_Response>(RequestPrefix + api + $"/{userId}");
                 if (rsp.code == (int) SCII_XT_ResponseCode.OK) {
-                    if (rsp.datalnfo != null) {
-                        result = JsonConvert.DeserializeObject<SCII_XT_UserPermissionDTO>((string) rsp.datalnfo);
+                    if (rsp.dataInfo != null) {
+                        result = JsonConvert.DeserializeObject<SCII_XT_UserPermissionDTO>((string) rsp.dataInfo);
                     }
                 }
                 result.message = rsp.message;

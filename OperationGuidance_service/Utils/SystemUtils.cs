@@ -1,4 +1,4 @@
-﻿using log4net;
+using log4net;
 using log4net.Config;
 using Microsoft.Extensions.DependencyInjection;
 using OperationGuidance_service.Configurations;
@@ -34,7 +34,7 @@ namespace OperationGuidance_service.Utils {
                 return _user;
             }
         }
-        public static int LoggedUserId => _user != null && _user.id > 0 ? _user.id : 0;
+        public static int LoggedUserId => _user != null && _user.id > 0 ? _user.id : 1;
         public static string LoggedUserName => _user != null && _user.name != null ? _user.name : "UnKnownUser";
         public static bool IsAdmin => _user != null && (_user.role_type == (int) Roles.DEVELOPER || _user.role_type == (int) Roles.ADMIN);
 
