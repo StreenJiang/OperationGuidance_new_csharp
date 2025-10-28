@@ -2924,7 +2924,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, logger);
                                 _pictureBox.Size = image.Size;
                                 _pictureBox.Image = image;
-                                oldImage.Dispose();
+                                oldImage?.Dispose();
 
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
