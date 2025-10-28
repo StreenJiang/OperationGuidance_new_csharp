@@ -403,7 +403,7 @@ namespace OperationGuidance_service.Controllers {
                 parameters.Add("name", req.MissionName);
                 parameters.Add("deleted", (int) YesOrNo.NO);
                 var productMissions = _productMissionService
-                                        .FindBySql($"select * from {_productMissionService.TableName} where name = @name", parameters);
+                                        .FindBySql($"select * from {_productMissionService.TableName} where name = @name and deleted = @deleted", parameters);
                 if (productMissions != null && productMissions.Count > 0) {
                     productMission = productMissions[0];
                 }
