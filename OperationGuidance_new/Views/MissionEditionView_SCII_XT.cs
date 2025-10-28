@@ -2,8 +2,10 @@ using CustomLibrary.Buttons;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using Newtonsoft.Json;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
@@ -69,6 +71,10 @@ namespace OperationGuidance_new.Views {
                         check = false;
                         _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
+                    } else if (allOtherMissions.Find(m => m.name == missionName) != null) {
+                        check = false;
+                        _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 任务名称不能与现有任务名称重复\r\n";
                     }
 
                     string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
@@ -211,10 +217,6 @@ namespace OperationGuidance_new.Views {
                             if (box.GetTextBox(1).IsEmpty()) {
                                 counters.Add(box.GetTextBox(1));
                             }
-
-                            if (box.GetTextBox(2).IsEmpty()) {
-                                counters.Add(box.GetTextBox(2));
-                            }
                         }
                     });
                     if (bitPositions.Count > 0) {
@@ -262,12 +264,9 @@ namespace OperationGuidance_new.Views {
                         }
 
                         _detialPopUpForm.ScrewBitCounters.ForEach(box => {
-                            if (!box.GetTextBox(0).IsEmpty()
-                                    && !box.GetTextBox(1).IsEmpty()
-                                    && !box.GetTextBox(2).IsEmpty()) {
+                            if (!box.GetTextBox(0).IsEmpty() && !box.GetTextBox(1).IsEmpty()) {
                                 int bitPosition = int.Parse(box.GetTextBox(0).Box.Text);
                                 int maxNum = int.Parse(box.GetTextBox(1).Box.Text);
-                                int countEachTime = int.Parse(box.GetTextBox(2).Box.Text);
 
                                 ScrewBitCounterDTO? temp = _screwBitCounterDTOs.Find(dto => dto.bit_position == bitPosition);
                                 if (temp == null) {
@@ -279,7 +278,6 @@ namespace OperationGuidance_new.Views {
 
                                 temp.bit_position = bitPosition;
                                 temp.max_num = maxNum;
-                                temp.count_each_time = countEachTime;
                             }
                         });
                         ScrewBitCounterDTO? screwBitCounterDTO = _screwBitCounterDTOs.Find(dto =>
@@ -302,6 +300,46 @@ namespace OperationGuidance_new.Views {
                 _detialPopUpForm.PretendToShowToCreateHandlesForChildren();
                 _detialPopUpForm.ResizeSelf();
                 _detialPopUpForm.Show();
+            }
+
+            protected override void SaveClick(object? sender, EventArgs eventArgs) {
+                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+                string missionName = _missionName.GetTextBox(0).Box.Text;
+                if (string.IsNullOrEmpty(missionName)) {
+                    _missionName.GetTextBox(0).IsError = true;
+                    WidgetUtils.ShowErrorPopUp("任务名称不能为空！");
+                    return;
+                } else if (allOtherMissions.Find(m => m.name == missionName) != null) {
+                    _missionName.GetTextBox(0).IsError = true;
+                    WidgetUtils.ShowErrorPopUp("任务名称不能与现有任务名称重复！");
+                    return;
+                }
+                _missionDTO.name = missionName;
+                _missionName.GetTextBox(0).IsError = false;
+
+                _currentProductImageFile.SaveSideInfo();
+                // Store to database
+                var req = new AddOrUpdateProductMissionReq(_missionDTO);
+                var rsp = _apis.AddOrUpdateProductMission(req);
+                if (rsp.RsponseCode == HttpResponseCode.OK) {
+                    // Save screw bit counters
+                    _screwBitCounterDTOs.ForEach(dto => _apis.AddOrUpdateScrewBitCounter(new(dto)));
+
+                    Modified = false;
+                    _missionDTO = rsp.ProductMissionDTO;
+
+                    // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
+                    foreach (SideButton sideBtn in _sideButtons) {
+                        MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                    }
+                    MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // 保存后跳转至任务列表界面
+                    WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                    Dispose();
+                } else {
+                    MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
         }
 

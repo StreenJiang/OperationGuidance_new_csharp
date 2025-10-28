@@ -279,26 +279,7 @@ namespace OperationGuidance_new.Views {
                     Label = "保存",
                     BlockHoverUp = true,
                 };
-                _buttonSave.Click += (sender, eventArgs) => {
-                    _currentProductImageFile.SaveSideInfo();
-                    // Store to database
-                    AddOrUpdateProductMissionReq req = new(_missionDTO);
-                    AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
-                    if (rsp.RsponseCode == HttpResponseCode.OK) {
-                        Modified = false;
-                        _missionDTO = rsp.ProductMissionDTO;
-                        // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
-                        foreach (SideButton sideBtn in _sideButtons) {
-                            MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
-                        }
-                        MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        // 保存后跳转至任务列表界面
-                        WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
-                        Dispose();
-                    } else {
-                        MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                };
+                _buttonSave.Click += SaveClick;
                 _buttonNew = new() {
                     Parent = _buttonsOuter,
                     Label = "新增",
@@ -492,6 +473,37 @@ namespace OperationGuidance_new.Views {
                     _currentProductImageFile.ClearBuffer();
                     _currentSideButton.ImageReset();
                 });
+            }
+
+            protected virtual void SaveClick(object? sender, EventArgs eventArgs) {
+                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+                string missionName = _missionName.GetTextBox(0).Box.Text;
+                if (string.IsNullOrEmpty(missionName)) {
+                    _missionName.GetTextBox(0).IsError = true;
+                    WidgetUtils.ShowErrorPopUp("任务名称不能为空！");
+                    return;
+                }
+                _missionDTO.name = missionName;
+                _missionName.GetTextBox(0).IsError = false;
+
+                _currentProductImageFile.SaveSideInfo();
+                // Store to database
+                AddOrUpdateProductMissionReq req = new(_missionDTO);
+                AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
+                if (rsp.RsponseCode == HttpResponseCode.OK) {
+                    Modified = false;
+                    _missionDTO = rsp.ProductMissionDTO;
+                    // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
+                    foreach (SideButton sideBtn in _sideButtons) {
+                        MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                    }
+                    MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // 保存后跳转至任务列表界面
+                    WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
+                    Dispose();
+                } else {
+                    MessageBox.Show(null, "保存失败！错误信息：" + rsp.RsponseMessage, "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
 
             private ImageButton GenerateImageButton(string label, Image icon, EventHandler eventHandler) {

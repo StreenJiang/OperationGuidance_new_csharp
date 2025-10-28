@@ -10,6 +10,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
 using log4net;
+using Newtonsoft.Json;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -400,6 +401,7 @@ namespace OperationGuidance_service.Controllers {
             } else if (!string.IsNullOrEmpty(req.MissionName)) {
                 Dictionary<string, object> parameters = new();
                 parameters.Add("name", req.MissionName);
+                parameters.Add("deleted", (int) YesOrNo.NO);
                 var productMissions = _productMissionService
                                         .FindBySql($"select * from {_productMissionService.TableName} where name = @name", parameters);
                 if (productMissions != null && productMissions.Count > 0) {
@@ -428,6 +430,7 @@ namespace OperationGuidance_service.Controllers {
                     sideDTO.Bolts = productBoltDTOs;
                 });
 
+                logger.Info($"Result of QueryProductMissionDetail: {JsonConvert.SerializeObject(productMissionDTO)}");
                 return new() {
                     ProductMissionDTO = productMissionDTO
                 };

@@ -3,6 +3,8 @@ using CustomLibrary.ComboBoxes;
 using CustomLibrary.Forms;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using log4net;
+using Newtonsoft.Json;
 using OperationGuidance_new.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
@@ -11,6 +13,7 @@ using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BoltPopUpForm: CustomPopUpForm {
+        private ILog log = LogManager.GetLogger(typeof(BoltPopUpForm));
         protected readonly int _columnCount = 2;
         protected readonly double _boxRatioOneLine = 8.5925;
         protected readonly double _boxRatio = 7.2;
@@ -62,6 +65,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public BoltPopUpForm(ProductBoltDTO boltDTO) : base() {
             apis = SystemUtils.GetApis();
             _originalBoltDTO = boltDTO;
+            log.Info($"Open pop up form for boltDTO: {JsonConvert.SerializeObject(boltDTO)}");
 
             // 添加文本框显示信息
             _tablePanel = new() {
