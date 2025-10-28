@@ -267,10 +267,13 @@ namespace OperationGuidance_new.Views {
             List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
             if (screwBitCounterDTOs.Count > 0) {
                 for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
+                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
+                    if (_screwBitCounterDtos.ContainsKey(dto.bit_position)) {
+                        continue;
+                    }
                     if (i >= 4) { // More than 4 are not supported.
                         break;
                     }
-                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
                     _screwBitCounterDtos.Add(dto.bit_position, dto);
 
                     CustomTextBoxGroup boxGroup = new("批头计数" + dto.bit_position) {
