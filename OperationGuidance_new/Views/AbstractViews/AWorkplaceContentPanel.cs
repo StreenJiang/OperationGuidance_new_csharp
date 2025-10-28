@@ -2921,7 +2921,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     _rotateAngle -= 15;
                                 }
                                 Image oldImage = _pictureBox.Image;
-                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, logger);
+                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, logger, false);
                                 _pictureBox.Size = image.Size;
                                 _pictureBox.Image = image;
                                 oldImage?.Dispose();
