@@ -96,6 +96,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                           .GetAwaiter()
                           .GetResult();
             if (!dto.inOrOutSuccess) {
+                logger.Warn($"进站失败，详细信息：{dto.message}");
                 WidgetUtils.ShowWarningPopUp($"进站请求失败，详细信息：{dto.message}");
             } else {
                 inBoundStationOk = true;

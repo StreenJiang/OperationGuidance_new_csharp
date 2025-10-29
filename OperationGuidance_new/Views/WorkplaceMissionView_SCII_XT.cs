@@ -70,9 +70,32 @@ namespace OperationGuidance_new.Views {
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
-            await TerminateMission(status);
+            if (await OutBound()) {
+                await base.TerminateMission(status);
 
-            SwitchMissionByRecipe(_getRecipeCode());
+                SwitchMissionByRecipe(_getRecipeCode());
+            }
+        }
+
+        private async Task<bool> OutBound() {
+            SCII_XT_InOrOutBoundStationReq req = new() {
+                productCode = _missionRecord.product_bar_code,
+                passType = (int) SCII_XT_ProductType.PRODUCT,
+                recipeCode = _mission.name,
+                procedureCode = _getProcedureCode(),
+                equipmentCode = _getEquipmentCode(),
+                batchNo = _missionRecord.product_batch,
+            };
+
+            var dto = await Workflow_SCII_XT.OutBoundStation(req);
+            if (!dto.inOrOutSuccess) {
+                logger.Warn($"出站失败，详细信息：{dto.message}");
+                if (WidgetUtils.ShowConfirmPopUp($"进站请求失败！点击【是】重试。\n\n详细信息：{dto.message}")) {
+                    return await OutBound();
+                }
+            }
+
+            return true;
         }
 
         protected override void InitializeAfterHandelCreated() {
@@ -479,6 +502,14 @@ namespace OperationGuidance_new.Views {
                 WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
             }
             return procedureCode;
+        }
+
+        private string _getEquipmentCode() {
+            string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
+            if (string.IsNullOrEmpty(equipmentCode)) {
+                WidgetUtils.ShowWarningPopUp(this, "【设备编码】未配置，请检查配置信息。");
+            }
+            return equipmentCode;
         }
 
         private string _getBatchNo() {
