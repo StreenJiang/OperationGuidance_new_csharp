@@ -51,6 +51,7 @@ namespace OperationGuidance_new.Views {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
                 MaxItemsShown = 4,
+                Visible = false,
             };
             foreach (string model in Enum.GetNames<CpuType>()) {
                 _plcModelComboBox.AddItem(model, model);
@@ -59,46 +60,50 @@ namespace OperationGuidance_new.Views {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
                 PositiveIntOnly = true,
+                Visible = false,
             };
             _plcDBRegisterNoBox = new("PLC寄存器号") {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
+                Visible = false,
             };
             _plcDBBitAddressBox = new("PLC位") {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
                 PositiveIntOnly = true,
+                Visible = false,
             };
             _plcBarCodeLengthBox = new("PLC条码长度") {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
                 PositiveIntOnly = true,
+                Visible = false,
             };
 
             _plcBarCodeSelfLoopingToggle.CheckedChanged += (s, e) => {
-                _plcDBAddressBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
-                _plcModelComboBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
-                _plcDBRegisterNoBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
-                _plcDBBitAddressBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
-                _plcBarCodeLengthBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
+                // _plcDBAddressBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
+                // _plcModelComboBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
+                // _plcDBRegisterNoBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
+                // _plcDBBitAddressBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
+                // _plcBarCodeLengthBox.Enabled = _plcBarCodeSelfLoopingToggle.Checked;
 
                 if (_plcBarCodeSelfLoopingToggle.Checked) {
-                    _plcDBAddressBox.SetValue(0, _plcDBAddressOriginal + "");
-                    _plcModelComboBox.SetCurrent(_plcModelComboBox.IndexOf(_plcModelOriginal));
-                    _plcDBRegisterNoBox.SetValue(0, _plcDBRegisterNoOriginal);
-                    _plcDBBitAddressBox.SetValue(0, _plcDBBitAddressOriginal + "");
-                    _plcBarCodeLengthBox.SetValue(0, _plcBarCodeLengthOriginal + "");
+                    // _plcDBAddressBox.SetValue(0, _plcDBAddressOriginal + "");
+                    // _plcModelComboBox.SetCurrent(_plcModelComboBox.IndexOf(_plcModelOriginal));
+                    // _plcDBRegisterNoBox.SetValue(0, _plcDBRegisterNoOriginal);
+                    // _plcDBBitAddressBox.SetValue(0, _plcDBBitAddressOriginal + "");
+                    // _plcBarCodeLengthBox.SetValue(0, _plcBarCodeLengthOriginal + "");
 
                     // Uncheck 'SelfLoopingMode'
                     if (MissionSelfLoopingModeToggle.Checked) {
                         MissionSelfLoopingModeToggle.Checked = false;
                     }
                 } else {
-                    _plcDBAddressBox.SetValue(0, "0");
-                    _plcModelComboBox.Reset();
-                    _plcDBRegisterNoBox.SetValue(0, "");
-                    _plcDBBitAddressBox.SetValue(0, "0");
-                    _plcBarCodeLengthBox.SetValue(0, "0");
+                    // _plcDBAddressBox.SetValue(0, "0");
+                    // _plcModelComboBox.Reset();
+                    // _plcDBRegisterNoBox.SetValue(0, "");
+                    // _plcDBBitAddressBox.SetValue(0, "0");
+                    // _plcBarCodeLengthBox.SetValue(0, "0");
                 }
             };
 
@@ -113,47 +118,47 @@ namespace OperationGuidance_new.Views {
             base.SaveMissionSettings();
 
             bool plcToggle = _plcBarCodeSelfLoopingToggle.Checked;
-            int plcAddr;
-            string plcModel;
-            string plcRgiNo;
-            int plcBitAddr;
-            int plcLen;
-            if (plcToggle) {
-                plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
-                plcModel = CommonUtils.CannotBeNull(_plcModelComboBox.Value);
-                plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
-                plcBitAddr = int.Parse(_plcDBBitAddressBox.GetTextBox(0).Box.Text);
-                plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
-            } else {
-                plcAddr = 0;
-                plcModel = "";
-                plcRgiNo = "";
-                plcBitAddr = 0;
-                plcLen = 0;
-            }
+            // int plcAddr;
+            // string plcModel;
+            // string plcRgiNo;
+            // int plcBitAddr;
+            // int plcLen;
+            // if (plcToggle) {
+            //     plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
+            //     plcModel = CommonUtils.CannotBeNull(_plcModelComboBox.Value);
+            //     plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
+            //     plcBitAddr = int.Parse(_plcDBBitAddressBox.GetTextBox(0).Box.Text);
+            //     plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
+            // } else {
+            //     plcAddr = 0;
+            //     plcModel = "";
+            //     plcRgiNo = "";
+            //     plcBitAddr = 0;
+            //     plcLen = 0;
+            // }
 
             MainUtils.SetPLCBarCodeSelfLoopingModeEnabled(plcToggle);
-            MainUtils.SetPLCDBAddress(plcAddr);
-            MainUtils.SetPLCModel(plcModel);
-            MainUtils.SetPLCDBRegisterNo(plcRgiNo);
-            MainUtils.SetPLCDBBitAddress(plcBitAddr);
-            MainUtils.SetPLCBarCodeLength(plcLen);
+            // MainUtils.SetPLCDBAddress(plcAddr);
+            // MainUtils.SetPLCModel(plcModel);
+            // MainUtils.SetPLCDBRegisterNo(plcRgiNo);
+            // MainUtils.SetPLCDBBitAddress(plcBitAddr);
+            // MainUtils.SetPLCBarCodeLength(plcLen);
 
             // 修改初始值
             _plcBarCodeSelfLoopingOriginal = plcToggle;
-            if (_plcBarCodeSelfLoopingOriginal) {
-                _plcDBAddressOriginal = plcAddr;
-                _plcModelOriginal = plcModel;
-                _plcDBRegisterNoOriginal = plcRgiNo;
-                _plcDBBitAddressOriginal = plcBitAddr;
-                _plcBarCodeLengthOriginal = plcLen;
-            } else {
-                _plcDBAddressOriginal = 0;
-                _plcModelOriginal = "";
-                _plcDBRegisterNoOriginal = "";
-                _plcDBBitAddressOriginal = 0;
-                _plcBarCodeLengthOriginal = 0;
-            }
+            // if (_plcBarCodeSelfLoopingOriginal) {
+            //     _plcDBAddressOriginal = plcAddr;
+            //     _plcModelOriginal = plcModel;
+            //     _plcDBRegisterNoOriginal = plcRgiNo;
+            //     _plcDBBitAddressOriginal = plcBitAddr;
+            //     _plcBarCodeLengthOriginal = plcLen;
+            // } else {
+            //     _plcDBAddressOriginal = 0;
+            //     _plcModelOriginal = "";
+            //     _plcDBRegisterNoOriginal = "";
+            //     _plcDBBitAddressOriginal = 0;
+            //     _plcBarCodeLengthOriginal = 0;
+            // }
         }
 
         protected override string? CheckBeforeSave() {
@@ -163,31 +168,31 @@ namespace OperationGuidance_new.Views {
             }
 
             bool plcToggle = _plcBarCodeSelfLoopingToggle.Checked;
-            if (plcToggle) {
-                int plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
-                if (plcAddr <= 0) {
-                    _plcDBAddressBox.CheckError(0, true);
-                    return "PLC_DB地址不能等于0";
-                }
-
-                int plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
-                if (plcLen <= 0) {
-                    _plcBarCodeLengthBox.CheckError(0, true);
-                    return "PLC条码长度不能等于0";
-                }
-
-                string? plcModel = _plcModelComboBox.Value;
-                if (_plcModelComboBox.IsDefaultValue() || string.IsNullOrEmpty(plcModel)) {
-                    _plcModelComboBox.CheckError(true);
-                    return "PLC型号不能为空";
-                }
-
-                string plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
-                if (string.IsNullOrEmpty(plcRgiNo)) {
-                    _plcDBRegisterNoBox.CheckError(0, true);
-                    return "PLC型号不能为空";
-                }
-            }
+            // if (plcToggle) {
+            //     int plcAddr = int.Parse(_plcDBAddressBox.GetTextBox(0).Box.Text);
+            //     if (plcAddr <= 0) {
+            //         _plcDBAddressBox.CheckError(0, true);
+            //         return "PLC_DB地址不能等于0";
+            //     }
+            //
+            //     int plcLen = int.Parse(_plcBarCodeLengthBox.GetTextBox(0).Box.Text);
+            //     if (plcLen <= 0) {
+            //         _plcBarCodeLengthBox.CheckError(0, true);
+            //         return "PLC条码长度不能等于0";
+            //     }
+            //
+            //     string? plcModel = _plcModelComboBox.Value;
+            //     if (_plcModelComboBox.IsDefaultValue() || string.IsNullOrEmpty(plcModel)) {
+            //         _plcModelComboBox.CheckError(true);
+            //         return "PLC型号不能为空";
+            //     }
+            //
+            //     string plcRgiNo = _plcDBRegisterNoBox.GetTextBox(0).Box.Text;
+            //     if (string.IsNullOrEmpty(plcRgiNo)) {
+            //         _plcDBRegisterNoBox.CheckError(0, true);
+            //         return "PLC型号不能为空";
+            //     }
+            // }
 
             return null;
         }
@@ -215,7 +220,7 @@ namespace OperationGuidance_new.Views {
             _plcBarCodeLengthBox.Size = new(boxWidth, BoxNBtnHeight);
             _plcBarCodeLengthBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
 
-            WorkContentPanel.Height += (BoxNBtnHeight + boxVMargin) * 3;
+            // WorkContentPanel.Height += (BoxNBtnHeight + boxVMargin) * 3;
             WorkPanel.Height = WorkTitlePanel.Height + WorkContentPanel.Height;
         }
 
