@@ -205,6 +205,9 @@ namespace OperationGuidance_new {
             // Reset back color after login
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
 
+            // Init settings files
+            MainUtils.PlcConfig_GLB.Init();
+
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
