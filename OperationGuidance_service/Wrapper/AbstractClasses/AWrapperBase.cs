@@ -301,7 +301,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return rows;
         }
 
-        private int ExecuteWithRetry(string sql, object? param = null, DbTransaction? transaction = null) {
+        public int ExecuteWithRetry(string sql, object? param = null, DbTransaction? transaction = null) {
             const int maxRetries = 5;
 
             for (int attempt = 0; attempt < maxRetries; attempt++) {

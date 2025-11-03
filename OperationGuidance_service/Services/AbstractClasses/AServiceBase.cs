@@ -85,6 +85,6 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.FindBySql(sql, parameterObj);
         }
 
-        public int ExecuteSql(string sql) => Wrapper.ExecuteSql(sql);
+        public int ExecuteSql(string sql, object? param = null) => Wrapper.ExecuteWithRetry(sql);
     }
 }
