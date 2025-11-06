@@ -583,6 +583,8 @@ namespace OperationGuidance_new {
                             MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.RecipeCode, "");
                             WidgetUtils.ShowWarningPopUp("【配方编码】未配置，请检查配置。");
                         }
+                        // 打印机配置检查（主要是为了生成一下配置文件）
+                        var sciiXtPrinterConfig = ConfigUtils.SciiXtPrinterConfig;
                         break;
                 }
             });

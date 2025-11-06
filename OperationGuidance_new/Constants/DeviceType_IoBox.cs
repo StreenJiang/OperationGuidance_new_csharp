@@ -210,6 +210,8 @@ namespace OperationGuidance_new.Constants {
     }
 
     public class IoBoxArranger: DeviceTypeIoBox {
+        public static int min = 1;
+        public static int max = 4;
         private int?[] _currentPositions = new int?[] { null, null, null, null };
         private int?[] _sendingPositions = new int?[] { null, null, null, null };
         private int?[] _currentStatuses = new int?[] { null, null, null, null };
@@ -219,8 +221,6 @@ namespace OperationGuidance_new.Constants {
         public Command GetWriteCommand(int?[] positions) {
             _currentPositions = positions;
 
-            int min = 1;
-            int max = 4;
             foreach (int? curr in _currentPositions) {
                 if (curr != null && curr > max || curr < min) {
                     string errorMsg = $"Position[{curr}] of {Name} can not less then {min} or grater then {max}, please check.";

@@ -131,6 +131,7 @@ namespace OperationGuidance_new.Views {
             }
 
             CustomTextBoxGroup barCode = new("PlaceHolder");
+            CustomTextBoxGroup openPos = new("PlaceHolder");
 
             Dictionary<string, int> ioTypes = DeviceType_IoBox.Elements.ToDictionary(e => e.Name, e => e.Id);
             CustomComboBoxGroup<int> type = _editEntityPopUpForm.AddComboBox("IO设备类型",
@@ -140,8 +141,11 @@ namespace OperationGuidance_new.Views {
                 if (type.Value == DeviceType_IoBox.Arranger.Id) {
                     barCode.Show();
                     barCode.ResizeChildren();
+                    openPos.Show();
+                    openPos.ResizeChildren();
                 } else {
                     barCode.Hide();
+                    openPos.Hide();
                 }
                 ResizePopUpForm();
             };
@@ -152,6 +156,12 @@ namespace OperationGuidance_new.Views {
             barCode.Hide();
             if (!string.IsNullOrEmpty(dto.barcode)) {
                 barCode.SetValue(0, dto.barcode);
+            }
+            openPos = _editEntityPopUpForm.AddTextBox("开盖信号点", true,
+                (DeviceIoDTO dto, int? value) => dto.open_pos = value ?? null);
+            openPos.Hide();
+            if (dto.open_pos != null) {
+                openPos.SetValue(0, dto.open_pos + "");
             }
 
             // 添加按钮
@@ -199,6 +209,23 @@ namespace OperationGuidance_new.Views {
                         type.SetError(true);
                         warningMsg += $"{warningIndex++}. 已存在类型为[{type.GetChosenItem().Name}]且IP及端口相同的设备，不可重复配置\r\n";
                     }
+                }
+                var barCodeBox = barCode.GetTextBox(0);
+                var openOpsBox = openPos.GetTextBox(0);
+                if (!string.IsNullOrEmpty(barCodeBox.Box.Text) && string.IsNullOrEmpty(openOpsBox.Box.Text)) {
+                    check = false;
+                    openOpsBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. 开盖条码不为空时，开盖信号点不能为空\r\n";
+                } else if (string.IsNullOrEmpty(barCodeBox.Box.Text) && !string.IsNullOrEmpty(openOpsBox.Box.Text)) {
+                    check = false;
+                    barCodeBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. 开盖信号点不为空时，开盖条码不能为空\r\n";
+                }
+                if (!string.IsNullOrEmpty(openOpsBox.Box.Text) && (int.Parse(openOpsBox.Box.Text) > IoBoxArranger.max
+                                                                   || int.Parse(openOpsBox.Box.Text) < IoBoxArranger.min)) {
+                    check = false;
+                    openOpsBox.IsError = true;
+                    warningMsg += $"{warningIndex++}. 开盖信号点范围限定[{IoBoxArranger.min}-{IoBoxArranger.max}]\r\n";
                 }
                 if (!check) {
                     WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");

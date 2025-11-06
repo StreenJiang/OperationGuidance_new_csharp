@@ -426,6 +426,17 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE `aneng`.`device_io` 
+        ///  ADD COLUMN `open_pos` int(4) NULL AFTER `barcode`;
+        ///.
+        /// </summary>
+        internal static string modify_mysql_20251106 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20251106", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
         ///CREATE TABLE &quot;product_mission&quot; (
@@ -817,6 +828,32 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlite_20251022 {
             get {
                 return ResourceManager.GetString("modify_sqlite_20251022", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ALTER TABLE &quot;main&quot;.&quot;device_io&quot; RENAME TO &quot;_device_io_old_20251106&quot;;
+        ///
+        ///CREATE TABLE &quot;main&quot;.&quot;device_io&quot; (
+        ///  &quot;id&quot; integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        ///  &quot;name&quot; text(128),
+        ///  &quot;description&quot; text(512),
+        ///  &quot;ip&quot; text(16),
+        ///  &quot;port&quot; integer(8),
+        ///  &quot;type&quot; integer(4),
+        ///  &quot;barcode&quot; text(512),
+        ///  &quot;open_pos&quot; integer(4),
+        ///  &quot;macs_id&quot; integer,
+        ///  &quot;user_id&quot; integer NOT NULL,
+        ///  &quot;deleted&quot; integer(1) NOT NULL,
+        ///  &quot;creator&quot; text(128) NOT NULL,
+        ///  &quot;modifier&quot; text(128) NOT NULL,
+        ///  &quot;create_time&quot; text(64) NOT NULL,
+        ///  &quot; [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20251106 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20251106", resourceCulture);
             }
         }
         

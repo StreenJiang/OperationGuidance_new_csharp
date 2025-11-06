@@ -26,16 +26,15 @@ namespace OperationGuidance_new.Utils {
 
                 StringContent content = new(json, Encoding.UTF8, "application/json");
                 using (HttpResponseMessage rspMsg = await client.PostAsync(uri, content)) {
-                    logger.Info($"SendPost: rspMsg = [{JsonConvert.SerializeObject(rspMsg)}]");
+                    logger.Info($"SendGet: rspMsg = [{JsonConvert.SerializeObject(rspMsg)}]");
 
-                    if (rspMsg.IsSuccessStatusCode) {
-                        string rspContent = await rspMsg.Content.ReadAsStringAsync();
-                        logger.Info($"SendPost: rspContent = [{rspContent}]");
+                    string rspContent = await rspMsg.Content.ReadAsStringAsync();
+                    logger.Info($"SendGet: rspContent = [{rspContent}]");
 
-                        response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
-                    } else {
-                        logger.Warn($"POST request failed: {rspMsg.StatusCode}");
-                        return new V();
+                    response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
+
+                    if (!rspMsg.IsSuccessStatusCode) {
+                        logger.Warn($"GET request failed: {rspMsg.StatusCode}");
                     }
                 }
 
@@ -63,14 +62,12 @@ namespace OperationGuidance_new.Utils {
                 using (HttpResponseMessage rspMsg = await client.PostAsync(uri, content)) {
                     logger.Info($"SendPost: rspMsg = [{JsonConvert.SerializeObject(rspMsg)}]");
 
-                    if (rspMsg.IsSuccessStatusCode) {
-                        string rspContent = await rspMsg.Content.ReadAsStringAsync();
-                        logger.Info($"SendPost: rspContent = [{rspContent}]");
+                    string rspContent = await rspMsg.Content.ReadAsStringAsync();
+                    logger.Info($"SendPost: rspContent = [{rspContent}]");
 
-                        response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
-                    } else {
+                    response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
+                    if (!rspMsg.IsSuccessStatusCode) {
                         logger.Warn($"POST request failed: {rspMsg.StatusCode}");
-                        return new V();
                     }
                 }
 
@@ -82,6 +79,7 @@ namespace OperationGuidance_new.Utils {
           where V : SCII_XT_Response, new() {
             logger.Info($"SendGet: uri = [{uri}]");
 
+            V? response = new();
             using (HttpClient client = new()) {
                 if (headers != null) {
                     foreach (var header in headers) {
@@ -90,21 +88,19 @@ namespace OperationGuidance_new.Utils {
                 }
 
                 using (HttpResponseMessage rspMsg = await client.GetAsync(uri)) {
-                    logger.Info($"SendGet: StatusCode = [{rspMsg.StatusCode}]");
+                    logger.Info($"SendGet: rspMsg = [{JsonConvert.SerializeObject(rspMsg)}]");
 
-                    if (rspMsg.IsSuccessStatusCode) {
-                        string rspContent = await rspMsg.Content.ReadAsStringAsync();
-                        logger.Info($"SendGet: rspContent = [{rspContent}]");
+                    string rspContent = await rspMsg.Content.ReadAsStringAsync();
+                    logger.Info($"SendGet: rspContent = [{rspContent}]");
 
-                        var response = JsonConvert.DeserializeObject<V>(rspContent);
-                        return CommonUtils.CannotBeNull(response);
-                    } else {
-                        // 可选：根据业务决定是否抛异常，或返回默认 V
-                        // 这里保持和 POST 一致：返回 new V() 但日志警告
+                    response = CommonUtils.CannotBeNull(JsonConvert.DeserializeObject<V>(rspContent));
+
+                    if (!rspMsg.IsSuccessStatusCode) {
                         logger.Warn($"GET request failed: {rspMsg.StatusCode}");
-                        return new V();
                     }
                 }
+
+                return response;
             }
         }
     }

@@ -10,6 +10,7 @@ using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -90,7 +91,7 @@ namespace OperationGuidance_new.Views {
             var dto = await Workflow_SCII_XT.OutBoundStation(req);
             if (!dto.inOrOutSuccess) {
                 logger.Warn($"出站失败，详细信息：{dto.message}");
-                if (WidgetUtils.ShowConfirmPopUp($"进站请求失败！点击【是】重试。\n\n详细信息：{dto.message}")) {
+                if (WidgetUtils.ShowConfirmPopUp($"出战请求失败！点击【是】重试。\n\n详细信息：{dto.message}")) {
                     return await OutBound();
                 }
             }
@@ -143,6 +144,9 @@ namespace OperationGuidance_new.Views {
             // 将数据发送给 MES
             _ = SendDataToMES(operationDataDTO);
 
+            // 向打印机发送指令
+            _ = SendToPrinter();
+
             // 先将VOs加入到实时显示数据列表中
             OperationDataVO dataFormatted = new();
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
@@ -157,6 +161,17 @@ namespace OperationGuidance_new.Views {
             logger.Info("StoreTighteningData end ........");
         }
 
+        private async Task SendToPrinter() {
+            await Task.Run(() => BeginInvoke(() => {
+                var config = ConfigUtils.SciiXtPrinterConfig;
+                if (!string.IsNullOrEmpty(config.printer_name)) {
+                    using ZplQrCodePrinter printer = new();
+                    if (!printer.QuickPrint(config)) {
+                        WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！");
+                    }
+                }
+            }));
+        }
         private async Task SendDataToMES(OperationDataDTO operationDataDTO) {
             var data = new OperationDataDTO_SCII_XT();
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
@@ -172,13 +187,16 @@ namespace OperationGuidance_new.Views {
                 attributeList = new(),
             };
             productInfos.attributeList.Add(new() {
+                attributeName = $"{_mission.name}_拧紧数据",
+                attributeCode = $"{_mission.name}_Screw",
+                attributeUnit = "json",
                 value = JsonConvert.SerializeObject(data),
             });
             req.productInfos.Add(productInfos);
 
             var dto = await Workflow_SCII_XT.BindProductData(req);
             if (!dto.bindSuccess) {
-                logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}，点位：{data.bolt_serial_num}] 错误信息：{dto.message}");
+                logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTO.vin_number}] 错误信息：{dto.message}");
             }
         }
 
@@ -186,15 +204,22 @@ namespace OperationGuidance_new.Views {
             SerialPortTask serialPortTask = pair.Value;
             serialPortTask.ActionAfterDataReceived = async msg => {
                 await Task.Run(() => {
-                    BeginInvoke(() => {
+                    BeginInvoke(async () => {
                         if (!IsDisposed) {
                             DeviceIoDTO? deviceIoDTO = _ioBoxes.SingleOrDefault(dto => dto.barcode == msg);
                             if (deviceIoDTO != null) {
                                 IoBoxTask ioBoxTask = _ioBoxTasks[MainUtils.GetTCPClientKey(deviceIoDTO.ip, deviceIoDTO.port)];
                                 if (ioBoxTask != null) {
                                     IoBoxTypeArranger? arrangerType = ioBoxTask.ArrangerType;
-                                    if (arrangerType != null) {
-                                        arrangerType.OpenDoor();
+                                    if (arrangerType != null
+                                        && deviceIoDTO.open_pos != null
+                                        && deviceIoDTO.open_pos > 0
+                                        && deviceIoDTO.open_pos <= IoBoxArranger.max) {
+                                        int?[] pos = { 0, 0, 0, 0 };
+                                        pos[deviceIoDTO.open_pos.Value - 1] = 1;
+                                        arrangerType.OpenDoor(pos);
+                                        await Task.Delay(200);
+                                        arrangerType.Reset();
                                     }
                                 }
                             } else {
