@@ -1,8 +1,10 @@
 using OperationGuidance_new.Configs;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Utils.IIPSC {
     public class SciiXtPrinterConfig: ConfigBase {
         public SciiXtPrinterConfig() {
+            enabled = (int) YesOrNo.NO;
             printer_name = "";
 
             part_code = "";
@@ -51,5 +53,6 @@ namespace OperationGuidance_new.Utils.IIPSC {
         // 二维码Y
         public string sn_pos_y { get; set; }
         public string printer_name { get; set; }
+        public int enabled { get; set; }
     }
 }

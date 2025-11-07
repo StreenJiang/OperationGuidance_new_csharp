@@ -164,23 +164,24 @@ namespace OperationGuidance_new.Views {
         private async Task SendToPrinter(OperationDataDTO operationDataDTO) {
             await Task.Run(() => BeginInvoke(() => {
                 if (operationDataDTO.tightening_status == (int) TighteningStatus.OK) {
-                    int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
-
                     var config = ConfigUtils.SciiXtPrinterConfig;
-                    config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
-                    config.sn = _okSumToday + 1;
+                    if (config.enabled == (int) YesOrNo.YES) {
+                        int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
+                        config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
+                        config.sn = _okSumToday + 1;
 
-                    using (ZplQrCodePrinter printer = new()) {
-                        List<string> list = printer.GetAvailablePrinters();
-                        if (list.Count > 0) {
-                            foreach (string printerName in list) {
-                                config.printer_name = printerName;
-                                if (!printer.QuickPrint(config)) {
-                                    WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+                        using (ZplQrCodePrinter printer = new()) {
+                            List<string> list = printer.GetAvailablePrinters();
+                            if (list.Count > 0) {
+                                foreach (string printerName in list) {
+                                    config.printer_name = printerName;
+                                    if (!printer.QuickPrint(config)) {
+                                        WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+                                    }
                                 }
+                            } else {
+                                WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
                             }
-                        } else {
-                            WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
                         }
                     }
                 }
