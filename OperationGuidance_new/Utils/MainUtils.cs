@@ -12,7 +12,6 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
-using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
@@ -866,7 +865,7 @@ namespace OperationGuidance_new.Utils {
 
         public static void Log(string message, bool printToView = true) {
             if (printToView) {
-                if (_textArea != null) {
+                if (_textArea != null && _textArea.IsHandleCreated) {
                     _textArea.BeginInvoke(() => {
                         _textArea.AppendText(message + "\r\n");
                     });
