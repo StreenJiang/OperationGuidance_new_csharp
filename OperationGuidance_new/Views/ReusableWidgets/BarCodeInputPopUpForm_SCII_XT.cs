@@ -84,7 +84,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // 向 MES 发出进站请求
             var req = new SCII_XT_InOrOutBoundStationReq() {
                 productCode = barCode,
-                passType = (int) SCII_XT_ProductType.PRODUCT,
+                passType = (int) SCII_XT_PassType.PRODUCT,
                 recipeCode = _mission.name,
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),

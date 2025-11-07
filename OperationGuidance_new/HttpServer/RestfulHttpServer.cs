@@ -1,6 +1,9 @@
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
@@ -46,6 +49,15 @@ namespace OperationGuidance_new.HttpServer {
                 _isRunning = true;
                 _listenerThread.Start();
                 log.Info("Http server started...");
+
+
+                // 获取本机真实 IP 地址（排除回环、虚拟网卡等）
+                string localIp = GetLocalIpAddress() ?? "127.0.0.1";
+                // 构造可访问的 URL
+                string accessibleUrl = $"http://{localIp}:{Port}/";
+                // Log and show
+                log.Info($"HTTP 服务器已启动，监听地址: {accessibleUrl}");
+                WidgetUtils.ShowNoticePopUp($"HTTP 服务器已启动，监听地址: {accessibleUrl}");
             } catch (Exception ex) {
                 SystemUtils.ShowWarningPopUp($"无法启动 Http 服务器: {ex.Message}");
                 // throw new InvalidOperationException($"无法启动服务器: {ex.Message}", ex);
@@ -273,6 +285,27 @@ namespace OperationGuidance_new.HttpServer {
                 response.StatusCode = 500;
                 await WriteJsonResponse(response, new { error = "Internal server error", details = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// 获取本机真实 IP 地址（非 127.0.0.1，非虚拟网卡）
+        /// </summary>
+        private string GetLocalIpAddress() {
+            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces()) {
+                // 跳过未启用或回环接口
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+                foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses) {
+                    // 只取 IPv4 地址（IPv6 可选支持）
+                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork && !ip.Address.IsIPv6LinkLocal) {
+                        return ip.Address.ToString();
+                    }
+                }
+            }
+
+            // 如果没找到，返回 localhost（安全兜底）
+            return "127.0.0.1";
         }
 
         public void Dispose() {

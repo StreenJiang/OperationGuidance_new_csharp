@@ -124,6 +124,9 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
                 // 发送正确的字节数到打印机
                 return SendBytesToPrinter(szPrinterName, pBytes, dwCount);
+            } catch (Exception ex) {
+                log.Error($"Error while sending string to printer...", ex);
+                return false;
             } finally {
                 // 确保释放非托管内存
                 if (pBytes != IntPtr.Zero)

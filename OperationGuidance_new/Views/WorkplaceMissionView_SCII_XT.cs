@@ -81,7 +81,7 @@ namespace OperationGuidance_new.Views {
         private async Task<bool> OutBound() {
             SCII_XT_InOrOutBoundStationReq req = new() {
                 productCode = _missionRecord.product_bar_code,
-                passType = (int) SCII_XT_ProductType.PRODUCT,
+                passType = (int) SCII_XT_PassType.PRODUCT,
                 recipeCode = _mission.name,
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),
@@ -145,7 +145,7 @@ namespace OperationGuidance_new.Views {
             _ = SendDataToMES(operationDataDTO);
 
             // 向打印机发送指令
-            _ = SendToPrinter();
+            _ = SendToPrinter(operationDataDTO);
 
             // 先将VOs加入到实时显示数据列表中
             OperationDataVO dataFormatted = new();
@@ -161,13 +161,27 @@ namespace OperationGuidance_new.Views {
             logger.Info("StoreTighteningData end ........");
         }
 
-        private async Task SendToPrinter() {
+        private async Task SendToPrinter(OperationDataDTO operationDataDTO) {
             await Task.Run(() => BeginInvoke(() => {
-                var config = ConfigUtils.SciiXtPrinterConfig;
-                if (!string.IsNullOrEmpty(config.printer_name)) {
-                    using ZplQrCodePrinter printer = new();
-                    if (!printer.QuickPrint(config)) {
-                        WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！");
+                if (operationDataDTO.tightening_status == (int) TighteningStatus.OK) {
+                    int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
+
+                    var config = ConfigUtils.SciiXtPrinterConfig;
+                    config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
+                    config.sn = _okSumToday + 1;
+
+                    using (ZplQrCodePrinter printer = new()) {
+                        List<string> list = printer.GetAvailablePrinters();
+                        if (list.Count > 0) {
+                            foreach (string printerName in list) {
+                                config.printer_name = printerName;
+                                if (!printer.QuickPrint(config)) {
+                                    WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+                                }
+                            }
+                        } else {
+                            WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
+                        }
                     }
                 }
             }));
@@ -177,7 +191,7 @@ namespace OperationGuidance_new.Views {
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
 
             SCII_XT_BindProductDataReq req = new() {
-                bingType = (int) SCII_XT_ProductType.PRODUCT,
+                bingType = (int) SCII_XT_BindType.PRODUCT,
                 productInfos = new(),
                 procedureCode = _getProcedureCode(),
                 recipeCode = _mission.name,

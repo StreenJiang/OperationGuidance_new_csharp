@@ -54,6 +54,8 @@ namespace OperationGuidance_new.Utils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD = "yyyy-MM-dd_ddd";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
+        public static readonly string DATETIME_FORMAT_YYYYMMDD = "yyyyMMdd";
+
         static MainUtils() {
             XmlConfigurator.Configure();
         }

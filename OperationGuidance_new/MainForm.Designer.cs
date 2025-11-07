@@ -509,7 +509,25 @@ namespace OperationGuidance_new {
                 case AppVersion.SCII_XT:
                     bool isHost = _startServer();
                     if (isHost) {
-                        _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
+                        HttpConfig httpConfig = MainUtils.HttpConfig;
+                        string portStr = httpConfig.Read(ConfigName_Http.HostPort);
+                        int? port = null;
+                        if (string.IsNullOrEmpty(portStr)) {
+                            httpConfig.Write(ConfigName_Http.HostPort, "");
+                        } else {
+                            try {
+                                port = int.Parse(portStr);
+                            } catch (Exception ex) {
+                                WidgetUtils.ShowErrorPopUp($"Http 端口配置错误！");
+                                throw ex;
+                            }
+                        }
+
+                        if (port is not null) {
+                            _restfulHttpServer = new HttpOrganizer_SCII_XT(port).StartServer();
+                        } else {
+                            _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
+                        }
                     }
                     break;
             }
