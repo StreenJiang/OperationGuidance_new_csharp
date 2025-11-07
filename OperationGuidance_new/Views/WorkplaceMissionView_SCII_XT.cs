@@ -86,6 +86,7 @@ namespace OperationGuidance_new.Views {
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),
                 batchNo = _missionRecord.product_batch,
+                result = true,
             };
 
             var dto = await Workflow_SCII_XT.OutBoundStation(req);
