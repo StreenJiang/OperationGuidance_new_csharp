@@ -7,6 +7,7 @@ using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
+using Newtonsoft.Json;
 
 namespace OperationGuidance_new.HttpServer {
     /// <summary>
@@ -234,7 +235,8 @@ namespace OperationGuidance_new.HttpServer {
             });
         }
 
-        // 辅助方法：读取 JSON 请求体
+
+        // 辅助方法：读取 JSON 请求体（Newtonsoft.Json 版本）
         public static async Task<T> ReadJsonRequestBody<T>(HttpListenerRequest request) {
             if (!request.HasEntityBody) {
                 throw new ArgumentException("请求体为空，但需要提供 JSON 数据");
@@ -248,29 +250,38 @@ namespace OperationGuidance_new.HttpServer {
                     throw new ArgumentException("请求体包含空或无效的 JSON 数据");
                 }
 
-                var options = new JsonSerializerOptions {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    // 严格模式：不允许额外的属性（可选）
-                    AllowTrailingCommas = false,
-                    ReadCommentHandling = JsonCommentHandling.Disallow
+                // 配置 Newtonsoft.Json 反序列化选项
+                var settings = new JsonSerializerSettings {
+                    // 大小写不敏感（默认行为，但显式设置更清晰）
+                    MissingMemberHandling = MissingMemberHandling.Ignore, // 忽略 JSON 中多余的字段
+                    NullValueHandling = NullValueHandling.Ignore,
+                    // 可选：如果你希望更严格，可以设为 Error
+                    // MissingMemberHandling = MissingMemberHandling.Error,
+
+                    // 可选：自定义合同解析器（如需 camelCase 序列化，但反序列化仍大小写不敏感）
+                    // ContractResolver = new CamelCasePropertyNamesContractResolver()
                 };
 
-                return JsonSerializer.Deserialize<T>(json, options)
-                       ?? throw new JsonException("JSON 反序列化返回 null，可能缺少必需的属性");
-            } catch (JsonException ex) {
-                // 重新抛出更友好的错误信息
-                throw new ArgumentException($"JSON 格式错误或数据结构不符合要求: {ex.Message}", ex);
-            } catch (NotSupportedException ex) {
-                throw new ArgumentException($"JSON 数据类型不支持: {ex.Message}", ex);
-            } catch (InvalidOperationException ex) {
-                throw new ArgumentException($"JSON 数据验证失败: {ex.Message}", ex);
+                // 反序列化
+                T result = JsonConvert.DeserializeObject<T>(json, settings);
+                if (result == null) {
+                    throw new Newtonsoft.Json.JsonException("JSON 反序列化返回 null，可能缺少必需的属性或根节点格式错误");
+                }
+
+                return result;
+            } catch (JsonReaderException ex) {
+                throw new ArgumentException($"JSON 格式无效: {ex.Message}", ex);
+            } catch (JsonSerializationException ex) {
+                throw new ArgumentException($"JSON 数据结构与目标类型不匹配: {ex.Message}", ex);
+            } catch (Newtonsoft.Json.JsonException ex) {
+                throw new ArgumentException($"JSON 处理错误: {ex.Message}", ex);
             }
         }
 
         // 辅助方法：写入 JSON 响应
         public static async Task WriteJsonResponse(HttpListenerResponse response, object data) {
             response.ContentType = "application/json";
-            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions {
+            string json = System.Text.Json.JsonSerializer.Serialize(data, new JsonSerializerOptions {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             });
@@ -281,7 +292,7 @@ namespace OperationGuidance_new.HttpServer {
 
         // 辅助方法：处理异常
         private static async Task HandleException(HttpListenerResponse response, Exception ex) {
-            if (ex is JsonException) {
+            if (ex is Newtonsoft.Json.JsonException || ex is System.Text.Json.JsonException) {
                 response.StatusCode = 400;
                 await WriteJsonResponse(response, new { error = "Invalid JSON format" });
             } else if (ex is ArgumentException) {

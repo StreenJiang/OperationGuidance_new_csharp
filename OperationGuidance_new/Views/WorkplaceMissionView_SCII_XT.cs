@@ -2,7 +2,6 @@ using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.HttpObjects;
@@ -14,9 +13,12 @@ using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_SCII_XT: AWorkplaceMissionView<WorkplaceContentPanel_SCII_XT, WorkplaceTopBar_SCII> {
@@ -49,6 +51,7 @@ namespace OperationGuidance_new.Views {
 
         private Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
         private Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
+        private List<OperationDataDTO> _operationDataDTOs;
 
         public WorkplaceContentPanel_SCII_XT() { }
         public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
@@ -70,11 +73,24 @@ namespace OperationGuidance_new.Views {
             SciiXtController.ActionAfterReceivedBatch = ActionAfterReceivedBatch;
         }
 
+        protected override async Task ActionAfterActivatingMission() {
+            await base.ActionAfterActivatingMission();
+
+            _operationDataDTOs = new();
+        }
+
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             if (await OutBound()) {
                 await base.TerminateMission(status);
 
                 SwitchMissionByRecipe(_getRecipeCode());
+
+                // 向打印机发送指令
+                if (status == WorkplaceProcessStatus.FINISHED_OK) {
+                    _ = SendToPrinter();
+                }
+
+                _ = SendDataToMES(_operationDataDTOs);
             }
         }
 
@@ -142,11 +158,8 @@ namespace OperationGuidance_new.Views {
             // Use task to store data asynchronously
             StoreDataToDatabase(operationDataDTO);
 
-            // 将数据发送给 MES
-            _ = SendDataToMES(operationDataDTO);
-
-            // 向打印机发送指令
-            _ = SendToPrinter(operationDataDTO);
+            // 将数据暂存，用于发送给 MES
+            _operationDataDTOs.Add(operationDataDTO);
 
             // 先将VOs加入到实时显示数据列表中
             OperationDataVO dataFormatted = new();
@@ -162,57 +175,71 @@ namespace OperationGuidance_new.Views {
             logger.Info("StoreTighteningData end ........");
         }
 
-        private async Task SendToPrinter(OperationDataDTO operationDataDTO) {
+        private async Task SendToPrinter() {
             await Task.Run(() => BeginInvoke(() => {
-                if (operationDataDTO.tightening_status == (int) TighteningStatus.OK) {
-                    var config = ConfigUtils.SciiXtPrinterConfig;
-                    if (config.enabled == (int) YesOrNo.YES) {
-                        int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
-                        config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
-                        config.sn = _okSumToday + 1;
+                var config = ConfigUtils.SciiXtPrinterConfig;
+                if (config.enabled == (int) YesOrNo.YES) {
+                    int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
+                    config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
+                    config.sn = _okSumToday + 1;
 
-                        using (ZplQrCodePrinter printer = new()) {
-                            List<string> list = printer.GetAvailablePrinters();
-                            if (list.Count > 0) {
-                                foreach (string printerName in list) {
-                                    config.printer_name = printerName;
-                                    if (!printer.QuickPrint(config)) {
-                                        WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
-                                    }
+                    using (ZplQrCodePrinter printer = new()) {
+                        List<string> list = printer.GetAvailablePrinters();
+                        if (list.Count > 0) {
+                            foreach (string printerName in list) {
+                                config.printer_name = printerName;
+                                if (!printer.QuickPrint(config)) {
+                                    WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
                                 }
-                            } else {
-                                WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
                             }
+                        } else {
+                            WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
                         }
                     }
                 }
             }));
         }
-        private async Task SendDataToMES(OperationDataDTO operationDataDTO) {
-            var data = new OperationDataDTO_SCII_XT();
-            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
+        private async Task SendDataToMES(List<OperationDataDTO> operationDataDTOs) {
+            if (operationDataDTOs.Count > 0) {
 
-            SCII_XT_BindProductDataReq req = new() {
-                bingType = (int) SCII_XT_BindType.PRODUCT,
-                productInfos = new(),
-                procedureCode = _getProcedureCode(),
-                recipeCode = _mission.name,
-            };
-            SCII_XT_BindProductDataReq.ProductInfo productInfos = new() {
-                productCode = operationDataDTO.vin_number,
-                attributeList = new(),
-            };
-            productInfos.attributeList.Add(new() {
-                attributeName = $"{_mission.name}_拧紧数据",
-                attributeCode = $"{_mission.name}_Screw",
-                attributeUnit = "json",
-                value = JsonConvert.SerializeObject(data),
-            });
-            req.productInfos.Add(productInfos);
+                SCII_XT_BindProductDataReq req = new() {
+                    bingType = (int) SCII_XT_BindType.PRODUCT,
+                    productInfos = new(),
+                    procedureCode = _getProcedureCode(),
+                    recipeCode = _mission.name,
+                };
+                SCII_XT_BindProductDataReq.ProductInfo productInfos = new() {
+                    productCode = operationDataDTOs[0].vin_number,
+                    attributeList = new(),
+                };
 
-            var dto = await Workflow_SCII_XT.BindProductData(req);
-            if (!dto.bindSuccess) {
-                logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTO.vin_number}] 错误信息：{dto.message}");
+                // Set values
+                foreach (OperationDataDTO operationDataDTO in operationDataDTOs) {
+                    var data = new OperationDataDTO_SCII_XT();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
+
+                    PropertyInfo[] propertyInfos = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    foreach (PropertyInfo property in propertyInfos) {
+
+                        IEnumerable<Attribute> fieldAttrs = property.GetCustomAttributes();
+                        foreach (Attribute fieldAttr in fieldAttrs) {
+                            if (fieldAttr is Description attr) {
+                                productInfos.attributeList.Add(NewAttribute(property,
+                                                                            data,
+                                                                            data.bolt_serial_num.Value,
+                                                                            attr.Name ?? "无"));
+                            }
+                        }
+                    }
+                }
+                req.productInfos.Add(productInfos);
+
+                var dto = await Workflow_SCII_XT.BindProductData(req);
+                if (!dto.bindSuccess) {
+                    logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 错误信息：{dto.message}");
+                }
+
+                _operationDataDTOs = new();
             }
         }
 
@@ -567,6 +594,20 @@ namespace OperationGuidance_new.Views {
                 WidgetUtils.ShowWarningPopUp(this, "【配方编码】未配置，请检查配置信息。");
             }
             return recipeCode;
+        }
+
+        private SCII_XT_BindProductDataReq.ProductInfo.Attribute NewAttribute(PropertyInfo property,
+                                                                              object obj,
+                                                                              int serialNum,
+                                                                              string attrName) {
+            return new() {
+                attributeName = attrName,
+                attributeCode = property.Name,
+                attributeUnit = property.PropertyType.ToString(),
+                attributeType = 0,
+                orderId = serialNum,
+                value = property.GetValue(obj) != null ? property.GetValue(obj)?.ToString() ?? "NULL" : "NULL",
+            };
         }
     }
 }
