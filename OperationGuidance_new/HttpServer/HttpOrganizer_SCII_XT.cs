@@ -2,7 +2,7 @@ using OperationGuidance_new.HttpObjects;
 
 namespace OperationGuidance_new.HttpServer {
     public class HttpOrganizer_SCII_XT: HttpOrganizer {
-        public HttpOrganizer_SCII_XT(int? port = 5000) : base(port) { }
+        public HttpOrganizer_SCII_XT(string? ip, int? port = 5000) : base(ip ?? "localhost", port) { }
 
         protected override void AddControllers() {
             if (_restfulHttpServer != null) {

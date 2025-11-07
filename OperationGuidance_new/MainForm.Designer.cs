@@ -507,14 +507,25 @@ namespace OperationGuidance_new {
                 case AppVersion.STANDARD:
                     break;
                 case AppVersion.SCII_XT:
-                    bool isHost = _startServer();
-                    if (isHost) {
-                        HttpConfig httpConfig = MainUtils.HttpConfig;
-                        string portStr = httpConfig.Read(ConfigName_Http.HostPort);
+                    HttpConfig httpConfig = MainUtils.HttpConfig;
+                    string isHostStr = httpConfig.Read(ConfigName_Http.IsHost);
+                    string ipStr = httpConfig.Read(ConfigName_Http.HostIp);
+                    string portStr = httpConfig.Read(ConfigName_Http.HostPort);
+
+                    if (string.IsNullOrEmpty(isHostStr)) {
+                        httpConfig.Write(ConfigName_Http.IsHost, (int) YesOrNo.NO + "");
+                    }
+                    if (string.IsNullOrEmpty(ipStr)) {
+                        httpConfig.Write(ConfigName_Http.HostIp, "");
+                        ipStr = null;
+                    }
+                    if (string.IsNullOrEmpty(portStr)) {
+                        httpConfig.Write(ConfigName_Http.HostPort, "");
+                    }
+
+                    if (isHostStr == $"{(int) YesOrNo.YES}") {
                         int? port = null;
-                        if (string.IsNullOrEmpty(portStr)) {
-                            httpConfig.Write(ConfigName_Http.HostPort, "");
-                        } else {
+                        if (!string.IsNullOrEmpty(portStr)) {
                             try {
                                 port = int.Parse(portStr);
                             } catch (Exception ex) {
@@ -524,24 +535,12 @@ namespace OperationGuidance_new {
                         }
 
                         if (port is not null) {
-                            _restfulHttpServer = new HttpOrganizer_SCII_XT(port).StartServer();
+                            _restfulHttpServer = new HttpOrganizer_SCII_XT(ipStr, port).StartServer();
                         } else {
-                            _restfulHttpServer = new HttpOrganizer_SCII_XT().StartServer();
+                            _restfulHttpServer = new HttpOrganizer_SCII_XT(ipStr).StartServer();
                         }
                     }
                     break;
-            }
-
-            // 单独将 ‘启动http服务拎出来以保证不同版本都可以复用
-            bool _startServer() {
-                HttpConfig httpConfig = MainUtils.HttpConfig;
-                string isHostStr = httpConfig.Read(ConfigName_Http.IsHost);
-                if (string.IsNullOrEmpty(isHostStr)) {
-                    httpConfig.Write(ConfigName_Http.IsHost, (int) YesOrNo.NO + "");
-                    return false;
-                } else {
-                    return isHostStr == (int) YesOrNo.YES + "";
-                }
             }
         }
         #endregion

@@ -24,13 +24,19 @@ namespace OperationGuidance_new.HttpServer {
         // 委托定义 - 直接操作 HttpListenerResponse
         public delegate Task RouteHandler(HttpListenerRequest request, HttpListenerResponse response);
 
+        public string? Ip { get; private set; }
         public int Port { get; private set; }
         public bool IsRunning => _isRunning;
 
-        public RestfulHttpServer(int port = 8080) {
+        public RestfulHttpServer(string? ip, int port = 8080) {
+            Ip = ip;
             Port = port;
             _listener = new HttpListener();
-            _listener.Prefixes.Add($"http://*:{port}/");
+            if (string.IsNullOrEmpty(ip)) {
+                _listener.Prefixes.Add($"http://*:{port}/");
+            } else {
+                _listener.Prefixes.Add($"http://{ip}:{port}/");
+            }
             _routes = new Dictionary<string, RouteHandler>();
             _listenerThread = new Thread(HandleRequests) {
                 IsBackground = true,
@@ -52,7 +58,7 @@ namespace OperationGuidance_new.HttpServer {
 
 
                 // 获取本机真实 IP 地址（排除回环、虚拟网卡等）
-                string localIp = GetLocalIpAddress() ?? "127.0.0.1";
+                string localIp = string.IsNullOrEmpty(Ip) ? (GetLocalIpAddress() ?? "127.0.0.1") : Ip;
                 // 构造可访问的 URL
                 string accessibleUrl = $"http://{localIp}:{Port}/";
                 // Log and show

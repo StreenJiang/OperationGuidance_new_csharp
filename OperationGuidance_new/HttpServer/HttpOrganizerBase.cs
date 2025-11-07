@@ -1,17 +1,19 @@
 namespace OperationGuidance_new.HttpServer {
     public abstract class HttpOrganizer {
         protected RestfulHttpServer? _restfulHttpServer;
+        private string? _ip;
         private int? _port;
 
-        public HttpOrganizer(int? port = null) {
+        public HttpOrganizer(string? ip, int? port = null) {
+            _ip = ip;
             _port = port;
         }
 
         public RestfulHttpServer StartServer() {
             if (_port == null) {
-                _restfulHttpServer = new();
+                _restfulHttpServer = new(_ip);
             } else {
-                _restfulHttpServer = new(_port.Value);
+                _restfulHttpServer = new(_ip, _port.Value);
             }
 
             AddControllers();
