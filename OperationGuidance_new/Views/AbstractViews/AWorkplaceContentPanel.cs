@@ -2131,12 +2131,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 string password = _adminPasswordBox.GetTextBox(0).Box.Text;
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
                     WidgetUtils.ShowNoticePopUp("验证成功");
-                    _adminConfirmed = true;
-                    _adminPasswordPopUpForm.Dispose();
-
                     if (actionAfterTrue != null) {
                         actionAfterTrue(true);
                     }
+
+                    _adminConfirmed = true;
+                    _adminPasswordPopUpForm.Dispose();
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;

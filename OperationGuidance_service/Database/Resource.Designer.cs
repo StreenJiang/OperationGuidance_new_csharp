@@ -807,6 +807,29 @@ namespace OperationGuidance_service.Database {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to -- 1. 创建目标表
+        ///DROP TABLE IF EXISTS parts_bar_code;
+        ///CREATE TABLE parts_bar_code (
+        ///    id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ///    mission_record_id INTEGER NOT NULL,
+        ///    parts_bar_code TEXT NOT NULL,
+        ///    user_id INTEGER NOT NULL,
+        ///    deleted INTEGER NOT NULL,
+        ///    creator TEXT NOT NULL,
+        ///    modifier TEXT NOT NULL,
+        ///    create_time TEXT NOT NULL,
+        ///    modify_time TEXT NOT NULL,
+        ///    FOREIGN KEY (mission_record_id) REFERENCES mission_record(id)
+        ///);
+        ///CREATE INDEX idx_parts_bar_code ON parts_bar_code(parts_b [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string modify_sqlite_20250625_1 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20250625_1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to CREATE TABLE &quot;main&quot;.&quot;Untitled&quot; (
         ///  &quot;id&quot; INTEGER(11) NOT NULL,
         ///  &quot;mission_record_id&quot; INTEGER(11),

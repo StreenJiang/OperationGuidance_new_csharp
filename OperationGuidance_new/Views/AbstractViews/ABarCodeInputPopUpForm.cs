@@ -342,7 +342,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         // 需要管理员密码弹窗
                         _workplace.AdminConfirmed = false;
                         needRedo = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false, yes => needRedo = yes);
+                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false, yes => {
+                            needRedo = yes;
+                            logger.Info($"Result of OpenAdminPasswordPopUpForm = {yes}, mission id = [{mission.id}], barcode = [{barCode}].");
+                        });
                     } else {
                         logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
@@ -511,7 +514,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             // 需要管理员密码弹窗
                             _workplace.AdminConfirmed = false;
                             needRedo = false;
-                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false, yes => needRedo = yes);
+                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false, yes => {
+                                needRedo = yes;
+                                logger.Info($"Result of OpenAdminPasswordPopUpForm = {yes}, mission id = [{_mission.id}], parts barcode = [{barCode}].");
+                            });
                         } else {
                             logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;

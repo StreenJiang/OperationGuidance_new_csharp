@@ -18,7 +18,6 @@ using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using System.Linq.Expressions;
 using System.Reflection;
 
 namespace OperationGuidance_new.Views {
@@ -596,7 +595,7 @@ namespace OperationGuidance_new.Views {
                 BeginInvoke(async () => {
                     SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
                     string batchNo = ConfigUtils.LoadConfig<SciiXtConfig>().batch_no;
-                    while (string.IsNullOrEmpty(config.batch_no)) {
+                    while (string.IsNullOrEmpty(batchNo)) {
                         _productBatch.GetTextBox(0).IsError = true;
 
                         await Task.Delay(1000);
