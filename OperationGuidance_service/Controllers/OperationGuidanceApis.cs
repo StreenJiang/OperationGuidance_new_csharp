@@ -10,6 +10,9 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Data.Common;
 using log4net;
+using OperationGuidance_service.Services.AbstractClasses;
+using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Wrapper.AbstractClasses;
 using Newtonsoft.Json;
 
 namespace OperationGuidance_service.Controllers {
@@ -265,33 +268,71 @@ namespace OperationGuidance_service.Controllers {
             return new();
         }
         public UpdateMacsIdsRsp UpdateMacsIds(UpdateMacsIdsReq req) {
-            string sqlTemp = "Update {0} set macs_id = {1} where macs_id = {2}";
+            string sqlTemp = "Update {0} set macs_id = @macs_id_to where macs_id = @macs_id_from";
+            Dictionary<string, object> parameters = new();
+            parameters.Add("macs_id_to", req.IdTo);
+            parameters.Add("macs_id_from", req.IdFrom);
 
             int count = 0;
+            List<string> failedTables = new();
             // 条码规则
-            count += _barCodeMatchingRuleService.ExecuteSql(string.Format(sqlTemp, _barCodeMatchingRuleService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_barCodeMatchingRuleService, sqlTemp, parameters, failedTables);
             // 力臂
-            count += _deviceArmService.ExecuteSql(string.Format(sqlTemp, _deviceArmService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_deviceArmService, sqlTemp, parameters, failedTables);
             // 工具
-            count += _deviceToolService.ExecuteSql(string.Format(sqlTemp, _deviceToolService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_deviceToolService, sqlTemp, parameters, failedTables);
             // 通讯设备
-            count += _deviceCommunicationService.ExecuteSql(string.Format(sqlTemp, _deviceCommunicationService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_deviceCommunicationService, sqlTemp, parameters, failedTables);
             // 串口设备
-            count += _deviceSerialPortService.ExecuteSql(string.Format(sqlTemp, _deviceSerialPortService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_deviceSerialPortService, sqlTemp, parameters, failedTables);
             // IO设备
-            count += _deviceIoService.ExecuteSql(string.Format(sqlTemp, _deviceIoService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_deviceIoService, sqlTemp, parameters, failedTables);
             // 产品任务
-            count += _productMissionService.ExecuteSql(string.Format(sqlTemp, _productMissionService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_productMissionService, sqlTemp, parameters, failedTables);
             // 站点
-            count += _workstationService.ExecuteSql(string.Format(sqlTemp, _workstationService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_workstationService, sqlTemp, parameters, failedTables);
             // Outer database config glb
-            count += _outerDatabaseConfigGlbService.ExecuteSql(string.Format(sqlTemp, _outerDatabaseConfigGlbService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_outerDatabaseConfigGlbService, sqlTemp, parameters, failedTables);
             // mat_code_map_whyc
-            count += _matCodeMapWhycService.ExecuteSql(string.Format(sqlTemp, _matCodeMapWhycService.TableName, req.IdTo, req.IdFrom));
+            count += UpdateMacsIdsInner(_matCodeMapWhycService, sqlTemp, parameters, failedTables);
+
+            if (failedTables.Count > 0) {
+                SystemUtils.ShowWarningPopUp(@$"
+存在未转换成功（或没有需要转换的数据）的表，请检查是否需要手动迁移。
+
+*（在此之前请不要进行任何数据修改的操作，推荐将此弹窗消息截图或拍照留痕，方便后续操作）
+
+以下是需要检查的表：
+- {string.Join("\n- ", failedTables)}"
+                );
+            }
 
             return new() {
                 UpdateRows = count,
             };
+        }
+        private int UpdateMacsIdsInner<T, E>(AServiceBase<T, E> service,
+                                             string sql,
+                                             object param,
+                                             IList<string> failedTables)
+            where T : AEntityBase, new()
+            where E : AWrapperBase<T> {
+            string tableName = service.TableName;
+            sql = string.Format(sql, tableName);
+            logger.Info($"更新表 [{tableName}]，SQL: {sql}，参数: {JsonConvert.SerializeObject(param)}");
+
+            int count = 0;
+            try {
+                count = service.ExecuteSql(sql, param);
+                logger.Info($"成功更新表 [{tableName}]，影响 {count} 行");
+            } catch (Exception ex) {
+                logger.Error($"更新表 [{tableName}] 失败", ex);
+            }
+
+            if (count == 0) {
+                failedTables.Add(tableName);
+            }
+            return count;
         }
         #endregion
 

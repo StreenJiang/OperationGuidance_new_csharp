@@ -207,11 +207,18 @@ namespace CustomLibrary.Forms {
                 EventFuncs.CurrentPopUpForm = this;
             }
             Opacity = 1D;
-            if (ShowInFront) {
-                base.ShowDialog();
-            } else {
-                base.Show();
-            }
+
+            BeginInvoke(async () => {
+                base.Hide();
+                await Task.Delay(200);
+
+                if (ShowInFront) {
+                    base.Hide();
+                    base.ShowDialog();
+                } else {
+                    base.Show();
+                }
+            });
         }
 
         protected virtual void AfterShown() { }

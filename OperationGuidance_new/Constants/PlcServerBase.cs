@@ -9,30 +9,16 @@ namespace OperationGuidance_new.Constants {
         private Plc? _plc;
         private CpuType _cpuType;
         private string _ip;
-        private int _db;
-        private string _address;
-        private int _bitAddress;
-        private int _dataLength;
-        private byte[]? _dataBytes;
 
         public Plc? Plc { get => _plc; set => _plc = value; }
         public CpuType CpuType { get => _cpuType; set => _cpuType = value; }
         public string Ip { get => _ip; set => _ip = value; }
-        public int Db { get => _db; set => _db = value; }
-        public string Address { get => _address; set => _address = value; }
-        public int BitAddress { get => _bitAddress; set => _bitAddress = value; }
-        public int DataLength { get => _dataLength; set => _dataLength = value; }
-        public byte[]? DataBytes { get => _dataBytes; set => _dataBytes = value; }
 
-        public PlcServerBase(CpuType cpuType, string ip, int db, string address, int bitAddress, int dataLength) {
+        public PlcServerBase(CpuType cpuType, string ip) {
             logger = MainUtils.GetLogger(GetType());
 
             _cpuType = cpuType;
             _ip = ip;
-            _db = db;
-            _address = address;
-            _bitAddress = bitAddress;
-            _dataLength = dataLength;
         }
 
         public bool Connect() {
@@ -46,12 +32,6 @@ namespace OperationGuidance_new.Constants {
                 logger.Error($"Can't open PLC connection with ip = {_ip}, e = {e}");
             }
             return false;
-        }
-
-        public void ReadBytes() {
-            if (_plc != null) {
-                _dataBytes = _plc.ReadBytes(DataType.DataBlock, _db, int.Parse(new String(_address.Skip(3).ToArray())), _dataLength);
-            }
         }
 
         public void Dispose() {

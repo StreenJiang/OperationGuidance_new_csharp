@@ -22,7 +22,7 @@ namespace OperationGuidance_new.Views {
                         } else if (ids.Count > 1) {
                             WidgetUtils.ShowNoticePopUp("每次操作只能选择一个站点");
                         } else {
-                            if (WidgetUtils.ShowConfirmPopUp("迁移后原站点所在及其所有信息将被当前机器替换，确定要迁移？")) {
+                            if (WidgetUtils.ShowConfirmPopUp("迁移后原站点所在站点及该工站中的所有信息将被当前机器替换，确定要迁移？")) {
                                 // 先查询选中站点对应的 mac 记录
                                 MacAddressesDTO? macAddressesDTO = apis.FindMacAddressesById(new(_dataDTOList.Single(dto => dto.id == ids[0]).macs_id)).MacAddressesDTO;
                                 if (macAddressesDTO != null) {

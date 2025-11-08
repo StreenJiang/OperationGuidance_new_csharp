@@ -19,6 +19,7 @@ using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.HttpServer;
+using OperationGuidance_new.Utils.IIPSC;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -601,7 +602,11 @@ namespace OperationGuidance_new {
                             WidgetUtils.ShowWarningPopUp("【配方编码】未配置，请检查配置。");
                         }
                         // 打印机配置检查（主要是为了生成一下配置文件）
-                        var sciiXtPrinterConfig = ConfigUtils.SciiXtPrinterConfig;
+                        SciiXtPrinterConfig sciiXtPrinterConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+                        break;
+                    case AppVersion.GLB:
+                        // Init settings files
+                        MainUtils.PlcConfig_GLB.Init();
                         break;
                 }
             });

@@ -8,11 +8,7 @@ namespace OperationGuidance_new.Utils {
         private static ILog log = LogManager.GetLogger(typeof(ConfigUtils));
         public static SciiXtPrinterConfig SciiXtPrinterConfig { get; set; }
 
-        static ConfigUtils() {
-            SciiXtPrinterConfig = LoadConfig<SciiXtPrinterConfig>();
-        }
-
-        private static T LoadConfig<T>() where T : new() {
+        public static T LoadConfig<T>() where T : new() {
             T config = new();
             Type type = config.GetType();
             var iniFile = new SettingsFileUtil(type.Name, ".ini");

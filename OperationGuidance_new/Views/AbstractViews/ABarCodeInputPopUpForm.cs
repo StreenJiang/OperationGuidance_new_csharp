@@ -109,10 +109,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _productBarCodeBox.GetTextBox(0).Box.Focus();
                     ActiveControl = _productBarCodeBox.GetTextBox(0).Box;
                 } else if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
-                    CustomTextBoxButtonGroup focusingBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
-                    focusingBox.Enabled = true;
-                    focusingBox.GetTextBox(0).Box.Focus();
-                    ActiveControl = focusingBox.GetTextBox(0).Box;
+                    int okCount = _workplace.BarCodeObj.PartsBarCodes.Count;
+                    if (okCount < _partsBarCodeRules[_mission.id].Count) {
+                        CustomTextBoxButtonGroup focusingBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[okCount];
+                        focusingBox.Enabled = true;
+                        focusingBox.GetTextBox(0).Box.Focus();
+                        ActiveControl = focusingBox.GetTextBox(0).Box;
+                    }
                 }
             } else {
                 if (_workplace.BarCodeObj.PartsBarCodes.Count < _partsBarCodeContentPanel.Controls.Count) {

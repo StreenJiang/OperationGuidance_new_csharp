@@ -80,9 +80,10 @@ namespace OperationGuidance_new.Tasks {
                         }
                         // If is plc
                         else if (_plcServer != null) {
-                            if (_reading) {
-                                _plcServer.ReadBytes();
-                            }
+                            // No need to have this, will use specific methods from specific server
+                            // if (_reading) {
+                            //     _plcServer.ReadBytes();
+                            // }
                         }
 
                         await Task.Delay(KeepAliveDelay);

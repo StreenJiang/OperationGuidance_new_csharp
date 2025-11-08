@@ -45,6 +45,31 @@ namespace OperationGuidance_new.Utils {
         public void DeleteKey(string Key, string? Section = null) => Write(Key, null, Section ?? _fileName);
         public void DeleteSection(string? Section = null) => Write(null, null, Section ?? _fileName);
         public bool KeyExists(string Key, string? Section = null) => Read(Key, Section).Length > 0;
+
+        /// <summary>
+        /// 写入一条注释（以 ; 开头）
+        /// </summary>
+        /// <param name="comment">注释内容</param>
+        /// <param name="section">要写入的 section，null 表示默认 section</param>
+        public void WriteComment(string comment, string? section = null) {
+            if (string.IsNullOrWhiteSpace(comment))
+                return;
+
+            var sec = section ?? _fileName;
+            var lines = comment.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines) {
+                var trimmed = line.Trim();
+                if (string.IsNullOrEmpty(trimmed))
+                    continue;
+
+                var commentLine = trimmed.StartsWith(";") || trimmed.StartsWith("#")
+                    ? trimmed
+                    : "# " + trimmed;
+
+                WritePrivateProfileString(sec, commentLine, "", _path);
+            }
+        }
         #endregion
     }
 }
