@@ -31,7 +31,6 @@ namespace OperationGuidance_new {
                 } catch (Exception e) {
                     MainUtils.logger.Error($"Error while runing application, e = {e}");
 
-                    Console.WriteLine(e);
                     WidgetUtils.ShowErrorPopUp($"程序运行错误，错误信息e: {e}");
                     throw e;
                 }

@@ -196,7 +196,6 @@ namespace OperationGuidance_new.Utils {
         public static ChallengeTaskUtil ChallengeTaskUtil { get; } = new();
         public static MesConfig_TZYX MesConfig_TZYX { get; } = new();
         public static HttpConfig HttpConfig { get; } = new();
-        public static Config_SCII_XT Config_SCII_XT { get; } = new();
         public static PlcConfig_GLB PlcConfig_GLB { get; } = new();
         public static List<string> InvalidCharacters { get; } = new() {
             "\u0000","\u0001","\u0002","\u0003","\u0004","\u0005","\u0006","\u0007","\u0008",

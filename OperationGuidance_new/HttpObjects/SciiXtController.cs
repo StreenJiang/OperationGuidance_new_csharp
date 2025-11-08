@@ -23,7 +23,7 @@ namespace OperationGuidance_new.HttpObjects {
 
                 try {
                     if (!string.IsNullOrEmpty(req.recipeCode)) {
-                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.RecipeCode, req.recipeCode);
+                        ConfigUtils.LoadConfig<SciiXtConfig>().File.Write(ConfigName_SCII_XT.RecipeCode, req.recipeCode);
                         response_XT.code = (int) SCII_XT_ResponseCode.OK;
                         response_XT.message = "配方切换成功！";
 
@@ -50,7 +50,7 @@ namespace OperationGuidance_new.HttpObjects {
 
                 try {
                     if (!string.IsNullOrEmpty(req.batchNo)) {
-                        MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.BatchNo, req.batchNo);
+                        ConfigUtils.LoadConfig<SciiXtConfig>().File.Write(ConfigName_SCII_XT.BatchNo, req.batchNo);
                         response_XT.code = (int) SCII_XT_ResponseCode.OK;
                         response_XT.message = "批次切换成功！";
 

@@ -12,8 +12,8 @@ namespace OperationGuidance_new.Utils {
         private static string RequestPrefix;
 
         static Workflow_SCII_XT() {
-            // TODO: Read host prefix from config file
-            var httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
+            SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+            var httpHost = config.http_host;
             if (string.IsNullOrEmpty(httpHost)) {
                 log.Warn("未配置 MES 服务器地址，请检查配置（将使用默认写死的测试服务器地址）。");
                 RequestPrefix = "http://10.10.59.1:5400";

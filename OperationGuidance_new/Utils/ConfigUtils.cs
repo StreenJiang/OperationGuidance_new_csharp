@@ -1,14 +1,14 @@
 using log4net;
-using OperationGuidance_new.Utils.IIPSC;
+using OperationGuidance_new.Attributes;
+using OperationGuidance_new.Configs;
 using System.ComponentModel;
 using System.Reflection;
 
 namespace OperationGuidance_new.Utils {
     public static class ConfigUtils {
         private static ILog log = LogManager.GetLogger(typeof(ConfigUtils));
-        public static SciiXtPrinterConfig SciiXtPrinterConfig { get; set; }
 
-        public static T LoadConfig<T>() where T : new() {
+        public static T LoadConfig<T>() where T : ConfigBase, new() {
             T config = new();
             Type type = config.GetType();
             var iniFile = new SettingsFileUtil(type.Name, ".ini");
@@ -16,6 +16,17 @@ namespace OperationGuidance_new.Utils {
             PropertyInfo[] propertyInfos = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (PropertyInfo proInfo in propertyInfos) {
                 string configKey = proInfo.Name;
+                IEnumerable<Attribute> attributes = proInfo.GetCustomAttributes();
+                bool shouldIgnore = false;
+                foreach (Attribute attr in attributes) {
+                    if (attr is ConfigIgnore ignore) {
+                        shouldIgnore = ignore.IsIgnored;
+                        break;
+                    }
+                }
+                if (shouldIgnore) {
+                    continue;
+                }
 
                 string value = iniFile.Read(configKey);
                 if (string.IsNullOrEmpty(value)) {
@@ -37,6 +48,7 @@ namespace OperationGuidance_new.Utils {
                 }
             }
 
+            config.File = iniFile;
             return config;
         }
     }

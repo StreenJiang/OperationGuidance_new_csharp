@@ -1,4 +1,4 @@
-﻿namespace OperationGuidance_new.Constants {
+namespace OperationGuidance_new.Constants {
     public class DeviceType_Communication {
         public static List<DeviceTypeBase> Elements = new();
         private static T AddNew<T>() where T : DeviceTypeBase, new() {
@@ -12,6 +12,7 @@
 
         public static CommunicationSiemensPlc SiemensPlc { get; } = AddNew<CommunicationSiemensPlc>();
         public static CommunicationModBus ModBus { get; } = AddNew<CommunicationModBus>();
+        public static CommunicationModBusTcp ModBusTcp { get; } = AddNew<CommunicationModBusTcp>();
 
         public static DeviceTypeCommunication GetById(int id) {
             foreach (DeviceTypeCommunication type in Elements) {
@@ -56,5 +57,9 @@
         public string? AnalyzeData(string dataMessage, Action? actionAfterAnalysis = null) {
             return null;
         }
+    }
+
+    public class CommunicationModBusTcp: DeviceTypeCommunication {
+        public CommunicationModBusTcp() : base(3, "ModBusTcp") { }
     }
 }

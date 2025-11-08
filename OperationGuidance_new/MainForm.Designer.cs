@@ -566,42 +566,28 @@ namespace OperationGuidance_new {
                     case AppVersion.STANDARD:
                         break;
                     case AppVersion.SCII_XT:
-                        // MES host server 检查
-                        string httpHost = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.HttpHost);
-                        if (string.IsNullOrEmpty(httpHost)) {
-                            checkOk = false;
-                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.HttpHost, "");
-                            WidgetUtils.ShowWarningPopUp("Http 服务未配置，请检查配置。");
-                        }
+                        SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
                         // 工序编码检查
-                        string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
-                        if (string.IsNullOrEmpty(procedureCode)) {
+                        if (string.IsNullOrEmpty(config.procedure_code)) {
                             checkOk = false;
-                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.ProcedureCode, "");
                             WidgetUtils.ShowWarningPopUp("【工序编码】未配置，请检查配置。");
                         }
                         // 设备编码检查
-                        string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
-                        if (string.IsNullOrEmpty(equipmentCode)) {
+                        if (string.IsNullOrEmpty(config.equipment_code)) {
                             checkOk = false;
-                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.EquipmentCode, "");
                             WidgetUtils.ShowWarningPopUp("【设备编码】未配置，请检查配置。");
                         }
                         // 批次号
-                        string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
-                        if (string.IsNullOrEmpty(batchNo)) {
+                        if (string.IsNullOrEmpty(config.batch_no)) {
                             checkOk = false;
-                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.BatchNo, "");
                             WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置。");
                         }
                         // 配方编码
-                        string recipeCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.RecipeCode);
-                        if (string.IsNullOrEmpty(recipeCode)) {
+                        if (string.IsNullOrEmpty(config.recipe_code)) {
                             checkOk = false;
-                            MainUtils.Config_SCII_XT.Write(ConfigName_SCII_XT.RecipeCode, "");
                             WidgetUtils.ShowWarningPopUp("【配方编码】未配置，请检查配置。");
                         }
-                        // 打印机配置检查（主要是为了生成一下配置文件）
+                        // 加载打印机配置文件
                         SciiXtPrinterConfig sciiXtPrinterConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
                         break;
                     case AppVersion.GLB:

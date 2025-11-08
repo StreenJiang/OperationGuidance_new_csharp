@@ -106,7 +106,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override bool PartsBarCodeExtraCheck(int ruleId) => true;
 
         private string _getProcedureCode() {
-            string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+            string procedureCode = ConfigUtils.LoadConfig<SciiXtConfig>().procedure_code;
             if (string.IsNullOrEmpty(procedureCode)) {
                 WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
             }
@@ -114,7 +114,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         private string _getEquipmentCode() {
-            string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
+            string equipmentCode = ConfigUtils.LoadConfig<SciiXtConfig>().equipment_code;
             if (string.IsNullOrEmpty(equipmentCode)) {
                 WidgetUtils.ShowWarningPopUp(this, "【设备编码】未配置，请检查配置信息。");
             }

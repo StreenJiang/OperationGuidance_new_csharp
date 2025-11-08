@@ -159,7 +159,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
         }
 
         public void Dispose() {
-            throw new NotImplementedException();
+            // TODO: 添加需要销毁的，被持有的实例（无法销毁自身）
         }
         #endregion
     }

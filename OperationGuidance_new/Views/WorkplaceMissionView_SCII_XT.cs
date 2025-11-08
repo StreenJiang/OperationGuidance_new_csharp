@@ -6,6 +6,7 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.HttpObjects;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
+using OperationGuidance_new.PLC;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
@@ -77,20 +78,20 @@ namespace OperationGuidance_new.Views {
             await base.ActionAfterActivatingMission();
 
             _operationDataDTOs = new();
+
+            // 向打印机发送指令
+            _ = SendToPrinter();
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            await SendDataToMES(_operationDataDTOs);
+
             if (await OutBound()) {
                 await base.TerminateMission(status);
 
+                await WriteResultToPlc(status == WorkplaceProcessStatus.FINISHED_OK);
+
                 SwitchMissionByRecipe(_getRecipeCode());
-
-                // 向打印机发送指令
-                if (status == WorkplaceProcessStatus.FINISHED_OK) {
-                    _ = SendToPrinter();
-                }
-
-                _ = SendDataToMES(_operationDataDTOs);
             }
         }
 
@@ -118,6 +119,8 @@ namespace OperationGuidance_new.Views {
 
         protected override void InitializeAfterHandelCreated() {
             base.InitializeAfterHandelCreated();
+
+            LoadPlc();
 
             _missionSelectedName.DeleteButton<CommonButton>(0);
 
@@ -177,7 +180,7 @@ namespace OperationGuidance_new.Views {
 
         private async Task SendToPrinter() {
             await Task.Run(() => BeginInvoke(() => {
-                var config = ConfigUtils.SciiXtPrinterConfig;
+                var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
                 if (config.enabled == (int) YesOrNo.YES) {
                     int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
                     config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
@@ -241,6 +244,19 @@ namespace OperationGuidance_new.Views {
 
                 _operationDataDTOs = new();
             }
+        }
+
+        private async Task WriteResultToPlc(bool result) {
+            await Task.Run(() => {
+                if (_communicationTask != null && _communicationTask.Connected
+                      && _communicationTask.CommunicationType is CommunicationModBusTcp
+                      && _communicationTask.PlcTcpClient != null) {
+                    _communicationTask.PlcTcpClient.WriteResult(result);
+                } else {
+                    LoadPlc();
+                    logger.Warn("PLC connection is unstable, get bar code from PLC failed, trying to reload...");
+                }
+            });
         }
 
         protected override void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
@@ -545,17 +561,48 @@ namespace OperationGuidance_new.Views {
             _barCodePopUpForm.Show();
         }
 
+        // Load Communication tasks
+        private void LoadPlc() {
+            _communicationTasks = MainUtils.CommunicationTasks;
+            foreach (CommunicationTask task in _communicationTasks.Values) {
+                if (task.CommunicationType is CommunicationModBusTcp) {
+                    _communicationTask = task;
+                    break;
+                }
+            }
+
+            if (_communicationTask != null && _communicationTask.Connected) {
+                // Close first if exists, because we need a new one each time
+                if (_communicationTask.PlcTcpClient != null) {
+                    _communicationTask.PlcTcpClient.Dispose();
+                    _communicationTask.PlcTcpClient = null;
+                }
+
+                try {
+                    PlcConfig_GLB plcConfig_GLB = MainUtils.PlcConfig_GLB;
+                    _communicationTask.PlcTcpClient = new SCII_XT_PlcClient(_communicationTask.Ip, _communicationTask.Port);
+                } catch (InvalidOperationException ioe) {
+                    logger.Error("Error while connecting to PLC", ioe);
+                    WidgetUtils.ShowWarningPopUp($"连接 PLC 失败！{ioe.Message}");
+                } catch (Exception ex) {
+                    logger.Error("Error while connecting to PLC", ex);
+                    WidgetUtils.ShowWarningPopUp("连接 PLC 失败！请检查配置/网络。");
+                }
+            }
+        }
+
         private async Task _loopingToCheckBatchNo() {
             await Task.Run(() => {
                 BeginInvoke(async () => {
-                    string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
-                    while (string.IsNullOrEmpty(batchNo)) {
+                    SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+                    string batchNo = ConfigUtils.LoadConfig<SciiXtConfig>().batch_no;
+                    while (string.IsNullOrEmpty(config.batch_no)) {
                         _productBatch.GetTextBox(0).IsError = true;
 
                         await Task.Delay(1000);
 
                         // Fetch again
-                        batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+                        batchNo = ConfigUtils.LoadConfig<SciiXtConfig>().batch_no;
                     }
 
                     _productBatch.GetTextBox(0).IsError = false;
@@ -565,7 +612,7 @@ namespace OperationGuidance_new.Views {
         }
 
         private string _getProcedureCode() {
-            string procedureCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.ProcedureCode);
+            string procedureCode = ConfigUtils.LoadConfig<SciiXtConfig>().procedure_code;
             if (string.IsNullOrEmpty(procedureCode)) {
                 WidgetUtils.ShowWarningPopUp(this, "【工序编码】未配置，请检查配置信息。");
             }
@@ -573,7 +620,7 @@ namespace OperationGuidance_new.Views {
         }
 
         private string _getEquipmentCode() {
-            string equipmentCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.EquipmentCode);
+            string equipmentCode = ConfigUtils.LoadConfig<SciiXtConfig>().equipment_code;
             if (string.IsNullOrEmpty(equipmentCode)) {
                 WidgetUtils.ShowWarningPopUp(this, "【设备编码】未配置，请检查配置信息。");
             }
@@ -581,7 +628,7 @@ namespace OperationGuidance_new.Views {
         }
 
         private string _getBatchNo() {
-            string batchNo = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.BatchNo);
+            string batchNo = ConfigUtils.LoadConfig<SciiXtConfig>().batch_no;
             if (string.IsNullOrEmpty(batchNo)) {
                 WidgetUtils.ShowWarningPopUp("【批次号】未配置，请检查配置信息。");
             }
@@ -589,7 +636,7 @@ namespace OperationGuidance_new.Views {
         }
 
         private string _getRecipeCode() {
-            string recipeCode = MainUtils.Config_SCII_XT.Read(ConfigName_SCII_XT.RecipeCode);
+            string recipeCode = ConfigUtils.LoadConfig<SciiXtConfig>().recipe_code;
             if (string.IsNullOrEmpty(recipeCode)) {
                 WidgetUtils.ShowWarningPopUp(this, "【配方编码】未配置，请检查配置信息。");
             }
