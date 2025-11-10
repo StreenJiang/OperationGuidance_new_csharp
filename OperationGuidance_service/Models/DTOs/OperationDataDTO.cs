@@ -74,7 +74,7 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? timestamp { get; set; }                                              // 拧紧时间戳记
         public string? date_or_time_of_last_change_in_parameter_set_settings { get; set; }  // 
         public string? parameter_set_name { get; set; }                                     // 程序名
-        public int? torque_values_unit { get; set; }                                        // 
+        public int? torque_values_unit { get; set; }                                        // 扭矩单位
         public int? result_type { get; set; }                                               //
     }
 }

@@ -9,6 +9,7 @@ namespace OperationGuidance_new.PLC {
     public class ModbusTcpClient {
         private ILog log = LogManager.GetLogger(typeof(ModbusTcpClient));
         private ModbusClient _client;
+        private bool _isConnected;
 
         /// <summary>
         /// 构造函数：初始化 ModbusClient 实例
@@ -27,6 +28,8 @@ namespace OperationGuidance_new.PLC {
                 _client.IPAddress = ipAddress;
                 _client.Port = port;
                 _client.Connect();
+                _isConnected = true;
+                log.Info($"连接PLC成功！[IP = {ipAddress}, Port = {port}]");
             } catch (Exception ex) {
                 log.Warn($"连接PLC失败：{ex.Message}", ex);
                 throw new Exception($"连接PLC失败：{ex.Message}", ex);
@@ -39,12 +42,16 @@ namespace OperationGuidance_new.PLC {
         public void Disconnect() {
             try {
                 _client.Disconnect();
+                _isConnected = false;
+                log.Info($"断开PLC连接成功！[IP = {_client.IPAddress}, Port = {_client.Port}]");
             } catch (Exception ex) {
                 // 可选：记录异常或忽略
-                log.Warn($"断开连接时发生错误：{ex.Message}", ex);
-                throw new Exception($"断开连接时发生错误：{ex.Message}", ex);
+                log.Warn($"断开PLC连接时发生错误：{ex.Message}", ex);
+                throw new Exception($"断开PLC连接时发生错误：{ex.Message}", ex);
             }
         }
+
+        public bool IsConnected() => _isConnected;
 
         /// <summary>
         /// 读取单个寄存器 (16位整数)

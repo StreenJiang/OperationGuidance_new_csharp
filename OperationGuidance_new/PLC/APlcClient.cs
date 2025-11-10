@@ -2,7 +2,7 @@ using log4net;
 
 namespace OperationGuidance_new.PLC {
     public abstract class APlcClient: IDisposable {
-        private ILog log = LogManager.GetLogger(typeof(APlcClient));
+        protected ILog log = LogManager.GetLogger(typeof(APlcClient));
         protected ModbusTcpClient _modbusTcpClient;
 
         public ModbusTcpClient ModbusTcpClient => _modbusTcpClient;
@@ -17,7 +17,9 @@ namespace OperationGuidance_new.PLC {
             }
         }
 
-        public abstract void WriteResult(bool result);
+        public bool IsConnected() => _modbusTcpClient.IsConnected();
+
+        public abstract Task WriteResult(bool result);
 
         public void Dispose() {
             _modbusTcpClient?.Disconnect();

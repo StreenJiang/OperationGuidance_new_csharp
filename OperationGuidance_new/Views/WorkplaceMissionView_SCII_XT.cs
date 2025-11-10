@@ -52,6 +52,7 @@ namespace OperationGuidance_new.Views {
         private Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
         private Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
         private List<OperationDataDTO> _operationDataDTOs;
+        private CancellationTokenSource? _plcLoopCts;
 
         public WorkplaceContentPanel_SCII_XT() { }
         public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
@@ -87,8 +88,6 @@ namespace OperationGuidance_new.Views {
 
             if (await OutBound()) {
                 await base.TerminateMission(status);
-
-                await WriteResultToPlc(status == WorkplaceProcessStatus.FINISHED_OK);
 
                 SwitchMissionByRecipe(_getRecipeCode());
             }
@@ -217,7 +216,7 @@ namespace OperationGuidance_new.Views {
 
                 // Set values
                 foreach (OperationDataDTO operationDataDTO in operationDataDTOs) {
-                    var data = new OperationDataDTO_SCII_XT();
+                    OperationDataDTO_SCII_XT data = new OperationDataDTO_SCII_XT();
                     CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
 
                     PropertyInfo[] propertyInfos = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -225,11 +224,13 @@ namespace OperationGuidance_new.Views {
 
                         IEnumerable<Attribute> fieldAttrs = property.GetCustomAttributes();
                         foreach (Attribute fieldAttr in fieldAttrs) {
-                            if (fieldAttr is Description attr) {
+
+                            if (fieldAttr is SCII_XT_Column column) {
+
                                 productInfos.attributeList.Add(NewAttribute(property,
                                                                             data,
-                                                                            data.bolt_serial_num.Value,
-                                                                            attr.Name ?? "无"));
+                                                                            column.Name ?? property.Name,
+                                                                            column.Unit));
                             }
                         }
                     }
@@ -245,17 +246,58 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private async Task WriteResultToPlc(bool result) {
-            await Task.Run(() => {
-                if (_communicationTask != null && _communicationTask.Connected
-                      && _communicationTask.CommunicationType is CommunicationModBusTcp
-                      && _communicationTask.PlcTcpClient != null) {
-                    _communicationTask.PlcTcpClient.WriteResult(result);
-                } else {
-                    LoadPlc();
-                    logger.Warn("PLC connection is unstable, get bar code from PLC failed, trying to reload...");
+        private async Task PlcStatusTask() {
+            // 创建新的 CancellationTokenSource（用于停止循环）
+            _plcLoopCts = new CancellationTokenSource();
+            var token = _plcLoopCts.Token;
+
+            logger.Info("PLC 状态轮询任务已启动");
+
+            while (!token.IsCancellationRequested) {
+                try {
+                    // 检查基础条件（无需 Task.Run，因为不涉及 I/O）
+                    if (_communicationTask == null) {
+                        logger.Warn("PLC 通信任务未初始化，等待 2 秒后重试...");
+                        await Task.Delay(2000, token);
+                        continue;
+                    }
+
+                    if (_communicationTask.CommunicationType is not CommunicationModBusTcp) {
+                        logger.Warn("当前通信类型不是 Modbus TCP，等待 2 秒后重试...");
+                        await Task.Delay(2000, token);
+                        continue;
+                    }
+
+                    var plcClient = _communicationTask.PlcTcpClient as SCII_XT_PlcClient;
+                    if (plcClient == null) {
+                        logger.Warn("PLC 客户端为空或类型不匹配，等待 2 秒后重试...");
+                        await Task.Delay(2000, token);
+                        continue;
+                    }
+
+                    // 执行一次完整的读写周期
+                    try {
+                        if (await plcClient.IsReadyToWriteAsync()) {
+                            bool result = !_activated && _missionRecord != null &&
+                                          _missionRecord.mission_result == (int) TighteningStatus.OK;
+                            await plcClient.WriteResult(result);
+                        }
+                    } catch (Exception ex) {
+                        logger.Warn($"PLC 读写周期失败: {ex.Message}", ex);
+                    }
+
+                    // 周期间隔（可配置）
+                    await Task.Delay(200, token); // 每 200ms 检查一次
+                } catch (OperationCanceledException) {
+                    // 被取消，正常退出
+                    logger.Info("PLC 状态轮询任务已取消");
+                    break;
+                } catch (Exception ex) {
+                    logger.Error($"PLC 轮询循环异常: {ex.Message}", ex);
+                    // 发生未预期异常，短暂休眠后继续
+                    await Task.Delay(1000, token);
                 }
-            });
+            }
         }
 
         protected override void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
@@ -570,16 +612,17 @@ namespace OperationGuidance_new.Views {
                 }
             }
 
-            if (_communicationTask != null && _communicationTask.Connected) {
+            if (_communicationTask != null) {
                 // Close first if exists, because we need a new one each time
                 if (_communicationTask.PlcTcpClient != null) {
+                    StopPlcStatusTask();
                     _communicationTask.PlcTcpClient.Dispose();
                     _communicationTask.PlcTcpClient = null;
                 }
 
                 try {
-                    PlcConfig_GLB plcConfig_GLB = MainUtils.PlcConfig_GLB;
                     _communicationTask.PlcTcpClient = new SCII_XT_PlcClient(_communicationTask.Ip, _communicationTask.Port);
+                    _ = PlcStatusTask();
                 } catch (InvalidOperationException ioe) {
                     logger.Error("Error while connecting to PLC", ioe);
                     WidgetUtils.ShowWarningPopUp($"连接 PLC 失败！{ioe.Message}");
@@ -643,17 +686,49 @@ namespace OperationGuidance_new.Views {
         }
 
         private SCII_XT_BindProductDataReq.ProductInfo.Attribute NewAttribute(PropertyInfo property,
-                                                                              object obj,
-                                                                              int serialNum,
-                                                                              string attrName) {
+                                                                              OperationDataDTO_SCII_XT data,
+                                                                              string attrName,
+                                                                              string? unit) {
+            string value = property.GetValue(data) != null
+                         ? property.GetValue(data)?.ToString() ?? "NULL"
+                         : "NULL";
+
+            if (unit == null) {
+                TorqueUnit torqueUnit = TorqueUnitExtensions.FromValue(data.torque_values_unit);
+                unit = torqueUnit.GetDescription();
+            } else if (unit == "bool" && value != "NULL") {
+                int? v = (int?) property.GetValue(data);
+                if (v is not null) {
+                    value = (v == 1 ? TighteningStatus.OK : TighteningStatus.NG) + "";
+                }
+            }
+
             return new() {
                 attributeName = attrName,
                 attributeCode = property.Name,
-                attributeUnit = property.PropertyType.ToString(),
+                attributeUnit = unit,
                 attributeType = 0,
-                orderId = serialNum,
-                value = property.GetValue(obj) != null ? property.GetValue(obj)?.ToString() ?? "NULL" : "NULL",
+                orderId = data.bolt_serial_num,
+                value = value,
             };
+        }
+
+        private void StopPlcStatusTask() {
+            _plcLoopCts?.Cancel();
+            _plcLoopCts?.Dispose();
+            _plcLoopCts = null;
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                // 停止 PLC 轮询任务
+                StopPlcStatusTask();
+
+                // 如果有其他需要释放的资源，也在这里释放
+                // 例如：_plcLoopCts 已在 StopPlcStatusTask() 中处理
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

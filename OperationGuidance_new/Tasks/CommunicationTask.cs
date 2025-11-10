@@ -22,7 +22,7 @@ namespace OperationGuidance_new.Tasks {
         private ReadResponseMessage ReadResponse = new();
         private ModBusServerBase? _modBusServer;
         private PlcServerBase? _plcServer;
-        private APlcClient? plcTcpClient;
+        private APlcClient? _plcTcpClient;
         private bool _reading = false;
         #endregion
 
@@ -33,6 +33,9 @@ namespace OperationGuidance_new.Tasks {
                 // if (_communicationType is CommunicationSiemensPlc) {
                 //     return _plcServer != null && _plcServer.Plc.IsConnected;
                 // }
+                if (_communicationType is CommunicationModBusTcp) {
+                    return _plcTcpClient is not null ? _plcTcpClient.IsConnected() : false;
+                }
                 return socketClient != null && socketClient.Connected && !CloseConnectionManually;
             }
         }
@@ -47,7 +50,7 @@ namespace OperationGuidance_new.Tasks {
         public ModBusServerBase? ModBusServer { get => _modBusServer; set => _modBusServer = value; }
         public bool Reading { get => _reading; set => _reading = value; }
         public PlcServerBase? PlcServer { get => _plcServer; set => _plcServer = value; }
-        public APlcClient? PlcTcpClient { get => plcTcpClient; set => plcTcpClient = value; }
+        public APlcClient? PlcTcpClient { get => _plcTcpClient; set => _plcTcpClient = value; }
         #endregion
         #region Constructors
         public CommunicationTask(int deviceId, string? name, string ip, int port, DeviceTypeCommunication deviceType, int? workstationId = null) : base(deviceId, workstationId) {
@@ -154,9 +157,6 @@ namespace OperationGuidance_new.Tasks {
                         connectSuccess = true;
                     } else if (_communicationType is CommunicationModBusTcp) {
                         MainUtils.Info(logger, $"COMMUNICATION[{_device_name} - {_ip}: {_port}] is ModBus Tcp, ping is ok...");
-                        socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        socketClient.ReceiveTimeout = ReceiveTimeout;
-                        socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
                     } else {
                         socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

@@ -5,6 +5,7 @@ namespace OperationGuidance_new.Configs {
         public string equipment_code { get; set; }
         public string batch_no { get; set; }
         public string recipe_code { get; set; }
+        public string plc_is_ready_addr { get; set; }
         public string plc_register_addr { get; set; }
 
         public SciiXtConfig() {
@@ -13,7 +14,13 @@ namespace OperationGuidance_new.Configs {
             equipment_code = "";
             batch_no = "";
             recipe_code = "";
-            plc_register_addr = "6012";
+            plc_is_ready_addr = "6000";
+            plc_register_addr = "6002";
+        }
+
+        public enum PlcStatus {
+            OK = 1,
+            RSP = 99,
         }
 
         public enum PlcResult {
