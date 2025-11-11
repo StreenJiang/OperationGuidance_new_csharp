@@ -247,54 +247,43 @@ namespace OperationGuidance_new.Views {
         }
 
         private async Task PlcStatusTask() {
-            // 创建新的 CancellationTokenSource（用于停止循环）
             _plcLoopCts = new CancellationTokenSource();
             var token = _plcLoopCts.Token;
 
             logger.Info("PLC 状态轮询任务已启动");
 
+            // 一次性验证所有静态依赖
+            if (_communicationTask == null) {
+                logger.Error("PLC 通信任务未初始化，无法启动轮询任务");
+                return;
+            }
+
+            if (_communicationTask.CommunicationType is not CommunicationModBusTcp) {
+                logger.Error("当前通信类型不是 Modbus TCP，无法启动轮询任务");
+                return;
+            }
+
+            var plcClient = _communicationTask.PlcTcpClient as SCII_XT_PlcClient;
+            if (plcClient == null) {
+                logger.Error("PLC 客户端为空或类型不匹配，无法启动轮询任务");
+                return;
+            }
+
+            // 高效循环：只做核心业务
             while (!token.IsCancellationRequested) {
                 try {
-                    // 检查基础条件（无需 Task.Run，因为不涉及 I/O）
-                    if (_communicationTask == null) {
-                        logger.Warn("PLC 通信任务未初始化，等待 2 秒后重试...");
-                        await Task.Delay(2000, token);
-                        continue;
+                    if (await plcClient.IsReadyToWrite()) {
+                        bool result = !_activated && _missionRecord != null &&
+                                      _missionRecord.mission_result == (int) TighteningStatus.OK;
+                        await plcClient.WriteResult(result);
                     }
 
-                    if (_communicationTask.CommunicationType is not CommunicationModBusTcp) {
-                        logger.Warn("当前通信类型不是 Modbus TCP，等待 2 秒后重试...");
-                        await Task.Delay(2000, token);
-                        continue;
-                    }
-
-                    var plcClient = _communicationTask.PlcTcpClient as SCII_XT_PlcClient;
-                    if (plcClient == null) {
-                        logger.Warn("PLC 客户端为空或类型不匹配，等待 2 秒后重试...");
-                        await Task.Delay(2000, token);
-                        continue;
-                    }
-
-                    // 执行一次完整的读写周期
-                    try {
-                        if (await plcClient.IsReadyToWriteAsync()) {
-                            bool result = !_activated && _missionRecord != null &&
-                                          _missionRecord.mission_result == (int) TighteningStatus.OK;
-                            await plcClient.WriteResult(result);
-                        }
-                    } catch (Exception ex) {
-                        logger.Warn($"PLC 读写周期失败: {ex.Message}", ex);
-                    }
-
-                    // 周期间隔（可配置）
-                    await Task.Delay(200, token); // 每 200ms 检查一次
+                    await Task.Delay(200, token);
                 } catch (OperationCanceledException) {
-                    // 被取消，正常退出
                     logger.Info("PLC 状态轮询任务已取消");
                     break;
                 } catch (Exception ex) {
-                    logger.Error($"PLC 轮询循环异常: {ex.Message}", ex);
-                    // 发生未预期异常，短暂休眠后继续
+                    logger.Warn($"PLC 读写周期失败: {ex.Message}", ex);
                     await Task.Delay(1000, token);
                 }
             }

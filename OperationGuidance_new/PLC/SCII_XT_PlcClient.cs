@@ -7,7 +7,7 @@ namespace OperationGuidance_new.PLC {
 
         public SCII_XT_PlcClient(string ip, int port) : base(ip, port) { }
 
-        public async Task<bool> IsReadyToWriteAsync() {
+        public async Task<bool> IsReadyToWrite() {
             var config = ConfigUtils.LoadConfig<SciiXtConfig>();
             int readyAddress = int.Parse(config.plc_is_ready_addr);
             int okValue = (int) SciiXtConfig.PlcStatus.OK;
@@ -15,33 +15,25 @@ namespace OperationGuidance_new.PLC {
 
             log.Info($"Reading 'isReady' from address = {readyAddress}");
 
-            const int maxRetries = 50;
-            for (int i = 0; i < maxRetries; i++) {
-                // 在线程池线程中执行 Modbus 操作（带锁）
-                bool isReady = await Task.Run(() => {
-                    lock (_modbusLock) {
-                        try {
-                            int currentValue = _modbusTcpClient.ReadRegister(readyAddress);
-                            if (currentValue == okValue) {
-                                _modbusTcpClient.WriteRegister(readyAddress, rspValue);
-                                return true;
-                            }
-                            return false;
-                        } catch (Exception ex) {
-                            log.Warn($"PLC 读取失败: {ex.Message}");
-                            return false;
+            // 在线程池线程中执行 Modbus 操作（带锁）
+            bool isReady = await Task.Run(() => {
+                lock (_modbusLock) {
+                    try {
+                        int currentValue = _modbusTcpClient.ReadRegister(readyAddress);
+                        log.Info($"Result of 'isReady' from address = {readyAddress} is [{currentValue}]");
+                        if (currentValue == okValue) {
+                            _modbusTcpClient.WriteRegister(readyAddress, rspValue);
+                            return true;
                         }
+                        return false;
+                    } catch (Exception ex) {
+                        log.Warn($"PLC 读取失败: {ex.Message}");
+                        return false;
                     }
-                });
+                }
+            });
 
-                if (isReady)
-                    return true;
-
-                await Task.Delay(200);
-            }
-
-            log.Warn("PLC 就绪超时");
-            return false;
+            return isReady;
         }
 
         public override async Task WriteResult(bool result) {
