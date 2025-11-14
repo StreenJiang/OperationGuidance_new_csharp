@@ -208,17 +208,15 @@ namespace CustomLibrary.Forms {
             }
             Opacity = 1D;
 
-            BeginInvoke(async () => {
-                base.Hide();
-                await Task.Delay(200);
-
-                if (ShowInFront) {
+            if (ShowInFront) {
+                try {
                     base.Hide();
                     base.ShowDialog();
-                } else {
-                    base.Show();
+                } catch {
+                    Thread.Sleep(200);
+                    base.ShowDialog();
                 }
-            });
+            }
         }
 
         public new DialogResult ShowDialog() {

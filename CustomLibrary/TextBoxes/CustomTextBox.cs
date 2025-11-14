@@ -156,54 +156,11 @@ namespace CustomLibrary.TextBoxes {
                 if (_box.Text == _defaultText) {
                     return;
                 }
+
                 if (_numberOnly || _intOnly || _positiveIntOnly) {
-                    int errorCount = 0;
-                    int index = 0;
-                    foreach (char c in _box.Text) {
-                        if ((_positiveIntOnly && !char.IsDigit(c)) ||
-                            (_intOnly && !char.IsDigit(c) && !(c == '-' && index == 0)) ||
-                            (_numberOnly && !char.IsDigit(c) && c != '.' && !(c == '-' && index == 0))) {
-                            _box.Text = _box.Text.Replace(c.ToString(), "");
-                            errorCount++;
-                        }
-                        index++;
-                    }
-                    if (_numberOnly && _box.Text.Where(c => c == '.').Count() > 1) {
-                        _box.Text = new(_box.Text.Take(_box.Text.Length - 1).ToArray());
-                        errorCount++;
-                    }
-                    _box.SelectionStart = _box.Text.Length;
-                    _box.SelectionLength = 0;
-                    if (errorCount == 0) {
-                        _isError = false;
-                        HideErrorToolTip();
-                        Invalidate();
-                        _errorBorderTimer?.Stop();
-                        _timerTicking = false;
-                    } else {
-                        _isError = true;
-                        ShowErrorToolTip();
-                        Invalidate();
-                        _timerCount = 0;
-                        _errorBorderTimer?.Start();
-                        _timerTicking = true;
-                    }
+                    ProcessNumberValidation();
                 } else if (_numberValidate) {
-                    ResetErrorIcon();
-                    foreach (char c in _box.Text) {
-                        if (!char.IsDigit(c) && c != '.') {
-                            _errorProvider.SetError(_box, "请输入数字");
-                            _box.Width = _boxErrorWidth;
-                            _isError = true;
-                            ShowErrorToolTip();
-                            Invalidate();
-                            return;
-                        }
-                    }
-                    HideErrorToolTip();
-                    _isError = false;
-                    _errorProvider.SetError(_box, "");
-                    _box.Width = _boxOriginalWidth;
+                    ProcessSimpleNumberValidation();
                 }
             };
 
@@ -259,37 +216,180 @@ namespace CustomLibrary.TextBoxes {
             }
             ForeColor = _originalForeColor;
         }
-        public bool IsEmpty() => string.IsNullOrEmpty(_box.Text) || _box.Text == _defaultText;
-        private void ResetErrorIcon() {
-            Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
-            if (_iconShowing == null || _iconShowing.Size != newIconSize) {
-                using (Image imageTemp = ResxUtils.Load("input_error")) {
-                    _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize);
-                    _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
-                    _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
+        private void ProcessNumberValidation() {
+            string originalText = _box.Text;
+            string filteredText = FilterNumberText(originalText);
+
+            // 如果文本被修改，更新控件
+            if (filteredText != originalText) {
+                int cursorPosition = _box.SelectionStart;
+                _box.Text = filteredText;
+                // 保持光标位置，但不超过新文本长度
+                _box.SelectionStart = Math.Min(cursorPosition, _box.Text.Length);
+                _box.SelectionLength = 0;
+            }
+
+            // 检查小数点数量（仅对numberOnly模式）
+            if (_numberOnly) {
+                int dotCount = _box.Text.Count(c => c == '.');
+                if (dotCount > 1) {
+                    // 保留第一个小数点，移除后续的小数点
+                    string textWithOneDot = RemoveExtraDots(_box.Text);
+                    if (textWithOneDot != _box.Text) {
+                        _box.Text = textWithOneDot;
+                        _box.SelectionStart = _box.Text.Length;
+                        _box.SelectionLength = 0;
+                    }
                 }
             }
-            int boxErrorNewWidth = _boxOriginalWidth - newIconSize.Width;
+
+            bool hasError = (filteredText != originalText) ||
+                           (_numberOnly && CountOccurrences(originalText, '.') > 1);
+
+            UpdateErrorState(hasError);
+        }
+        private string FilterNumberText(string text) {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            var result = new System.Text.StringBuilder();
+            bool hasDot = false;
+
+            for (int i = 0; i < text.Length; i++) {
+                char c = text[i];
+                bool isValid = false;
+
+                if (char.IsDigit(c)) {
+                    isValid = true;
+                } else if (c == '.' && _numberOnly && !hasDot && i > 0) // 小数点不能在开头
+                  {
+                    isValid = true;
+                    hasDot = true;
+                } else if (c == '-' && (i == 0) && (_intOnly || _numberOnly) &&
+                           text.Length > 1 && !string.IsNullOrEmpty(text.Substring(1).Trim())) // 负号只能在开头且后面有内容
+                  {
+                    isValid = true;
+                }
+
+                if (isValid) {
+                    result.Append(c);
+                }
+            }
+
+            return result.ToString();
+        }
+        private string RemoveExtraDots(string text) {
+            var result = new System.Text.StringBuilder();
+            bool firstDotFound = false;
+
+            foreach (char c in text) {
+                if (c == '.') {
+                    if (!firstDotFound) {
+                        result.Append(c);
+                        firstDotFound = true;
+                    }
+                    // 否则跳过这个多余的点
+                } else {
+                    result.Append(c);
+                }
+            }
+
+            return result.ToString();
+        }
+        private void ProcessSimpleNumberValidation() {
+            ResetErrorIcon();
+
+            foreach (char c in _box.Text) {
+                if (!char.IsDigit(c) && c != '.') {
+                    _errorProvider.SetError(_box, "请输入数字");
+                    _box.Width = _boxErrorWidth;
+                    _isError = true;
+                    ShowErrorToolTip();
+                    Invalidate();
+                    return;
+                }
+            }
+
+            HideErrorToolTip();
+            _isError = false;
+            _errorProvider.SetError(_box, "");
+            _box.Width = _boxOriginalWidth;
+        }
+        private void UpdateErrorState(bool hasError) {
+            if (hasError) {
+                _isError = true;
+                ShowErrorToolTip();
+            } else {
+                _isError = false;
+                HideErrorToolTip();
+            }
+
+            // 更新界面
+            Invalidate();
+
+            // 控制错误边框动画
+            if (hasError) {
+                _errorProvider.SetError(_box, "输入格式不正确");
+                _timerCount = 0;
+                _errorBorderTimer?.Start();
+                _timerTicking = true;
+            } else {
+                _errorProvider.SetError(_box, "");
+                _errorBorderTimer?.Stop();
+                _timerTicking = false;
+            }
+        }
+
+        private static int CountOccurrences(string text, char target) {
+            int count = 0;
+            foreach (char c in text) {
+                if (c == target)
+                    count++;
+            }
+            return count;
+        }
+        public bool IsEmpty() => string.IsNullOrEmpty(_box?.Text) || _box?.Text == _defaultText;
+        private void ResetErrorIcon() {
+            if (_box == null) return;
+
+            Size newIconSize = new((int) (Height / 2.0), (int) (Height / 2.0));
+
+            // 只有在图标不存在或尺寸不匹配时才重新创建
+            if (_iconShowing == null || _iconShowing.Size != newIconSize) {
+                using (Image imageTemp = ResxUtils.Load("input_error")) {
+                    if (imageTemp != null) {
+                        _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize);
+                        // 使用 using 确保 Icon 被正确释放
+                        using (var bitmap = new Bitmap(_iconShowing))
+                        using (var icon = Icon.FromHandle(bitmap.GetHicon())) {
+                            _errorProvider.Icon = (Icon) icon.Clone(); // 克隆图标避免资源冲突
+                        }
+                    }
+                }
+            }
+
+            int boxErrorNewWidth = _boxOriginalWidth - (int) (Height / 2.0);
             if (_boxErrorWidth != boxErrorNewWidth) {
                 _boxErrorWidth = boxErrorNewWidth;
             }
+
+            _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * 0.5));
         }
         private void ShowErrorToolTip() {
-            if (!IsDisposed) {
-                _errorTip.SetToolTip(_box, "请输入数字");
-            }
+            if (IsDisposed || _box == null) return;
+            _errorTip?.SetToolTip(_box, "请输入数字");
         }
         private void HideErrorToolTip() {
-            if (!IsDisposed) {
-                _errorTip.SetToolTip(_box, "");
-            }
+            if (IsDisposed || _box == null) return;
+            _errorTip?.SetToolTip(_box, "");
         }
         public void CheckError(bool flag) {
-            // Use property to update appearance
             IsError = flag;
             if (flag) {
                 _timerCount = 0;
-                _errorBorderTimer.Start();
+                _errorBorderTimer?.Start(); // 使用空条件运算符
+            } else {
+                _errorBorderTimer?.Stop(); // 添加停止计时器的逻辑
             }
         }
         #endregion
