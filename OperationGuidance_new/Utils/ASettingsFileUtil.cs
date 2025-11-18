@@ -3,7 +3,7 @@ using System.Text;
 
 namespace OperationGuidance_new.Utils {
     // Got from https://stackoverflow.com/questions/217902/reading-writing-an-ini-file
-    public abstract class ASettingsFileUtil {
+    public class SettingsFileUtil {
         #region Fileds
         private string _path;
         private string _fileName;
@@ -24,8 +24,8 @@ namespace OperationGuidance_new.Utils {
         #endregion
 
         #region Constructors
-        public ASettingsFileUtil(string FileName, string FileType) : this(MainUtils.GetBaseDirectory(), FileName, FileType) { }
-        public ASettingsFileUtil(string? IniPath, string FileName, string FileType) {
+        public SettingsFileUtil(string FileName, string FileType) : this(MainUtils.GetBaseDirectory(), FileName, FileType) { }
+        public SettingsFileUtil(string? IniPath, string FileName, string FileType) {
             if (IniPath == null) {
                 IniPath = MainUtils.GetBaseDirectory();
             }

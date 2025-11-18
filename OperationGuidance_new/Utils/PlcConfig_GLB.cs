@@ -4,7 +4,7 @@ using OperationGuidance_new.Configs;
 using S7.Net;
 
 namespace OperationGuidance_new.Utils {
-    public class PlcConfig_GLB: ASettingsFileUtil {
+    public class PlcConfig_GLB: SettingsFileUtil {
         private ILog log = LogManager.GetLogger(typeof(PlcConfigsKeys_GLB));
 
         public PlcConfig_GLB() : base("GlbPlcConfig", ".ini") {
