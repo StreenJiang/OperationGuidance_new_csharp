@@ -37,8 +37,8 @@ namespace OperationGuidance_new.Utils {
 
         #region Main methods
         public string Read(string Key, string? Section = null) {
-            var RetVal = new StringBuilder(255);
-            GetPrivateProfileString(Section ?? _fileName, Key, "", RetVal, 255, _path);
+            var RetVal = new StringBuilder(10240);
+            GetPrivateProfileString(Section ?? _fileName, Key, "", RetVal, 10240, _path);
             return RetVal.ToString();
         }
         public void Write(string? Key, string? Value, string? Section = null) => WritePrivateProfileString(Section ?? _fileName, Key, Value, _path);
