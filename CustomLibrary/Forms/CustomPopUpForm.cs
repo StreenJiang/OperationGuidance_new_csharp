@@ -208,17 +208,13 @@ namespace CustomLibrary.Forms {
             }
             Opacity = 1D;
 
-            BeginInvoke(async () => {
+            if (ShowInFront) {
                 base.Hide();
-                await Task.Delay(200);
-
-                if (ShowInFront) {
-                    base.Hide();
-                    base.ShowDialog();
-                } else {
-                    base.Show();
-                }
-            });
+                base.ShowDialog();
+            } else {
+                Thread.Sleep(200);
+                base.Show();
+            }
         }
 
         protected virtual void AfterShown() { }
@@ -286,9 +282,12 @@ namespace CustomLibrary.Forms {
                 formHeight = ContentPanel.Height;
             }
 
-            if (TitlePanel.Visible) formHeight += TitlePanel.Height;
-            if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
-            if (_borderColor != null) formHeight += _borderThickness * 2;
+            if (TitlePanel.Visible)
+                formHeight += TitlePanel.Height;
+            if (ButtonsPanel.Visible)
+                formHeight += ButtonsPanel.Height;
+            if (_borderColor != null)
+                formHeight += _borderThickness * 2;
             Size = new(contentSize.Width, formHeight);
         }
 
