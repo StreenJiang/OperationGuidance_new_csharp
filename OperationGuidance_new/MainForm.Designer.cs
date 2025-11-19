@@ -18,6 +18,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Configs.DTOs;
 
 namespace OperationGuidance_new {
     partial class MainForm {
@@ -207,6 +208,7 @@ namespace OperationGuidance_new {
 
             // Init settings files
             MainUtils.PlcConfig_GLB.Init();
+            ConfigUtils.LoadConfig<SciiBatchConfig>();
 
             // Initialize all tasks for devices
             TaskInitializer.Init();
