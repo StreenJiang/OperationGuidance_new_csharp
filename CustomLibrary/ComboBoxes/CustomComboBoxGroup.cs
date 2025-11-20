@@ -70,6 +70,7 @@ namespace CustomLibrary.ComboBoxes {
             // Initialize combo box
             _comboBox = new();
             _comboBox.Parent = _elementsPanel;
+            BackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
             BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER;
             BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND;
             BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR;

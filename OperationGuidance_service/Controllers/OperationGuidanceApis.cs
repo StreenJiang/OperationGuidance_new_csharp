@@ -726,6 +726,10 @@ namespace OperationGuidance_service.Controllers {
                 condition += " and mission_id = @mission_id";
                 parameters.Add("mission_id", req.MissionId.Value);
             }
+            if (req.ProductBatch != null) {
+                condition += " and product_batch = @product_batch";
+                parameters.Add("product_batch", req.ProductBatch);
+            }
 
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();

@@ -1,9 +1,11 @@
 using System.Text;
 using CustomLibrary.Utils;
+using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Configs.DTOs {
     public class SciiBatchConfig: ConfigBase {
         public string CharSet { get; set; } = "GBK";
+        public int enabled { get; set; } = (int) YesOrNo.NO;
 
         public string day_shift_1 { get; set; } = string.Empty;
         public string day_shift_2 { get; set; } = string.Empty;

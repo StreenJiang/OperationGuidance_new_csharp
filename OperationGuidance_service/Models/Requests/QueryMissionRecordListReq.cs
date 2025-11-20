@@ -6,5 +6,6 @@ namespace OperationGuidance_service.Models.Requests {
         public List<int>? Ids { get; set; }
         public DateTime? Date { get; set; }
         public int? MissionId { get; set; }
+        public string? ProductBatch { get; set; }
     }
 }
