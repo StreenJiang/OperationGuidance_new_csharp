@@ -362,6 +362,7 @@ namespace OperationGuidance_new.Views {
             // 特殊处理
             SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                _productSumPerDay.TextName = "批次计数";
                 _batchDropDownBox = new("早晚班") {
                     NameAlignment = HorizontalAlignment.Right,
                 };
@@ -422,7 +423,6 @@ namespace OperationGuidance_new.Views {
         }
         private List<MissionRecordDTO> GetRecoreds() {
             QueryMissionRecordListReq req = new() {
-                Date = DateTime.Now,
                 MissionId = _mission.id,
             };
 
@@ -430,6 +430,8 @@ namespace OperationGuidance_new.Views {
             SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
                 req.ProductBatch = _batchDropDownBox?.Value;
+            } else {
+                req.Date = DateTime.Now;
             }
 
             return _apis.QueryMissionRecordList(req).MissionRecordDTOs;
