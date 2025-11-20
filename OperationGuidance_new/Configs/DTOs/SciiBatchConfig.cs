@@ -45,7 +45,7 @@ namespace OperationGuidance_new.Configs.DTOs {
             ok = ok && AddShift(dict, day_shift_10);
 
             if (!ok) {
-                WidgetUtils.ShowWarningPopUp("班次与批次号对应配置格式错误！请参照“班次=批次号”的格式填写。");
+                WidgetUtils.ShowWarningPopUp("班次与批次号对应配置格式错误！请参照“班次=批次号=报警数量”的格式填写。");
                 return null;
             }
 
@@ -68,7 +68,7 @@ namespace OperationGuidance_new.Configs.DTOs {
             ok = ok && AddShift(dict, night_shift_10);
 
             if (!ok) {
-                WidgetUtils.ShowWarningPopUp("班次与批次号对应配置格式错误！请参照“班次=批次号”的格式填写。");
+                WidgetUtils.ShowWarningPopUp("班次与批次号对应配置格式错误！请参照“班次=批次号=报警数量”的格式填写。");
                 return null;
             }
 
@@ -78,10 +78,10 @@ namespace OperationGuidance_new.Configs.DTOs {
         private bool AddShift(Dictionary<string, string> dict, string shift) {
             if (!string.IsNullOrEmpty(shift)) {
                 string[] strings = shift.Trim().Split("=");
-                if (strings.Length != 2) {
+                if (strings.Length != 3) {
                     return false;
                 } else {
-                    dict.Add(strings[1].Trim(), Encoding.UTF8.GetString(Encoding.GetEncoding(CharSet).GetBytes(strings[0].Trim())));
+                    dict.Add($"{strings[1].Trim()},{strings[2].Trim()}", Encoding.UTF8.GetString(Encoding.GetEncoding(CharSet).GetBytes(strings[0].Trim())));
                 }
             }
 
