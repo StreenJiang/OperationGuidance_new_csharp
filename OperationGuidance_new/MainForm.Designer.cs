@@ -223,10 +223,6 @@ namespace OperationGuidance_new {
             // Reset back color after login
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
 
-            // Init settings files
-            MainUtils.PlcConfig_GLB.Init();
-            ConfigUtils.LoadConfig<SciiBatchConfig>();
-
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
@@ -570,6 +566,11 @@ namespace OperationGuidance_new {
                 switch (appVersion) {
                     default:
                     case AppVersion.STANDARD:
+                        break;
+                    case AppVersion.GLB:
+                        // Init settings files
+                        MainUtils.PlcConfig_GLB.Init();
+                        ConfigUtils.LoadConfig<SciiBatchConfig>();
                         break;
                     case AppVersion.SCII_XT:
                         SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
