@@ -12,8 +12,8 @@ namespace OperationGuidance_new.HttpObjects {
         private const string SWITCH_RECIPE = "/mes/switch-recipe";
         private const string SWITCH_BATCH = "/mes/switch-batch";
 
-        public static Action<string>? ActionAfterReceivedRecipe;
-        public static Action<string>? ActionAfterReceivedBatch;
+        public static Func<string, Task>? ActionAfterReceivedRecipe;
+        public static Func<string, Task>? ActionAfterReceivedBatch;
 
         public static void AddControllers(RestfulHttpServer server) {
             // 切换配方
@@ -27,7 +27,9 @@ namespace OperationGuidance_new.HttpObjects {
                         response_XT.code = (int) SCII_XT_ResponseCode.OK;
                         response_XT.message = "配方切换成功！";
 
-                        ActionAfterReceivedRecipe?.Invoke(req.recipeCode);
+                        if (ActionAfterReceivedRecipe != null) {
+                            _ = ActionAfterReceivedRecipe.Invoke(req.recipeCode);
+                        }
                     } else {
                         response_XT.code = (int) SCII_XT_ResponseCode.ERROR;
                         response_XT.message = $"请求中包含的配方编码为空。request body：{req.ToJson()}";
@@ -54,7 +56,9 @@ namespace OperationGuidance_new.HttpObjects {
                         response_XT.code = (int) SCII_XT_ResponseCode.OK;
                         response_XT.message = "批次切换成功！";
 
-                        ActionAfterReceivedBatch?.Invoke(req.batchNo);
+                        if (ActionAfterReceivedBatch != null) {
+                            _ = ActionAfterReceivedBatch.Invoke(req.batchNo);
+                        }
                     } else {
                         response_XT.code = (int) SCII_XT_ResponseCode.ERROR;
                         response_XT.message = $"请求中包含的批次号为空。request body：{req.ToJson()}";

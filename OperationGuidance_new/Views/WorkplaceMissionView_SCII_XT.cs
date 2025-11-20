@@ -143,14 +143,16 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private void ActionAfterReceivedRecipe(string recipeCode) {
-            SwitchMissionByRecipe(recipeCode);
+        private async Task ActionAfterReceivedRecipe(string recipeCode) {
+            await Task.Run(() => SwitchMissionByRecipe(recipeCode));
         }
 
-        private void ActionAfterReceivedBatch(string batchNo) {
+        private async Task ActionAfterReceivedBatch(string batchNo) {
             BeginInvoke(() => {
                 _productBatch.GetTextBox(0).Box.Text = batchNo;
             });
+
+            await Task.CompletedTask;
         }
 
         protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
@@ -715,6 +717,10 @@ namespace OperationGuidance_new.Views {
 
                 // 如果有其他需要释放的资源，也在这里释放
                 // 例如：_plcLoopCts 已在 StopPlcStatusTask() 中处理
+
+                // 取消 actions 绑定
+                SciiXtController.ActionAfterReceivedRecipe -= ActionAfterReceivedRecipe;
+                SciiXtController.ActionAfterReceivedBatch -= ActionAfterReceivedBatch;
             }
 
             base.Dispose(disposing);
