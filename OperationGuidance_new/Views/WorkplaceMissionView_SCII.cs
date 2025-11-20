@@ -1,9 +1,11 @@
 using CustomLibrary.Buttons;
+using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
@@ -59,6 +61,10 @@ namespace OperationGuidance_new.Views {
         // 下方
         protected WorkplacePiece _bottom;
 
+        // 其他自定义组件
+        private CustomComboBoxGroup<string> _batchDropDownBox;
+
+        public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
 
 
@@ -225,7 +231,20 @@ namespace OperationGuidance_new.Views {
                     _productBatch.GetTextBox(0).IsError = true;
                     _productBatch.GetTextBox(0).Box.Focus();
                     return;
+                } else {
+                    string? shift = _batchDropDownBox.Value;
+                    if (string.IsNullOrEmpty(shift) || shift != batchNum) {
+                        WidgetUtils.ShowErrorPopUp("产品批次与班次不匹配");
+                        if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
+                            _barCodePopUpForm.Hide();
+                        }
+                        _productBatch.GetTextBox(0).IsError = true;
+                        _batchDropDownBox.SetError(true);
+                        return;
+                    }
                 }
+
+                _batchDropDownBox.SetError(false);
             }
 
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
@@ -309,7 +328,34 @@ namespace OperationGuidance_new.Views {
         protected virtual void InitializeTopRightBottom() {
             _topRightBottom.Controls.Add(_missionDetailTitle);
             _topRightBottom.Controls.Add(_missionSelectedName);
+
             _topRightBottom.Controls.Add(_productBatch);
+            // 特殊处理
+            SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
+            if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                _batchDropDownBox = new("早晚班") {
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                _batchDropDownBox.ItemSelected += () => {
+                    _batchDropDownBox.SetError(false);
+                    _productBatch.GetTextBox(0).IsError = false;
+                };
+                Dictionary<string, string>? dayShifts = sciiBatchConfig.GetDayShifts();
+                if (dayShifts != null) {
+                    foreach (var shift in dayShifts) {
+                        _batchDropDownBox.AddItem(shift.Value, shift.Key);
+                    }
+                }
+                Dictionary<string, string>? nightShifts = sciiBatchConfig.GetNightShifts();
+                if (nightShifts != null) {
+                    foreach (var shift in nightShifts) {
+                        _batchDropDownBox.AddItem(shift.Value, shift.Key);
+                    }
+                }
+
+                _topRightBottom.Controls.Add(_batchDropDownBox);
+            }
+
             _topRightBottom.Controls.Add(_productSumPerDay);
             _topRightBottom.Controls.Add(_okSumPerDay);
             _topRightBottom.Controls.Add(_ngRatePerDay);
@@ -331,10 +377,18 @@ namespace OperationGuidance_new.Views {
             double ngRate = 0;
 
             if (_mission.id > 0) {
-                List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(new() {
+                QueryMissionRecordListReq req = new() {
                     Date = DateTime.Now,
                     MissionId = _mission.id,
-                }).MissionRecordDTOs;
+                };
+
+                // 如果打开了《班次配置》，则根据班次计算
+                SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
+                if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                    req.ProductBatch = _batchDropDownBox.Value;
+                }
+
+                List<MissionRecordDTO> missionRecordDTOs = _apis.QueryMissionRecordList(req).MissionRecordDTOs;
                 sum = missionRecordDTOs.Count;
                 okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
                 if (sum > 0) {
@@ -694,8 +748,18 @@ namespace OperationGuidance_new.Views {
             // Resize content size and font
             int boxWidth = (_operatorInfoTitle.Parent.Width - contentHPadding * 3) / 2;
             int boxWidth2 = _operatorInfoTitle.Parent.Width - contentHPadding * 2;
-            _productBatch.Size = new(boxWidth2, boxHeight);
-            _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
+
+            SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
+            if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                _productBatch.Size = new(boxWidth, boxHeight);
+                _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
+                _batchDropDownBox.Size = new(boxWidth, boxHeight);
+                _batchDropDownBox.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            } else {
+                _productBatch.Size = new(boxWidth2, boxHeight);
+                _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            }
+
             _missionSelectedName.Size = new(boxWidth2, boxHeight);
             _missionSelectedName.Margin = new(contentHPadding, contentVPadding, 0, 0);
             _productSumPerDay.Size = new(boxWidth, boxHeight);

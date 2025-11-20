@@ -296,9 +296,12 @@ namespace CustomLibrary.Forms {
                 formHeight = ContentPanel.Height;
             }
 
-            if (TitlePanel.Visible) formHeight += TitlePanel.Height;
-            if (ButtonsPanel.Visible) formHeight += ButtonsPanel.Height;
-            if (_borderColor != null) formHeight += _borderThickness * 2;
+            if (TitlePanel.Visible)
+                formHeight += TitlePanel.Height;
+            if (ButtonsPanel.Visible)
+                formHeight += ButtonsPanel.Height;
+            if (_borderColor != null)
+                formHeight += _borderThickness * 2;
             Size = new(contentSize.Width, formHeight);
         }
 

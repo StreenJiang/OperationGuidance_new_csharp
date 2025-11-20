@@ -18,6 +18,7 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using System.Diagnostics;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.HttpServer;
 using OperationGuidance_new.Utils.IIPSC;
 
@@ -222,6 +223,10 @@ namespace OperationGuidance_new {
             // Reset back color after login
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
 
+            // Init settings files
+            MainUtils.PlcConfig_GLB.Init();
+            ConfigUtils.LoadConfig<SciiBatchConfig>();
+
             // Initialize all tasks for devices
             TaskInitializer.Init();
 
@@ -300,6 +305,7 @@ namespace OperationGuidance_new {
                                 Name = contentPanelTemp.Name
                             };
                         } else {
+                            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
                             Type type;
                             if (mainMenuConfig.ViewTypes.ContainsKey(appVersion)) {
                                 type = mainMenuConfig.ViewTypes[appVersion];
