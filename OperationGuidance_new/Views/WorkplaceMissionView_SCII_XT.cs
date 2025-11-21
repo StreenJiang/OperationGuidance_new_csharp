@@ -2,6 +2,7 @@ using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.HttpObjects;
@@ -101,7 +102,7 @@ namespace OperationGuidance_new.Views {
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),
                 batchNo = _missionRecord.product_batch,
-                result = true,
+                result = _missionRecord.mission_result == (int) TighteningStatus.OK,
             };
 
             var dto = await Workflow_SCII_XT.OutBoundStation(req);
@@ -110,6 +111,8 @@ namespace OperationGuidance_new.Views {
                 if (WidgetUtils.ShowConfirmPopUp($"出战请求失败！点击【是】重试。\n\n详细信息：{dto.message}")) {
                     return await OutBound();
                 }
+            } else {
+                logger.Info($"【{_mission.name}】出站成功。");
             }
 
             return true;
@@ -212,14 +215,20 @@ namespace OperationGuidance_new.Views {
                     recipeCode = _mission.name,
                 };
                 SCII_XT_BindProductDataReq.ProductInfo productInfos = new() {
-                    productCode = operationDataDTOs[0].vin_number,
+                    productCode = operationDataDTOs[0].vin_number ?? "NULL",
                     attributeList = new(),
                 };
 
                 // Set values
+                List<Dictionary<string, object>> value = new();
                 foreach (OperationDataDTO operationDataDTO in operationDataDTOs) {
+                    Dictionary<string, object> eachValue = new();
                     OperationDataDTO_SCII_XT data = new OperationDataDTO_SCII_XT();
                     CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
+
+                    data.parts_bar_codes = _missionRecord?.parts_bar_code;
+                    data.batch_code = _getBatchNo();
+                    data.time = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
 
                     PropertyInfo[] propertyInfos = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     foreach (PropertyInfo property in propertyInfos) {
@@ -229,19 +238,30 @@ namespace OperationGuidance_new.Views {
 
                             if (fieldAttr is SCII_XT_Column column) {
 
-                                productInfos.attributeList.Add(NewAttribute(property,
-                                                                            data,
-                                                                            column.Name ?? property.Name,
-                                                                            column.Unit));
+                                NewAttribute(eachValue,
+                                             property,
+                                             data,
+                                             column.Name ?? property.Name,
+                                             column.Type);
                             }
                         }
                     }
+
+                    value.Add(eachValue);
                 }
+                productInfos.attributeList.Add(new() {
+                    attributeName = $"{_mission.name}_拧紧数据",
+                    attributeCode = $"{_mission.name}_Screw",
+                    attributeUnit = "json",
+                    value = JsonConvert.SerializeObject(value),
+                });
                 req.productInfos.Add(productInfos);
 
                 var dto = await Workflow_SCII_XT.BindProductData(req);
                 if (!dto.bindSuccess) {
                     logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 错误信息：{dto.message}");
+                } else {
+                    logger.Info($"数据上传 MES 成功！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 。");
                 }
 
                 _operationDataDTOs = new();
@@ -676,32 +696,32 @@ namespace OperationGuidance_new.Views {
             return recipeCode;
         }
 
-        private SCII_XT_BindProductDataReq.ProductInfo.Attribute NewAttribute(PropertyInfo property,
-                                                                              OperationDataDTO_SCII_XT data,
-                                                                              string attrName,
-                                                                              string? unit) {
-            string value = property.GetValue(data) != null
-                         ? property.GetValue(data)?.ToString() ?? "NULL"
-                         : "NULL";
+        private void NewAttribute(Dictionary<string, object> eachValue,
+                                  PropertyInfo property,
+                                  OperationDataDTO_SCII_XT data,
+                                  string attrName,
+                                  SCII_XT_ColumnType? type) {
+            object? propertyValue = property.GetValue(data);
+            string value = propertyValue?.ToString() ?? "NULL";
 
-            if (unit == null) {
-                TorqueUnit torqueUnit = TorqueUnitExtensions.FromValue(data.torque_values_unit);
-                unit = torqueUnit.GetDescription();
-            } else if (unit == "bool" && value != "NULL") {
-                int? v = (int?) property.GetValue(data);
-                if (v is not null) {
-                    value = (v == 1 ? TighteningStatus.OK : TighteningStatus.NG) + "";
+            // 处理枚举转换
+            if (value != "NULL" && propertyValue is int intValue) {
+                if (type == SCII_XT_ColumnType.RESULT) {
+                    if (Enum.IsDefined(typeof(TighteningCommonStatus), intValue)) {
+                        value = ((TighteningCommonStatus) intValue).ToString();
+                    } else {
+                        value = TighteningCommonStatus.OK.ToString();
+                    }
+                } else if (type == SCII_XT_ColumnType.FINAL_RESULT) {
+                    if (Enum.IsDefined(typeof(TighteningStatus), intValue)) {
+                        value = ((TighteningStatus) intValue).ToString();
+                    } else {
+                        value = TighteningStatus.OK.ToString();
+                    }
                 }
             }
 
-            return new() {
-                attributeName = attrName,
-                attributeCode = property.Name,
-                attributeUnit = unit,
-                attributeType = 0,
-                orderId = data.bolt_serial_num,
-                value = value,
-            };
+            eachValue.Add(attrName, value);
         }
 
         private void StopPlcStatusTask() {

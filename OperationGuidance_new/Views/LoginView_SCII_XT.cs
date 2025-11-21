@@ -18,7 +18,9 @@ namespace OperationGuidance_new.Views {
                               .GetResult();
 
                 if (!dto.loginSuccess) {
-                    WidgetUtils.ShowErrorPopUp(this, $"登录出错。详细信息：{dto.message}");
+                    string msg = $"登录出错。详细信息：{dto.message}";
+                    log.Warn(msg);
+                    WidgetUtils.ShowErrorPopUp(this, msg);
                 } else {
                     var dto2 = Task.Run(async () => await Workflow_SCII_XT.UserInfo(dto.userId))
                                   .GetAwaiter()
@@ -33,6 +35,7 @@ namespace OperationGuidance_new.Views {
                         userAccountInfoDTO.account = account;
                         SystemUtils.UserInfo = userAccountInfoDTO;
 
+                        log.Info($"【{userAccountInfoDTO.id}-{userAccountInfoDTO.staff_id}-{userAccountInfoDTO.name}-{userAccountInfoDTO.account}】成功登录。");
                         ActionAfterLogin();
                     } else {
                         string errMsg = $"SCII_XT：找不到 [id = {dto.userId}] 对应的用户信息！";

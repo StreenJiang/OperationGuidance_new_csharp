@@ -12,15 +12,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("贴合状态")]
         public string? rundown_status_str { get; set; }
         public int? _rundown_status;                                                        // 贴合状态
-        public int? rundown_status { 
-            get => _rundown_status; 
+        public int? rundown_status {
+            get => _rundown_status;
             set {
                 _rundown_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        rundown_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        rundown_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -30,15 +30,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("贴合扭力状态")]
         public string? rundown_torque_status_str { get; set; }
         public int? _rundown_torque_status;                                                 // 贴合扭力状态
-        public int? rundown_torque_status { 
-            get => _rundown_torque_status; 
+        public int? rundown_torque_status {
+            get => _rundown_torque_status;
             set {
                 _rundown_torque_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_torque_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -48,15 +48,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("贴合角度状态")]
         public string? rundown_angle_status_str { get; set; }
         public int? _rundown_angle_status;                                                  // 贴合角度状态
-        public int? rundown_angle_status { 
-            get => _rundown_angle_status; 
+        public int? rundown_angle_status {
+            get => _rundown_angle_status;
             set {
                 _rundown_angle_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         rundown_angle_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -82,8 +82,8 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("最终状态")]
         public string? tightening_status_str { get; set; }
         public int? _tightening_status;                                                     // 最终状态
-        public int? tightening_status { 
-            get => _tightening_status; 
+        public int? tightening_status {
+            get => _tightening_status;
             set {
                 _tightening_status = value;
                 if (value != null) {
@@ -98,15 +98,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("最终扭力状态")]
         public string? torque_status_str { get; set; }
         public int? _torque_status;                                                         // 最终扭力状态
-        public int? torque_status { 
-            get => _torque_status; 
+        public int? torque_status {
+            get => _torque_status;
             set {
                 _torque_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         torque_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        torque_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        torque_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         torque_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -116,15 +116,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("最终角度状态")]
         public string? angle_status_str { get; set; }
         public int? _angle_status;                                                          // 最终角度状态
-        public int? angle_status { 
-            get => _angle_status; 
+        public int? angle_status {
+            get => _angle_status;
             set {
                 _angle_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         angle_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        angle_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        angle_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     } else if (value == (int) TighteningCommonStatus.LOW) {
                         angle_status_str = Enum.GetName(TighteningCommonStatus.LOW);
                     }
@@ -154,8 +154,8 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("批次状态")]
         public string? batch_status_str { get; set; }
         public int? _batch_status;                                                          // 批次状态
-        public int? batch_status { 
-            get => _batch_status; 
+        public int? batch_status {
+            get => _batch_status;
             set {
                 _batch_status = value;
                 if (value != null) {
@@ -180,15 +180,15 @@ namespace OperationGuidance_new.ViewObjects {
         [GridColumn("工作组状态")]
         public string? work_group_status_str { get; set; }
         public int? _work_group_status;                                                          // 工作组状态
-        public int? work_group_status { 
-            get => _work_group_status; 
+        public int? work_group_status {
+            get => _work_group_status;
             set {
                 _work_group_status = value;
                 if (value != null) {
                     if (value == (int) TighteningCommonStatus.OK) {
                         work_group_status_str = Enum.GetName(TighteningCommonStatus.OK);
-                    } else if (value == (int) TighteningCommonStatus.NG) {
-                        work_group_status_str = Enum.GetName(TighteningCommonStatus.NG);
+                    } else if (value == (int) TighteningCommonStatus.HIGH) {
+                        work_group_status_str = Enum.GetName(TighteningCommonStatus.HIGH);
                     }
                 }
             }

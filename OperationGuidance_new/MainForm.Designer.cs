@@ -301,7 +301,6 @@ namespace OperationGuidance_new {
                                 Name = contentPanelTemp.Name
                             };
                         } else {
-                            AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
                             Type type;
                             if (mainMenuConfig.ViewTypes.ContainsKey(appVersion)) {
                                 type = mainMenuConfig.ViewTypes[appVersion];
@@ -596,10 +595,6 @@ namespace OperationGuidance_new {
                         }
                         // 加载打印机配置文件
                         SciiXtPrinterConfig sciiXtPrinterConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
-                        break;
-                    case AppVersion.GLB:
-                        // Init settings files
-                        MainUtils.PlcConfig_GLB.Init();
                         break;
                 }
             });

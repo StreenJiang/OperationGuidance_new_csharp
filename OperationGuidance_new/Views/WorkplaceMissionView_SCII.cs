@@ -33,6 +33,7 @@ namespace OperationGuidance_new.Views {
     }
 
     public class WorkplaceContentPanel_SCII: AWorkplaceContentPanel {
+        private WorkplaceMissionView_SCII _view;
 
         // 上方
         protected CustomContentPanel _top;

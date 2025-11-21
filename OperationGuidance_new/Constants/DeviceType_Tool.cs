@@ -361,7 +361,7 @@ namespace OperationGuidance_new.Constants {
                     if (torque < torqueMin) {
                         torqueStatus = (int) TighteningCommonStatus.LOW;
                     } else if (torque > torqueMax) {
-                        torqueStatus = (int) TighteningCommonStatus.NG;
+                        torqueStatus = (int) TighteningCommonStatus.HIGH;
                     }
 
                     int angle = GetIntData(GetData(dataMessage, 26, 4));
@@ -371,7 +371,7 @@ namespace OperationGuidance_new.Constants {
                     if (angle < angleMin) {
                         angleStatus = (int) TighteningCommonStatus.LOW;
                     } else if (angle > angleMax) {
-                        angleStatus = (int) TighteningCommonStatus.NG;
+                        angleStatus = (int) TighteningCommonStatus.HIGH;
                     }
 
                     int rundownAngle = GetIntData(GetData(dataMessage, 22, 4));
@@ -381,7 +381,7 @@ namespace OperationGuidance_new.Constants {
                     if (rundownAngle < rundownAngleMin) {
                         rundownAngleStatus = (int) TighteningCommonStatus.LOW;
                     } else if (rundownAngle > rundownAngleMax) {
-                        rundownAngleStatus = (int) TighteningCommonStatus.NG;
+                        rundownAngleStatus = (int) TighteningCommonStatus.HIGH;
                     }
 
                     string tighteningStatusTemp = GetData(dataMessage, 42, 2);

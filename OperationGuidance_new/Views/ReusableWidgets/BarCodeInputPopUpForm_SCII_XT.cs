@@ -1,4 +1,5 @@
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Utils;
@@ -66,8 +67,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                   .GetAwaiter()
                                   .GetResult();
                     if (!dto.bindSuccess) {
-                        WidgetUtils.ShowWarningPopUp($"配件绑定请求失败，详细信息：{dto.message}");
+                        string msg = $"配件绑定请求失败，详细信息：{dto.message}";
+                        logger.Warn(msg);
+                        WidgetUtils.ShowWarningPopUp(msg);
                     } else {
+                        logger.Info($"【{JsonConvert.SerializeObject(accessorys)}】配件绑定成功。");
                         bindAccessoryOk = true;
                     }
                     return dto.bindSuccess;
@@ -99,6 +103,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 logger.Warn($"进站失败，详细信息：{dto.message}");
                 WidgetUtils.ShowWarningPopUp($"进站请求失败，详细信息：{dto.message}");
             } else {
+                logger.Info($"【{_mission.name}】进站成功。");
                 inBoundStationOk = true;
             }
             return dto.inOrOutSuccess;
