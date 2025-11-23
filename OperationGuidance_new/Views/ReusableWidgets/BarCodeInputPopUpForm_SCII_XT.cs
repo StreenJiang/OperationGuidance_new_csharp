@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
@@ -86,27 +87,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         protected override bool ProductBarCodeExtraCheck(string barCode) {
             // 向 MES 发出进站请求
-            var req = new SCII_XT_InOrOutBoundStationReq() {
-                productCode = barCode,
-                passType = (int) SCII_XT_PassType.PRODUCT,
-                recipeCode = _mission.name,
-                procedureCode = _getProcedureCode(),
-                equipmentCode = _getEquipmentCode(),
-                batchNo = _productBatch,
-            };
+            WorkplaceContentPanel_SCII_XT workplace = (WorkplaceContentPanel_SCII_XT) _workplace;
+            inBoundStationOk = workplace.InBound(barCode, _productBatch);
 
-            // Send request
-            var dto = Task.Run(async () => await Workflow_SCII_XT.InBoundStation(req))
-                          .GetAwaiter()
-                          .GetResult();
-            if (!dto.inOrOutSuccess) {
-                logger.Warn($"进站失败，详细信息：{dto.message}");
-                WidgetUtils.ShowWarningPopUp($"进站请求失败，详细信息：{dto.message}");
-            } else {
-                logger.Info($"【{_mission.name}】进站成功。");
-                inBoundStationOk = true;
+            if (inBoundStationOk) {
+                // 向打印机发送指令
+                _ = workplace.SendToPrinter();
             }
-            return dto.inOrOutSuccess;
+
+            return inBoundStationOk;
         }
         protected override bool PartsBarCodeExtraCheck(int ruleId) => true;
 

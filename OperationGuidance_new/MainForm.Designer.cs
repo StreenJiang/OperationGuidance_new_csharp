@@ -83,6 +83,9 @@ namespace OperationGuidance_new {
             // Check license
             MainUtils.CheckLicense();
             AppVersion appVersion = (AppVersion) Enum.Parse(typeof(AppVersion), MainUtils.License.AppVersion);
+#if DEBUG
+            WidgetUtils.ShowNoticePopUp($"【GM消息】：当前软件版本 = {appVersion.ToString()}");
+#endif
 
             // Init all images from reoursces
             ResxUtils.Init();

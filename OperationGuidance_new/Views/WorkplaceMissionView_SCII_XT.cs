@@ -79,9 +79,6 @@ namespace OperationGuidance_new.Views {
             await base.ActionAfterActivatingMission();
 
             _operationDataDTOs = new();
-
-            // 向打印机发送指令
-            _ = SendToPrinter();
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
@@ -92,6 +89,29 @@ namespace OperationGuidance_new.Views {
 
                 SwitchMissionByRecipe(_getRecipeCode());
             }
+        }
+
+        public bool InBound(string barCode, string batchCode) {
+            var req = new SCII_XT_InOrOutBoundStationReq() {
+                productCode = barCode,
+                passType = (int) SCII_XT_PassType.PRODUCT,
+                recipeCode = _mission.name,
+                procedureCode = _getProcedureCode(),
+                equipmentCode = _getEquipmentCode(),
+                batchNo = batchCode,
+            };
+
+            // Send request
+            var dto = Task.Run(async () => await Workflow_SCII_XT.InBoundStation(req))
+                          .GetAwaiter()
+                          .GetResult();
+            if (!dto.inOrOutSuccess) {
+                logger.Warn($"进站失败，详细信息：{dto.message}");
+                WidgetUtils.ShowWarningPopUp($"进站请求失败，详细信息：{dto.message}");
+            } else {
+                logger.Info($"【{_mission.name}】进站成功。");
+            }
+            return dto.inOrOutSuccess;
         }
 
         private async Task<bool> OutBound() {
@@ -111,6 +131,7 @@ namespace OperationGuidance_new.Views {
                 if (WidgetUtils.ShowConfirmPopUp($"出战请求失败！点击【是】重试。\n\n详细信息：{dto.message}")) {
                     return await OutBound();
                 }
+                // 点“否”不 return false，因为终究是要结束任务的，true 才能结束任务
             } else {
                 logger.Info($"【{_mission.name}】出站成功。");
             }
@@ -181,7 +202,7 @@ namespace OperationGuidance_new.Views {
             logger.Info("StoreTighteningData end ........");
         }
 
-        private async Task SendToPrinter() {
+        public async Task SendToPrinter() {
             await Task.Run(() => BeginInvoke(() => {
                 var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
                 if (config.enabled == (int) YesOrNo.YES) {
