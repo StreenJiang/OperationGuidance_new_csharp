@@ -1,3 +1,5 @@
+using OperationGuidance_service.Constants;
+
 namespace OperationGuidance_new.Configs {
     public class SciiXtConfig: ConfigBase {
         public string http_host { get; set; }
@@ -7,6 +9,7 @@ namespace OperationGuidance_new.Configs {
         public string recipe_code { get; set; }
         public string plc_is_ready_addr { get; set; }
         public string plc_register_addr { get; set; }
+        public int send_upper_cover { get; set; } = (int) YesOrNo.NO;
 
         public SciiXtConfig() {
             http_host = "http://10.10.59.1:5400";

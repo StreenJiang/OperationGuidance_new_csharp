@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Utils;
-using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
@@ -39,43 +38,32 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public override bool CheckCanActivateMission() {
             if (base.CheckCanActivateMission() && inBoundStationOk) {
-                // 向 MES 发送配件绑定请求
-                if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
-                    var req = new SCII_XT_BindAccessoryReq() {
-                        productCode = _workplace.BarCodeObj.ProductBarCode,
-                        procedureCode = _getProcedureCode(),
-                        recipeCode = _mission.name,
-                        createBy = SystemUtils.UserInfo.id,
-                        employeeNumber = SystemUtils.UserInfo.account,
-                    };
-                    var accessorys = new List<SCII_XT_BindAccessoryReq.Accessory>();
 
-                    for (int i = 0; i < _partsBarCodeRules[_mission.id].Count; i++) {
-                        BarCodeMatchingRuleDTO rule = _partsBarCodeRules[_mission.id][i];
-                        string partsBarCode = _workplace.BarCodeObj.PartsBarCodes[i];
+                // 向 MES 发送绑定上盖请求
+                SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+                // 只有一个工站会用这个，所以要加一个配置
+                if (config.send_upper_cover == (int) YesOrNo.YES) {
+                    if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
+                        var req = new SCII_XT_BindUpperCoverReq() {
+                            productCode = _workplace.BarCodeObj.ProductBarCode,
+                            upperCoverCode = _workplace.BarCodeObj.PartsBarCodes[0],
+                            employeeNumber = SystemUtils.UserInfo.account,
+                        };
 
-                        accessorys.Add(new() {
-                            accessoryCode = partsBarCode,
-                            accessoryType = rule.name ?? "",
-                            partNo = rule.part_no ?? "",
-                            orderId = i + 1,
-                        });
+                        // Send request
+                        var dto = Task.Run(async () => await Workflow_SCII_XT.BindUppderCover(req))
+                                      .GetAwaiter()
+                                      .GetResult();
+                        if (!dto.bindSuccess) {
+                            string msg = $"上盖绑定请求失败，详细信息：{dto.message}";
+                            logger.Warn(msg);
+                            WidgetUtils.ShowWarningPopUp(msg);
+                        } else {
+                            logger.Info($"【{_workplace.BarCodeObj.PartsBarCodes[0]}】上盖绑定成功。");
+                            bindAccessoryOk = true;
+                        }
+                        return dto.bindSuccess;
                     }
-                    req.accessorys = accessorys;
-
-                    // Send request
-                    var dto = Task.Run(async () => await Workflow_SCII_XT.BindAccessory(req))
-                                  .GetAwaiter()
-                                  .GetResult();
-                    if (!dto.bindSuccess) {
-                        string msg = $"配件绑定请求失败，详细信息：{dto.message}";
-                        logger.Warn(msg);
-                        WidgetUtils.ShowWarningPopUp(msg);
-                    } else {
-                        logger.Info($"【{JsonConvert.SerializeObject(accessorys)}】配件绑定成功。");
-                        bindAccessoryOk = true;
-                    }
-                    return dto.bindSuccess;
                 }
 
                 logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");

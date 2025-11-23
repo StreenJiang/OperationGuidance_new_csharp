@@ -99,13 +99,31 @@ namespace OperationGuidance_new.Utils {
             return result;
         }
 
-        // 4. 绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
+        // INFO: 已废弃：4. 绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
+        [Obsolete("This is not the one, use [BindUppderCover] instead.")]
         public static async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
             var api = "/api/product-accessory/bind";
             var result = new SCII_XT_BindAccessoryDTO();
 
             try {
                 var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_BindAccessoryReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.bindSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.bindSuccess = false;
+                result.message = ex.Message;
+            }
+
+            return result;
+        }
+
+        // 4. 绑定上盖（特殊）
+        public static async Task<SCII_XT_BindUpperCoverDTO> BindUppderCover(SCII_XT_BindUpperCoverReq req) {
+            var api = "/api/product/upper-cover/bind";
+            var result = new SCII_XT_BindUpperCoverDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<SCII_XT_BindUpperCoverReq, SCII_XT_Response>(RequestPrefix + api, req);
                 result.bindSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
                 result.message = rsp.message;
             } catch (Exception ex) {
