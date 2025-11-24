@@ -40,7 +40,12 @@ namespace CustomLibrary.TextBoxes {
                 SetTextBoxesProperties((textBox) => textBox.ReadOnly = value);
             }
         }
-        public string TextName { get => this._textName; set => this._textName = value; }
+        public string TextName {
+            get => this._textName; set {
+                this._textName = value;
+                Invalidate();
+            }
+        }
         protected int NameWidth { get => _nameWidth; set => _nameWidth = value; }
         public Point BoxBeginLocation { get => _boxBeginLocation; set => _boxBeginLocation = value; }
         public string Separator {
