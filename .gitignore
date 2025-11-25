@@ -382,3 +382,6 @@ WidgetIcons/
 
 # Ignore omnisharp.json
 omnisharp.json
+
+# Ignore claude settings files
+.claude/
