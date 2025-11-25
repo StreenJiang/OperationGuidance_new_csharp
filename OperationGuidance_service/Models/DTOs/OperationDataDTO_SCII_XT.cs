@@ -2,14 +2,11 @@ using OperationGuidance_service.Attributes;
 
 namespace OperationGuidance_service.Models.DTOs {
     public class OperationDataDTO_SCII_XT {
-        [SCII_XT_Column("站点名称")]
         public string? workstation_name { get; set; }                                       // 站点名称
-        [SCII_XT_Column("条码")]
         public string? vin_number { get; set; }                                             // 条码
-        [SCII_XT_Column("核心物料码")]
         public string? parts_bar_codes { get; set; }                                        // 核心物料码
-        [SCII_XT_Column("批次号")]
         public string? batch_code { get; set; }                                             // 条码
+
         [SCII_XT_Column("点位")]
         public int bolt_serial_num { get; set; }                                            // 点位号
         [SCII_XT_Column("程序号")]

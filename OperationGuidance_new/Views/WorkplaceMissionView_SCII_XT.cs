@@ -274,6 +274,7 @@ namespace OperationGuidance_new.Views {
                     attributeName = $"{_mission.name}_拧紧数据",
                     attributeCode = $"{_mission.name}_Screw",
                     attributeUnit = "json",
+                    attributeType = 2,
                     value = JsonConvert.SerializeObject(value),
                 });
                 req.productInfos.Add(productInfos);
