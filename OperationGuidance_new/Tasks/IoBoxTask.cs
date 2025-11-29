@@ -75,7 +75,7 @@ namespace OperationGuidance_new.Tasks {
                                     // logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
 
                                     // Analyze data
-                                    ArrangerType.DeviceType.AnalyzeData(readResult, ArrangerType.ActionAfterIoSignalReceived);
+                                    ArrangerType.DeviceType.AnalyzeReadResultData(readResult, ArrangerType.ActionAfterIoSignalReceived);
                                 } catch (Exception e) {
                                     logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
                                 }
@@ -194,6 +194,10 @@ namespace OperationGuidance_new.Tasks {
         }
         public async Task<string> SendCommandAsync(string command) {
             return await Task.Run(() => SendCommand(command));
+        }
+
+        internal string SendCommand(object value) {
+            throw new NotImplementedException();
         }
         #endregion
     }

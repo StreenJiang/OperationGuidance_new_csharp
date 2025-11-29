@@ -236,7 +236,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         public override Command GetResetCommand() {
-            _currentPositions = new int?[] { null, null, null, null };
+            _currentPositions = new int?[] { null, null, null, null, null, null, null, null };
             return new(GetCommand());
         }
 
@@ -283,7 +283,9 @@ namespace OperationGuidance_new.Constants {
             return result;
         }
 
-        public void AnalyzeData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {
+        public Tuple<int?[], int?[]> GetCurrent() => new(_currentStatuses, _inPositions);
+
+        public bool AnalyzeReadResultData(string dataMessage) {
             if (_sendingPositions.ToList().Find(p => p != null) != null) {
                 try {
                     // string high = string.Join("", dataMessage.Skip(7).Take(1));
@@ -359,15 +361,32 @@ namespace OperationGuidance_new.Constants {
 #if DEBUG
                     logger.Debug($"_inPositions = {string.Join(",", _inPositions)}");
 #endif
-
-
-                    if (_ioBoxActionAfterAnalysis != null) {
-                        _ioBoxActionAfterAnalysis(_currentStatuses);
-                    }
+                    return true;
                 } catch (Exception e) {
-                    logger.Error($"Error while analyzing data from arranger, _sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}");
+                    logger.Error($"Error while analyzing data from arranger, "
+                        + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
+                        + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
+                        + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
+                    );
                     throw e;
                 }
+            }
+
+            return false;
+        }
+
+        public void AnalyzeReadResultData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {
+            try {
+                if (AnalyzeReadResultData(dataMessage) && _ioBoxActionAfterAnalysis != null) {
+                    _ioBoxActionAfterAnalysis(_currentStatuses);
+                }
+            } catch (Exception e) {
+                logger.Error($"Error while calling _ioBoxActionAfterAnalysis, "
+                    + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
+                    + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
+                    + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
+                );
+                throw e;
             }
         }
     }

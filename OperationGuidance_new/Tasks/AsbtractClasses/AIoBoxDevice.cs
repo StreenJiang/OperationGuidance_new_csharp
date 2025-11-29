@@ -1,7 +1,10 @@
+using log4net;
 using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Tasks.AsbtractClasses {
     public abstract class AIoBoxDevice<T> where T : DeviceTypeBase {
+        protected ILog log;
+
         private bool _retrieveResult = false;
         private T _deviceType;
         private int _deviceId;
@@ -11,6 +14,8 @@ namespace OperationGuidance_new.Tasks.AsbtractClasses {
         public int DeviceId { get => _deviceId; set => _deviceId = value; }
 
         public AIoBoxDevice(T deviceType, int deviceId) {
+            log = LogManager.GetLogger(GetType());
+
             _deviceType = deviceType;
             _deviceId = deviceId;
         }
