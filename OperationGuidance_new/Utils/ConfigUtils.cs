@@ -51,5 +51,35 @@ namespace OperationGuidance_new.Utils {
             config.File = iniFile;
             return config;
         }
+
+        public static void SaveConfig<T>(T config) where T : ConfigBase {
+            Type type = config.GetType();
+            var iniFile = config.File;
+
+            PropertyInfo[] propertyInfos = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (PropertyInfo proInfo in propertyInfos) {
+                string configKey = proInfo.Name;
+                IEnumerable<Attribute> attributes = proInfo.GetCustomAttributes();
+                bool shouldIgnore = false;
+                foreach (Attribute attr in attributes) {
+                    if (attr is ConfigIgnore ignore) {
+                        shouldIgnore = ignore.IsIgnored;
+                        break;
+                    }
+                }
+                if (shouldIgnore) {
+                    continue;
+                }
+
+                object? obj = proInfo.GetValue(config);
+                if (obj != null) {
+                    string? value = obj.ToString();
+                    if (!string.IsNullOrEmpty(value)) {
+                        iniFile.Write(configKey, value);
+                    }
+                }
+            }
+
+        }
     }
 }

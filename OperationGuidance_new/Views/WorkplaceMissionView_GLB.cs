@@ -56,7 +56,8 @@ namespace OperationGuidance_new.Views {
                 && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
                 && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
                 PlcServer_GLB plcServer = (PlcServer_GLB) _communicationTask.PlcServer;
-                plcServer.SendJobFinished();
+                bool result = _missionRecord.mission_result == (int) TighteningStatus.OK;
+                plcServer.SendJobFinished(result);
             }
 
             await base.TerminateMission(status);
@@ -77,70 +78,72 @@ namespace OperationGuidance_new.Views {
                     // Activate mission
                     ActivateMission();
                 } else if (MainUtils.IsPLCBarCodeSelfLoopingEnabled()) {
-                    if (WidgetUtils.ShowConfirmPopUp("是否立即读取PLC条码信息？")) {
-                        bool jobStarted = false;
-                        while (!jobStarted) {
-                            // Wait for .5 seconds to ensure data is the latest
-                            await Task.Delay(500);
+                    _ = StartReadFromPLC();
+                }
+            }
+        }
 
-                            if (_communicationTask != null && _communicationTask.Connected
-                                && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
-                                && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
-                                PlcServer_GLB plcServer = (PlcServer_GLB) _communicationTask.PlcServer;
+        private async Task StartReadFromPLC() {
+            if (WidgetUtils.ShowConfirmPopUp("是否立即读取PLC条码信息？")) {
+                bool jobStarted = false;
+                while (!jobStarted) {
+                    // Wait for .5 seconds to ensure data is the latest
+                    await Task.Delay(500);
 
-                                int waitTime = 5000;
-                                int waitTimeCount = 0;
-                                int waitEach = 250;
+                    if (_communicationTask != null && _communicationTask.Connected
+                        && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
+                        && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
+                        PlcServer_GLB plcServer = (PlcServer_GLB) _communicationTask.PlcServer;
 
-                                // Fetching barCode
-                                string? barCode = null;
-                                while (waitTimeCount < waitTime) {
-                                    barCode = plcServer.ReadBarCode();
-                                    if (string.IsNullOrEmpty(barCode)) {
-                                        await Task.Delay(waitEach);
-                                        waitTimeCount += waitEach;
-                                        continue;
-                                    }
+                        int waitTime = 5000;
+                        int waitTimeCount = 0;
+                        int waitEach = 250;
 
-                                    barCode = barCode.Trim();
-                                    logger.Info($"Get bar code[{barCode}] from plcs...");
-                                    break;
-                                }
-
-                                if (!string.IsNullOrEmpty(barCode)) {
-                                    // Send barCode read done
-                                    plcServer.SendBarCodeReadDone();
-
-                                    // Wait for start signal
-                                    waitTimeCount = 0;
-                                    bool startJob = false;
-                                    while (waitTimeCount < waitTime) {
-                                        startJob = plcServer.ReadStartSignal();
-                                        if (!startJob) {
-                                            await Task.Delay(waitEach);
-                                            waitTimeCount += waitEach;
-                                            continue;
-                                        }
-
-                                        logger.Info($"Get start signal[{startJob}] from plcs...");
-                                        break;
-                                    }
-
-                                    jobStarted = true;
-
-                                    // Analyze bar code
-                                    ActionAfterRecevingBarCode(barCode);
-                                }
-                            } else {
-                                Load();
-                                logger.Warn("PLC connection is unstable, get bar code from PLC failed, trying to reload...");
+                        // Fetching barCode
+                        string barCode = "";
+                        while (waitTimeCount < waitTime) {
+                            string? barCodeTemp = plcServer.ReadBarCode();
+                            if (string.IsNullOrEmpty(barCodeTemp)) {
+                                await Task.Delay(waitEach);
+                                waitTimeCount += waitEach;
+                                continue;
                             }
 
-                            if (!jobStarted && !WidgetUtils.ShowConfirmPopUp("未读取到PLC条码信息，是否重新读取？")) {
-                                logger.Warn("Confirm not to read bar code from PLC again, break the loop...");
-                                break;
-                            }
+                            barCode = barCodeTemp.Trim();
+                            logger.Info($"Get bar code[{barCode}] from plcs...");
+                            break;
                         }
+
+                        // Send barCode read done
+                        plcServer.SendBarCodeReadDone();
+
+                        // Wait for start signal
+                        waitTimeCount = 0;
+                        bool startJob = false;
+                        while (waitTimeCount < waitTime) {
+                            startJob = plcServer.ReadStartSignal();
+                            if (!startJob) {
+                                await Task.Delay(waitEach);
+                                waitTimeCount += waitEach;
+                                continue;
+                            }
+
+                            logger.Info($"Get start signal[{startJob}] from plcs...");
+                            break;
+                        }
+
+                        jobStarted = true;
+
+                        // Analyze bar code
+                        ActionAfterRecevingBarCode(barCode);
+                    } else {
+                        Load();
+                        logger.Warn("PLC connection is unstable, get bar code from PLC failed, trying to reload...");
+                    }
+
+                    if (!jobStarted && !WidgetUtils.ShowConfirmPopUp("未读取到PLC条码信息，是否重新读取？")) {
+                        logger.Warn("Confirm not to read bar code from PLC again, break the loop...");
+                        break;
                     }
                 }
             }
@@ -194,6 +197,12 @@ namespace OperationGuidance_new.Views {
                 } else {
                     _barCodePopUpForm.ValidateBarCode(msg);
                 }
+            }
+        }
+
+        protected override void OpenBarCodePopUpForm(string? barcode = null) {
+            if (barcode == null) {
+                _ = StartReadFromPLC();
             }
         }
     }

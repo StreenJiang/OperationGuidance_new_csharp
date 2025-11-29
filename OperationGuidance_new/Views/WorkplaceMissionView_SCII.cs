@@ -429,7 +429,13 @@ namespace OperationGuidance_new.Views {
             // 如果打开了《班次配置》，则根据班次计算
             SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
-                req.ProductBatch = _batchDropDownBox?.Value;
+                string? shiftTemp = _batchDropDownBox?.Value;
+                if (!string.IsNullOrEmpty(shiftTemp)) {
+                    string[] shifts = shiftTemp.Split(",");
+                    req.ProductBatch = shifts[0];
+                } else {
+                    return new();
+                }
             } else {
                 req.Date = DateTime.Now;
             }

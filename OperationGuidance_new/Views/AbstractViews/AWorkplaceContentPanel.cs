@@ -636,17 +636,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     deviceBlock.PopUpForm = toolOperationPopUpForm;
                                     contentSize.Height = panelHeight * _toolTasks.Count + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
 
-                                    ToolOperationPopUpForm popUpForm = (ToolOperationPopUpForm) deviceBlock.PopUpForm;
-                                    TableLayoutPanel tablePanel = popUpForm.TablePanel;
+                                    TableLayoutPanel tablePanel = toolOperationPopUpForm.TablePanel;
                                     Panel contentPanel = deviceBlock.PopUpForm.ContentPanel;
                                     int boxHeight = WidgetUtils.TextOrComboBoxHeight();
                                     int boxMargin = boxHeight / 5;
                                     int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
                                     contentSize.Height = tableHeight + contentPanel.Padding.Size.Height;
                                     int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
-                                    popUpForm.BoxHeight = boxHeight;
-                                    popUpForm.BoxMargin = boxMargin;
-                                    popUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                                    toolOperationPopUpForm.BoxHeight = boxHeight;
+                                    toolOperationPopUpForm.BoxMargin = boxMargin;
+                                    toolOperationPopUpForm.TablePanel.Size = new(tableWidth, tableHeight);
 
                                     ToolOperationPopUpFormExtraActions(toolOperationPopUpForm);
                                 }
@@ -696,7 +695,44 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             } else if (deviceBlock.Category == DeviceCategories.COMMUNICATION) {
                                 // TODO: 
                             } else if (deviceBlock.Category == DeviceCategories.IOBOX_ARRANGER) {
-                                // TODO: 
+                                if (_ioBoxTasks.Count > 0) {
+                                    IoBoxTask? ioBoxTask = null;
+                                    foreach (IoBoxTask ioTask in _ioBoxTasks.Values) {
+                                        if (ioTask.ArrangerType != null) {
+                                            ioBoxTask = ioTask;
+                                            break;
+                                        }
+                                    }
+
+                                    if (ioBoxTask == null) {
+                                        WidgetUtils.ShowConfirmPopUp("没有配置螺丝机");
+                                        return;
+                                    }
+
+                                    _adminConfirmed = false;
+                                    OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
+                                    if (!_adminConfirmed.Value) {
+                                        _adminConfirmed = null;
+                                        return;
+                                    }
+                                    _adminConfirmed = null;
+
+                                    ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
+                                    deviceBlock.PopUpForm = popUpForm;
+                                    contentSize.Height = panelHeight * 2 + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
+
+
+                                    TableLayoutPanel tablePanel = popUpForm.TablePanel;
+                                    Panel contentPanel = deviceBlock.PopUpForm.ContentPanel;
+                                    int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+                                    int boxMargin = boxHeight / 5;
+                                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
+                                    contentSize.Height = tableHeight + contentPanel.Padding.Size.Height;
+                                    int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
+                                    popUpForm.BoxHeight = boxHeight;
+                                    popUpForm.BoxMargin = boxMargin;
+                                    popUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                                }
                             } else if (deviceBlock.Category == DeviceCategories.IOBOX_SETTERSELECTOR) {
                                 // TODO: 
                             } else {
@@ -3592,6 +3628,128 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     g.DrawImage(icon, new Point(0, imageY));
                     g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
                 };
+            }
+        }
+    }
+
+    public class ArrangerOperationPopUpForm: CustomPopUpForm {
+        private ILog log = MainUtils.GetLogger(typeof(ArrangerOperationPopUpForm));
+
+        private IoBoxTask ioBoxTask;
+        private AWorkplaceContentPanel _workplace;
+
+        private TableLayoutPanel _tablePanel;
+        private int _boxHeight;
+        private int _boxMargin;
+        private List<SignalButton> _outBtns;
+        private List<SignalButton> _inBtns;
+
+        private System.Windows.Forms.Timer updateTimer;
+        private readonly CancellationTokenSource _cts = new();
+
+        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
+        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
+        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
+
+        public ArrangerOperationPopUpForm(string categoryName,
+                                          AWorkplaceContentPanel workplace,
+                                          IoBoxTask ioBoxTask) {
+            this.ioBoxTask = ioBoxTask;
+            _workplace = workplace;
+
+            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
+            Title = "螺丝机信号点测试 - " + categoryName + "";
+
+            _tablePanel = new() {
+                Margin = new(0),
+                Padding = new(0),
+                ColumnCount = 8,
+                Parent = ContentPanel,
+            };
+
+            _outBtns = new();
+            for (int i = 0; i < 8; i++) {
+                SignalButton signalButton = new() {
+                    Label = $"输出-{(i + 1)}",
+                    Index = i,
+                    Parent = _tablePanel,
+                };
+                signalButton.Click += OutClick;
+                _outBtns.Add(signalButton);
+            }
+
+            _inBtns = new();
+            for (int i = 0; i < 8; i++) {
+                _inBtns.Add(new SignalButton() {
+                    Label = $"输入-{(i + 1)}",
+                    Index = i,
+                    Parent = _tablePanel,
+                    Enabled = false,
+                });
+            }
+
+            updateTimer = new();
+            updateTimer.Interval = 50; // 50ms
+            updateTimer.Tick += UpdateTimerTick;
+        }
+
+        private void UpdateTimerTick(object? sender, EventArgs e) {
+            try {
+                var (outPos, inPos) = ioBoxTask.ArrangerType!.ReadCurrent();
+
+                UpdateButtonStates(_outBtns, outPos);
+                UpdateButtonStates(_inBtns, inPos);
+            } catch (OperationCanceledException) {
+                log.Info("Cancel looping...");
+                updateTimer.Stop();
+            } catch (Exception ex) {
+                log.Warn("Failed to read IO status", ex);
+            }
+        }
+
+        private void UpdateButtonStates(List<SignalButton> buttons, int?[] values) {
+            for (int i = 0; i < Math.Min(buttons.Count, values.Length); i++) {
+                buttons[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
+            }
+        }
+
+        private void OutClick(object? sender, EventArgs eventArgs) {
+            try {
+                SignalButton btn = (SignalButton) sender!;
+
+                int?[] sendPos = { null, null, null, null, null, null, null, null };
+                for (int i = 0; i < sendPos.Length; i++) {
+                    if (i == btn.Index) {
+                        sendPos[i] = 1;
+                    }
+                }
+
+                _ = ioBoxTask.ArrangerType!.SendPulseAsync(sendPos);
+            } catch (Exception ex) {
+                log.Warn("Error while sending pulse...", ex);
+            }
+        }
+
+        // 确保窗体关闭时释放资源
+        protected override void OnFormClosed(FormClosedEventArgs e) {
+            base.OnFormClosed(e);
+            _cts.Cancel();
+            _cts.Dispose();
+            updateTimer.Stop();
+        }
+
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            base.ResizeChildren(sender, eventArgs);
+            _tablePanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
+
+            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
+            IList list = _tablePanel.Controls;
+            for (int i = 0; i < list.Count; i++) {
+                Control? control = (Control?) list[i];
+                if (control != null) {
+                    control.Margin = new(_boxMargin);
+                    control.Size = new(boxW, _boxHeight);
+                }
             }
         }
     }

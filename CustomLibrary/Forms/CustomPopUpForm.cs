@@ -373,4 +373,24 @@ namespace CustomLibrary.Forms {
             }
         }
     }
+
+    public class SignalButton: CommonButton {
+        public int Index { get; set; }
+
+        public SignalButton() {
+            BackColor = Color.Gray;
+        }
+
+        protected override void ResizeTextLabel() {
+            if (!IsDisposed) {
+                if (Label != null && Height != 0) {
+                    Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * .425), FontStyle.Bold, GraphicsUnit.Pixel);
+                    // using (Graphics g = CreateGraphics()) {
+                    //     LabelX = (int) ((Width - g.MeasureString(Label, Font).Width) / 2 + Width * .02);
+                    // }
+                    // LabelY = (Height - Font.Height) / 2;
+                }
+            }
+        }
+    }
 }

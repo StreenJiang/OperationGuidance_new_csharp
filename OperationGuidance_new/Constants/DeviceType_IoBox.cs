@@ -1,4 +1,6 @@
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Utils;
+using OperationGuidance_service.Constants;
 using System.Text;
 
 namespace OperationGuidance_new.Constants {
@@ -212,9 +214,10 @@ namespace OperationGuidance_new.Constants {
     public class IoBoxArranger: DeviceTypeIoBox {
         public static int min = 1;
         public static int max = 4;
-        private int?[] _currentPositions = new int?[] { null, null, null, null };
-        private int?[] _sendingPositions = new int?[] { null, null, null, null };
-        private int?[] _currentStatuses = new int?[] { null, null, null, null };
+        private int?[] _currentPositions = new int?[] { null, null, null, null, null, null, null, null };
+        private int?[] _sendingPositions = new int?[] { null, null, null, null, null, null, null, null };
+        private int?[] _currentStatuses = new int?[] { null, null, null, null, null, null, null, null };
+        private int?[] _inPositions = new int?[] { null, null, null, null, null, null, null, null };
 
         public IoBoxArranger() : base(3, "Arranger") { }
 
@@ -233,45 +236,88 @@ namespace OperationGuidance_new.Constants {
         }
 
         public override Command GetResetCommand() {
-            _currentPositions = new int?[] { null, null, null, null };
+            _currentPositions = new int?[] { null, null, null, null, null, null, null, null };
             return new(GetCommand());
         }
 
         protected override string GetCommand() {
-            string[] lowTemp = { "0", "0", "0", "0" };
+            Settings settings = ConfigUtils.LoadConfig<Settings>();
+            bool reverseFirstFour = settings.reverse_arranger.ToYesOrNoBool();
+
+            // 构建二进制字符串
+            string binaryString = "00000000";
+
             if (_currentPositions.ToList().Find(p => p != null) != null) {
+                char[] binaryArray = binaryString.ToCharArray();
                 for (int i = 0; i < _currentPositions.Length; i++) {
                     int? curr = _currentPositions[i];
-                    if (curr != null) {
-                        lowTemp[i] = curr + "";
+                    if (curr != null && curr != 0 && i < 8) {
+                        binaryArray[i] = '1';
                     }
                 }
+                binaryString = new string(binaryArray);
                 _sendingPositions = _currentPositions;
             }
-            string high = string.Join("", _current_signal.Take(4));
-            string low = string.Join("", lowTemp);
 
-            _current_signal = high + low;
+            // 处理二进制字符串
+            char[] processedArray = binaryString.ToCharArray();
 
-#if DEBUG
-            logger.Debug($"_current_signal = {_current_signal}");
-#endif
+            if (reverseFirstFour) {
+                // 先进行1?4, 2?3对换
+                (processedArray[0], processedArray[3]) = (processedArray[3], processedArray[0]);
+                (processedArray[1], processedArray[2]) = (processedArray[2], processedArray[1]);
+            }
 
-            string temp = _command_write.GetMessage(MainUtils.ToHexString(_current_signal));
+            // 完全反转
+            Array.Reverse(processedArray);
+            string processedBinary = new string(processedArray);
+
+            // 组装结果 + 计算CRC
+            string hexValue = MainUtils.ToHexString(processedBinary);
+            string temp = _command_write.GetMessage(hexValue);
             byte[] bytes = MainUtils.ToBytes(temp);
-            return temp + MainUtils.Crc16ToString(bytes);
+            string result = temp + MainUtils.Crc16ToString(bytes);
+#if DEBUG
+            logger.Debug($"原始: {binaryString}, 处理后: {processedBinary}, 十六进制: {hexValue}, 模式: {(reverseFirstFour ? "对换+反转" : "仅反转")}，最终结果：{result}");
+#endif
+            return result;
         }
 
-        public void AnalyzeData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {
+        public Tuple<int?[], int?[]> GetCurrent() => new(_currentStatuses, _inPositions);
+
+        public bool AnalyzeReadResultData(string dataMessage) {
             if (_sendingPositions.ToList().Find(p => p != null) != null) {
                 try {
-                    string high = string.Join("", dataMessage.Skip(7).Take(1));
-                    String binaryStr = new(MainUtils.ToBinaryString(high).ToArray());
+                    // string high = string.Join("", dataMessage.Skip(7).Take(1));
+                    // String binaryStr = new(MainUtils.ToBinaryString(high).ToArray());
+
+                    // 1. 读取输出字节
+                    string outputByteHex = dataMessage.Substring(6, 2); // 字符索引 6~7
+                    int outputByte = Convert.ToInt32(outputByteHex, 16);
+                    string outputBin = Convert.ToString(outputByte, 2).PadLeft(8, '0'); // 补齐8位
+                    string outStr = new string(outputBin.Reverse().ToArray()); // 反转：bit0 -> out1
+
+                    // 2. 读取输入字节
+                    string inputByteHex = dataMessage.Substring(8, 2); // 字符索引 8~9
+                    int inputByte = Convert.ToInt32(inputByteHex, 16);
+                    string inputBin = Convert.ToString(inputByte, 2).PadLeft(8, '0'); // 补齐8位
+                    string inStr = new string(inputBin.Reverse().ToArray()); // 反转：bit0 -> in1
+
+                    // 3. 读取模拟量
+                    string analogHex = dataMessage.Substring(10, 4); // 可选：如果存在
+
 
 #if DEBUG
                     logger.Debug($"dataMessage = {dataMessage}");
-                    logger.Debug($"high = {high}");
-                    logger.Debug($"binaryStr = {binaryStr}");
+                    // logger.Debug($"high = {high}");
+                    // logger.Debug($"binaryStr = {binaryStr}");
+
+                    // 4. 输出结果
+                    logger.Debug($"输出: {outStr}"); // 例如 "10000010" 表示 out1=1, out2=0, ..., out8=1
+                    logger.Debug($"输入: {inStr}");
+                    logger.Debug($"模拟量（hex）: {analogHex}");
+
+                    logger.Debug($"输入: {inStr}"); // 每位对应 in1~in8，'1'=on
 
                     string temp6 = string.Join("", dataMessage.Skip(6).Take(1));
                     string temp7 = string.Join("", dataMessage.Skip(7).Take(1));
@@ -287,26 +333,60 @@ namespace OperationGuidance_new.Constants {
                     logger.Debug($"temp9 reversed = {new(MainUtils.ToBinaryString(temp9).Reverse().ToArray())}");
 #endif
 
-                    for (int i = 0; i < binaryStr.Length; i++) {
+                    // for (int i = 0; i < binaryStr.Length; i++) {
+                    //     if (_sendingPositions[i] != null) {
+                    //         char c = binaryStr.ElementAt(i);
+                    //         _currentStatuses[i] = int.Parse(c.ToString());
+                    //     } else {
+                    //         _currentStatuses[i] = null;
+                    //     }
+                    // }
+
+                    for (int i = 0; i < outStr.Length; i++) {
                         if (_sendingPositions[i] != null) {
-                            char c = binaryStr.ElementAt(i);
+                            char c = outStr.ElementAt(i);
                             _currentStatuses[i] = int.Parse(c.ToString());
                         } else {
                             _currentStatuses[i] = null;
                         }
                     }
-
 #if DEBUG
                     logger.Debug($"_currentStatuses = {string.Join(",", _currentStatuses)}");
 #endif
 
-                    if (_ioBoxActionAfterAnalysis != null) {
-                        _ioBoxActionAfterAnalysis(_currentStatuses);
+                    for (int i = 0; i < inStr.Length; i++) {
+                        char c = inStr.ElementAt(i);
+                        _inPositions[i] = int.Parse(c.ToString());
                     }
+#if DEBUG
+                    logger.Debug($"_inPositions = {string.Join(",", _inPositions)}");
+#endif
+                    return true;
                 } catch (Exception e) {
-                    logger.Error($"Error while analyzing data from arranger, _sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}");
+                    logger.Error($"Error while analyzing data from arranger, "
+                        + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
+                        + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
+                        + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
+                    );
                     throw e;
                 }
+            }
+
+            return false;
+        }
+
+        public void AnalyzeReadResultData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {
+            try {
+                if (AnalyzeReadResultData(dataMessage) && _ioBoxActionAfterAnalysis != null) {
+                    _ioBoxActionAfterAnalysis(_currentStatuses);
+                }
+            } catch (Exception e) {
+                logger.Error($"Error while calling _ioBoxActionAfterAnalysis, "
+                    + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
+                    + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
+                    + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
+                );
+                throw e;
             }
         }
     }

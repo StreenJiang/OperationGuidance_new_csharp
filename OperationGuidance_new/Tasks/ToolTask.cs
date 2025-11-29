@@ -334,36 +334,44 @@ namespace OperationGuidance_new.Tasks {
             PSetOk = null;
             if (Connected) {
                 return await Task.Run(async () => {
-                    logger.Info($"Setting pset to [{pSetNumber}]...");
-                    string command = "";
-                    if (_toolType is ToolPFSeries toolPF) {
-                        command = toolPF.GetPSetCommand(pSetNumber);
-                        logger.Info($"Sending command to {toolPF.Name}: {command}");
-                    } else if (_toolType is ToolSudongX7 toolX7) {
-                        command = toolX7.GetPSetCommand(pSetNumber);
-                        logger.Info($"Sending command to {toolX7.Name}: {command}");
-                    } else {
-                    }
+                    try {
+                        logger.Info($"Setting pset to [{pSetNumber}]...");
+                        string command = "";
+                        if (_toolType is ToolPFSeries toolPF) {
+                            command = toolPF.GetPSetCommand(pSetNumber);
+                            logger.Info($"Sending command to {toolPF.Name}: {command}");
+                        } else if (_toolType is ToolSudongX7 toolX7) {
+                            command = toolX7.GetPSetCommand(pSetNumber);
+                            logger.Info($"Sending command to {toolX7.Name}: {command}");
+                        } else {
+                        }
 
-                    // Send pset
-                    if (string.IsNullOrEmpty(command)) {
-                        return true;
-                    }
-                    int waitTimesMax = 15;
-                    int waitTimes = 0;
-                    while (PSetOk == null && waitTimes < waitTimesMax) {
-                        SendCommand(command);
-                        waitTimes++;
+                        // Send pset
+                        if (string.IsNullOrEmpty(command)) {
+                            return true;
+                        }
+                        int waitTimesMax = 15;
+                        int waitTimes = 0;
+                        while (PSetOk == null && waitTimes < waitTimesMax) {
+                            try {
+                                SendCommand(command);
+                                waitTimes++;
+                            } catch (Exception e) {
+                                logger.Error($"Error while sending command [{command}] (Setting pset to {pSetNumber})... Will retry for this...", e);
+                            }
 
-                        logger.Info("Waiting for pset ok .......");
-                        await Task.Delay(PSetWaitTime);
-                    }
+                            logger.Info("Waiting for pset ok .......");
+                            await Task.Delay(PSetWaitTime);
+                        }
 
-                    if (PSetOk != null && PSetOk.Value) {
-                        CurrentPSet = pSetNumber;
-                    }
+                        if (PSetOk != null && PSetOk.Value) {
+                            CurrentPSet = pSetNumber;
+                        }
 
-                    logger.Info($"Setting pset to [{pSetNumber}] [{PSetOk != null && PSetOk.Value}]!");
+                        logger.Info($"Setting pset to [{pSetNumber}] [{PSetOk != null && PSetOk.Value}]!");
+                    } catch (Exception e) {
+                        logger.Error($"Error while setting pset to {pSetNumber}...", e);
+                    }
                     return PSetOk != null && PSetOk.Value;
                 });
             }
