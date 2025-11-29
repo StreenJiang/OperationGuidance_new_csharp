@@ -1,8 +1,8 @@
-using System.Text;
 using log4net;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using S7.Net;
+using System.Text;
 
 namespace OperationGuidance_new.Constants {
     public class PlcServer_GLB: PlcServerBase {
@@ -27,7 +27,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         // 2. 发送条码读取成功信号
-        public void SendBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig(), 1);
+        public void SendBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig(), true);
 
         // 3. 读取开始任务信号
         public bool ReadStartSignal() {
@@ -42,7 +42,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         // 4. 发送任务完成信号
-        public void SendJobFinished(int val) => WriteBool(PlcConfig.JobFinishedConfig(), val);
+        public void SendJobFinished(bool val) => WriteBool(PlcConfig.JobFinishedConfig(), val);
 
         private byte[] ReadBytes(PlcTagConfig_GLB config) {
             if (Plc == null || !Plc.IsConnected)
@@ -56,6 +56,10 @@ namespace OperationGuidance_new.Constants {
                                                   config.Length);
 
                     if (bytes?.Length == config.Length) {
+                        string hex = BitConverter.ToString(bytes).Replace("-", " ");
+                        log.Info($"Read from PLC Target: {config.DataType} {config.BlockNumber}, " +
+                                 $"Byte={config.ByteOffset}, Bit={config.BitOffset}, " +
+                                 $"Length={bytes.Length}, value = [{hex}]");
                         return bytes;
                     }
                 } catch (Exception) when (attempt < MaxRetries) {
@@ -68,17 +72,17 @@ namespace OperationGuidance_new.Constants {
                 $"Target: {config.DataType} {config.BlockNumber}, Byte={config.ByteOffset}, Bit={config.BitOffset}");
         }
 
-        private void WriteBool(PlcTagConfig_GLB config, int val) {
+        private void WriteBool(PlcTagConfig_GLB config, bool val) {
             if (Plc == null)
                 throw new InvalidOperationException("PLC is not connected.");
 
             for (int attempt = 1; attempt <= MaxRetries; attempt++) {
                 try {
-                    Plc.Write(config.DataType,
+                    Plc.WriteBit(config.DataType,
                               config.BlockNumber,
                               config.ByteOffset,
-                              val,
-                              config.BitOffset);
+                              config.BitOffset,
+                              val);
 
                     return; // 成功，退出
                 } catch (Exception ex) when (attempt < MaxRetries) {

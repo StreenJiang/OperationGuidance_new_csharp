@@ -1,5 +1,4 @@
 using System.Reflection;
-using CustomLibrary.Utils;
 using Newtonsoft.Json;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Utils;
@@ -34,7 +33,7 @@ namespace OperationGuidance_new.Configs.DTOs {
         public int reverse_arranger { get; set; }
 
         public Settings() {
-            resolution = GetResolutionBySize(GetDefaultResolution());
+            resolution = "";
 
             data_storage_path = GetDefaultStoragePath();
             data_storage_fields = GetDefaultSortConfigStr();
@@ -62,21 +61,6 @@ namespace OperationGuidance_new.Configs.DTOs {
             auto_login_info = "";
 
             reverse_arranger = YesOrNo.YES.ToInt();
-        }
-
-        public Size GetResolution() {
-            if (string.IsNullOrEmpty(resolution)) {
-                resolution = GetResolutionBySize(GetDefaultResolution());
-            }
-
-            string[] strings = resolution.Split(",");
-            int width = int.Parse(strings[0].Trim());
-            int height = int.Parse(strings[1].Trim());
-            return new(width, height);
-        }
-
-        private Size GetDefaultResolution() {
-            return WidgetUtils.GetScreenWorkingArea().Size;
         }
 
         public string GetResolutionBySize(Size size) => $"{size.Width}, {size.Height}";
