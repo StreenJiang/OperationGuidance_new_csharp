@@ -288,6 +288,7 @@ namespace OperationGuidance_new.Utils {
             return size;
         }
         public static Size GetDefaultSettingResolution() => WidgetUtils.GetScreenWorkingArea().Size;
+        public static string GetResolution(Size size) => $"{size.Width}, {size.Height}";
         public static void SetSettingResolution(Size newSize) => Settings.Write(IniFileKeys.Resolution, $"{newSize.Width}, {newSize.Height}");
         // Storage file name format
         public static string GetStorageFileName() {

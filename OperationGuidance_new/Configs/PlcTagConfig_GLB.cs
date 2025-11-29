@@ -13,7 +13,7 @@ namespace OperationGuidance_new.Configs {
         public int BlockNumber { get; set; }            // DB 块号
         public int BitOffset { get; set; }              // 位偏移
         public int Length { get; set; }                 // 长度（字节）
-        public int ByteOffset { get; set; }             // 如 DBB606
+        public int ByteOffset { get; set; }             // 偏移量，如 DBB606
 
         /// <summary>
         /// 从设备地址字符串解析（4或5字段）
@@ -24,7 +24,7 @@ namespace OperationGuidance_new.Configs {
 
             var parts = deviceAddress.Split(',');
             if (parts.Length < 5)
-                throw new ArgumentException("设备地址格式错误，应为：[存储区],[DB号],[偏移量],[长度],[符号名]");
+                throw new ArgumentException("设备地址格式错误，应为：[存储区],[DB号],[位偏移量],[长度],[偏移量]");
 
             PlcTagConfig_GLB config = new PlcTagConfig_GLB {
                 DataType = ParseS7DataType(parts[0]),

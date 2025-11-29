@@ -27,7 +27,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         // 2. 发送条码读取成功信号
-        public void SendBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig());
+        public void SendBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig(), 1);
 
         // 3. 读取开始任务信号
         public bool ReadStartSignal() {
@@ -42,7 +42,7 @@ namespace OperationGuidance_new.Constants {
         }
 
         // 4. 发送任务完成信号
-        public void SendJobFinished() => WriteBool(PlcConfig.JobFinishedConfig());
+        public void SendJobFinished(int val) => WriteBool(PlcConfig.JobFinishedConfig(), val);
 
         private byte[] ReadBytes(PlcTagConfig_GLB config) {
             if (Plc == null || !Plc.IsConnected)
@@ -68,7 +68,7 @@ namespace OperationGuidance_new.Constants {
                 $"Target: {config.DataType} {config.BlockNumber}, Byte={config.ByteOffset}, Bit={config.BitOffset}");
         }
 
-        private void WriteBool(PlcTagConfig_GLB config) {
+        private void WriteBool(PlcTagConfig_GLB config, int val) {
             if (Plc == null)
                 throw new InvalidOperationException("PLC is not connected.");
 
@@ -77,7 +77,7 @@ namespace OperationGuidance_new.Constants {
                     Plc.Write(config.DataType,
                               config.BlockNumber,
                               config.ByteOffset,
-                              true,
+                              val,
                               config.BitOffset);
 
                     return; // 成功，退出
