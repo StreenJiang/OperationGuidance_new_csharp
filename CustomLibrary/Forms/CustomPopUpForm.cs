@@ -224,6 +224,18 @@ namespace CustomLibrary.Forms {
             }
         }
 
+        public new DialogResult ShowDialog() {
+            Cursor.Show();
+            BeginInvoke(() => AfterShown());
+            base.Hide();
+            _popUpFormBackboard.Show();
+            if (_clickOutsideToClose) {
+                EventFuncs.CurrentPopUpForm = this;
+            }
+            Opacity = 1D;
+            return base.ShowDialog();
+        }
+
         protected virtual void AfterShown() { }
 
         public new void Hide() {

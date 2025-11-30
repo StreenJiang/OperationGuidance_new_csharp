@@ -532,9 +532,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // pset 程序号
             TextBox parametersBox = ParameterSetBox.GetTextBox(0).Box;
             ParameterSetBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!ParameterSetBox.HasError)
-                    if (!string.IsNullOrEmpty(parametersBox.Text)) ModifiedBoltDTO.parameters_set = int.Parse(parametersBox.Text);
-                    else ModifiedBoltDTO.parameters_set = null;
+                if (!ParameterSetBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(parametersBox.Text) && int.Parse(parametersBox.Text) > 0) {
+                            ModifiedBoltDTO.parameters_set = int.Parse(parametersBox.Text);
+                        } else ModifiedBoltDTO.parameters_set = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             // 螺钉序号
             _arrangerType.ItemSelected += () => {
@@ -547,9 +553,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             TextBox specificationBox = SpecificationBox.GetTextBox(0).Box;
             SpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!SpecificationBox.HasError)
-                    if (!string.IsNullOrEmpty(specificationBox.Text) && int.Parse(specificationBox.Text) > 0) ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
-                    else ModifiedBoltDTO.specification = null;
+                if (!SpecificationBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(specificationBox.Text) && int.Parse(specificationBox.Text) > 0) {
+                            ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
+                        } else ModifiedBoltDTO.specification = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             _arrangerType2.ItemSelected += () => {
                 if (!_arrangerType2.IsDefaultValue() && _arrangerType2.Value != null) {
@@ -561,9 +573,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             TextBox specificationBox2 = SpecificationBox2.GetTextBox(0).Box;
             SpecificationBox2.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!SpecificationBox2.HasError)
-                    if (!string.IsNullOrEmpty(specificationBox2.Text) && int.Parse(specificationBox2.Text) > 0) ModifiedBoltDTO.specification2 = float.Parse(specificationBox2.Text);
-                    else ModifiedBoltDTO.specification2 = null;
+                if (!SpecificationBox2.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(specificationBox2.Text) && int.Parse(specificationBox2.Text) > 0) {
+                            ModifiedBoltDTO.specification2 = float.Parse(specificationBox2.Text);
+                        } else ModifiedBoltDTO.specification2 = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             // 套筒位数
             _setterSelectorType.ItemSelected += () => {
@@ -576,35 +594,65 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             TextBox bitSpecificationBox = BitSpecificationBox.GetTextBox(0).Box;
             BitSpecificationBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!BitSpecificationBox.HasError)
-                    if (!string.IsNullOrEmpty(bitSpecificationBox.Text)) ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
-                    else ModifiedBoltDTO.bit_specification = null;
+                if (!BitSpecificationBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(bitSpecificationBox.Text) && int.Parse(bitSpecificationBox.Text) > 0) {
+                            ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
+                        } else ModifiedBoltDTO.bit_specification = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             // 扭矩上下限
             TextBox torqueMinBox = TorqueBox.GetTextBox(0).Box;
             TorqueBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!TorqueBox.HasError)
-                    if (!string.IsNullOrEmpty(torqueMinBox.Text)) ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
-                    else ModifiedBoltDTO.torque_min = null;
+                if (!TorqueBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(torqueMinBox.Text) && int.Parse(torqueMinBox.Text) > 0) {
+                            ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
+                        } else ModifiedBoltDTO.torque_min = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             TextBox torqueMaxBox = TorqueBox.GetTextBox(1).Box;
             TorqueBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
-                if (!TorqueBox.HasError)
-                    if (!string.IsNullOrEmpty(torqueMaxBox.Text)) ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
-                    else ModifiedBoltDTO.torque_max = null;
+                if (!TorqueBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(torqueMaxBox.Text) && int.Parse(torqueMaxBox.Text) > 0) {
+                            ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
+                        } else ModifiedBoltDTO.torque_max = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             // 角度上下限
             TextBox angleMinBox = AngleBox.GetTextBox(0).Box;
             AngleBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
-                if (!AngleBox.HasError)
-                    if (!string.IsNullOrEmpty(angleMinBox.Text)) ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
-                    else ModifiedBoltDTO.angle_min = null;
+                if (!AngleBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(angleMinBox.Text) && int.Parse(angleMinBox.Text) > 0) {
+                            ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
+                        } else ModifiedBoltDTO.angle_min = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
             TextBox angleMaxBox = AngleBox.GetTextBox(1).Box;
             AngleBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
-                if (!AngleBox.HasError)
-                    if (!string.IsNullOrEmpty(angleMaxBox.Text)) ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
-                    else ModifiedBoltDTO.angle_max = null;
+                if (!AngleBox.HasError) {
+                    try {
+                        if (!string.IsNullOrEmpty(angleMaxBox.Text) && int.Parse(angleMaxBox.Text) > 0) {
+                            ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
+                        } else ModifiedBoltDTO.angle_max = null;
+                    } catch {
+                        WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
+                    }
+                }
             };
         }
 

@@ -2118,7 +2118,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 打开管理员密码输入弹框
-        public void OpenAdminPasswordPopUpForm(string title, bool needExctraActions) {
+        public bool OpenAdminPasswordPopUpForm(string title, bool needExctraActions, Action<bool>? actionAfterTrue = null) {
             _adminPasswordPopUpForm = new() {
                 Title = title,
             };
@@ -2156,17 +2156,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 AdminPopUpExtraActions();
             }
 
-            _adminPasswordPopUpForm.Show();
+            bool result = false;
+            DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
+            _adminPasswordPopUpForm.Dispose();
+
+            return DialogResult.OK == dialogResult && result;
 
             void Confirm() {
                 string password = _adminPasswordBox.GetTextBox(0).Box.Text;
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
                     WidgetUtils.ShowNoticePopUp("验证成功");
+                    if (actionAfterTrue != null) {
+                        actionAfterTrue(true);
+                    }
+
                     _adminConfirmed = true;
-                    _adminPasswordPopUpForm.Dispose();
+                    result = true;
+                    _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;
+
+                    _adminPasswordPopUpForm.DialogResult = DialogResult.No;
                 }
             }
         }
