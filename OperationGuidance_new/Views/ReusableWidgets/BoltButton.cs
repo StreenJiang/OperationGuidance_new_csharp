@@ -37,8 +37,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int? _currentParameterSet;
         private string? _label;
         private int? _upperNum;
-        private int?[] _specifications = new int?[] { null, null, null, null };
-        private bool?[] _specificationsOk = new bool?[] { null, null, null, null };
+        private int?[] _specifications = new int?[] { null, null, null, null, null, null, null, null };
+        private bool?[] _specificationsOk = new bool?[] { null, null, null, null, null, null, null, null };
         private int _arranger_time_count = 0;
         private int _setter_selector_time_count = 0;
         private float? _bitSpecification;
@@ -168,8 +168,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public void SendSignalToArragner(List<float> specifications, IoBoxTypeArranger arrangerType, Action<bool?[], bool> callBack) {
             // Initialize variables
-            _specifications = new int?[] { null, null, null, null };
-            _specificationsOk = new bool?[] { null, null, null, null };
+            _specifications = new int?[] { null, null, null, null, null, null, null, null };
+            _specificationsOk = new bool?[] { null, null, null, null, null, null, null, null };
             foreach (float specification in specifications) {
                 int index = (int) specification - 1;
                 _specifications[index] = 1;
@@ -226,8 +226,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     arrangerType.ActionAfterIoSignalReceived -= DoArrangerActionAfterAnalysis;
 
                     // Reset variables
-                    _specifications = new int?[] { null, null, null, null };
-                    _specificationsOk = new bool?[] { null, null, null, null };
+                    _specifications = new int?[] { null, null, null, null, null, null, null, null };
+                    _specificationsOk = new bool?[] { null, null, null, null, null, null, null, null };
                     _arranger_time_count = 0;
                 });
             });
