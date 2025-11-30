@@ -5,11 +5,14 @@ using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
+using log4net;
 
 namespace CustomLibrary.Forms {
 
     [System.ComponentModel.DesignerCategory("Code")] // This makes it directly open the code window except design mode window
     public class CustomPopUpForm: Form {
+        private ILog log;
+
         private Form _popUpFormBackboard;
         private Color? _borderColor;
         private Rectangle? _borderRect;
@@ -77,6 +80,8 @@ namespace CustomLibrary.Forms {
         public bool ShowInFront { get; set; } = true;
 
         public CustomPopUpForm() : base() {
+            log = LogManager.GetLogger(GetType());
+
             Control mainParent = WidgetUtils.MainForm;
             // Initialize backboard
             _popUpFormBackboard = new() {
@@ -213,9 +218,8 @@ namespace CustomLibrary.Forms {
                 try {
                     base.Hide();
                     base.ShowDialog();
-                } catch {
-                    Thread.Sleep(200);
-                    base.ShowDialog();
+                } catch (Exception ex) {
+                    log.Error($"Error while showing(showing dialog) for custom pop up form...", ex);
                 }
             }
         }
