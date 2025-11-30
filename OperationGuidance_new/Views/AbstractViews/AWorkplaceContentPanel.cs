@@ -3621,7 +3621,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private int _boxHeight;
         private int _boxMargin;
         private List<SignalButton> _outBtns;
-        private List<SignalButton> _inBtns;
+        private List<SignalLabel> _inBtns;
 
         private System.Windows.Forms.Timer updateTimer;
         private readonly CancellationTokenSource _cts = new();
@@ -3659,25 +3659,27 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             _inBtns = new();
             for (int i = 0; i < 8; i++) {
-                _inBtns.Add(new SignalButton() {
-                    Label = $"输入-{(i + 1)}",
+                _inBtns.Add(new SignalLabel() {
+                    Text = $"输入-{(i + 1)}",
                     Index = i,
                     Parent = _tablePanel,
-                    Enabled = false,
                 });
             }
 
             updateTimer = new();
             updateTimer.Interval = 50; // 50ms
             updateTimer.Tick += UpdateTimerTick;
+            updateTimer.Start();
         }
 
         private void UpdateTimerTick(object? sender, EventArgs e) {
             try {
                 var (outPos, inPos) = ioBoxTask.ArrangerType!.ReadCurrent();
 
-                UpdateButtonStates(_outBtns, outPos);
-                UpdateButtonStates(_inBtns, inPos);
+                BeginInvoke(() => {
+                    UpdateButtonStates(_outBtns, outPos);
+                    UpdateLabelStates(_inBtns, inPos);
+                });
             } catch (OperationCanceledException) {
                 log.Info("Cancel looping...");
                 updateTimer.Stop();
@@ -3689,23 +3691,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private void UpdateButtonStates(List<SignalButton> buttons, int?[] values) {
             for (int i = 0; i < Math.Min(buttons.Count, values.Length); i++) {
                 buttons[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
+                buttons[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
             }
         }
 
-        private void OutClick(object? sender, EventArgs eventArgs) {
+        private void UpdateLabelStates(List<SignalLabel> labels, int?[] values) {
+            for (int i = 0; i < Math.Min(labels.Count, values.Length); i++) {
+                labels[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
+                labels[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
+            }
+        }
+
+        private async void OutClick(object? sender, EventArgs eventArgs) {
+            SignalButton btn = (SignalButton) sender!;
+
+            // 立即禁用按钮防止重复点击
+            btn.Enabled = false;
+
             try {
-                SignalButton btn = (SignalButton) sender!;
-
                 int?[] sendPos = { null, null, null, null, null, null, null, null };
-                for (int i = 0; i < sendPos.Length; i++) {
-                    if (i == btn.Index) {
-                        sendPos[i] = 1;
-                    }
-                }
+                sendPos[btn.Index] = 1;
 
-                _ = ioBoxTask.ArrangerType!.SendPulseAsync(sendPos);
+                // 直接await，不要再用Task.Run包装
+                await ioBoxTask.ArrangerType!.SendPulseAsync(sendPos);
+
             } catch (Exception ex) {
                 log.Warn("Error while sending pulse...", ex);
+            } finally {
+                // 重新启用按钮
+                btn.Enabled = true;
             }
         }
 

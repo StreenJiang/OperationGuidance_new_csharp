@@ -286,93 +286,71 @@ namespace OperationGuidance_new.Constants {
         public Tuple<int?[], int?[]> GetCurrent() => new(_currentStatuses, _inPositions);
 
         public bool AnalyzeReadResultData(string dataMessage) {
-            if (_sendingPositions.ToList().Find(p => p != null) != null) {
-                try {
-                    // string high = string.Join("", dataMessage.Skip(7).Take(1));
-                    // String binaryStr = new(MainUtils.ToBinaryString(high).ToArray());
+            try {
+                // 1. 读取输出字节
+                string outputByteHex = dataMessage.Substring(6, 2); // 字符索引 6~7
+                int outputByte = Convert.ToInt32(outputByteHex, 16);
+                string outputBin = Convert.ToString(outputByte, 2).PadLeft(8, '0'); // 补齐8位
+                string outStr = new string(outputBin.Reverse().ToArray()); // 反转：bit0 -> out1
 
-                    // 1. 读取输出字节
-                    string outputByteHex = dataMessage.Substring(6, 2); // 字符索引 6~7
-                    int outputByte = Convert.ToInt32(outputByteHex, 16);
-                    string outputBin = Convert.ToString(outputByte, 2).PadLeft(8, '0'); // 补齐8位
-                    string outStr = new string(outputBin.Reverse().ToArray()); // 反转：bit0 -> out1
+                // 2. 读取输入字节
+                string inputByteHex = dataMessage.Substring(8, 2); // 字符索引 8~9
+                int inputByte = Convert.ToInt32(inputByteHex, 16);
+                string inputBin = Convert.ToString(inputByte, 2).PadLeft(8, '0'); // 补齐8位
+                string inStr = new string(inputBin.Reverse().ToArray()); // 反转：bit0 -> in1
 
-                    // 2. 读取输入字节
-                    string inputByteHex = dataMessage.Substring(8, 2); // 字符索引 8~9
-                    int inputByte = Convert.ToInt32(inputByteHex, 16);
-                    string inputBin = Convert.ToString(inputByte, 2).PadLeft(8, '0'); // 补齐8位
-                    string inStr = new string(inputBin.Reverse().ToArray()); // 反转：bit0 -> in1
-
-                    // 3. 读取模拟量
-                    string analogHex = dataMessage.Substring(10, 4); // 可选：如果存在
+                // 3. 读取模拟量
+                string analogHex = dataMessage.Substring(10, 4); // 可选：如果存在
 
 
+                logger.Debug($"dataMessage = {dataMessage}");
+
+                // 4. 输出结果
+                logger.Debug($"输出: {outStr}"); // 例如 "10000010" 表示 out1=1, out2=0, ..., out8=1
+                logger.Debug($"输入: {inStr}");
+                logger.Debug($"模拟量（hex）: {analogHex}");
 #if DEBUG
-                    logger.Debug($"dataMessage = {dataMessage}");
-                    // logger.Debug($"high = {high}");
-                    // logger.Debug($"binaryStr = {binaryStr}");
 
-                    // 4. 输出结果
-                    logger.Debug($"输出: {outStr}"); // 例如 "10000010" 表示 out1=1, out2=0, ..., out8=1
-                    logger.Debug($"输入: {inStr}");
-                    logger.Debug($"模拟量（hex）: {analogHex}");
+                logger.Debug($"输入: {inStr}"); // 每位对应 in1~in8，'1'=on
 
-                    logger.Debug($"输入: {inStr}"); // 每位对应 in1~in8，'1'=on
-
-                    string temp6 = string.Join("", dataMessage.Skip(6).Take(1));
-                    string temp7 = string.Join("", dataMessage.Skip(7).Take(1));
-                    string temp8 = string.Join("", dataMessage.Skip(8).Take(1));
-                    string temp9 = string.Join("", dataMessage.Skip(9).Take(1));
-                    logger.Debug($"temp6 = {new(MainUtils.ToBinaryString(temp6).ToArray())}");
-                    logger.Debug($"temp6 reversed = {new(MainUtils.ToBinaryString(temp6).Reverse().ToArray())}");
-                    logger.Debug($"temp7 = {new(MainUtils.ToBinaryString(temp7).ToArray())}");
-                    logger.Debug($"temp7 reversed = {new(MainUtils.ToBinaryString(temp7).Reverse().ToArray())}");
-                    logger.Debug($"temp8 = {new(MainUtils.ToBinaryString(temp8).ToArray())}");
-                    logger.Debug($"temp8 reversed = {new(MainUtils.ToBinaryString(temp8).Reverse().ToArray())}");
-                    logger.Debug($"temp9 = {new(MainUtils.ToBinaryString(temp9).ToArray())}");
-                    logger.Debug($"temp9 reversed = {new(MainUtils.ToBinaryString(temp9).Reverse().ToArray())}");
+                string temp6 = string.Join("", dataMessage.Skip(6).Take(1));
+                string temp7 = string.Join("", dataMessage.Skip(7).Take(1));
+                string temp8 = string.Join("", dataMessage.Skip(8).Take(1));
+                string temp9 = string.Join("", dataMessage.Skip(9).Take(1));
+                logger.Debug($"temp6 = {new(MainUtils.ToBinaryString(temp6).ToArray())}");
+                logger.Debug($"temp6 reversed = {new(MainUtils.ToBinaryString(temp6).Reverse().ToArray())}");
+                logger.Debug($"temp7 = {new(MainUtils.ToBinaryString(temp7).ToArray())}");
+                logger.Debug($"temp7 reversed = {new(MainUtils.ToBinaryString(temp7).Reverse().ToArray())}");
+                logger.Debug($"temp8 = {new(MainUtils.ToBinaryString(temp8).ToArray())}");
+                logger.Debug($"temp8 reversed = {new(MainUtils.ToBinaryString(temp8).Reverse().ToArray())}");
+                logger.Debug($"temp9 = {new(MainUtils.ToBinaryString(temp9).ToArray())}");
+                logger.Debug($"temp9 reversed = {new(MainUtils.ToBinaryString(temp9).Reverse().ToArray())}");
 #endif
 
-                    // for (int i = 0; i < binaryStr.Length; i++) {
-                    //     if (_sendingPositions[i] != null) {
-                    //         char c = binaryStr.ElementAt(i);
-                    //         _currentStatuses[i] = int.Parse(c.ToString());
-                    //     } else {
-                    //         _currentStatuses[i] = null;
-                    //     }
-                    // }
-
-                    for (int i = 0; i < outStr.Length; i++) {
-                        if (_sendingPositions[i] != null) {
-                            char c = outStr.ElementAt(i);
-                            _currentStatuses[i] = int.Parse(c.ToString());
-                        } else {
-                            _currentStatuses[i] = null;
-                        }
-                    }
-#if DEBUG
-                    logger.Debug($"_currentStatuses = {string.Join(",", _currentStatuses)}");
-#endif
-
-                    for (int i = 0; i < inStr.Length; i++) {
-                        char c = inStr.ElementAt(i);
-                        _inPositions[i] = int.Parse(c.ToString());
-                    }
-#if DEBUG
-                    logger.Debug($"_inPositions = {string.Join(",", _inPositions)}");
-#endif
-                    return true;
-                } catch (Exception e) {
-                    logger.Error($"Error while analyzing data from arranger, "
-                        + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
-                        + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
-                        + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
-                    );
-                    throw e;
+                for (int i = 0; i < outStr.Length; i++) {
+                    char c = outStr.ElementAt(i);
+                    _currentStatuses[i] = int.Parse(c.ToString());
                 }
-            }
+#if DEBUG
+                logger.Debug($"_currentStatuses = {string.Join(",", _currentStatuses)}");
+#endif
 
-            return false;
+                for (int i = 0; i < inStr.Length; i++) {
+                    char c = inStr.ElementAt(i);
+                    _inPositions[i] = int.Parse(c.ToString());
+                }
+#if DEBUG
+                logger.Debug($"_inPositions = {string.Join(",", _inPositions)}");
+#endif
+                return true;
+            } catch (Exception e) {
+                logger.Error($"Error while analyzing data from arranger, "
+                    + $"_sendingPositions = {string.Join(", ", _sendingPositions)}, e = {e}"
+                    + $"_currentStatuses(out) = {string.Join(", ", _currentStatuses)}, e = {e}"
+                    + $"_inPositions = {string.Join(", ", _inPositions)}, e = {e}"
+                );
+                throw e;
+            }
         }
 
         public void AnalyzeReadResultData(string dataMessage, Action<int?[]>? _ioBoxActionAfterAnalysis) {

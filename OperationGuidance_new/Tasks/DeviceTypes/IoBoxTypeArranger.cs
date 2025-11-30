@@ -12,29 +12,30 @@ namespace OperationGuidance_new.Tasks.DeviceTypes {
         public void Reset() => _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
 
         public async Task<string> SendPulseAsync(int?[] position, int pulseWidthMs = 200) {
-            // 参数校验
             if (position == null)
                 throw new ArgumentNullException(nameof(position));
             if (pulseWidthMs < 0)
                 throw new ArgumentOutOfRangeException(nameof(pulseWidthMs), "Pulse width cannot be negative.");
 
-            // 1. 发送 Set 信号（例如：置位 IO 或写入位置）
-            string writeResult = _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage());
-
-            // 2. 等待脉冲持续时间
-            if (pulseWidthMs > 0) {
-                await Task.Delay(pulseWidthMs);
-            }
-
-            // 3. 发送 Reset 信号（清零，形成下降沿）
             try {
-                _task.SendCommand(DeviceType.GetResetCommand().GetMessage());
-            } catch (Exception ex) {
-                // 记录 Reset 失败，但不抛出（脉冲已有效发出）
-                log.Error("Failed to send reset command after pulse.", ex);
-            }
+                // 1. 发送 Set 信号（在后台线程执行）
+                string writeResult = await Task.Run(() =>
+                    _task.SendCommand(DeviceType.GetWriteCommand(position).GetMessage()));
 
-            return writeResult;
+                // 2. 等待脉冲持续时间
+                if (pulseWidthMs > 0) {
+                    await Task.Delay(pulseWidthMs).ConfigureAwait(false);
+                }
+
+                // 3. 发送 Reset 信号（在后台线程执行）
+                await Task.Run(() => _task.SendCommand(DeviceType.GetResetCommand().GetMessage()));
+
+                return writeResult;
+
+            } catch (Exception ex) {
+                log.Error("Failed to send pulse command.", ex);
+                throw;
+            }
         }
 
         public string SendPulse(int?[] position, int pulseWidthMs = 200) {

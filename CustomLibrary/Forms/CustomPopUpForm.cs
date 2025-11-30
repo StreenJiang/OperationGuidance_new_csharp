@@ -1,4 +1,5 @@
-﻿using CustomLibrary.Buttons;
+﻿using System.Drawing.Drawing2D;
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
@@ -377,6 +378,75 @@ namespace CustomLibrary.Forms {
                     // LabelY = (Height - Font.Height) / 2;
                 }
             }
+        }
+    }
+
+    public class SignalLabel: Label {
+        public int CornerRounding { get; set; } = 0;
+        public bool ToggleButton { get; set; } = false;
+        public bool Toggled { get; set; } = false;
+        public Color? ToggledColor { get; set; } = null;
+        public int Index { get; set; }
+
+        public SignalLabel() {
+            // 关键：禁用自动绘制背景
+            SetStyle(ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw, true);
+
+            Padding = new Padding(4);
+            ForeColor = ColorTranslator.FromHtml("#FEFEFE");
+            BackColor = Color.Gray;
+        }
+
+        protected override void OnSizeChanged(EventArgs e) {
+            base.OnSizeChanged(e);
+            CornerRounding = WidgetUtils.ControlRadius();
+            Font = new Font(WidgetsConfigs.SystemFontFamily, (int) (Height * 0.425f), FontStyle.Bold, GraphicsUnit.Pixel);
+            ChangeRegionByConerRadius();
+        }
+
+        protected void ChangeRegionByConerRadius() {
+            if (CornerRounding > 0) {
+                using (GraphicsPath path = WidgetUtils.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), CornerRounding)) {
+                    Region = new Region(path);
+                }
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e) {
+            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+            Rectangle rect = new(0, 0, Width - 1, Height - 1);
+
+            // 1. 确定要绘制的背景色
+            Color drawBackColor = BackColor;
+            if (ToggleButton && Toggled && ToggledColor.HasValue) {
+                drawBackColor = ToggledColor.Value;
+            }
+
+            // 2. 绘制圆角背景（关键！）
+            if (CornerRounding > 0) {
+                using var path = WidgetUtils.RoundedRect(rect, CornerRounding);
+                using var brush = new SolidBrush(drawBackColor);
+                e.Graphics.FillPath(brush, path); // ← 填充圆角区域
+            } else {
+                // 非圆角：填充矩形
+                using var brush = new SolidBrush(drawBackColor);
+                e.Graphics.FillRectangle(brush, rect);
+            }
+
+            // 3. 绘制圆角边框（与按钮一致）
+            if (CornerRounding > 0 && Parent != null) {
+                using var path = WidgetUtils.RoundedRect(rect, CornerRounding);
+                using var pen = new Pen(Parent.BackColor, 1);
+                e.Graphics.DrawPath(pen, path);
+            }
+
+            // 4. 绘制文字
+            TextRenderer.DrawText(e.Graphics, Text, Font, rect, ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                TextFormatFlags.SingleLine | TextFormatFlags.WordEllipsis);
         }
     }
 }
