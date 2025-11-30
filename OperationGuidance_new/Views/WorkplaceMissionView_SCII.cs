@@ -98,12 +98,8 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Enabled = true;
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
-                    _adminConfirmed = false;
-                    bool isChecked = false;
-                    OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false, yes => isChecked = yes);
-                    if (isChecked) {
-                        _adminConfirmed = null;
-                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                    if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false)) {
+                        _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                     }
                 } else {
                     WidgetUtils.ShowNoticePopUp("任务未激活");
@@ -273,7 +269,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
 
-                _batchDropDownBox.SetError(false);
+                _batchDropDownBox?.SetError(false);
             }
 
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
