@@ -465,6 +465,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             SetProductImagePanel();
             RefreshImageDisplayPanel();
             _currentSideName.SetValue(0, _sides[_currentSideIndex].name);
+
+            ActionAfterSwitchMission();
         }
         public virtual void ChangeSideAndInvalidate() {
             // List<BoltButton> currentSideBolts;

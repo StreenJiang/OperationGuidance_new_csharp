@@ -75,6 +75,18 @@ namespace OperationGuidance_new.Views {
             SciiXtController.ActionAfterReceivedBatch = ActionAfterReceivedBatch;
         }
 
+        protected override void ActivateMissionAutomatically() {
+            string recipeCode = _getRecipeCode();
+            if (!string.IsNullOrEmpty(recipeCode)) {
+                var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
+                if (rsp != null && rsp.ProductMissionDTO != null) {
+                    if (_mission != null && _mission.id == rsp.ProductMissionDTO.id) {
+                        base.ActivateMissionAutomatically();
+                    }
+                }
+            }
+        }
+
         protected override async Task ActionAfterActivatingMission() {
             await base.ActionAfterActivatingMission();
 
@@ -158,9 +170,11 @@ namespace OperationGuidance_new.Views {
             if (!string.IsNullOrEmpty(recipeCode) && (_mission == null || _mission.name != recipeCode)) {
                 var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
                 if (rsp != null && rsp.ProductMissionDTO != null) {
-                    BeginInvoke(() => {
-                        SwitchToMission(rsp.ProductMissionDTO);
-                    });
+                    if (_mission == null || _mission.id != rsp.ProductMissionDTO.id) {
+                        BeginInvoke(() => {
+                            SwitchToMission(rsp.ProductMissionDTO);
+                        });
+                    }
                 } else {
                     WidgetUtils.ShowWarningPopUp($"未找到配方[{recipeCode}]对应的任务，请检查是否配置了该任务。");
                 }
