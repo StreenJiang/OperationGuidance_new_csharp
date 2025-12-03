@@ -1940,7 +1940,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
 
             // Send pset of current working bolt to controller
-            SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+            _ = Task.Run(async () => {
+                try {
+                    await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+                } catch (Exception ex) {
+                    logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
+                }
+            });
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
@@ -1963,79 +1969,120 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // Send pset to controller
-        protected virtual async void SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
+        protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
             logger.Info("SendPSet start ......");
 
-            await Task.Run(() => {
-                BeginInvoke(async () => {
-                    // // Initialize pset text box first
-                    // SetPset();
+            try {
+                // 直接在UI线程启动异步操作，避免Task.Run包装
+                BeginInvoke(() => {
                     _pset.SetValue(0, null);
-
-                    if (pset == null && !string.IsNullOrEmpty(_matCode)) {
-                        // Use MatCode to switch parameter program
-                        MatCodeMapWhycDTO? matCodeMapWhycDTO = _apis.FindMatCodeMapByMatCode(new(_matCode)).MatCodeMapWhycDTO;
-                        if (matCodeMapWhycDTO != null) {
-                            logger.Info($"Get parameter set[{matCodeMapWhycDTO.parameter_set}] by mat code[{_matCode}]");
-                            pset = matCodeMapWhycDTO.parameter_set;
-                        } else {
-                            logger.Info($"Get parameter set[null] by mat code[{_matCode}]");
-                        }
-                    }
-
-                    // Check pset here again
-                    if (pset == null) {
-                        // If pset is null, show error message in working proccess panel
-                        AddLockMsg(WorkingProcessPanel.LockedPsetNull);
-                        return;
-                    }
-
-                    // Do send pset to controller
-                    int sendTimes = 0;
-                    while (!IsDisposed) {
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        if (await task.SendPSetAsync(pset.Value)) {
-                            break;
-                        }
-                        if (boltButton.CurrentParameterSet != null) {
-                            return;
-                        }
-
-                        // Count failure times
-                        sendTimes++;
-
-                        // If sending times reaches maximun, show pop up form
-                        if (_resendPsetMaxTimes > 0 && sendTimes >= _resendPsetMaxTimes) {
-                            WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，请检查配置或机器是否处于正常状态");
-                            return;
-                        }
-
-                        // Show reason of sending failure
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-
-                        // // 实时显示pset到任务信息框
-                        // SetPset("程序号下发失败");
-                        _pset.SetValue(0, "程序号下发失败");
-
-                        // Confirm if retry needed
-                        if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
-                            return;
-                        }
-                    }
-
-                    // Send successfully if step to here
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                    boltButton.CurrentParameterSet = pset;
-
-                    // SetPset();
-                    _pset.SetValue(0, pset + "");
                 });
-            });
 
-            logger.Info("SendPSet end ......");
+                // === 保持原有MatCode逻辑 ===
+                if (pset == null && !string.IsNullOrEmpty(_matCode)) {
+                    MatCodeMapWhycDTO? matCodeMapWhycDTO = _apis.FindMatCodeMapByMatCode(new(_matCode)).MatCodeMapWhycDTO;
+                    if (matCodeMapWhycDTO != null) {
+                        logger.Info($"Get parameter set[{matCodeMapWhycDTO.parameter_set}] by mat code[{_matCode}]");
+                        pset = matCodeMapWhycDTO.parameter_set;
+                    } else {
+                        logger.Info($"Get parameter set[null] by mat code[{_matCode}]");
+                    }
+                }
+
+                // === 保持原有null检查逻辑 ===
+                if (pset == null) {
+                    BeginInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
+                    return;
+                }
+
+                // === 使用新的通用重试策略 ===
+                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 1000);
+
+                bool success = false;
+                try {
+                    success = await retryStrategy.ExecuteAsync(
+                        async () => {
+                            // 每次尝试前更新UI状态
+                            BeginInvoke(() => {
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                AddLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                _pset.SetValue(0, $"程序号下发中... ({pset})");
+                            });
+
+                            // 执行发送
+                            bool result = await task.SendPSetAsync(pset.Value);
+
+                            if (result) {
+                                BeginInvoke(() => {
+                                    // === 成功时保持原有逻辑 ===
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                    boltButton.CurrentParameterSet = pset;
+                                    _pset.SetValue(0, $"程序号 {pset} (发送成功)");
+                                });
+                                return true;
+                            }
+
+                            // 检查是否已通过其他方式设置成功（保持原有逻辑）
+                            if (boltButton.CurrentParameterSet != null) {
+                                BeginInvoke(() => {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                    boltButton.CurrentParameterSet = pset;
+                                    _pset.SetValue(0, $"程序号 {pset} (已存在)");
+                                });
+                                return true;
+                            }
+
+                            return false;
+                        },
+                        (currentAttempt, maxAttempts) => {
+                            // === 实时显示重试进度 ===
+                            BeginInvoke(() => {
+                                _pset.SetValue(0, $"程序号下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                            });
+                        },
+                        () => {
+                            // === 每次失败时更新UI（但不阻塞） ===
+                            BeginInvoke(() => {
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                _pset.SetValue(0, "程序号下发失败，正在重试...");
+                            });
+                        },
+                        null,
+                        _activeMissionCts.Token);
+                } catch (RetryException ex) {
+                    // 处理重试异常
+                    logger.Warn($"程序号{pset}发送失败，已重试{_resendPsetMaxTimes}次: {ex.Message}");
+                    success = false;
+                }
+
+                // === 失败后处理（无对话框，改为状态提示） ===
+                if (!success && boltButton.CurrentParameterSet == null) {
+                    BeginInvoke(() => {
+                        // 移除失败锁定状态
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+
+                        // 添加失败状态提示（但不阻塞）
+                        AddLockMsg(string.Format(WorkingProcessPanel.LockedPsetFailed, pset));
+                        _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
+
+                        // 显示一次性警告（不阻塞）
+                        WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
+                    });
+                }
+            } catch (OperationCanceledException) {
+                logger.Info("SendPSet operation was cancelled");
+            } catch (Exception ex) {
+                logger.Error($"SendPSet发生未预期异常: {ex.Message}", ex);
+                BeginInvoke(() => {
+                    _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
+                });
+            } finally {
+                logger.Info("SendPSet end ......");
+            }
         }
 
         // Send bit position to arranger
@@ -3476,49 +3523,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public FunctionButton BtnUnlock { get => _btnUnlock; set => _btnUnlock = value; }
         public CommonButton BtnPSet { get => _btnPSet; set => _btnPSet = value; }
 
-        // 自动重试策略类
-        private class PSetRetryStrategy {
-            private readonly int _maxAttempts;
-            private readonly TimeSpan _baseDelay;
-
-            public PSetRetryStrategy(int maxAttempts = 5, TimeSpan baseDelay = default) {
-                _maxAttempts = maxAttempts;
-                _baseDelay = baseDelay == default ? TimeSpan.FromMilliseconds(1000) : baseDelay;
-            }
-
-            public async Task<bool> ExecuteAsync(
-                Func<Task<bool>> operation,
-                CancellationToken token = default) {
-                int attempt = 0;
-
-                while (attempt < _maxAttempts && !token.IsCancellationRequested) {
-                    attempt++;
-
-                    // 执行发送操作
-                    bool result = await operation();
-
-                    if (result) {
-                        return true;
-                    }
-
-                    if (attempt >= _maxAttempts) {
-                        return false;
-                    }
-
-                    // 计算延迟时间（递增延迟）
-                    TimeSpan delay = TimeSpan.FromMilliseconds(_baseDelay.TotalMilliseconds * attempt);
-
-                    try {
-                        await Task.Delay(delay, token);
-                    } catch (OperationCanceledException) {
-                        return false;
-                    }
-                }
-
-                return false;
-            }
-        }
-
         public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
                 bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
                 List<WorkstationDTO> workstationDTOs, Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId, Action? setPset) {
@@ -3612,13 +3616,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
 
                         // === 使用自动重试策略 ===
-                        PSetRetryStrategy retryStrategy = new PSetRetryStrategy(_maxRetryTimes, TimeSpan.FromMilliseconds(_baseRetryDelayMs));
+                        var retryStrategy = RetryStrategy.IncrementalDelay(_maxRetryTimes, _baseRetryDelayMs);
 
                         bool success = await retryStrategy.ExecuteAsync(
                             async () => {
                                 // 执行程序号下发
                                 return await toolTask.SendPSetAsync(pset);
                             },
+                            null,
+                            null,
+                            null,
                             CancellationToken.None);
 
                         // === 根据结果处理 ===
