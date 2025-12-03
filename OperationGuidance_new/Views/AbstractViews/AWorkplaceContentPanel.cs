@@ -24,6 +24,7 @@ using OperationGuidance_service.Utils;
 using System.Collections;
 using System.Drawing.Drawing2D;
 using System.Reflection;
+using System.Threading;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AWorkplaceContentPanel: CustomContentPanel {
@@ -64,6 +65,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
+
+        // 任务取消相关
+        protected CancellationTokenSource _activeMissionCts = new();
+        protected List<CancellationTokenSource> _backgroundTaskCts = new();
 
         // Widgets
         protected Image _barCodeImage;
@@ -1316,6 +1321,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 激活任务
         public virtual async void ActivateMission() {
             // *0. Reset all before activating mission
+            // 清理之前的后台任务
+            _backgroundTaskCts.ForEach(cts => {
+                cts.Cancel();
+                cts.Dispose();
+            });
+            _backgroundTaskCts.Clear();
+
+            // 重置主取消令牌
+            _activeMissionCts.Cancel();
+            _activeMissionCts.Dispose();
+            _activeMissionCts = new CancellationTokenSource();
+
             PrepareBeforeActivatingMission();
 
             // 1. Check can activate mission
@@ -1604,9 +1621,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void StartLockCheckingTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             BeginInvoke(() => {
                 Task.Run(async () => {
-                    while (!IsDisposed && _activated) {
+                    while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
                             ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                             ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
@@ -1645,15 +1665,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                             // Set description to working proccess panel
                             _workingProcessPanel.StatusDesc = statusDesc;
+                        } catch (OperationCanceledException) {
+                            // 任务被取消，退出循环
+                            break;
                         } catch (Exception e) {
                             // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
                             logger.Error($"StartLockCheckingTask: e = {e}");
                         } finally {
                             // Delay a little bit and check again
-                            await Task.Delay(_lockCheckingTaskDelay);
+                            await Task.Delay(_lockCheckingTaskDelay, cts.Token);
                         }
                     }
-                });
+                }, cts.Token);
             });
         }
 
@@ -1683,9 +1706,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public void ClearInformationMsgs() => informationMsgs.Clear();
 
         protected void StartArrangerTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             _resendSignalToArrangerTimes = 0;
             BeginInvoke(async () => {
-                while (!IsDisposed && _activated && _arrangerNeeded) {
+                while (!IsDisposed && _activated && _arrangerNeeded && !cts.Token.IsCancellationRequested) {
                     if (_arrangerPositionOk != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
@@ -1732,15 +1758,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay);
+                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
                 }
             });
         }
 
         protected void StartSetterSelectorTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             _resendSignalToSetterSelectorTimes = 0;
             BeginInvoke(async () => {
-                while (!IsDisposed && _activated && _setterSelectorNeeded) {
+                while (!IsDisposed && _activated && _setterSelectorNeeded && !cts.Token.IsCancellationRequested) {
                     if (_bitPositionOk != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
@@ -1786,7 +1815,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay);
+                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
                 }
             });
         }
@@ -2736,6 +2765,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
         protected override void OnHandleDestroyed(EventArgs e) {
+            // 取消所有后台任务
+            _activeMissionCts.Cancel();
+            _backgroundTaskCts.ForEach(cts => {
+                cts.Cancel();
+                cts.Dispose();
+            });
+            _backgroundTaskCts.Clear();
+            _activeMissionCts.Dispose();
+
             base.OnHandleDestroyed(e);
 
             if (MainUtils.IsAutoLockToolEnabled() || MainUtils.IsArmLocatingEnabled()) {
