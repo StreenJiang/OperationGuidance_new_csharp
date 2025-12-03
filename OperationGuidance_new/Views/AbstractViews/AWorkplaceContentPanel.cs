@@ -22,6 +22,7 @@ using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Threading;
@@ -99,7 +100,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected CustomTextBoxButtonGroup _currentSideName;
 
         protected DataGridViewPanel<OperationDataVO> _tighteningDataPanel;
-        protected List<OperationDataVO> _tighteningDataVOs = new();
+        protected ConcurrentBag<OperationDataVO> _tighteningDataVOs = new();
 
         protected WorkingProcessPanel _workingProcessPanel;
 
@@ -531,7 +532,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 AutoDown = true,
             };
             _tighteningDataPanel.HandleCreated += (s, e) => {
-                _tighteningDataPanel.DataSource = _tighteningDataVOs;
+                _tighteningDataPanel.DataSource = _tighteningDataVOs.ToList();
             };
         }
 
@@ -2526,41 +2527,72 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously
-            StoreDataToDatabase(operationDataDTO);
-
-            // 先将VOs加入到实时显示数据列表中
-            OperationDataVO dataFormatted = new();
-            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-            _tighteningDataVOs.Add(dataFormatted);
-
-            RefreshTighteningDataPanel(_tighteningDataVOs);
-            logger.Info("StoreTighteningData showing to panel end ........");
-
-            // 最后再存进本地文件
-            StoreDataToFiles(operationDataDTO);
-
-            logger.Info("StoreTighteningData end ........");
-        }
-
-        protected virtual async void StoreDataToDatabase(OperationDataDTO operationDataDTO) {
-            await Task.Run(() => {
-                logger.Info("StoreTighteningData save to database start ........");
-
+            // Use task to store data asynchronously with proper cancellation support
+            _ = Task.Run(async () => {
                 try {
-                    currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+                    // 并行执行数据库和文件存储操作，直接await异步方法
+                    await Task.WhenAll(
+                        StoreDataToDatabaseAsync(operationDataDTO),
+                        StoreDataToFilesAsync(operationDataDTO)
+                    );
+
+                    // 转换数据并更新UI（在UI线程）
+                    BeginInvoke(() => {
+                        try {
+                            OperationDataVO dataFormatted = new();
+                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+
+                            // 使用线程安全的ConcurrentBag
+                            _tighteningDataVOs.Add(dataFormatted);
+
+                            // 创建快照用于UI显示
+                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                            logger.Info("StoreTighteningData showing to panel end ........");
+                        } catch (Exception e) {
+                            logger.Error($"Error in data conversion or UI update: {e}");
+                        }
+                    });
                 } catch (Exception e) {
-                    logger.Error($"StoreTighteningData save to database error: {e}");
+                    logger.Error($"Error during data storage operations: {e}");
                 } finally {
-                    logger.Info("StoreTighteningData save to database end ........");
+                    logger.Info("StoreTighteningData end ........");
                 }
-            });
+            }, _activeMissionCts.Token);
         }
 
-        protected virtual void StoreDataToFiles(OperationDataDTO operationDataDTO) {
-            BeginInvoke(() => {
-                logger.Info("StoreDataToFiles start ........");
+        protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreTighteningData save to database start ........");
 
+            try {
+                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+            } catch (Exception e) {
+                logger.Error($"StoreTighteningData save to database error: {e}");
+                throw; // 重新抛出异常以便调用者处理
+            } finally {
+                logger.Info("StoreTighteningData save to database end ........");
+            }
+        }
+
+        protected virtual async Task StoreDataToFilesAsync(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreDataToFiles start ........");
+
+            try {
+                // 直接执行，让 BeginInvoke 处理UI线程异步性
+                // 避免多余的 Task.Run 包装，减少线程池压力
+                StoreDataToFilesCore(operationDataDTO);
+                logger.Info("StoreDataToFiles end ........");
+            } catch (Exception e) {
+                logger.Error($"StoreDataToFiles error: {e}");
+                throw; // 重新抛出异常以便调用者处理
+            }
+        }
+
+        /// <summary>
+        /// 核心文件存储逻辑（在UI线程中执行）
+        /// </summary>
+        private void StoreDataToFilesCore(OperationDataDTO operationDataDTO) {
+            // 使用BeginInvoke确保在UI线程中执行（因为涉及UI相关操作）
+            BeginInvoke(() => {
                 try {
                     OperationDataVO dataFormatted = new();
                     CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
@@ -2606,15 +2638,25 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                     finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
                 } catch (Exception e) {
-                    logger.Error($"StoreDataToFiles error: {e}");
-                } finally {
-                    logger.Info("StoreDataToFiles end ........");
+                    logger.Error($"StoreDataToFiles core error: {e}");
+                    throw; // 重新抛出到外部catch块
                 }
             });
         }
 
-        protected void RefreshTighteningDataPanel(List<OperationDataVO> vos) {
-            _tighteningDataPanel.DataSource = vos;
+        protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
+            // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
+            if (vos == null) return;
+            var snapshot = vos.ToList();
+            _tighteningDataPanel.DataSource = snapshot;
+        }
+
+        /// <summary>
+        /// 获取_tighteningDataVOs的线程安全快照
+        /// </summary>
+        /// <returns>数据快照列表</returns>
+        protected List<OperationDataVO> GetTighteningDataSnapshot() {
+            return _tighteningDataVOs.ToList();
         }
 
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
