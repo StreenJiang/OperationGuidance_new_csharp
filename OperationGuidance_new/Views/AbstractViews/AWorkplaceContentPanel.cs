@@ -3422,6 +3422,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private FunctionButton _btnUnlock;
         private CommonButton _btnPSet;
 
+        // 重试配置
+        private readonly int _maxRetryTimes = 5;
+        private readonly int _baseRetryDelayMs = 1000;
+
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         public Action? SetPset { get => _setPset; set => _setPset = value; }
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
@@ -3429,6 +3433,49 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public FunctionButton BtnLock { get => _btnLock; set => _btnLock = value; }
         public FunctionButton BtnUnlock { get => _btnUnlock; set => _btnUnlock = value; }
         public CommonButton BtnPSet { get => _btnPSet; set => _btnPSet = value; }
+
+        // 自动重试策略类
+        private class PSetRetryStrategy {
+            private readonly int _maxAttempts;
+            private readonly TimeSpan _baseDelay;
+
+            public PSetRetryStrategy(int maxAttempts = 5, TimeSpan baseDelay = default) {
+                _maxAttempts = maxAttempts;
+                _baseDelay = baseDelay == default ? TimeSpan.FromMilliseconds(1000) : baseDelay;
+            }
+
+            public async Task<bool> ExecuteAsync(
+                Func<Task<bool>> operation,
+                CancellationToken token = default) {
+                int attempt = 0;
+
+                while (attempt < _maxAttempts && !token.IsCancellationRequested) {
+                    attempt++;
+
+                    // 执行发送操作
+                    bool result = await operation();
+
+                    if (result) {
+                        return true;
+                    }
+
+                    if (attempt >= _maxAttempts) {
+                        return false;
+                    }
+
+                    // 计算延迟时间（递增延迟）
+                    TimeSpan delay = TimeSpan.FromMilliseconds(_baseDelay.TotalMilliseconds * attempt);
+
+                    try {
+                        await Task.Delay(delay, token);
+                    } catch (OperationCanceledException) {
+                        return false;
+                    }
+                }
+
+                return false;
+            }
+        }
 
         public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
                 bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
@@ -3508,28 +3555,71 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SendCommand(async toolTask => {
                     string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
                     int pset = int.Parse(parameterSet);
-                    if (await toolTask.SendPSetAsync(pset)) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
 
-                        BoltButton? boltButton = null;
-                        int workstationId = _stationComboBox.Value;
-                        if (_isMultiDeviceIndependenceMode && _currentWorkingBoltIndependence.ContainsKey(workstationId)) {
-                            boltButton = _currentWorkingBoltIndependence[workstationId];
+                    // 禁用按钮，防止重复点击
+                    _btnPSet.Enabled = false;
+
+                    try {
+                        // === 快速检查设备连接状态 ===
+                        if (!toolTask.Connected) {
+                            BeginInvoke(() => {
+                                WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
+                                    $"设备未连接，无法执行操作");
+                            });
+                            return;
+                        }
+
+                        // === 使用自动重试策略 ===
+                        PSetRetryStrategy retryStrategy = new PSetRetryStrategy(_maxRetryTimes, TimeSpan.FromMilliseconds(_baseRetryDelayMs));
+
+                        bool success = await retryStrategy.ExecuteAsync(
+                            async () => {
+                                // 执行程序号下发
+                                return await toolTask.SendPSetAsync(pset);
+                            },
+                            CancellationToken.None);
+
+                        // === 根据结果处理 ===
+                        if (success) {
+                            BeginInvoke(() => {
+                                WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！");
+
+                                // 更新螺栓状态
+                                BoltButton? boltButton = null;
+                                int workstationId = _stationComboBox.Value;
+                                if (_isMultiDeviceIndependenceMode && _currentWorkingBoltIndependence.ContainsKey(workstationId)) {
+                                    boltButton = _currentWorkingBoltIndependence[workstationId];
+                                } else {
+                                    boltButton = _currentWorkingBolt;
+                                }
+
+                                if (boltButton != null) {
+                                    boltButton.CurrentParameterSet = pset;
+                                    _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                    _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+                                    if (_setPset != null) {
+                                        _setPset();
+                                    }
+                                    // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
+                                    Dispose();
+                                }
+                            });
                         } else {
-                            boltButton = _currentWorkingBolt;
+                            // === 失败后显示错误提示（保持原有错误提示） ===
+                            BeginInvoke(() => {
+                                WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
+                                    $"已自动重试 {_maxRetryTimes} 次，可能原因：\n" +
+                                    $"1. 未给当前工具型号配置命令\n" +
+                                    $"2. 控制器未配置【程序{parameterSet}】\n" +
+                                    $"3. 工具锁定\n" +
+                                    $"4. 【控制器-虚拟站-任务】未配置为【source tightening】");
+                            });
                         }
-                        if (boltButton != null) {
-                            boltButton.CurrentParameterSet = pset;
-                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                            if (_setPset != null) {
-                                _setPset();
-                            }
-                            // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
-                            Dispose();
-                        }
-                    } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定\r\n3. 【控制器-虚拟站-任务】未配置为【source tightening】");
+                    } finally {
+                        // 恢复按钮状态
+                        BeginInvoke(() => {
+                            _btnPSet.Enabled = true;
+                        });
                     }
                 });
             };
