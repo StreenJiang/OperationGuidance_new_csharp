@@ -441,14 +441,14 @@ namespace OperationGuidance_new.Views {
         }
         private void SetPset() => SetPset(null);
         private void SetPset(string? customMsg) {
+            if (InvokeRequired) {
+                Invoke(() => SetPset(customMsg));
+                return;
+            }
             if (!string.IsNullOrEmpty(customMsg)) {
                 _pset.SetValue(0, customMsg);
             } else if (_currentWorkingBolt != null) {
-                if (_currentWorkingBolt.CurrentParameterSet != null) {
-                    _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet + "");
-                } else {
-                    _pset.SetValue(0, "未配置程序号");
-                }
+                _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet?.ToString() ?? "未配置程序号");
             } else {
                 _pset.SetValue(0, null);
             }
