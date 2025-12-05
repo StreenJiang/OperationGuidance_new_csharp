@@ -10,7 +10,7 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Tasks.AsbtractClasses;
+using OperationGuidance_new.Tasks.AbstractClasses;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
@@ -708,13 +708,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         return;
                                     }
 
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
-                                    if (!_adminConfirmed.Value) {
-                                        _adminConfirmed = null;
+                                    if (!OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false)) {
                                         return;
                                     }
-                                    _adminConfirmed = null;
 
                                     ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
                                     deviceBlock.PopUpForm = popUpForm;
@@ -2664,7 +2660,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
-            if (vos == null) return;
+            if (vos == null)
+                return;
             var snapshot = vos.ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
