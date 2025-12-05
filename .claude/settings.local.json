@@ -3,7 +3,6 @@
     "allow": [
       "Bash(tree:*)",
       "Bash(dotnet:*)",
-      "Bash(cat OperationGuidance_new/Tasks/AsbtractClasses/ATaskBase.cs)",
       "Bash(cat:*)",
       "Bash(cp:*)"
     ],

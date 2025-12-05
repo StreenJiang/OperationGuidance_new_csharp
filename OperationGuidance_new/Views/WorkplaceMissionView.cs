@@ -4,6 +4,7 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_new.Views.SubViews;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView: AWorkplaceMissionView<WorkplaceContentPanel, WorkplaceTopBar> {
