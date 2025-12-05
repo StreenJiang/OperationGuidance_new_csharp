@@ -18,7 +18,7 @@ namespace OperationGuidance_new.Views.SubViews {
         private ILog logger = MainUtils.GetLogger(typeof(ToolOperationPopUpForm));
 
         private List<WorkstationDTO> _workstationDTOs;
-        private Dictionary<int, ToolTask> _toolTasks;
+        private IDictionary<int, ToolTask> _toolTasks;
         private AWorkplaceContentPanel _workplace;
         private Action? _setPset;
         private BoltButton? _currentWorkingBolt;
@@ -48,7 +48,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
         public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
                 bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
-                List<WorkstationDTO> workstationDTOs, Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId, Action? setPset) {
+                List<WorkstationDTO> workstationDTOs, IDictionary<int, ToolTask> toolTasks, int? currentWorkstationId, Action? setPset) {
             _currentWorkingBolt = currentWorkingBolt;
             _currentWorkingBoltIndependence = currentWorkingBoltIndependence;
             _isMultiDeviceIndependenceMode = isMultiDeviceIndependenceMode;

@@ -1,6 +1,6 @@
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 
@@ -15,6 +15,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override string GetDeviceTypeName() {
             return "TOOL";
+        }
+
+        protected override string? GetDeviceName(DeviceToolDTO dto) {
+            return dto.name;
         }
 
         protected override ToolTask? CreateTaskInstance(DeviceToolDTO dto) {
@@ -42,12 +46,18 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override bool NeedsReconnectionCore(ToolTask task, DeviceToolDTO dto) {
             // 检查IP地址、端口或设备类型是否改变
+            // 防御性空检查
+            if (task.ToolType == null) return true;
+
             return task.Ip != dto.ip ||
                    task.Port != dto.port ||
                    task.ToolType.Id != dto.type;
         }
 
         protected override string GetDeviceInfoCore(ToolTask task) {
+            // 防御性空检查
+            if (task.ToolType == null) return $"{task.Ip}:{task.Port} - Unknown Tool Type";
+
             return $"{task.Ip}:{task.Port} - {task.ToolType.Name}";
         }
 
@@ -61,6 +71,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override void RemoveTaskFromCache(int deviceId) {
             MainUtils.RemoveToolTask(deviceId);
+        }
+
+        protected override void AddTaskToCache(int deviceId, ToolTask task) {
+            MainUtils.AddToolTask(deviceId, task);
         }
     }
 }

@@ -1,8 +1,8 @@
-using OperationGuidance_new.Tasks.AbstractClasses;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_new.Tasks.Abstracts;
 
-namespace OperationGuidance_new.Tasks.DeviceManagers {
+namespace OperationGuidance_new.Tasks.Interfaces {
     /// <summary>
     /// 设备管理器接口
     /// 定义设备管理的通用操作：创建、更新、删除、重连

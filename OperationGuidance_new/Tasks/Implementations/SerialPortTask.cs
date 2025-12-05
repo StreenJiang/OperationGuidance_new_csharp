@@ -1,7 +1,7 @@
 using System.Text;
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Utils;

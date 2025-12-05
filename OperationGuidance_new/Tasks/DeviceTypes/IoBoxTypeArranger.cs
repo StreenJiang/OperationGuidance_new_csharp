@@ -1,5 +1,5 @@
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 
 namespace OperationGuidance_new.Tasks.DeviceTypes {
     public class IoBoxTypeArranger: AIoBoxDevice<IoBoxArranger> {

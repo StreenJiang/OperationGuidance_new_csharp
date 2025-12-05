@@ -1,6 +1,6 @@
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
@@ -17,6 +17,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override string GetDeviceTypeName() {
             return "SERIALPORT";
+        }
+
+        protected override string? GetDeviceName(DeviceSerialPortDTO dto) {
+            return dto.name;
         }
 
         protected override SerialPortTask? CreateTaskInstance(DeviceSerialPortDTO dto) {
@@ -54,6 +58,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override bool NeedsReconnectionCore(SerialPortTask task, DeviceSerialPortDTO dto) {
             // 检查串口配置是否改变
+            // 防御性空检查
+            if (task.SerialPortType == null) return true;
+
             return task.PortName != dto.port_name ||
                    task.BaudRate != dto.baud_rate ||
                    (int) task.Parity != dto.parity ||
@@ -64,6 +71,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         }
 
         protected override string GetDeviceInfoCore(SerialPortTask task) {
+            // 防御性空检查
+            if (task.SerialPortType == null) return $"{task.PortName} - Unknown SerialPort Type";
+
             return $"{task.PortName} - {task.SerialPortType.Name}";
         }
 
@@ -77,6 +87,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override void RemoveTaskFromCache(int deviceId) {
             MainUtils.RemoveSerialPortTask(deviceId);
+        }
+
+        protected override void AddTaskToCache(int deviceId, SerialPortTask task) {
+            MainUtils.AddSerialPortTask(deviceId, task);
         }
     }
 }

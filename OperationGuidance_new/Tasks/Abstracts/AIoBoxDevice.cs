@@ -1,7 +1,7 @@
 using log4net;
 using OperationGuidance_new.Constants;
 
-namespace OperationGuidance_new.Tasks.AbstractClasses {
+namespace OperationGuidance_new.Tasks.Abstracts {
     public abstract class AIoBoxDevice<T> where T : DeviceTypeBase {
         protected ILog log;
 

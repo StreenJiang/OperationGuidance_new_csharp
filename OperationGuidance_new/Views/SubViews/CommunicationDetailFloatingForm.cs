@@ -11,7 +11,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
         private int _panelHeight;
 
-        public CommunicationDetailFloatingForm(string categoryName, Dictionary<int, CommunicationTask> armTasks, int panelHeight) {
+        public CommunicationDetailFloatingForm(string categoryName, IDictionary<int, CommunicationTask> armTasks, int panelHeight) {
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
             ContentPanel.FlowDirection = FlowDirection.TopDown;
@@ -20,7 +20,7 @@ namespace OperationGuidance_new.Views.SubViews {
             DisplayCommunicationDetails(armTasks);
         }
 
-        private void DisplayCommunicationDetails(Dictionary<int, CommunicationTask> armTasks) {
+        private void DisplayCommunicationDetails(IDictionary<int, CommunicationTask> armTasks) {
             Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
 
             foreach (KeyValuePair<int, CommunicationTask> armTask in armTasks) {

@@ -11,7 +11,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
         private int _panelHeight;
 
-        public SerialPortDetailFloatingForm(string categoryName, Dictionary<int, SerialPortTask> serialPortTasks, int panelHeight) {
+        public SerialPortDetailFloatingForm(string categoryName, IDictionary<int, SerialPortTask> serialPortTasks, int panelHeight) {
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
             ContentPanel.FlowDirection = FlowDirection.TopDown;
@@ -20,7 +20,7 @@ namespace OperationGuidance_new.Views.SubViews {
             DisplaySerialPortDetails(serialPortTasks);
         }
 
-        private void DisplaySerialPortDetails(Dictionary<int, SerialPortTask> serialPortTasks) {
+        private void DisplaySerialPortDetails(IDictionary<int, SerialPortTask> serialPortTasks) {
             Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
 
             foreach (KeyValuePair<int, SerialPortTask> serialPortTask in serialPortTasks) {

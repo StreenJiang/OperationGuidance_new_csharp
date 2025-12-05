@@ -11,7 +11,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
         private int _panelHeight;
 
-        public ToolDetailFloatingForm(string categoryName, Dictionary<int, ToolTask> toolTasks, int panelHeight) {
+        public ToolDetailFloatingForm(string categoryName, IDictionary<int, ToolTask> toolTasks, int panelHeight) {
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
             Title = "设备连接信息 - " + categoryName;
             ContentPanel.FlowDirection = FlowDirection.TopDown;
@@ -20,7 +20,7 @@ namespace OperationGuidance_new.Views.SubViews {
             DisplayToolDetails(toolTasks);
         }
 
-        private void DisplayToolDetails(Dictionary<int, ToolTask> toolTasks) {
+        private void DisplayToolDetails(IDictionary<int, ToolTask> toolTasks) {
             Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
 
             foreach (KeyValuePair<int, ToolTask> toolTask in toolTasks) {

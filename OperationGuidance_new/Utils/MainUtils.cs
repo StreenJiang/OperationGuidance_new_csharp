@@ -16,6 +16,7 @@ using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -705,139 +706,140 @@ namespace OperationGuidance_new.Utils {
             return new(strings[0].Trim(), int.Parse(strings[1].Trim()));
         }
 
-        private static Dictionary<int, ToolTask> _toolTasks = new();
-        public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
+        private static ConcurrentDictionary<int, ToolTask> _toolTasks = new();
+        public static ConcurrentDictionary<int, ToolTask> ToolTasks => _toolTasks;
         public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolId, toolName, ip, port, tool);
             task.Connect();
             if (IsAutoLockToolEnabled()) {
                 task.ForceSendLock();
             }
-            _toolTasks.Add(toolId, task);
+            _toolTasks[toolId] = task;
         }
         public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolId, toolName, ip, port, tool);
             await task.ConnectAsync();
-            _toolTasks.Add(toolId, task);
+            _toolTasks[toolId] = task;
             return task;
         }
         public static ToolTask GetToolTask(int toolId) {
-            if (_toolTasks.ContainsKey(toolId)) {
-                return _toolTasks[toolId];
+            if (_toolTasks.TryGetValue(toolId, out var task)) {
+                return task;
             }
             throw new ArgumentException($"ToolTask for toolId<{toolId}> has not been created.");
         }
         public static ToolTask? TryGetToolTask(int toolId) {
-            if (_toolTasks.ContainsKey(toolId)) {
-                return _toolTasks[toolId];
-            }
-            return null;
+            _toolTasks.TryGetValue(toolId, out var task);
+            return task;
         }
         public static void RemoveToolTask(int toolId) {
-            if (_toolTasks.ContainsKey(toolId)) {
-                _toolTasks.Remove(toolId);
-            }
+            _toolTasks.TryRemove(toolId, out _);
+        }
+        public static void AddToolTask(int toolId, ToolTask task) {
+            _toolTasks[toolId] = task;
         }
 
-        private static Dictionary<int, SerialPortTask> _serialPortTasks = new();
-        public static Dictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
+        private static ConcurrentDictionary<int, SerialPortTask> _serialPortTasks = new();
+        public static ConcurrentDictionary<int, SerialPortTask> SerialPortTasks => _serialPortTasks;
         public static void NewSerialPortTask(int serialPortId, string fullName,
                 string portName, int baudRate, Parity parity, int dataBits,
                 StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
             SerialPortTask task = new(serialPortId, fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             task.Connect();
-            _serialPortTasks.Add(serialPortId, task);
+            _serialPortTasks[serialPortId] = task;
         }
         public static async Task<SerialPortTask> NewSerialPortTaskAsync(int serialPortId, string fullName,
                 string portName, int baudRate, Parity parity, int dataBits,
                 StopBits stopBits, DataTypes dataType, DeviceTypeSerialPort serialPort) {
             SerialPortTask task = new(serialPortId, fullName, portName, baudRate, parity, dataBits, stopBits, dataType, serialPort);
             await task.ConnectAsync();
-            _serialPortTasks.Add(serialPortId, task);
+            _serialPortTasks[serialPortId] = task;
             return task;
         }
         public static SerialPortTask GetSerialPortTask(int serialPortId) {
-            if (_serialPortTasks.ContainsKey(serialPortId)) {
-                return _serialPortTasks[serialPortId];
+            if (_serialPortTasks.TryGetValue(serialPortId, out var task)) {
+                return task;
             }
             throw new ArgumentException($"SerialPortTask for serialPortId<{serialPortId}> has not been created.");
         }
         public static SerialPortTask? TryGetSerialPortTask(int serialPortId) {
-            if (_serialPortTasks.ContainsKey(serialPortId)) {
-                return _serialPortTasks[serialPortId];
-            }
-            return null;
+            _serialPortTasks.TryGetValue(serialPortId, out var task);
+            return task;
         }
         public static void RemoveSerialPortTask(int serialPortId) {
-            if (_serialPortTasks.ContainsKey(serialPortId)) {
-                _serialPortTasks.Remove(serialPortId);
-            }
+            _serialPortTasks.TryRemove(serialPortId, out _);
+        }
+        public static void AddSerialPortTask(int serialPortId, SerialPortTask task) {
+            _serialPortTasks[serialPortId] = task;
         }
 
-        private static Dictionary<int, CommunicationTask> _communicationTasks = new();
-        public static Dictionary<int, CommunicationTask> CommunicationTasks => _communicationTasks;
+        private static ConcurrentDictionary<int, CommunicationTask> _communicationTasks = new();
+        public static ConcurrentDictionary<int, CommunicationTask> CommunicationTasks => _communicationTasks;
         public static void NewCommunicationTask(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
             CommunicationTask task = new(communicationId, communicationName, ip, port, communication);
             task.Connect();
-            _communicationTasks.Add(communicationId, task);
+            _communicationTasks[communicationId] = task;
         }
         public static async Task<CommunicationTask> NewCommunicationTaskAsync(int communicationId, string? communicationName, string ip, int port, DeviceTypeCommunication communication) {
             CommunicationTask task = new(communicationId, communicationName, ip, port, communication);
             await task.ConnectAsync();
-            _communicationTasks.Add(communicationId, task);
+            _communicationTasks[communicationId] = task;
             return task;
         }
         public static CommunicationTask GetCommunicationTask(int communicationId) {
-            if (_communicationTasks.ContainsKey(communicationId)) {
-                return _communicationTasks[communicationId];
+            if (_communicationTasks.TryGetValue(communicationId, out var task)) {
+                return task;
             }
             throw new ArgumentException($"CommunicationTask for communicationId<{communicationId}> has not been created.");
         }
         public static CommunicationTask? TryGetCommunicationTask(int communicationId) {
-            if (_communicationTasks.ContainsKey(communicationId)) {
-                return _communicationTasks[communicationId];
-            }
-            return null;
+            _communicationTasks.TryGetValue(communicationId, out var task);
+            return task;
         }
         public static void RemoveCommunicationTask(int communicationId) {
-            if (_communicationTasks.ContainsKey(communicationId)) {
-                _communicationTasks.Remove(communicationId);
-            }
+            _communicationTasks.TryRemove(communicationId, out _);
+        }
+        public static void AddCommunicationTask(int communicationId, CommunicationTask task) {
+            _communicationTasks[communicationId] = task;
         }
 
-        private static Dictionary<string, IoBoxTask> _ioBoxTasks = new();
-        public static Dictionary<string, IoBoxTask> IoBoxTasks => _ioBoxTasks;
+        private static ConcurrentDictionary<string, IoBoxTask> _ioBoxTasks = new();
+        public static ConcurrentDictionary<string, IoBoxTask> IoBoxTasks => _ioBoxTasks;
         public static IoBoxTask NewIoBoxTask(string ip, int port) {
             IoBoxTask task = new(ip, port);
             task.Connect();
-            _ioBoxTasks.Add(GetTCPClientKey(ip, port), task);
+            _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
             return task;
         }
         public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port) {
             IoBoxTask task = new(ip, port);
             await task.ConnectAsync();
-            _ioBoxTasks.Add(GetTCPClientKey(ip, port), task);
+            _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
             return task;
         }
         public static IoBoxTask GetIoBoxTask(string ip, int port) => GetIoBoxTask(GetTCPClientKey(ip, port));
         public static IoBoxTask GetIoBoxTask(string key) {
-            if (_ioBoxTasks.ContainsKey(key)) {
-                return _ioBoxTasks[key];
+            if (_ioBoxTasks.TryGetValue(key, out var task)) {
+                return task;
             }
             throw new ArgumentException($"IoBoxTask for key<{key}> has not been created.");
         }
         public static IoBoxTask? TryGetIoBoxTask(string ip, int port) => TryGetIoBoxTask(GetTCPClientKey(ip, port));
         public static IoBoxTask? TryGetIoBoxTask(string key) {
-            if (_ioBoxTasks.ContainsKey(key)) {
-                return _ioBoxTasks[key];
-            }
-            return null;
+            _ioBoxTasks.TryGetValue(key, out var task);
+            return task;
         }
         public static void RemoveIoBoxTask(string key) {
-            _ioBoxTasks.Remove(key);
+            _ioBoxTasks.TryRemove(key, out _);
         }
         public static void RemoveIoBoxTask(string ip, int port) {
-            _ioBoxTasks.Remove(GetTCPClientKey(ip, port));
+            _ioBoxTasks.TryRemove(GetTCPClientKey(ip, port), out _);
+        }
+        public static void AddIoBoxTask(string ip, int port, IoBoxTask task) {
+            _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
+        }
+        public static void AddIoBoxTask(string key, IoBoxTask task) {
+            _ioBoxTasks[key] = task;
         }
 
         public static List<string> LogCache { get; } = new();

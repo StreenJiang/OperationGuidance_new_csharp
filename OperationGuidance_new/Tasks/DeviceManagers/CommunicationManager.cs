@@ -1,6 +1,6 @@
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 
@@ -15,6 +15,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override string GetDeviceTypeName() {
             return "COMMUNICATION";
+        }
+
+        protected override string? GetDeviceName(DeviceCommunicationDTO dto) {
+            return dto.name;
         }
 
         protected override CommunicationTask? CreateTaskInstance(DeviceCommunicationDTO dto) {
@@ -42,12 +46,18 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override bool NeedsReconnectionCore(CommunicationTask task, DeviceCommunicationDTO dto) {
             // 检查IP地址、端口或设备类型是否改变
+            // 防御性空检查
+            if (task.CommunicationType == null) return true;
+
             return task.Ip != dto.ip ||
                    task.Port != dto.port ||
                    task.CommunicationType.Id != dto.type;
         }
 
         protected override string GetDeviceInfoCore(CommunicationTask task) {
+            // 防御性空检查
+            if (task.CommunicationType == null) return $"{task.Ip}:{task.Port} - Unknown Communication Type";
+
             return $"{task.Ip}:{task.Port} - {task.CommunicationType.Name}";
         }
 
@@ -61,6 +71,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         protected override void RemoveTaskFromCache(int deviceId) {
             MainUtils.RemoveCommunicationTask(deviceId);
+        }
+
+        protected override void AddTaskToCache(int deviceId, CommunicationTask task) {
+            MainUtils.AddCommunicationTask(deviceId, task);
         }
     }
 }

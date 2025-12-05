@@ -1,6 +1,6 @@
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AbstractClasses;
+using OperationGuidance_new.Tasks.Abstracts;
 using OperationGuidance_new.Utils;
 using System.Net;
 using System.Net.Sockets;
