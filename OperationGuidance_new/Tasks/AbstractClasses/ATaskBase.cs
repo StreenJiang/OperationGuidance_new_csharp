@@ -1,4 +1,4 @@
-namespace OperationGuidance_new.Tasks.AsbtractClasses {
+namespace OperationGuidance_new.Tasks.AbstractClasses {
     public abstract class ATaskBase {
         #region Readonly fields
         private int _deviceId;
