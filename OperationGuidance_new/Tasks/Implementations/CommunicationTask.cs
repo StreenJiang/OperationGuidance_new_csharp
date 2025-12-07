@@ -59,77 +59,87 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
-        protected override void RunTask() {
-            Task.Run(async () => {
-                try {
-                    while (Connected) {
-                        // If is ModBus server
-                        if (_modBusServer != null) {
-                            // Check if any command
-                            if (ModBusCommand.Count <= 0) {
-                                if (_reading) {
-                                    ReadResponse.SourceData = SendCommandToModBusServer(ReadRequest);
+        protected override async Task RunTaskAsync(CancellationToken cancellationToken = default) {
+            try {
+                while (!cancellationToken.IsCancellationRequested && Connected) {
+                    // If is ModBus server
+                    if (_modBusServer != null) {
+                        // Check if any command
+                        if (ModBusCommand.Count <= 0) {
+                            if (_reading) {
+                                ReadResponse.SourceData = SendCommandToModBusServer(ReadRequest);
 
-                                    byte[] bytes = ReadResponse.MessageData.Skip(ReadResponse.LengthOfSymbols).ToArray();
-                                    _modBusServer.LoadData(bytes);
-                                }
-                            } else {
-                                AModBusMessage req = ModBusCommand.Dequeue();
-                                Result.Enqueue(SendCommandToModBusServer(req));
+                                byte[] bytes = ReadResponse.MessageData.Skip(ReadResponse.LengthOfSymbols).ToArray();
+                                _modBusServer.LoadData(bytes);
                             }
+                        } else {
+                            AModBusMessage req = ModBusCommand.Dequeue();
+                            Result.Enqueue(SendCommandToModBusServer(req));
                         }
-                        // If is plc
-                        else if (_plcServer != null) {
-                            // No need to have this, will use specific methods from specific server
-                            // if (_reading) {
-                            //     _plcServer.ReadBytes();
-                            // }
-                        }
+                    }
+                    // If is plc
+                    else if (_plcServer != null) {
+                        // No need to have this, will use specific methods from specific server
+                        // if (_reading) {
+                        //     _plcServer.ReadBytes();
+                        // }
+                    }
 
-                        await Task.Delay(KeepAliveDelay);
-                    }
-                } catch (Exception e) {
-                    logger.Warn($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
-                } finally {
-                    logger.Info($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
-                    if (socketClient != null) {
-                        socketClient.Close();
-                        socketClient = null;
-                    }
-                    if (CloseConnectionManually) {
-                        logger.Info($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
-                    }
+                    await Task.Delay(KeepAliveDelay, cancellationToken);
                 }
-            });
-        }
-        public override async void Connect() {
-            while (!Connected && !CloseConnectionManually) {
-                Status = CONNECTING;
-                if (ConnectToServer()) {
-                    RunTask();
-                    Status = CONNECTED;
-                    break;
-                }
-                await Task.Delay(AutoReconnectingTrialDelay);
-            }
-        }
-        public override Task ConnectAsync() => Task.Run(() => Connect());
-        public override void CloseConnection() {
-            logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
-            if (Connected) {
+            } catch (OperationCanceledException) {
+                logger.Info($"Task execution cancelled for COMMUNICATION[{_device_name} - {_ip}: {_port}]");
+            } catch (Exception e) {
+                logger.Warn($"Error while running task for connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]>: {e}");
+            } finally {
+                logger.Info($"Disconnected to COMMUNICATION[{_device_name} - {_ip}: {_port}]");
                 if (socketClient != null) {
                     socketClient.Close();
+                    socketClient = null;
+                }
+                if (CloseConnectionManually) {
+                    logger.Info($"Socket connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                 }
             }
-            CloseConnectionManually = true;
-            ModBusCommand.Clear();
-            Result.Clear();
         }
+
+        public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
+            return await ConnectWithRetryAsync(async (ct) => {
+                if (ConnectToServer(ct)) {
+                    // Start the task loop
+                    _ = Task.Run(async () => {
+                        await RunTaskAsync(cancellationToken);
+                    }, cancellationToken);
+
+                    Status = CONNECTED;
+                    return true;
+                }
+                return false;
+            }, cancellationToken: cancellationToken);
+        }
+
+        public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
+            await Task.Run(() => {
+                logger.Info($"Close connection<COMMUNICATION[{_device_name} - {_ip}: {_port}]> manually...");
+                if (Connected) {
+                    if (socketClient != null) {
+                        socketClient.Close();
+                    }
+                }
+                CloseConnectionManually = true;
+                ModBusCommand.Clear();
+                Result.Clear();
+            }, cancellationToken);
+        }
+
         public override bool WorkplaceCheckConnection() => Connected;
+        public override async Task<bool> WorkplaceCheckConnectionAsync(CancellationToken cancellationToken = default) {
+            return await Task.FromResult(Connected);
+        }
         #endregion
 
         #region Methods
-        private bool ConnectToServer() {
+        private bool ConnectToServer(CancellationToken cancellationToken = default) {
             if (Connected) {
                 logger.Warn($"Already connecting to COMMUNICATION[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
