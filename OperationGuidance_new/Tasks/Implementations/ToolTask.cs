@@ -286,7 +286,9 @@ namespace OperationGuidance_new.Tasks {
             if (!_commands.Contains(command)) {
                 // Enqueue to avoid duplicated calls
                 _commands.Enqueue(command);
+            }
 
+            try {
                 // Reset heart beat counter
                 HeartBeatCounter = 0;
 
@@ -299,6 +301,8 @@ namespace OperationGuidance_new.Tasks {
 
                 // Dequeue to allow new command to enqueue
                 _commands.Dequeue();
+            } catch (Exception ex) {
+                logger.Error($"Error while sending command to TOOL[{_device_name} - {_ip}: {_port}]", ex);
             }
         }
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
