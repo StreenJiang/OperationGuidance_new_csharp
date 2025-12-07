@@ -36,6 +36,17 @@ namespace OperationGuidance_new.Tasks.Initializers {
 
         private static int _loopCounter = 0;
 
+        /// <summary>
+        /// 等待任务完成，带超时功能
+        /// </summary>
+        private static async Task<bool> WaitForTasksWithTimeout(IEnumerable<Task> tasks, TimeSpan timeout) {
+            var taskList = tasks.ToList();
+            var delayTask = Task.Delay(timeout);
+            var whenAllTask = Task.WhenAll(taskList);
+            var completedTask = await Task.WhenAny(whenAllTask, delayTask);
+            return completedTask == whenAllTask && whenAllTask.Status == TaskStatus.RanToCompletion;
+        }
+
         private static async Task TaskCheckingLoopAsync() {
             while (true) {
                 try {
@@ -65,42 +76,60 @@ namespace OperationGuidance_new.Tasks.Initializers {
                         }
                     }
 
-                    // 并行同步所有设备类型
-                    await Task.WhenAll(
-                        // Tool设备
-                        Task.Run(async () => {
+                    // 并行同步所有设备类型（添加超时和异常处理）
+                    var syncTasks = new List<Task>();
+
+                    // Tool设备
+                    syncTasks.Add(Task.Run(async () => {
+                        try {
                             var toolDTOs = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceToolDTOs
                                 .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                             await _toolManager.SynchronizeDevicesAsync(toolDTOs, toolMaps);
-                        }),
+                        } catch (Exception ex) {
+                            MainUtils.Error(logger, $"同步Tool设备失败: {ex.Message}");
+                        }
+                    }));
 
-                        // Communication设备
-                        Task.Run(async () => {
+                    // Communication设备
+                    syncTasks.Add(Task.Run(async () => {
+                        try {
                             var communicationDTOs = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceCommunicationDTOs
                                 .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                             await _communicationManager.SynchronizeDevicesAsync(communicationDTOs, communicationMaps);
-                        }),
+                        } catch (Exception ex) {
+                            MainUtils.Error(logger, $"同步Communication设备失败: {ex.Message}");
+                        }
+                    }));
 
-                        // SerialPort设备
-                        Task.Run(async () => {
+                    // SerialPort设备
+                    syncTasks.Add(Task.Run(async () => {
+                        try {
                             var serialPortDTOs = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceSerialPortDTOs
                                 .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
                             await _serialPortManager.SynchronizeDevicesAsync(serialPortDTOs, serialPortMaps);
-                        }),
+                        } catch (Exception ex) {
+                            MainUtils.Error(logger, $"同步SerialPort设备失败: {ex.Message}");
+                        }
+                    }));
 
-                        // IoBox和Arm设备（使用IoBoxManager）
-                        Task.Run(async () => {
-                            try {
-                                var ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs
-                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                                var armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs
-                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                                await _ioBoxManager.SynchronizeDevicesAsync(ioBoxDTOs, armDTOs, ioMaps, armMaps);
-                            } catch (Exception ex) {
-                                MainUtils.Error(logger, $"同步IoBox/Arm设备失败: {ex.Message}");
-                            }
-                        })
-                    );
+                    // IoBox和Arm设备（使用IoBoxManager）
+                    syncTasks.Add(Task.Run(async () => {
+                        try {
+                            var ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                            var armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                            await _ioBoxManager.SynchronizeDevicesAsync(ioBoxDTOs, armDTOs, ioMaps, armMaps);
+                        } catch (Exception ex) {
+                            MainUtils.Error(logger, $"同步IoBox/Arm设备失败: {ex.Message}");
+                        }
+                    }));
+
+                    // 使用Task.WhenAll等待所有任务完成，并设置60秒超时
+                    bool allCompleted = await WaitForTasksWithTimeout(syncTasks, TimeSpan.FromSeconds(60));
+                    if (!allCompleted) {
+                        MainUtils.Error(logger, $"设备同步超时（60秒），某些设备可能无法响应");
+                    }
 
                     var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
                     MainUtils.Info(logger, $"[Loop #{_loopCounter}] Device synchronization cycle completed in {elapsed:F0}ms", false);

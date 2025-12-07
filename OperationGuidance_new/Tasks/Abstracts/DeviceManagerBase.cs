@@ -1,9 +1,7 @@
 using log4net;
-using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.Interfaces;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.AbstractClasses;
-using OperationGuidance_service.Models.DTOs;
 using System.Collections.Concurrent;
 
 namespace OperationGuidance_new.Tasks.Abstracts {
@@ -13,7 +11,7 @@ namespace OperationGuidance_new.Tasks.Abstracts {
     /// </summary>
     /// <typeparam name="TDto">设备DTO类型</typeparam>
     /// <typeparam name="TTask">设备任务类型</typeparam>
-    public abstract class DeviceManagerBase<TDto, TTask> : IDeviceManager<TDto, TTask>
+    public abstract class DeviceManagerBase<TDto, TTask>: IDeviceManager<TDto, TTask>
         where TDto : ADTOBase
         where TTask : ATaskBase {
 
@@ -100,17 +98,6 @@ namespace OperationGuidance_new.Tasks.Abstracts {
         }
 
         public virtual TTask? CreateOrUpdateDevice(TDto dto, int? workstationId = null) {
-            // 参数验证
-            if (dto == null) {
-                MainUtils.Error(Logger, "设备DTO不能为null");
-                return null;
-            }
-
-            if (dto.id <= 0) {
-                MainUtils.Warn(Logger, $"设备ID无效: {dto.id}");
-                return null;
-            }
-
             // 获取或创建设备特定的锁，确保同一设备不会被并发处理
             var deviceLock = _deviceLocks.GetOrAdd(dto.id, _ => new object());
 
@@ -324,7 +311,8 @@ namespace OperationGuidance_new.Tasks.Abstracts {
                 return processedCount;
             } catch (Exception ex) {
                 MainUtils.Error(Logger, $"同步 {GetDeviceTypeName()} 设备时出错: {ex.Message}");
-                throw;
+                // 返回0而不是抛出异常，避免阻塞主循环
+                return 0;
             }
         }
 

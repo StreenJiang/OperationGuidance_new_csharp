@@ -40,28 +40,41 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 var tasks = new List<Task>();
 
                 // 处理IoBox设备
-                tasks.Add(Task.Run(() => {
-                    foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                        int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
-                        CreateOrUpdateIoBoxDevice(dto, workstationId);
+                tasks.Add(Task.Run(async () => {
+                    try {
+                        foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
+                            int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
+                            CreateOrUpdateIoBoxDevice(dto, workstationId);
+                        }
+                    } catch (Exception ex) {
+                        MainUtils.Error(_logger, $"处理IoBox设备时出错: {ex.Message}");
                     }
                 }));
 
                 // 处理Arm设备
-                tasks.Add(Task.Run(() => {
-                    foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                        int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
-                        CreateOrUpdateArmDevice(dto, workstationId);
+                tasks.Add(Task.Run(async () => {
+                    try {
+                        foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
+                            int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
+                            CreateOrUpdateArmDevice(dto, workstationId);
+                        }
+                    } catch (Exception ex) {
+                        MainUtils.Error(_logger, $"处理Arm设备时出错: {ex.Message}");
                     }
                 }));
 
-                await Task.WhenAll(tasks);
+                // 等待所有任务完成，设置30秒超时避免无限等待
+                bool allCompleted = await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(30))) == tasks[0];
+                if (!allCompleted) {
+                    MainUtils.Warn(_logger, "IoBox和Arm设备同步超时（30秒）");
+                }
 
                 MainUtils.Info(_logger, "IoBox和Arm设备同步完成", false);
                 return _tasks.Count;
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"同步IoBox和Arm设备时出错: {ex.Message}");
-                throw;
+                // 返回当前任务数量，不抛出异常以避免阻塞主循环
+                return _tasks.Count;
             }
         }
 
