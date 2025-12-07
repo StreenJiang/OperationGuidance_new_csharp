@@ -21,82 +21,83 @@ namespace OperationGuidance_new.Tasks.Initializers {
         private static readonly CommunicationManager _communicationManager = new();
         private static readonly SerialPortManager _serialPortManager = new();
 
+        private static readonly object _initLock = new object();
         public static bool Started { get; set; } = false;
 
         public static void Init() {
-            if (!Started) {
-                Started = true;
-                TaskCheckingLoop();
+            lock (_initLock) {
+                if (!Started) {
+                    Started = true;
+                    _ = Task.Run(async () => await TaskCheckingLoopAsync());
+                }
             }
         }
 
-        private static async void TaskCheckingLoop() {
-            await Task.Run(async () => {
-                while (true) {
-                    try {
-                        MainUtils.Info(logger, "Starting device synchronization cycle...", false);
+        private static async Task TaskCheckingLoopAsync() {
+            while (true) {
+                try {
+                    MainUtils.Info(logger, "Starting device synchronization cycle...", false);
 
-                        // Query all workstations for devices configuration
-                        Dictionary<int, int> toolMaps = new();
-                        Dictionary<int, int> armMaps = new();
-                        Dictionary<int, int> communicationMaps = new();
-                        Dictionary<int, int> serialPortMaps = new();
-                        List<WorkstationDTO> workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-                        foreach (WorkstationDTO workstation in workstations) {
-                            if (workstation.tool_id != null) {
-                                toolMaps.Add(workstation.tool_id.Value, workstation.id);
-                            }
-                            if (workstation.arm_id != null) {
-                                armMaps.Add(workstation.arm_id.Value, workstation.id);
-                            }
-                            if (workstation.communication_id != null) {
-                                communicationMaps.Add(workstation.communication_id.Value, workstation.id);
-                            }
-                            if (workstation.serial_port_id != null) {
-                                serialPortMaps.Add(workstation.serial_port_id.Value, workstation.id);
-                            }
+                    // Query all workstations for devices configuration
+                    Dictionary<int, int> toolMaps = new();
+                    Dictionary<int, int> armMaps = new();
+                    Dictionary<int, int> communicationMaps = new();
+                    Dictionary<int, int> serialPortMaps = new();
+                    List<WorkstationDTO> workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
+                    foreach (WorkstationDTO workstation in workstations) {
+                        if (workstation.tool_id != null) {
+                            toolMaps.Add(workstation.tool_id.Value, workstation.id);
                         }
-
-                        // 并行同步所有设备类型
-                        await Task.WhenAll(
-                            // Tool设备
-                            Task.Run(async () => {
-                                var toolDTOs = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceToolDTOs
-                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                                await _toolManager.SynchronizeDevicesAsync(toolDTOs, toolMaps);
-                            }),
-
-                            // Communication设备
-                            Task.Run(async () => {
-                                var communicationDTOs = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceCommunicationDTOs
-                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                                await _communicationManager.SynchronizeDevicesAsync(communicationDTOs, communicationMaps);
-                            }),
-
-                            // SerialPort设备
-                            Task.Run(async () => {
-                                var serialPortDTOs = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceSerialPortDTOs
-                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
-                                await _serialPortManager.SynchronizeDevicesAsync(serialPortDTOs, serialPortMaps);
-                            }),
-
-                            // IoBox和Arm设备（仍使用旧逻辑，因为逻辑不同）
-                            Task.Run(async () => {
-                                await SynchronizeIoBoxAndArmDevicesAsync();
-                            })
-                        );
-
-                        MainUtils.Info(logger, "Device synchronization cycle completed", false);
-
-                        // Delay in task looping
-                        await Task.Delay(LoopingDelay);
-                    } catch (Exception ex) {
-                        MainUtils.Error(logger, $"Error in task checking loop: {ex.Message}", false);
-                        // 发生错误时等待一段时间再继续
-                        await Task.Delay(LoopingDelay);
+                        if (workstation.arm_id != null) {
+                            armMaps.Add(workstation.arm_id.Value, workstation.id);
+                        }
+                        if (workstation.communication_id != null) {
+                            communicationMaps.Add(workstation.communication_id.Value, workstation.id);
+                        }
+                        if (workstation.serial_port_id != null) {
+                            serialPortMaps.Add(workstation.serial_port_id.Value, workstation.id);
+                        }
                     }
+
+                    // 并行同步所有设备类型
+                    await Task.WhenAll(
+                        // Tool设备
+                        Task.Run(async () => {
+                            var toolDTOs = apis.QueryDeviceToolList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceToolDTOs
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                            await _toolManager.SynchronizeDevicesAsync(toolDTOs, toolMaps);
+                        }),
+
+                        // Communication设备
+                        Task.Run(async () => {
+                            var communicationDTOs = apis.QueryDeviceCommunicationList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceCommunicationDTOs
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                            await _communicationManager.SynchronizeDevicesAsync(communicationDTOs, communicationMaps);
+                        }),
+
+                        // SerialPort设备
+                        Task.Run(async () => {
+                            var serialPortDTOs = apis.QueryDeviceSerialPortList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceSerialPortDTOs
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                            await _serialPortManager.SynchronizeDevicesAsync(serialPortDTOs, serialPortMaps);
+                        }),
+
+                        // IoBox和Arm设备（仍使用旧逻辑，因为逻辑不同）
+                        Task.Run(async () => {
+                            await SynchronizeIoBoxAndArmDevicesAsync();
+                        })
+                    );
+
+                    MainUtils.Info(logger, "Device synchronization cycle completed", false);
+
+                    // Delay in task looping
+                    await Task.Delay(LoopingDelay);
+                } catch (Exception ex) {
+                    MainUtils.Error(logger, $"Error in task checking loop: {ex.Message}", false);
+                    // 发生错误时等待一段时间再继续
+                    await Task.Delay(LoopingDelay);
                 }
-            });
+            }
         }
 
         /// <summary>
