@@ -161,22 +161,15 @@ namespace OperationGuidance_new.Tasks {
                 return false;
             }
 
-            logger.Info($"[IOBOX] Starting connection process - IP: {_ip}, Port: {_port}");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
-            // 1. check ping
-            logger.Debug($"[IOBOX] Step 1/2: Pinging {_ip}...");
             pingSuccess = MainUtils.PingHost(_ip);
             if (!pingSuccess) {
-                logger.Warn($"[IOBOX] Failed to ping {_ip} - device may be offline");
                 return false;
             }
-            logger.Debug($"[IOBOX] Ping successful for {_ip}");
 
             if (pingSuccess) {
-                // 2. check socket
-                logger.Debug($"[IOBOX] Step 2/2: Establishing socket connection...");
                 try {
                     // Check for cancellation before creating socket
                     cancellationToken.ThrowIfCancellationRequested();
@@ -191,7 +184,6 @@ namespace OperationGuidance_new.Tasks {
 
                     if (completedTask == timeoutTask) {
                         // Timeout occurred
-                        logger.Warn($"[IOBOX] Connection timeout after 5000ms to {_ip}:{_port}");
                         socketClient.Close();
                         socketClient = null;
                         return false;
@@ -201,16 +193,13 @@ namespace OperationGuidance_new.Tasks {
                     cancellationToken.ThrowIfCancellationRequested();
 
                     connectSuccess = true;
-                    logger.Info($"[IOBOX] Successfully connected to {_ip}:{_port}");
                 } catch (OperationCanceledException) {
-                    logger.Info($"[IOBOX] Connection cancelled for {_ip}:{_port}");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
                     }
                     throw; // Re-throw to let ConnectWithRetryAsync handle it
                 } catch (Exception e) {
-                    logger.Warn($"[IOBOX] Socket connection failed for {_ip}:{_port}: {e.Message}");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;

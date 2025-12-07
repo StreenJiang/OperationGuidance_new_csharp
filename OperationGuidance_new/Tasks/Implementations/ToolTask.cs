@@ -85,7 +85,7 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }
                     } catch (SocketException se) {
-                        if (se.ErrorCode == (int)SocketError.TimedOut) {
+                        if (se.ErrorCode == (int) SocketError.TimedOut) {
                             HeartBeatCounter += ReceiveTimeout;
                             Console.WriteLine($"No data received... ");
                         } else {

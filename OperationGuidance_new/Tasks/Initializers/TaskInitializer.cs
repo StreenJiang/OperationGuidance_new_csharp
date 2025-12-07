@@ -8,7 +8,6 @@ using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using RJCP.IO.Ports;
 
 namespace OperationGuidance_new.Tasks.Initializers {
     public static class TaskInitializer {
@@ -150,7 +149,8 @@ namespace OperationGuidance_new.Tasks.Initializers {
             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
             DeviceTypeIoBox? deviceIoBox = DeviceType_IoBox.GetById(dto.type);
 
-            if (deviceIoBox == null) return;
+            if (deviceIoBox == null)
+                return;
 
             IoBoxTask? ioBoxTask = MainUtils.TryGetIoBoxTask(key);
 
@@ -158,10 +158,9 @@ namespace OperationGuidance_new.Tasks.Initializers {
             if (ioBoxTask == null) {
                 // 获取设备名称
                 string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-                MainUtils.Info(logger, $"正在连接 ioBox[{dto.ip}:{dto.port}] {deviceDisplayName}...");
                 ioBoxTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
 
-                // 显示连接状态日志给UI
+                // 显示连接状态日志给UI（后台执行）
                 _ = Task.Run(async () => {
                     try {
                         // 等待连接完成或超时
@@ -180,8 +179,8 @@ namespace OperationGuidance_new.Tasks.Initializers {
                 // Reconnect if disconnected
                 // 获取设备名称
                 string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-                MainUtils.Info(logger, $"正在重连 ioBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
-                Reconnect(ioBoxTask, $"ioBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
+                MainUtils.Info(logger, $"正在重连 ioBox[{dto.ip}:{dto.port}] {deviceDisplayName}", false);
+                await ReconnectAsync(ioBoxTask, $"ioBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
             }
 
             // Initialize device type handlers
@@ -216,17 +215,19 @@ namespace OperationGuidance_new.Tasks.Initializers {
             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
             DeviceTypeArm? deviceArm = DeviceType_Arm.GetById(dto.type);
 
-            if (deviceArm == null) return;
+            if (deviceArm == null)
+                return;
 
             IoBoxTask? armTask = MainUtils.TryGetIoBoxTask(key);
 
             // Create new task if not exists
             if (armTask == null) {
-                MainUtils.Info(logger, $"Connecting to arm[{dto.ip}:{dto.port}]...");
+                MainUtils.Info(logger, $"Connecting to arm[{dto.ip}:{dto.port}]...", false);
                 armTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
             } else if (!armTask.Connected && armTask.Status != ATaskBase.CONNECTING) {
                 // Reconnect if disconnected
-                Reconnect(armTask, $"arm[{dto.ip}:{dto.port}]");
+                MainUtils.Info(logger, $"正在重连 arm[{dto.ip}:{dto.port}]", false);
+                await ReconnectAsync(armTask, $"arm[{dto.ip}:{dto.port}]");
             }
 
             // Initialize arm type handler
@@ -242,11 +243,11 @@ namespace OperationGuidance_new.Tasks.Initializers {
         /// <param name="deviceInfo">设备信息</param>
         private static async Task ReconnectAsync(ATaskBase task, string deviceInfo) {
             try {
-                MainUtils.Warn(logger, $"Disconnected to {deviceInfo}, trying to reconnect...");
+                MainUtils.Warn(logger, $"Disconnected to {deviceInfo}, trying to reconnect...", false);
                 await task.ConnectAsync();
-                MainUtils.Info(logger, $"Reconnected to {deviceInfo}");
+                MainUtils.Info(logger, $"Reconnected to {deviceInfo}", false);
             } catch (Exception ex) {
-                MainUtils.Error(logger, $"Failed to reconnect to {deviceInfo}: {ex.Message}");
+                MainUtils.Error(logger, $"Failed to reconnect to {deviceInfo}: {ex.Message}", false);
             }
         }
 

@@ -192,7 +192,7 @@ namespace OperationGuidance_new.Tasks.Abstracts {
                     string deviceInfo = GetDeviceInfoCore(task);
                     // 获取设备显示名称
                     string deviceDisplayName = GetDeviceDisplayName(dto);
-                    MainUtils.Info(Logger, $"正在重连 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {deviceInfo}");
+                    MainUtils.Info(Logger, $"正在重连 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {deviceInfo}", false);
                     _ = Task.Run(async () => {
                         await ReconnectAsync(task, deviceInfo);
                     });
