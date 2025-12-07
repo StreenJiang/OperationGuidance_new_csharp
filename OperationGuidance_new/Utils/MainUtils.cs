@@ -871,7 +871,8 @@ namespace OperationGuidance_new.Utils {
                     Warn(logger, $"未知的设备类型ID: {deviceTypeId}，IoBoxTask将不会被初始化设备类型", false);
                 }
             } catch (Exception ex) {
-                Warn(logger, $"初始化设备类型失败 (deviceTypeId={deviceTypeId}): {ex.Message}", false);
+                // 确保设备类型初始化失败时任务创建也失败，而不是创建带有null ArmType的损坏任务
+                throw new InvalidOperationException($"初始化设备类型失败 (deviceTypeId={deviceTypeId}): {ex.Message}", ex);
             }
         }
 

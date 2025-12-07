@@ -111,7 +111,7 @@ namespace OperationGuidance_new.Tasks.Abstracts {
                         string deviceDisplayName = GetDeviceDisplayName(dto);
 
                         // 创建新设备
-                        MainUtils.Info(Logger, $"正在创建新设备: {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
+                        MainUtils.Info(Logger, $"正在创建新设备: {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...", false);
                         task = CreateTaskInstance(dto);
 
                         if (task != null) {
