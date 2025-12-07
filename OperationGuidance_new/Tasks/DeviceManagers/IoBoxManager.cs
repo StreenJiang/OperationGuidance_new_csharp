@@ -35,10 +35,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 var activeArmCount = armDtos.Count(d => d.deleted == (int) YesOrNo.NO);
                 MainUtils.Info(_logger, $"正在同步IoBox和Arm设备... IoBox: {activeIoBoxCount}个, Arm: {activeArmCount}个", false);
 
-                // 1. 移除已删除的设备
-                RemoveDeletedDevices(ioBoxDtos, armDtos);
-
-                // 2. 创建/更新活跃设备 - 使用真正的异步操作
+                // 步骤1：创建/更新活跃设备 - 先处理IoBox和Arm设备
+                // 这样可以避免配置变更的设备被误删
                 var ioBoxTask = Task.Run(async () => {
                     try {
                         MainUtils.Info(_logger, $"开始处理 {activeIoBoxCount} 个IoBox设备...", false);
@@ -80,6 +78,12 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 } else {
                     MainUtils.Info(_logger, "IoBox和Arm设备同步在超时前完成", false);
                 }
+
+                // 步骤3：移除真正删除的设备（基于设备ID匹配）
+                // 在处理完所有活跃设备后执行，避免误删配置变更的设备
+                MainUtils.Info(_logger, "正在清理已删除的设备...", false);
+                RemoveDeletedDevices(ioBoxDtos, armDtos);
+
                 return _tasks.Count;
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"同步IoBox和Arm设备时出错: {ex.Message}");
@@ -103,7 +107,13 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 // 检查是否需要重新连接（IP地址、端口或设备类型改变）
                 if (NeedsReconnection(task, dto)) {
                     string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-                    MainUtils.Info(_logger, $"IoBox配置已更改，正在重新创建 {dto.ip}:{dto.port} {deviceDisplayName}...");
+                    string oldKey = MainUtils.GetTCPClientKey(task.Ip, task.Port);
+                    string newKey = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+
+                    MainUtils.Info(_logger, $"IoBox配置已更改，正在重新创建: {oldKey} -> {newKey} {deviceDisplayName}...");
+
+                    // 重要：先从缓存中移除旧任务，再清理
+                    _tasks.TryRemove(oldKey, out _);
                     CleanupTask(task);
 
                     // 移除阻塞性Thread.Sleep，直接重新创建设备
@@ -114,8 +124,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                         }
                         var newTask = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, dto.id);
                         if (newTask != null) {
-                            string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
-                            AddTaskToCache(key, newTask);
+                            AddTaskToCache(newKey, newTask);
                             MainUtils.Info(_logger, $"成功重新创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName}");
                             if (workstationId.HasValue) {
                                 newTask.WorkstationId = workstationId.Value;
@@ -211,7 +220,38 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     task.WorkstationId = workstationId.Value;
                 }
 
-                // 检查是否需要重连
+                // 检查是否需要重新连接（IP地址、端口或设备类型改变）
+                if (NeedsReconnection(task, dto)) {
+                    string oldKey = MainUtils.GetTCPClientKey(task.Ip, task.Port);
+                    string newKey = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+
+                    MainUtils.Info(_logger, $"Arm配置已更改，正在重新创建: {oldKey} -> {newKey}...");
+
+                    // 重要：先从缓存中移除旧任务，再清理
+                    _tasks.TryRemove(oldKey, out _);
+                    CleanupTask(task);
+
+                    // 移除阻塞性Thread.Sleep，直接重新创建设备
+                    // 延迟重新创建逻辑移到后台异步执行
+                    _ = Task.Run(async () => {
+                        if (task.AutoReconnectingTrialDelay > 0) {
+                            await Task.Delay(task.AutoReconnectingTrialDelay);
+                        }
+                        var newTask = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, dto.id);
+                        if (newTask != null) {
+                            AddTaskToCache(newKey, newTask);
+                            MainUtils.Info(_logger, $"成功重新创建Arm设备 {dto.ip}:{dto.port}");
+                            if (workstationId.HasValue) {
+                                newTask.WorkstationId = workstationId.Value;
+                            }
+                        }
+                    });
+
+                    // 返回null表示设备将在后台重新创建
+                    return null;
+                }
+
+                // 设备配置未变，检查是否需要重连
                 if (!task.Connected && task.Status != ATaskBase.CONNECTING) {
                     MainUtils.Info(_logger, $"正在重连Arm {dto.ip}:{dto.port}", false);
                     _ = Task.Run(async () => await ReconnectAsync(task, $"Arm[{dto.ip}:{dto.port}]"));
@@ -281,33 +321,47 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         }
 
         /// <summary>
-        /// 移除已删除的设备
+        /// 移除真正删除的设备（基于设备ID匹配，避免误删配置变更的设备）
         /// </summary>
         public void RemoveDeletedDevices(
             IEnumerable<DeviceIoDTO> activeIoBoxDtos,
             IEnumerable<DeviceArmDTO> activeArmDtos) {
             try {
-                var activeKeys = new HashSet<string>();
+                var activeDeviceIds = new HashSet<int>();
 
-                // 构建活跃设备键集合
+                // 构建活跃设备ID集合（而非IP:Port键）
                 foreach (var dto in activeIoBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                    activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
+                    activeDeviceIds.Add(dto.id);
                 }
 
                 foreach (var dto in activeArmDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                    activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
+                    activeDeviceIds.Add(dto.id);
                 }
 
-                // 移除不再活跃的设备
-                var keysToRemove = _tasks.Keys.Where(key => !activeKeys.Contains(key)).ToList();
-                foreach (var key in keysToRemove) {
-                    if (_tasks.TryRemove(key, out var task)) {
-                        CleanupTask(task);
+                // 移除不再活跃的设备（基于设备ID匹配，而非IP:Port匹配）
+                var tasksToRemove = new List<KeyValuePair<string, IoBoxTask>>();
+                foreach (var kvp in _tasks) {
+                    var task = kvp.Value;
+                    int deviceId = task.DeviceId;
+
+                    // 只有当设备ID不在活跃列表中时才删除
+                    // 这样可以避免IP:Port变更导致的误删
+                    if (!activeDeviceIds.Contains(deviceId)) {
+                        tasksToRemove.Add(kvp);
                     }
                 }
 
-                if (keysToRemove.Count > 0) {
-                    MainUtils.Info(_logger, $"已移除 {keysToRemove.Count} 个已删除的IoBox/Arm设备");
+                // 执行删除
+                foreach (var kvp in tasksToRemove) {
+                    if (_tasks.TryRemove(kvp.Key, out var task)) {
+                        string deviceInfo = $"{task.Ip}:{task.Port}";
+                        CleanupTask(task);
+                        MainUtils.Info(_logger, $"设备已删除: {deviceInfo} (DeviceId={task.DeviceId})", false);
+                    }
+                }
+
+                if (tasksToRemove.Count > 0) {
+                    MainUtils.Info(_logger, $"已移除 {tasksToRemove.Count} 个真正删除的IoBox/Arm设备");
                 }
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"移除已删除的IoBox/Arm设备时出错: {ex.Message}");
@@ -316,6 +370,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
         /// <summary>
         /// 检查设备是否需要重新连接
+        /// </summary>
+        /// <summary>
+        /// 检查IoBox设备是否需要重新连接
         /// </summary>
         private bool NeedsReconnection(IoBoxTask task, DeviceIoDTO dto) {
             // 检查IP地址、端口是否改变
@@ -350,6 +407,49 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }
 
                 MainUtils.Info(_logger, $"IoBox[{dto.ip}:{dto.port}] 需要重连 - " +
+                    $"IP变化: {task.Ip} -> {dto.ip}, " +
+                    $"Port变化: {task.Port} -> {dto.port}, " +
+                    $"Type变化: {currentTypeInfo} -> ID={dtoType}", false);
+            }
+
+            return needsReconnect;
+        }
+
+        /// <summary>
+        /// 检查Arm设备是否需要重新连接
+        /// </summary>
+        private bool NeedsReconnection(IoBoxTask task, DeviceArmDTO dto) {
+            // 检查IP地址、端口是否改变
+            bool needsReconnect = task.Ip != dto.ip || task.Port != dto.port;
+
+            // 检查设备类型是否改变
+            int dtoType = dto.type;
+            bool typeMatches = false;
+
+            // 直接比较DTO.type与任务中设备类型的ID
+            // Arm设备的type范围：1-4 (CF01, CF02, CF03, CF04)
+            if (task.ArmType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            } else if (task.ArrangerType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            } else if (task.SetterSelectorType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            }
+
+            // 如果类型不匹配，也需要重连
+            if (!typeMatches) {
+                needsReconnect = true;
+                // 记录类型不匹配的详细信息
+                string currentTypeInfo = "无";
+                if (task.ArmType != null) {
+                    currentTypeInfo = $"Arm(ID={task.ArmType.DeviceType.Id})";
+                } else if (task.ArrangerType != null) {
+                    currentTypeInfo = $"Arranger(ID={task.ArrangerType.DeviceType.Id})";
+                } else if (task.SetterSelectorType != null) {
+                    currentTypeInfo = $"SetterSelector(ID={task.SetterSelectorType.DeviceType.Id})";
+                }
+
+                MainUtils.Info(_logger, $"Arm[{dto.ip}:{dto.port}] 需要重连 - " +
                     $"IP变化: {task.Ip} -> {dto.ip}, " +
                     $"Port变化: {task.Port} -> {dto.port}, " +
                     $"Type变化: {currentTypeInfo} -> ID={dtoType}", false);
