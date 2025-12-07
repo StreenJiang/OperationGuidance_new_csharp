@@ -818,17 +818,8 @@ namespace OperationGuidance_new.Utils {
         public static IoBoxTask NewIoBoxTask(string ip, int port, int deviceTypeId, int deviceId = -1) {
             IoBoxTask task = new(ip, port, deviceId);
             InitializeDeviceType(task, deviceTypeId);
-            // 移除自动连接，避免阻塞
-            // 连接将在后台异步进行
+            task.Connect();
             _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
-            // 在后台异步连接，不阻塞调用方
-            _ = Task.Run(async () => {
-                try {
-                    await task.ConnectAsync();
-                } catch (Exception ex) {
-                    Warn(logger, $"后台连接IoBox设备 {ip}:{port} 失败: {ex.Message}", false);
-                }
-            });
             return task;
         }
 
@@ -844,7 +835,10 @@ namespace OperationGuidance_new.Utils {
             IoBoxTask task = new(ip, port, deviceId);
             InitializeDeviceType(task, deviceTypeId);
             await task.ConnectAsync();
-            _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
+            // 使用线程安全的AddOrUpdate方法
+            _ioBoxTasks.AddOrUpdate(GetTCPClientKey(ip, port),
+                task,
+                (key, oldValue) => task);
             return task;
         }
 

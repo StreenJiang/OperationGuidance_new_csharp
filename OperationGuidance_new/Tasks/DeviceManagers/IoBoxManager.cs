@@ -15,8 +15,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
     public class IoBoxManager {
         private readonly ILog _logger;
         private readonly ConcurrentDictionary<string, IoBoxTask> _tasks = new();
-        // 用于防止同一设备并发处理的锁字典（使用IP:Port作为键）
-        private readonly ConcurrentDictionary<string, object> _deviceLocks = new();
+        // 用于防止同一设备并发处理的信号量字典（使用IP:Port作为键）
+        private readonly ConcurrentDictionary<string, SemaphoreSlim> _deviceSemaphores = new();
 
         public IoBoxManager() {
             _logger = MainUtils.GetLogger(typeof(IoBoxManager));
@@ -38,44 +38,43 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 // 1. 移除已删除的设备
                 RemoveDeletedDevices(ioBoxDtos, armDtos);
 
-                // 2. 创建/更新活跃设备
-                var tasks = new List<Task>();
-
-                // 处理IoBox设备
-                tasks.Add(Task.Run(() => {
+                // 2. 创建/更新活跃设备 - 使用真正的异步操作
+                var ioBoxTask = Task.Run(async () => {
                     try {
                         MainUtils.Info(_logger, $"开始处理 {activeIoBoxCount} 个IoBox设备...", false);
                         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                         foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                             int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
-                            CreateOrUpdateIoBoxDevice(dto, workstationId);
+                            await CreateOrUpdateIoBoxDevice(dto, workstationId);
                         }
                         stopwatch.Stop();
                         MainUtils.Info(_logger, $"完成处理 {activeIoBoxCount} 个IoBox设备，耗时: {stopwatch.ElapsedMilliseconds}ms", false);
                     } catch (Exception ex) {
                         MainUtils.Error(_logger, $"处理IoBox设备时出错: {ex.Message}");
                     }
-                }));
+                });
 
-                // 处理Arm设备
-                tasks.Add(Task.Run(() => {
+                var armTask = Task.Run(async () => {
                     try {
                         MainUtils.Info(_logger, $"开始处理 {activeArmCount} 个Arm设备...", false);
                         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                         foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                             int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
-                            CreateOrUpdateArmDevice(dto, workstationId);
+                            await CreateOrUpdateArmDevice(dto, workstationId);
                         }
                         stopwatch.Stop();
                         MainUtils.Info(_logger, $"完成处理 {activeArmCount} 个Arm设备，耗时: {stopwatch.ElapsedMilliseconds}ms", false);
                     } catch (Exception ex) {
                         MainUtils.Error(_logger, $"处理Arm设备时出错: {ex.Message}");
                     }
-                }));
+                });
 
                 // 等待所有任务完成，设置30秒超时避免无限等待
-                var completedTask = await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(30)));
-                bool allCompleted = completedTask == Task.WhenAll(tasks);
+                var allTasks = Task.WhenAll(ioBoxTask, armTask);
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                var completedTask = await Task.WhenAny(allTasks, timeoutTask);
+                bool allCompleted = completedTask == allTasks;
+
                 if (!allCompleted) {
                     MainUtils.Warn(_logger, "IoBox和Arm设备同步超时（30秒）");
                 } else {
@@ -92,57 +91,11 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         /// <summary>
         /// 创建或更新IoBox设备（Arranger或SetterSelector）
         /// </summary>
-        public IoBoxTask? CreateOrUpdateIoBoxDevice(DeviceIoDTO dto, int? workstationId = null) {
+        public async Task<IoBoxTask?> CreateOrUpdateIoBoxDevice(DeviceIoDTO dto, int? workstationId = null) {
             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
-            // 获取或创建设备特定的锁，确保同一设备不会被并发处理
-            var deviceLock = _deviceLocks.GetOrAdd(key, _ => new object());
-
-            lock (deviceLock) {
-                try {
-                    IoBoxTask? task = GetExistingTask(key);
-
-                if (task == null) {
-                    // 获取设备显示名称
-                    string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-
-                    MainUtils.Info(_logger, $"正在创建IoBox设备: {dto.ip}:{dto.port} {deviceDisplayName}...", false);
-                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
-
-                    if (task != null) {
-                        AddTaskToCache(key, task);
-                        MainUtils.Info(_logger, $"成功创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName}");
-                        if (workstationId.HasValue) {
-                            task.WorkstationId = workstationId.Value;
-                        }
-
-                        // 显示连接状态日志给UI（后台执行）
-                        _ = Task.Run(async () => {
-                            try {
-                                await Task.Delay(3000); // 最多等待3秒显示状态
-
-                                // 使用try-catch确保后台任务不会崩溃
-                                try {
-                                    if (task != null && task.Connected) {
-                                        MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
-                                    } else {
-                                        MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
-                                    }
-                                } catch (Exception innerEx) {
-                                    // 只记录异常，不抛出，避免影响后台任务
-                                    MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {innerEx.Message}");
-                                }
-                            } catch {
-                                // 忽略所有后台任务异常
-                            }
-                        });
-                    } else {
-                        MainUtils.Warn(_logger, $"创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName} 失败");
-                    }
-
-                    return task;
-                }
-
-                // 更新现有设备
+            // 快速路径：检查现有任务，避免不必要的锁
+            var task = GetExistingTask(key);
+            if (task != null) {
                 if (workstationId.HasValue) {
                     task.WorkstationId = workstationId.Value;
                 }
@@ -159,7 +112,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                         if (task.AutoReconnectingTrialDelay > 0) {
                             await Task.Delay(task.AutoReconnectingTrialDelay);
                         }
-                        var newTask = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
+                        var newTask = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, dto.id);
                         if (newTask != null) {
                             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
                             AddTaskToCache(key, newTask);
@@ -182,51 +135,83 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }
 
                 return task;
-                } catch (Exception ex) {
-                    MainUtils.Error(_logger, $"创建/更新IoBox设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
-                    return null;
-                } finally {
-                    // 处理完成后不清理锁字典，让GC负责清理
+            }
+
+            // 获取或创建设备特定的信号量，确保同一设备不会被并发处理
+            var deviceSemaphore = _deviceSemaphores.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+
+            await deviceSemaphore.WaitAsync();
+            try {
+                // 双重检查：信号量内再次检查
+                task = GetExistingTask(key);
+                if (task != null) {
+                    if (workstationId.HasValue) {
+                        task.WorkstationId = workstationId.Value;
+                    }
+                    return task;
                 }
+
+                // 获取设备显示名称
+                string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
+
+                MainUtils.Info(_logger, $"正在创建IoBox设备: {dto.ip}:{dto.port} {deviceDisplayName}...", false);
+                // 使用异步方法创建并连接任务
+                task = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, dto.id);
+
+                if (task != null) {
+                    AddTaskToCache(key, task);
+                    MainUtils.Info(_logger, $"成功创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName}");
+                    if (workstationId.HasValue) {
+                        task.WorkstationId = workstationId.Value;
+                    }
+
+                    // 显示连接状态日志给UI（后台执行）
+                    _ = Task.Run(async () => {
+                        try {
+                            await Task.Delay(3000); // 最多等待3秒显示状态
+
+                            // 使用try-catch确保后台任务不会崩溃
+                            try {
+                                string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
+                                if (task != null && task.Connected) {
+                                    MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
+                                } else {
+                                    MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
+                                }
+                            } catch (Exception innerEx) {
+                                // 只记录异常，不抛出，避免影响后台任务
+                                string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
+                                MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {innerEx.Message}");
+                            }
+                        } catch {
+                            // 忽略所有后台任务异常
+                        }
+                    });
+                } else {
+                    MainUtils.Warn(_logger, $"创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName} 失败");
+                }
+
+                return task;
+            } catch (Exception ex) {
+                MainUtils.Error(_logger, $"创建/更新IoBox设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
+                return null;
+            } finally {
+                // 释放信号量
+                deviceSemaphore.Release();
             }
         }
 
         /// <summary>
         /// 创建或更新Arm设备
         /// </summary>
-        public IoBoxTask? CreateOrUpdateArmDevice(DeviceArmDTO dto, int? workstationId = null) {
+        public async Task<IoBoxTask?> CreateOrUpdateArmDevice(DeviceArmDTO dto, int? workstationId = null) {
             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
-            // 获取或创建设备特定的锁，确保同一设备不会被并发处理
-            var deviceLock = _deviceLocks.GetOrAdd(key, _ => new object());
-
-            lock (deviceLock) {
-                try {
-                    IoBoxTask? task = GetExistingTask(key);
-
-                if (task == null) {
-                    MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port}...", false);
-                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
-
-                    if (task != null) {
-                        AddTaskToCache(key, task);
-                        MainUtils.Info(_logger, $"成功创建Arm设备 {dto.ip}:{dto.port}");
-                        if (workstationId.HasValue) {
-                            task.WorkstationId = workstationId.Value;
-                        }
-                    } else {
-                        MainUtils.Warn(_logger, $"创建Arm设备 {dto.ip}:{dto.port} 失败");
-                    }
-
-                    return task;
-                }
-
-                // 更新现有设备
+            // 快速路径：检查现有任务，避免不必要的锁
+            var task = GetExistingTask(key);
+            if (task != null) {
                 if (workstationId.HasValue) {
                     task.WorkstationId = workstationId.Value;
                 }
-
-                // Arm设备目前不需要检查配置变更（简化处理）
-                // 如果需要，可以在此添加 NeedsReconnection 逻辑
 
                 // 检查是否需要重连
                 if (!task.Connected && task.Status != ATaskBase.CONNECTING) {
@@ -235,12 +220,44 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }
 
                 return task;
-                } catch (Exception ex) {
-                    MainUtils.Error(_logger, $"创建/更新Arm设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
-                    return null;
-                } finally {
-                    // 处理完成后不清理锁字典，让GC负责清理
+            }
+
+            // 获取或创建设备特定的信号量，确保同一设备不会被并发处理
+            var deviceSemaphore = _deviceSemaphores.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+
+            await deviceSemaphore.WaitAsync();
+            try {
+                // 双重检查：信号量内再次检查
+                task = GetExistingTask(key);
+                if (task != null) {
+                    if (workstationId.HasValue) {
+                        task.WorkstationId = workstationId.Value;
+                    }
+                    return task;
                 }
+
+                MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port}...", false);
+                // 使用异步方法创建并连接任务
+                task = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, dto.id);
+
+                if (task != null) {
+                    AddTaskToCache(key, task);
+                    MainUtils.Info(_logger, $"成功创建Arm设备 {dto.ip}:{dto.port}");
+                    if (workstationId.HasValue) {
+                        task.WorkstationId = workstationId.Value;
+                    }
+                } else {
+                    MainUtils.Warn(_logger, $"创建Arm设备 {dto.ip}:{dto.port} 失败");
+                    return null;
+                }
+
+                return task;
+            } catch (Exception ex) {
+                MainUtils.Error(_logger, $"创建/更新Arm设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
+                return null;
+            } finally {
+                // 释放信号量
+                deviceSemaphore.Release();
             }
         }
 

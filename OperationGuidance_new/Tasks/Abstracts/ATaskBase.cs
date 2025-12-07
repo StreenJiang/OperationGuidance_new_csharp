@@ -116,21 +116,44 @@ namespace OperationGuidance_new.Tasks.Abstracts {
         /// <param name="connectFunc">连接函数</param>
         /// <param name="onConnected">连接成功回调</param>
         /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="maxRetries">最大重试次数（不包含初始尝试，默认3次）</param>
+        /// <param name="totalTimeout">总超时时间（默认20秒）</param>
         /// <returns>连接结果</returns>
         protected async Task<bool> ConnectWithRetryAsync(
             Func<CancellationToken, Task<bool>> connectFunc,
             Action? onConnected = null,
-            CancellationToken cancellationToken = default) {
+            CancellationToken cancellationToken = default,
+            int maxRetries = 3,
+            TimeSpan? totalTimeout = null) {
             try {
+                int retryCount = 0;
+                var startTime = DateTime.Now;
+                var effectiveTotalTimeout = totalTimeout ?? TimeSpan.FromSeconds(20);
+
                 while (!cancellationToken.IsCancellationRequested && !Connected) {
+                    // 检查总超时
+                    if (DateTime.Now - startTime > effectiveTotalTimeout) {
+                        logger?.Warn($"连接超时（累计{effectiveTotalTimeout.TotalSeconds}秒, 实际尝试{retryCount + 1}次）- 设备 {Name}");
+                        return false;
+                    }
+
+                    // 检查重试次数
+                    if (retryCount >= maxRetries) {
+                        logger?.Warn($"达到最大重试次数（最大{maxRetries}次重试, 总计{retryCount + 1}次尝试）- 设备 {Name}");
+                        return false;
+                    }
+
                     Status = CONNECTING;
 
                     if (await connectFunc(cancellationToken)) {
                         Status = CONNECTED;
                         onConnected?.Invoke();
+                        logger?.Info($"连接成功（尝试{retryCount + 1}次, 耗时{(DateTime.Now - startTime).TotalSeconds:F1}秒）- 设备 {Name}");
                         return true;
                     }
 
+                    retryCount++;
+                    logger?.Debug($"连接失败，第{retryCount}次重试（间隔{AutoReconnectingTrialDelay}ms, 已累计重试{retryCount}次）- 设备 {Name}");
                     await Task.Delay(AutoReconnectingTrialDelay, cancellationToken);
                 }
                 return false;
