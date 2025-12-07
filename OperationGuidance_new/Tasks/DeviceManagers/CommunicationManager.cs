@@ -47,11 +47,24 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         protected override bool NeedsReconnectionCore(CommunicationTask task, DeviceCommunicationDTO dto) {
             // 检查IP地址、端口或设备类型是否改变
             // 防御性空检查
-            if (task.CommunicationType == null) return true;
+            if (task.CommunicationType == null) {
+                MainUtils.Warn(Logger, $"Communication[{dto.id}] CommunicationType为null，需要重连", false);
+                return true;
+            }
 
-            return task.Ip != dto.ip ||
-                   task.Port != dto.port ||
-                   task.CommunicationType.Id != dto.type;
+            bool needsReconnect = task.Ip != dto.ip ||
+                                  task.Port != dto.port ||
+                                  task.CommunicationType.Id != dto.type;
+
+            // 添加详细日志以便调试
+            if (needsReconnect) {
+                MainUtils.Info(Logger, $"COMMUNICATION[{dto.id}] 需要重连 - " +
+                    $"IP变化: {task.Ip} -> {dto.ip}, " +
+                    $"Port变化: {task.Port} -> {dto.port}, " +
+                    $"Type变化: {task.CommunicationType.Id} -> {dto.type}", false);
+            }
+
+            return needsReconnect;
         }
 
         protected override string GetDeviceInfoCore(CommunicationTask task) {

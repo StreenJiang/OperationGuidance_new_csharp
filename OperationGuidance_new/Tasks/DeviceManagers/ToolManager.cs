@@ -47,11 +47,24 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         protected override bool NeedsReconnectionCore(ToolTask task, DeviceToolDTO dto) {
             // 检查IP地址、端口或设备类型是否改变
             // 防御性空检查
-            if (task.ToolType == null) return true;
+            if (task.ToolType == null) {
+                MainUtils.Warn(Logger, $"Tool[{dto.id}] ToolType为null，需要重连", false);
+                return true;
+            }
 
-            return task.Ip != dto.ip ||
-                   task.Port != dto.port ||
-                   task.ToolType.Id != dto.type;
+            bool needsReconnect = task.Ip != dto.ip ||
+                                  task.Port != dto.port ||
+                                  task.ToolType.Id != dto.type;
+
+            // 添加详细日志以便调试
+            if (needsReconnect) {
+                MainUtils.Info(Logger, $"TOOL[{dto.id}] 需要重连 - " +
+                    $"IP变化: {task.Ip} -> {dto.ip}, " +
+                    $"Port变化: {task.Port} -> {dto.port}, " +
+                    $"Type变化: {task.ToolType.Id} -> {dto.type}", false);
+            }
+
+            return needsReconnect;
         }
 
         protected override string GetDeviceInfoCore(ToolTask task) {

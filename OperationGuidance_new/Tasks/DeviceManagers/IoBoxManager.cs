@@ -1,7 +1,5 @@
 using log4net;
-using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks.Abstracts;
-using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
@@ -17,6 +15,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
     public class IoBoxManager {
         private readonly ILog _logger;
         private readonly ConcurrentDictionary<string, IoBoxTask> _tasks = new();
+        // 用于防止同一设备并发处理的锁字典（使用IP:Port作为键）
+        private readonly ConcurrentDictionary<string, object> _deviceLocks = new();
 
         public IoBoxManager() {
             _logger = MainUtils.GetLogger(typeof(IoBoxManager));
@@ -41,7 +41,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
                 // 处理IoBox设备
                 tasks.Add(Task.Run(async () => {
-                    foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int)YesOrNo.NO)) {
+                    foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                         int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                         CreateOrUpdateIoBoxDevice(dto, workstationId);
                     }
@@ -49,7 +49,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
                 // 处理Arm设备
                 tasks.Add(Task.Run(async () => {
-                    foreach (var dto in armDtos.Where(d => d.deleted == (int)YesOrNo.NO)) {
+                    foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                         int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                         CreateOrUpdateArmDevice(dto, workstationId);
                     }
@@ -69,9 +69,13 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         /// 创建或更新IoBox设备（Arranger或SetterSelector）
         /// </summary>
         public IoBoxTask? CreateOrUpdateIoBoxDevice(DeviceIoDTO dto, int? workstationId = null) {
-            try {
-                string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
-                IoBoxTask? task = GetExistingTask(key);
+            string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+            // 获取或创建设备特定的锁，确保同一设备不会被并发处理
+            var deviceLock = _deviceLocks.GetOrAdd(key, _ => new object());
+
+            lock (deviceLock) {
+                try {
+                    IoBoxTask? task = GetExistingTask(key);
 
                 if (task == null) {
                     // 获取设备显示名称
@@ -156,9 +160,12 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }
 
                 return task;
-            } catch (Exception ex) {
-                MainUtils.Error(_logger, $"创建/更新IoBox设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
-                return null;
+                } catch (Exception ex) {
+                    MainUtils.Error(_logger, $"创建/更新IoBox设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
+                    return null;
+                } finally {
+                    // 处理完成后不清理锁字典，让GC负责清理
+                }
             }
         }
 
@@ -166,9 +173,13 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         /// 创建或更新Arm设备
         /// </summary>
         public IoBoxTask? CreateOrUpdateArmDevice(DeviceArmDTO dto, int? workstationId = null) {
-            try {
-                string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
-                IoBoxTask? task = GetExistingTask(key);
+            string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+            // 获取或创建设备特定的锁，确保同一设备不会被并发处理
+            var deviceLock = _deviceLocks.GetOrAdd(key, _ => new object());
+
+            lock (deviceLock) {
+                try {
+                    IoBoxTask? task = GetExistingTask(key);
 
                 if (task == null) {
                     MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port}...", false);
@@ -202,9 +213,12 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }
 
                 return task;
-            } catch (Exception ex) {
-                MainUtils.Error(_logger, $"创建/更新Arm设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
-                return null;
+                } catch (Exception ex) {
+                    MainUtils.Error(_logger, $"创建/更新Arm设备 {dto.ip}:{dto.port} 时出错: {ex.Message}");
+                    return null;
+                } finally {
+                    // 处理完成后不清理锁字典，让GC负责清理
+                }
             }
         }
 
@@ -218,11 +232,11 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 var activeKeys = new HashSet<string>();
 
                 // 构建活跃设备键集合
-                foreach (var dto in activeIoBoxDtos.Where(d => d.deleted == (int)YesOrNo.NO)) {
+                foreach (var dto in activeIoBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                     activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
                 }
 
-                foreach (var dto in activeArmDtos.Where(d => d.deleted == (int)YesOrNo.NO)) {
+                foreach (var dto in activeArmDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                     activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
                 }
 
@@ -246,9 +260,55 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         /// 检查设备是否需要重新连接
         /// </summary>
         private bool NeedsReconnection(IoBoxTask task, DeviceIoDTO dto) {
-            // 检查IP地址、端口或设备类型是否改变
-            return task.Ip != dto.ip ||
-                   task.Port != dto.port;
+            // 检查IP地址、端口是否改变
+            bool needsReconnect = task.Ip != dto.ip || task.Port != dto.port;
+
+            // 检查设备类型是否改变
+            // IoBox设备的type范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
+            // Arm设备的type范围：应该是不同的ID（需要根据DeviceType_Arm确定）
+            // 由于IoBoxTask可以同时拥有多种类型，我们需要检查DTO.type是否与当前任务的任何类型匹配
+
+            int dtoType = dto.type;
+            bool typeMatches = false;
+
+            // 检查DTO.type是否与当前任务的类型匹配
+            // 如果DTO.type在1-4范围内，它应该匹配SetterSelectorType或ArrangerType
+            if (dtoType >= 1 && dtoType <= 4) {
+                // 检查Arranger类型 (ID=3)
+                if (dtoType == 3 && task.ArrangerType?.DeviceType.Id == dtoType) {
+                    typeMatches = true;
+                }
+                // 检查SetterSelector类型 (ID=1, 2, 4)
+                else if (dtoType != 3 && task.SetterSelectorType?.DeviceType.Id == dtoType) {
+                    typeMatches = true;
+                }
+            }
+            // 如果DTO.type不在1-4范围内，可能是Arm类型或其他类型
+            // 对于Arm类型，我们需要检查task.ArmType
+            else if (task.ArmType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            }
+
+            // 如果类型不匹配，也需要重连
+            if (!typeMatches) {
+                needsReconnect = true;
+                // 记录类型不匹配的详细信息
+                string currentTypeInfo = "无";
+                if (task.ArrangerType != null) {
+                    currentTypeInfo = $"Arranger(ID={task.ArrangerType.DeviceType.Id})";
+                } else if (task.SetterSelectorType != null) {
+                    currentTypeInfo = $"SetterSelector(ID={task.SetterSelectorType.DeviceType.Id})";
+                } else if (task.ArmType != null) {
+                    currentTypeInfo = $"Arm(ID={task.ArmType.DeviceType.Id})";
+                }
+
+                MainUtils.Info(_logger, $"IoBox[{dto.ip}:{dto.port}] 需要重连 - " +
+                    $"IP变化: {task.Ip} -> {dto.ip}, " +
+                    $"Port变化: {task.Port} -> {dto.port}, " +
+                    $"Type变化: {currentTypeInfo} -> ID={dtoType}", false);
+            }
+
+            return needsReconnect;
         }
 
         /// <summary>
@@ -257,7 +317,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         private async Task ReconnectAsync(IoBoxTask task, string deviceInfo) {
             try {
                 await task.ConnectAsync();
-                MainUtils.Info(_logger, $"已重新连接到 {deviceInfo}");
+                MainUtils.Info(_logger, $"已重新连接到 {deviceInfo}", false);
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"重新连接 {deviceInfo} 失败: {ex.Message}");
             }

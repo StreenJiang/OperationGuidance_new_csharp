@@ -4,6 +4,7 @@ using OperationGuidance_new.Tasks.Interfaces;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Models.DTOs;
+using System.Collections.Concurrent;
 
 namespace OperationGuidance_new.Tasks.Abstracts {
     /// <summary>
@@ -17,6 +18,9 @@ namespace OperationGuidance_new.Tasks.Abstracts {
         where TTask : ATaskBase {
 
         protected readonly ILog Logger;
+
+        // 用于防止同一设备并发处理的锁字典
+        private readonly ConcurrentDictionary<int, object> _deviceLocks = new();
 
         /// <summary>
         /// 构造函数
@@ -96,112 +100,132 @@ namespace OperationGuidance_new.Tasks.Abstracts {
         }
 
         public virtual TTask? CreateOrUpdateDevice(TDto dto, int? workstationId = null) {
-            try {
-                // 获取或创建设备任务
-                TTask? task = GetExistingTask(dto.id);
-
-                if (task == null) {
-                    // 获取设备显示名称
-                    string deviceDisplayName = GetDeviceDisplayName(dto);
-
-                    // 创建新设备
-                    MainUtils.Info(Logger, $"正在创建新设备: {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
-                    task = CreateTaskInstance(dto);
-
-                    if (task != null) {
-                        // Add to cache immediately after creation
-                        AddTaskToCache(dto.id, task);
-                        MainUtils.Info(Logger, $"成功创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {GetDeviceInfoCore(task)}");
-                        if (workstationId.HasValue) {
-                            task.WorkstationId = workstationId.Value;
-                        }
-
-                        // 显示连接状态日志给UI
-                        _ = Task.Run(async () => {
-                            try {
-                                // 等待连接完成或超时
-                                await Task.Delay(3000); // 最多等待3秒显示状态
-
-                                if (task.Connected) {
-                                    MainUtils.Info(Logger, $"✓ 成功连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}");
-                                } else {
-                                    MainUtils.Warn(Logger, $"✗ 连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
-                                }
-                            } catch (Exception ex) {
-                                MainUtils.Warn(Logger, $"检查 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
-                            }
-                        });
-
-                    } else {
-                        MainUtils.Warn(Logger, $"创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
-                    }
-
-                    return task;
-                }
-
-                // 更新现有设备
-                if (workstationId.HasValue) {
-                    task.WorkstationId = workstationId.Value;
-                }
-
-                // 检查是否需要重新创建设备
-                if (NeedsReconnectionCore(task, dto)) {
-                    // 获取设备显示名称
-                    string deviceDisplayName = GetDeviceDisplayName(dto);
-
-                    MainUtils.Info(Logger, $"{GetDeviceTypeName()} 配置已更改，正在重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
-                    CleanupTask(task);
-
-                    // 等待一段时间再重新创建（使用Thread.Sleep避免死锁风险）
-                    System.Threading.Thread.Sleep(task.AutoReconnectingTrialDelay);
-
-                    task = CreateTaskInstance(dto);
-                    if (task != null) {
-                        // Add to cache after recreation
-                        AddTaskToCache(dto.id, task);
-                        MainUtils.Info(Logger, $"成功重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {GetDeviceInfoCore(task)}");
-                        if (workstationId.HasValue) {
-                            task.WorkstationId = workstationId.Value;
-                        }
-
-                        // 显示连接状态日志给UI
-                        _ = Task.Run(async () => {
-                            try {
-                                // 等待连接完成或超时
-                                await Task.Delay(3000); // 最多等待3秒显示状态
-
-                                if (task.Connected) {
-                                    MainUtils.Info(Logger, $"✓ 成功连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}");
-                                } else {
-                                    MainUtils.Warn(Logger, $"✗ 连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
-                                }
-                            } catch (Exception ex) {
-                                MainUtils.Warn(Logger, $"检查 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
-                            }
-                        });
-
-                    } else {
-                        MainUtils.Warn(Logger, $"重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
-                    }
-
-                    return task;
-                }
-
-                // 设备配置未变，检查是否需要重连
-                if (!task.Connected && task.Status != ATaskBase.CONNECTING) {
-                    string deviceInfo = GetDeviceInfoCore(task);
-                    // 获取设备显示名称
-                    string deviceDisplayName = GetDeviceDisplayName(dto);
-                    MainUtils.Info(Logger, $"正在重连 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {deviceInfo}", false);
-                    _ = Task.Run(async () => {
-                        await ReconnectAsync(task, deviceInfo);
-                    });
-                }
-
-                return task;
-            } catch (Exception ex) {
-                MainUtils.Error(Logger, $"创建/更新 {GetDeviceTypeName()}[{dto.id}] 时出错: {ex.Message}");
+            // 参数验证
+            if (dto == null) {
+                MainUtils.Error(Logger, "设备DTO不能为null");
                 return null;
+            }
+
+            if (dto.id <= 0) {
+                MainUtils.Warn(Logger, $"设备ID无效: {dto.id}");
+                return null;
+            }
+
+            // 获取或创建设备特定的锁，确保同一设备不会被并发处理
+            var deviceLock = _deviceLocks.GetOrAdd(dto.id, _ => new object());
+
+            lock (deviceLock) {
+                try {
+                    // 获取或创建设备任务
+                    TTask? task = GetExistingTask(dto.id);
+
+                    if (task == null) {
+                        // 获取设备显示名称
+                        string deviceDisplayName = GetDeviceDisplayName(dto);
+
+                        // 创建新设备
+                        MainUtils.Info(Logger, $"正在创建新设备: {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
+                        task = CreateTaskInstance(dto);
+
+                        if (task != null) {
+                            // Add to cache immediately after creation
+                            AddTaskToCache(dto.id, task);
+                            MainUtils.Info(Logger, $"成功创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {GetDeviceInfoCore(task)}");
+                            if (workstationId.HasValue) {
+                                task.WorkstationId = workstationId.Value;
+                            }
+
+                            // 显示连接状态日志给UI
+                            _ = Task.Run(async () => {
+                                try {
+                                    // 等待连接完成或超时
+                                    await Task.Delay(3000); // 最多等待3秒显示状态
+
+                                    if (task.Connected) {
+                                        MainUtils.Info(Logger, $"✓ 成功连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}");
+                                    } else {
+                                        MainUtils.Warn(Logger, $"✗ 连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
+                                    }
+                                } catch (Exception ex) {
+                                    MainUtils.Warn(Logger, $"检查 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
+                                }
+                            });
+
+                        } else {
+                            MainUtils.Warn(Logger, $"创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
+                        }
+
+                        return task;
+                    }
+
+                    // 更新现有设备
+                    if (workstationId.HasValue) {
+                        task.WorkstationId = workstationId.Value;
+                    }
+
+                    // 检查是否需要重新创建设备
+                    if (NeedsReconnectionCore(task, dto)) {
+                        // 获取设备显示名称
+                        string deviceDisplayName = GetDeviceDisplayName(dto);
+
+                        MainUtils.Info(Logger, $"{GetDeviceTypeName()} 配置已更改，正在重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
+                        CleanupTask(task);
+
+                        // 等待一段时间再重新创建（使用Thread.Sleep避免死锁风险）
+                        System.Threading.Thread.Sleep(task.AutoReconnectingTrialDelay);
+
+                        task = CreateTaskInstance(dto);
+                        if (task != null) {
+                            // Add to cache after recreation
+                            AddTaskToCache(dto.id, task);
+                            MainUtils.Info(Logger, $"成功重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {GetDeviceInfoCore(task)}");
+                            if (workstationId.HasValue) {
+                                task.WorkstationId = workstationId.Value;
+                            }
+
+                            // 显示连接状态日志给UI
+                            _ = Task.Run(async () => {
+                                try {
+                                    // 等待连接完成或超时
+                                    await Task.Delay(3000); // 最多等待3秒显示状态
+
+                                    if (task.Connected) {
+                                        MainUtils.Info(Logger, $"✓ 成功连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}");
+                                    } else {
+                                        MainUtils.Warn(Logger, $"✗ 连接到 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
+                                    }
+                                } catch (Exception ex) {
+                                    MainUtils.Warn(Logger, $"检查 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
+                                }
+                            });
+
+                        } else {
+                            MainUtils.Warn(Logger, $"重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} 失败");
+                        }
+
+                        return task;
+                    }
+
+                    // 设备配置未变，检查是否需要重连
+                    if (!task.Connected && task.Status != ATaskBase.CONNECTING) {
+                        string deviceInfo = GetDeviceInfoCore(task);
+                        // 获取设备显示名称
+                        string deviceDisplayName = GetDeviceDisplayName(dto);
+                        MainUtils.Info(Logger, $"正在重连 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName} - {deviceInfo}", false);
+                        _ = Task.Run(async () => {
+                            await ReconnectAsync(task, deviceInfo);
+                        });
+                    }
+
+                    return task;
+                } catch (Exception ex) {
+                    MainUtils.Error(Logger, $"创建/更新 {GetDeviceTypeName()}[{dto.id}] 时出错: {ex.Message}");
+                    return null;
+                } finally {
+                    // 处理完成后清理锁字典中的条目（可选）
+                    // 注意：这里不清理锁字典，因为可能还有其他线程在使用
+                    // 让GC负责清理未使用的锁对象
+                }
             }
         }
 

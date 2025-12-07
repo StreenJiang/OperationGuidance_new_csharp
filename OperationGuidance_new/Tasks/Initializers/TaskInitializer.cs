@@ -86,9 +86,15 @@ namespace OperationGuidance_new.Tasks.Initializers {
 
                         // IoBox和Arm设备（使用IoBoxManager）
                         Task.Run(async () => {
-                            var ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs;
-                            var armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs;
-                            await _ioBoxManager.SynchronizeDevicesAsync(ioBoxDTOs, armDTOs, ioMaps, armMaps);
+                            try {
+                                var ioBoxDTOs = apis.QueryDeviceIoList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceIoDTOs
+                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                                var armDTOs = apis.QueryDeviceArmList(new(SystemUtils.MacAddressesDTO.id) { ForTask = true }).DeviceArmDTOs
+                                    .Where(dto => dto.deleted == (int) YesOrNo.NO).ToList();
+                                await _ioBoxManager.SynchronizeDevicesAsync(ioBoxDTOs, armDTOs, ioMaps, armMaps);
+                            } catch (Exception ex) {
+                                MainUtils.Error(logger, $"同步IoBox/Arm设备失败: {ex.Message}");
+                            }
                         })
                     );
 
