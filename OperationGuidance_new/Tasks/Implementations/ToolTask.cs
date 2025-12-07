@@ -60,65 +60,65 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
-        protected override void RunTask() {
-            Task.Run(async () => {
-                try {
-                    while (Connected) {
-                        // Check if it's time to send heart beating command
-                        if (HeartBeatCounter >= HeartBeatDelay) {
-                            // Only check hart beat interval if heart beat command is not null
-                            if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
-                                // Send heart beat command to controller
-                                SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                                logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
-                            }
-                            // Reset heart beat counter even no command has been sent
-                            HeartBeatCounter = 0;
+        protected override async Task RunTaskAsync(CancellationToken cancellationToken = default) {
+            try {
+                while (!cancellationToken.IsCancellationRequested && Connected) {
+                    // Check if it's time to send heart beating command
+                    if (HeartBeatCounter >= HeartBeatDelay) {
+                        // Only check hart beat interval if heart beat command is not null
+                        if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
+                            // Send heart beat command to controller
+                            SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
+                            logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
                         }
+                        // Reset heart beat counter even no command has been sent
+                        HeartBeatCounter = 0;
+                    }
 
-                        // Check any message is waiting for receving 
-                        try {
-                            lock (SyncObject) {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen > 0) {
-                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
-                                }
-                            }
-                        } catch (SocketException se) {
-                            if (se.ErrorCode == (int) SocketError.TimedOut) {
-                                HeartBeatCounter += ReceiveTimeout;
-                                Console.WriteLine($"No data received... ");
-                            } else {
-                                throw;
+                    // Check any message is waiting for receving
+                    try {
+                        lock (SyncObject) {
+                            byte[] msgBytes = new byte[1024 * 1024];
+                            int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            if (msgLen > 0) {
+                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
                             }
                         }
-
-                        // Check for lock wait time
-                        if (LockWaitTimeCounter >= LockWaitTime) {
-                            LockWaitTimeCounter = 0;
-                            LockCounter = 0;
-                            UnLockCounter = 0;
+                    } catch (SocketException se) {
+                        if (se.ErrorCode == (int)SocketError.TimedOut) {
+                            HeartBeatCounter += ReceiveTimeout;
+                            Console.WriteLine($"No data received... ");
+                        } else {
+                            throw;
                         }
+                    }
 
-                        // Looping interval
-                        await Task.Delay(LoopingInterval);
-                        HeartBeatCounter += LoopingInterval;
-                        LockWaitTimeCounter += LoopingInterval;
+                    // Check for lock wait time
+                    if (LockWaitTimeCounter >= LockWaitTime) {
+                        LockWaitTimeCounter = 0;
+                        LockCounter = 0;
+                        UnLockCounter = 0;
                     }
-                } catch (Exception e) {
-                    logger.Warn($"Error while running task for connection<TOOL[{_device_name} - {_ip}: {_port}]>, e: {e}");
-                } finally {
-                    logger.Info($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
-                    if (socketClient != null) {
-                        socketClient.Close();
-                        socketClient = null;
-                    }
-                    if (CloseConnectionManually) {
-                        logger.Info($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
-                    }
+
+                    // Looping interval
+                    await Task.Delay(LoopingInterval, cancellationToken);
+                    HeartBeatCounter += LoopingInterval;
+                    LockWaitTimeCounter += LoopingInterval;
                 }
-            });
+            } catch (OperationCanceledException) {
+                logger.Info($"Task execution cancelled for TOOL[{_device_name} - {_ip}: {_port}]");
+            } catch (Exception e) {
+                logger.Warn($"Error while running task for connection<TOOL[{_device_name} - {_ip}: {_port}]>, e: {e}");
+            } finally {
+                logger.Info($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
+                if (socketClient != null) {
+                    socketClient.Close();
+                    socketClient = null;
+                }
+                if (CloseConnectionManually) {
+                    logger.Info($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                }
+            }
 
             void AnalyzeData(byte[] msgBytes) {
                 try {
@@ -127,38 +127,38 @@ namespace OperationGuidance_new.Tasks {
                     // Analyse result
                     if (_toolType is ToolPFSeries toolPF2) {
                         toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run(() => {
-                                if (heartIsBeating != null) {
-                                    if (!heartIsBeating.Value) {
-                                        throw new Exception("Heart is not beating...");
-                                    } else {
-                                        logger.Info("Heart beating....");
-                                    }
+                            // Execute asynchronously without Task.Run
+                            await Task.Yield(); // Yield to avoid blocking
+                            if (heartIsBeating != null) {
+                                if (!heartIsBeating.Value) {
+                                    throw new Exception("Heart is not beating...");
+                                } else {
+                                    logger.Info("Heart beating....");
                                 }
-                                if (pSetSendingOk != null) {
-                                    PSetOk = pSetSendingOk.Value;
-                                }
-                                if (locked != null) {
-                                    _locked = locked.Value;
-                                }
-                                if (dataReceived != null && dataReceived.Value) { }
-                                if (curveReceived != null && curveReceived.Value) {
-                                    socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                                }
-                            });
+                            }
+                            if (pSetSendingOk != null) {
+                                PSetOk = pSetSendingOk.Value;
+                            }
+                            if (locked != null) {
+                                _locked = locked.Value;
+                            }
+                            if (dataReceived != null && dataReceived.Value) { }
+                            if (curveReceived != null && curveReceived.Value) {
+                                socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                            }
                         }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run(() => {
-                                if (pSetSendingOk != null) {
-                                    PSetOk = pSetSendingOk.Value;
-                                }
-                                if (locked != null) {
-                                    _locked = locked.Value;
-                                }
-                                if (dataReceived != null && dataReceived.Value) { }
-                                if (curveReceived != null && curveReceived.Value) { }
-                            });
+                            // Execute asynchronously without Task.Run
+                            await Task.Yield(); // Yield to avoid blocking
+                            if (pSetSendingOk != null) {
+                                PSetOk = pSetSendingOk.Value;
+                            }
+                            if (locked != null) {
+                                _locked = locked.Value;
+                            }
+                            if (dataReceived != null && dataReceived.Value) { }
+                            if (curveReceived != null && curveReceived.Value) { }
                         }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     }
                 } catch (Exception e) {
@@ -167,44 +167,49 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
-        public override void Connect() {
+        public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
             lock (SyncObject) {
-                Task.Run(async () => {
-                    HeartBeatCounter = 0;
-                    CloseConnectionManually = false;
+                HeartBeatCounter = 0;
+                CloseConnectionManually = false;
 
-                    while (!Connected) {
-                        Status = CONNECTING;
+                return ConnectWithRetryAsync(async (ct) => {
+                    if (await ConnectToServer(ct)) {
+                        // Start the task loop
+                        _ = Task.Run(async () => {
+                            await RunTaskAsync(cancellationToken);
+                        }, cancellationToken);
 
-                        if (await ConnectToServer()) {
-                            RunTask();
-                            Status = CONNECTED;
-
-                            ForceSendUnlock();
-                            break;
-                        }
-                        await Task.Delay(AutoReconnectingTrialDelay);
+                        // Send unlock command after successful connection
+                        ForceSendUnlock();
+                        return true;
                     }
-                });
+                    return false;
+                }, cancellationToken: cancellationToken);
             }
         }
-        public override Task ConnectAsync() => Task.Run(() => Connect());
-        public override void CloseConnection() {
-            logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
 
-            if (Connected) {
-                socketClient.Close();
-                socketClient = null;
-            }
+        public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
+            await Task.Run(() => {
+                logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
 
-            CloseConnectionManually = true;
+                if (Connected) {
+                    socketClient.Close();
+                    socketClient = null;
+                }
+
+                CloseConnectionManually = true;
+            }, cancellationToken);
         }
+
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;
+        public override async Task<bool> WorkplaceCheckConnectionAsync(CancellationToken cancellationToken = default) {
+            return await Task.FromResult(Connected);
+        }
         #endregion
 
         #region Methods
-        private async Task<bool> ConnectToServer() {
+        private async Task<bool> ConnectToServer(CancellationToken cancellationToken = default) {
             try {
                 if (Connected) {
                     logger.Warn($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
