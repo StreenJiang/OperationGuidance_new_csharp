@@ -81,13 +81,14 @@ namespace OperationGuidance_new.Tasks {
 
         public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
             return await ConnectWithRetryAsync(async (ct) => {
-                if (ConnectToSerialPortDevice(ct)) {
+                if (await ConnectToSerialPortDeviceAsync(ct)) {
                     // Start the task loop
                     _ = Task.Run(async () => {
                         await RunTaskAsync(cancellationToken);
                     }, cancellationToken);
 
                     Status = CONNECTED;
+                    logger.Info($"[SERIALPORT] Connection established successfully - Port: {_portName}");
                     return true;
                 }
                 return false;
@@ -112,67 +113,100 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        private bool ConnectToSerialPortDevice(CancellationToken cancellationToken = default) {
+        private async Task<bool> ConnectToSerialPortDeviceAsync(CancellationToken cancellationToken = default) {
             try {
-                logger.Info($"Connecting to SerialPort[{_device_name}]");
-                Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
-                if (serialPorts.ContainsKey(_portName)) {
-                    serialPortStreamClient = new(_portName, _baudRate, _dataBits, _parity, _stopBits);
-                    serialPortStreamClient.DataReceived += async (sender, eventArgs) => {
-                        try {
-                            await Task.Delay(200);
-                            byte[] data = new byte[serialPortStreamClient.BytesToRead];
-                            int msgLen = serialPortStreamClient.Read(data, 0, data.Length);
-                            bool foundInvalidChar = false;
-                            string result;
-                            switch (_dataType) {
-                                case DataTypes.ASCII:
-                                    for (int i = 0; i < data.Length; i++) {
-                                        byte b = data[i];
-                                        if ((i > 0 && i < data.Length - 1) && (b < 32 || b > 126)) {
-                                            foundInvalidChar = true;
-                                            break;
-                                        }
-                                    }
-                                    result = Encoding.ASCII.GetString(data, 0, msgLen).Trim().Trim('\x02').Trim('\x03');
-                                    break;
-                                case DataTypes.BINARY:
-                                    result = ConvertToString(data, 2, out foundInvalidChar);
-                                    break;
-                                case DataTypes.OCTAL:
-                                    result = ConvertToString(data, 8, out foundInvalidChar);
-                                    break;
-                                case DataTypes.DECIMAL:
-                                    result = ConvertToString(data, 10, out foundInvalidChar);
-                                    break;
-                                case DataTypes.HEX:
-                                    result = ConvertToString(data, 16, out foundInvalidChar);
-                                    break;
-                                default:
-                                    result = string.Empty;
-                                    break;
-                            }
+                logger.Info($"[SERIALPORT] Starting connection process - Port: {_portName}, BaudRate: {_baudRate}");
+                cancellationToken.ThrowIfCancellationRequested();
 
-                            if (_actionAfterDataReceived != null) {
-                                if (foundInvalidChar) {
-                                    logger.Warn($"Data received from SerialPort[{_device_name}] found invalid character(s), data: {result}");
-                                }
-                                _actionAfterDataReceived(result);
-                            }
-                        } catch (Exception e) {
-                            logger.Error($"Error occurred whlie receiving data from SerialPort[{_device_name}], e: {e}");
-                        }
-                    };
-                    serialPortStreamClient.Open();
-                    MainUtils.Info(logger, $"Successfully connect to SerialPort[{_device_name}]");
-                    return true;
-                } else {
-                    logger.Warn($"Failed to connect to SerialPort[{_device_name}], can't find current serial port device.");
+                Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
+                if (!serialPorts.ContainsKey(_portName)) {
+                    logger.Warn($"[SERIALPORT] Failed to connect - port {_portName} not found");
                     return false;
                 }
+
+                logger.Debug($"[SERIALPORT] Port {_portName} found, opening connection...");
+                serialPortStreamClient = new(_portName, _baudRate, _dataBits, _parity, _stopBits);
+                serialPortStreamClient.DataReceived += async (sender, eventArgs) => {
+                    try {
+                        await Task.Delay(200, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        byte[] data = new byte[serialPortStreamClient.BytesToRead];
+                        int msgLen = serialPortStreamClient.Read(data, 0, data.Length);
+                        bool foundInvalidChar = false;
+                        string result;
+                        switch (_dataType) {
+                            case DataTypes.ASCII:
+                                for (int i = 0; i < data.Length; i++) {
+                                    byte b = data[i];
+                                    if ((i > 0 && i < data.Length - 1) && (b < 32 || b > 126)) {
+                                        foundInvalidChar = true;
+                                        break;
+                                    }
+                                }
+                                result = Encoding.ASCII.GetString(data, 0, msgLen).Trim().Trim('\x02').Trim('\x03');
+                                break;
+                            case DataTypes.BINARY:
+                                result = ConvertToString(data, 2, out foundInvalidChar);
+                                break;
+                            case DataTypes.OCTAL:
+                                result = ConvertToString(data, 8, out foundInvalidChar);
+                                break;
+                            case DataTypes.DECIMAL:
+                                result = ConvertToString(data, 10, out foundInvalidChar);
+                                break;
+                            case DataTypes.HEX:
+                                result = ConvertToString(data, 16, out foundInvalidChar);
+                                break;
+                            default:
+                                result = string.Empty;
+                                break;
+                        }
+
+                        if (_actionAfterDataReceived != null) {
+                            if (foundInvalidChar) {
+                                logger.Warn($"Data received from SerialPort[{_device_name}] found invalid character(s), data: {result}");
+                            }
+                            _actionAfterDataReceived(result);
+                        }
+                    } catch (OperationCanceledException) {
+                        // Silently ignore cancellation during data receive
+                    } catch (Exception e) {
+                        logger.Error($"Error occurred while receiving data from SerialPort[{_device_name}], e: {e}");
+                    }
+                };
+
+                // Check for cancellation before opening
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Open the serial port (synchronous but quick)
+                serialPortStreamClient.Open();
+
+                logger.Info($"[SERIALPORT] Successfully connected to {_device_name} (Port: {_portName}, BaudRate: {_baudRate})");
+                return true;
+            } catch (OperationCanceledException) {
+                logger.Info($"[SERIALPORT] Connection cancelled for {_portName}");
+                if (serialPortStreamClient != null && serialPortStreamClient.IsOpen) {
+                    serialPortStreamClient.Close();
+                    serialPortStreamClient = null;
+                }
+                throw; // Re-throw to let ConnectWithRetryAsync handle it
             } catch (Exception e) {
-                logger.Warn($"Failed to connect to SerialPort[{_device_name}], e: {e}");
+                logger.Warn($"[SERIALPORT] Failed to connect to {_device_name}: {e.Message}");
+                if (serialPortStreamClient != null && serialPortStreamClient.IsOpen) {
+                    serialPortStreamClient.Close();
+                    serialPortStreamClient = null;
+                }
                 return false;
+            }
+        }
+
+        // Backward compatibility wrapper (deprecated)
+        private bool ConnectToSerialPortDevice(CancellationToken cancellationToken = default) {
+            try {
+                return ConnectToSerialPortDeviceAsync(cancellationToken).GetAwaiter().GetResult();
+            } catch (AggregateException ex) {
+                throw ex.InnerException ?? ex;
             }
         }
         private string ConvertToString(byte[] data, int baseNum, out bool foundInvalidChar) {

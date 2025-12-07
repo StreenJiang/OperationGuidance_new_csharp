@@ -124,13 +124,14 @@ namespace OperationGuidance_new.Tasks {
             }
         public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
             return await ConnectWithRetryAsync(async (ct) => {
-                if (ConnectToServer(ct)) {
+                if (await ConnectToServerAsync(ct)) {
                     // Start the task loop
                     _ = Task.Run(async () => {
                         await RunTaskAsync(cancellationToken);
                     }, cancellationToken);
 
                     Status = CONNECTED;
+                    logger.Info($"[IOBOX] Connection established successfully - IP: {_ip}, Port: {_port}");
                     return true;
                 }
                 return false;
@@ -154,33 +155,78 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        private bool ConnectToServer(CancellationToken cancellationToken = default) {
+        private async Task<bool> ConnectToServerAsync(CancellationToken cancellationToken = default) {
             if (Connected) {
                 logger.Warn($"Already connecting to IOBOX[ {_ip}: {_port}], please don't connect repeatedly.");
                 return false;
             }
 
-            logger.Info($"Connecting to IOBOX[ {_ip}: {_port}]");
+            logger.Info($"[IOBOX] Starting connection process - IP: {_ip}, Port: {_port}");
             bool pingSuccess = false;
             bool connectSuccess = false;
 
             // 1. check ping
+            logger.Debug($"[IOBOX] Step 1/2: Pinging {_ip}...");
             pingSuccess = MainUtils.PingHost(_ip);
+            if (!pingSuccess) {
+                logger.Warn($"[IOBOX] Failed to ping {_ip} - device may be offline");
+                return false;
+            }
+            logger.Debug($"[IOBOX] Ping successful for {_ip}");
+
             if (pingSuccess) {
                 // 2. check socket
+                logger.Debug($"[IOBOX] Step 2/2: Establishing socket connection...");
                 try {
+                    // Check for cancellation before creating socket
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     socketClient.ReceiveTimeout = ReceiveTimeout;
-                    socketClient.Connect(IPAddress.Parse(_ip), _port);
+
+                    // Use async connect with timeout
+                    var connectTask = socketClient.ConnectAsync(IPAddress.Parse(_ip), _port);
+                    var timeoutTask = Task.Delay(5000, cancellationToken);
+                    var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+                    if (completedTask == timeoutTask) {
+                        // Timeout occurred
+                        logger.Warn($"[IOBOX] Connection timeout after 5000ms to {_ip}:{_port}");
+                        socketClient.Close();
+                        socketClient = null;
+                        return false;
+                    }
+
+                    // Check if task was cancelled
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     connectSuccess = true;
-                    MainUtils.Info(logger, $"Successfully connect to IOBOX[ {_ip}: {_port}]");
+                    logger.Info($"[IOBOX] Successfully connected to {_ip}:{_port}");
+                } catch (OperationCanceledException) {
+                    logger.Info($"[IOBOX] Connection cancelled for {_ip}:{_port}");
+                    if (socketClient != null) {
+                        socketClient.Close();
+                        socketClient = null;
+                    }
+                    throw; // Re-throw to let ConnectWithRetryAsync handle it
                 } catch (Exception e) {
-                    logger.Warn($"Error while connecting to IOBOX[ {_ip}: {_port}]: {e}");
+                    logger.Warn($"[IOBOX] Socket connection failed for {_ip}:{_port}: {e.Message}");
+                    if (socketClient != null) {
+                        socketClient.Close();
+                        socketClient = null;
+                    }
                 }
-            } else {
-                logger.Warn($"Failed to ping IOBOX[ {_ip}: {_port}]");
             }
             return pingSuccess && connectSuccess;
+        }
+
+        // Backward compatibility wrapper (deprecated)
+        private bool ConnectToServer(CancellationToken cancellationToken = default) {
+            try {
+                return ConnectToServerAsync(cancellationToken).GetAwaiter().GetResult();
+            } catch (AggregateException ex) {
+                throw ex.InnerException ?? ex;
+            }
         }
         public string SendCommand(string command) {
             if (Connected) {
