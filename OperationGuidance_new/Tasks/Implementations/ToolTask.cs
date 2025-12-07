@@ -171,21 +171,21 @@ namespace OperationGuidance_new.Tasks {
             lock (SyncObject) {
                 HeartBeatCounter = 0;
                 CloseConnectionManually = false;
-
-                return ConnectWithRetryAsync(async (ct) => {
-                    if (await ConnectToServer(ct)) {
-                        // Start the task loop
-                        _ = Task.Run(async () => {
-                            await RunTaskAsync(cancellationToken);
-                        }, cancellationToken);
-
-                        // Send unlock command after successful connection
-                        ForceSendUnlock();
-                        return true;
-                    }
-                    return false;
-                }, cancellationToken: cancellationToken);
             }
+
+            return await ConnectWithRetryAsync(async (ct) => {
+                if (await ConnectToServer(ct)) {
+                    // Start the task loop
+                    _ = Task.Run(async () => {
+                        await RunTaskAsync(cancellationToken);
+                    }, cancellationToken);
+
+                    // Send unlock command after successful connection
+                    ForceSendUnlock();
+                    return true;
+                }
+                return false;
+            }, cancellationToken: cancellationToken);
         }
 
         public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
@@ -202,6 +202,7 @@ namespace OperationGuidance_new.Tasks {
         }
 
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
+        [Obsolete("Use WorkplaceCheckConnectionAsync with CancellationToken instead")]
         public override bool WorkplaceCheckConnection() => Connected;
         public override async Task<bool> WorkplaceCheckConnectionAsync(CancellationToken cancellationToken = default) {
             return await Task.FromResult(Connected);
