@@ -57,52 +57,62 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Override methods
-        protected override void RunTask() {
-            Task.Run(async () => {
-                try {
-                    while (Connected) {
-                        // Just keep running to keep it alive
-                        await Task.Delay(LoopingInterval);
-                    }
-                } catch (Exception e) {
-                    logger.Warn($"Error while running task for connection<SerialPort[{_device_name}]>, e: {e}");
-                } finally {
-                    logger.Info($"Disconnected to SerialPort[{_device_name}]");
-                    if (serialPortStreamClient != null) {
-                        serialPortStreamClient.Close();
-                        serialPortStreamClient = null;
-                    }
-                    if (CloseConnectionManually) {
-                        logger.Info($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
-                    }
+        protected override async Task RunTaskAsync(CancellationToken cancellationToken = default) {
+            try {
+                while (!cancellationToken.IsCancellationRequested && Connected) {
+                    // Just keep running to keep it alive
+                    await Task.Delay(LoopingInterval, cancellationToken);
                 }
-            });
+            } catch (OperationCanceledException) {
+                logger.Info($"Task execution cancelled for SerialPort[{_device_name}]");
+            } catch (Exception e) {
+                logger.Warn($"Error while running task for connection<SerialPort[{_device_name}]>, e: {e}");
+            } finally {
+                logger.Info($"Disconnected to SerialPort[{_device_name}]");
+                if (serialPortStreamClient != null) {
+                    serialPortStreamClient.Close();
+                    serialPortStreamClient = null;
+                }
+                if (CloseConnectionManually) {
+                    logger.Info($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
+                }
+            }
         }
-        public override async void Connect() {
-            while (!Connected && !CloseConnectionManually) {
-                Status = CONNECTING;
-                if (ConnectToSerialPortDevice()) {
-                    RunTask();
+
+        public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
+            return await ConnectWithRetryAsync(async (ct) => {
+                if (ConnectToSerialPortDevice(ct)) {
+                    // Start the task loop
+                    _ = Task.Run(async () => {
+                        await RunTaskAsync(cancellationToken);
+                    }, cancellationToken);
+
                     Status = CONNECTED;
-                    break;
+                    return true;
                 }
-                await Task.Delay(AutoReconnectingTrialDelay);
-            }
+                return false;
+            }, cancellationToken: cancellationToken);
         }
-        public override Task ConnectAsync() => Task.Run(() => Connect());
-        public override void CloseConnection() {
-            logger.Info($"Close SerialPort[{_device_name}] manually...");
-            if (Connected) {
-                serialPortStreamClient.Close();
-            }
-            CloseConnectionManually = true;
-            Result = null;
+
+        public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
+            await Task.Run(() => {
+                logger.Info($"Close SerialPort[{_device_name}] manually...");
+                if (Connected) {
+                    serialPortStreamClient.Close();
+                }
+                CloseConnectionManually = true;
+                Result = null;
+            }, cancellationToken);
         }
+
         public override bool WorkplaceCheckConnection() => Connected;
+        public override async Task<bool> WorkplaceCheckConnectionAsync(CancellationToken cancellationToken = default) {
+            return await Task.FromResult(Connected);
+        }
         #endregion
 
         #region Methods
-        private bool ConnectToSerialPortDevice() {
+        private bool ConnectToSerialPortDevice(CancellationToken cancellationToken = default) {
             try {
                 logger.Info($"Connecting to SerialPort[{_device_name}]");
                 Dictionary<string, string> serialPorts = ConnectionUtils.GetSerialPorts();
