@@ -620,13 +620,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
-                                        _adminConfirmed = false;
-                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
-                                        if (!_adminConfirmed.Value) {
-                                            _adminConfirmed = null;
+                                        bool confirmed = OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
+                                        if (!confirmed) {
                                             return;
                                         }
-                                        _adminConfirmed = null;
                                     }
 
                                     int? currentWorkstationId = null;
@@ -708,13 +705,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         return;
                                     }
 
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
-                                    if (!_adminConfirmed.Value) {
-                                        _adminConfirmed = null;
+                                    bool confirmed = OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
+                                    if (!confirmed) {
                                         return;
                                     }
-                                    _adminConfirmed = null;
 
                                     ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
                                     deviceBlock.PopUpForm = popUpForm;

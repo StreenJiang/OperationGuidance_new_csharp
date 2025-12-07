@@ -334,9 +334,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], waiting for administrators to confirm...");
 
                         // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
+                        needRedo = _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
                     } else {
                         logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
@@ -500,9 +498,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], waiting for administrators to confirm...");
 
                             // 需要管理员密码弹窗
-                            _workplace.AdminConfirmed = false;
-                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
-                            needRedo = _workplace.AdminConfirmed.Value;
+                            needRedo = _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
                         } else {
                             logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;
@@ -710,14 +706,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        public new void Show() {
-            // 弹窗会阻塞，因此异步判断可以让里面可能出现的弹窗不阻塞后面的逻辑
-            BeginInvoke(new(() => {
+
+        protected override void AfterShown() {
+            base.AfterShown();
+            // 弹窗显示后异步执行条码校验，避免阻塞弹窗显示
+            BeginInvoke(async () => {
                 if (_barCode != null) {
+                    await Task.Delay(500);
                     ValidateBarCode(_barCode);
                 }
-            }));
-            base.Show();
+            });
         }
 
         public void ResizeSelf() {

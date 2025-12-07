@@ -255,9 +255,8 @@ namespace OperationGuidance_new.Views {
                                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
                                 int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
                                 if (okSum >= int.Parse(shifts[1])) {
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
-                                    if (!_adminConfirmed.Value) {
+                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
+                                    if (!confirmed) {
                                         if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                                             _barCodePopUpForm.Hide();
                                         }
@@ -1007,10 +1006,8 @@ namespace OperationGuidance_new.Views {
                 // Count screw bit used time
                 ScrewBitCounterDTO screwBitCounter;
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
-                    _adminConfirmed = false;
-                    OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
-                    if (_adminConfirmed.Value) {
-                        _adminConfirmed = null;
+                    bool confirmed = OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
+                    if (confirmed) {
                         screwBitCounter.current_counts = 0;
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
 
