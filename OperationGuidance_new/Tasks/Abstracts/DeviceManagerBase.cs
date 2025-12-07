@@ -171,9 +171,8 @@ namespace OperationGuidance_new.Tasks.Abstracts {
                         MainUtils.Info(Logger, $"{GetDeviceTypeName()} 配置已更改，正在重新创建 {GetDeviceTypeName()}[{dto.id}] {deviceDisplayName}...");
                         CleanupTask(task);
 
-                        // 等待一段时间再重新创建（使用Thread.Sleep避免死锁风险）
-                        System.Threading.Thread.Sleep(task.AutoReconnectingTrialDelay);
-
+                        // 立即重新创建（移除Thread.Sleep避免阻塞）
+                        // 注意：由于在lock内，无法使用await进行延迟
                         task = CreateTaskInstance(dto);
                         if (task != null) {
                             // Add to cache after recreation
@@ -311,12 +310,13 @@ namespace OperationGuidance_new.Tasks.Abstracts {
                 }
 
                 // 2. 创建/更新活跃设备
-                var tasks = dtos.Select(async dto => {
+                var results = new List<TTask?>();
+                foreach (var dto in dtos) {
                     int? workstationId = workstationMap.TryGetValue(dto.id, out var wsId) ? wsId : null;
-                    return CreateOrUpdateDevice(dto, workstationId);
-                });
+                    var task = CreateOrUpdateDevice(dto, workstationId);
+                    results.Add(task);
+                }
 
-                var results = await Task.WhenAll(tasks);
                 int processedCount = results.Count(r => r != null);
 
                 MainUtils.Info(Logger, $"成功同步 {processedCount} 个 {GetDeviceTypeName()} 设备", false);

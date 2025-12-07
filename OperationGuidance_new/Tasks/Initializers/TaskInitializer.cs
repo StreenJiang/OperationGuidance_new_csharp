@@ -34,10 +34,14 @@ namespace OperationGuidance_new.Tasks.Initializers {
             }
         }
 
+        private static int _loopCounter = 0;
+
         private static async Task TaskCheckingLoopAsync() {
             while (true) {
                 try {
-                    MainUtils.Info(logger, "Starting device synchronization cycle...", false);
+                    _loopCounter++;
+                    var startTime = DateTime.Now;
+                    MainUtils.Info(logger, $"[Loop #{_loopCounter}] Starting device synchronization cycle...", false);
 
                     // Query all workstations for devices configuration
                     Dictionary<int, int> toolMaps = new();
@@ -98,7 +102,8 @@ namespace OperationGuidance_new.Tasks.Initializers {
                         })
                     );
 
-                    MainUtils.Info(logger, "Device synchronization cycle completed", false);
+                    var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                    MainUtils.Info(logger, $"[Loop #{_loopCounter}] Device synchronization cycle completed in {elapsed:F0}ms", false);
 
                     // Delay in task looping
                     await Task.Delay(LoopingDelay);

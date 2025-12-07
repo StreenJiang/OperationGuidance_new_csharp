@@ -40,7 +40,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 var tasks = new List<Task>();
 
                 // 处理IoBox设备
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(() => {
                     foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                         int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                         CreateOrUpdateIoBoxDevice(dto, workstationId);
@@ -48,7 +48,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 }));
 
                 // 处理Arm设备
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(() => {
                     foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                         int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                         CreateOrUpdateArmDevice(dto, workstationId);
@@ -120,7 +120,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 // 检查是否需要重新连接（IP地址、端口或设备类型改变）
                 if (NeedsReconnection(task, dto)) {
                     string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-                    MainUtils.Info(_logger, $"IoBox配置已更改，正在重新创建 {dto.ip}:{dto.port} {deviceDisplayName}...", false);
+                    MainUtils.Info(_logger, $"IoBox配置已更改，正在重新创建 {dto.ip}:{dto.port} {deviceDisplayName}...");
                     CleanupTask(task);
 
                     System.Threading.Thread.Sleep(task.AutoReconnectingTrialDelay);

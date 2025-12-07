@@ -81,7 +81,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     $"DataBits变化: {task.DataBits} -> {dto.data_bit}, " +
                     $"StopBits变化: {(int)task.StopBits} -> {dto.stop_bit}, " +
                     $"DataType变化: {(int)task.DataType} -> {dto.data_type}, " +
-                    $"Type变化: {task.SerialPortType.Id} -> {dto.type}", false);
+                    $"Type变化: {task.SerialPortType.Id} -> {dto.type}");
             }
 
             return needsReconnect;

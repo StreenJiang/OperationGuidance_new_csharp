@@ -61,7 +61,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 MainUtils.Info(Logger, $"COMMUNICATION[{dto.id}] 需要重连 - " +
                     $"IP变化: {task.Ip} -> {dto.ip}, " +
                     $"Port变化: {task.Port} -> {dto.port}, " +
-                    $"Type变化: {task.CommunicationType.Id} -> {dto.type}", false);
+                    $"Type变化: {task.CommunicationType.Id} -> {dto.type}");
             }
 
             return needsReconnect;
