@@ -31,7 +31,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             Dictionary<int, int> ioMaps,
             Dictionary<int, int> armMaps) {
             try {
-                MainUtils.Info(_logger, "正在同步IoBox和Arm设备...", false);
+                var activeIoBoxCount = ioBoxDtos.Count(d => d.deleted == (int) YesOrNo.NO);
+                var activeArmCount = armDtos.Count(d => d.deleted == (int) YesOrNo.NO);
+                MainUtils.Info(_logger, $"正在同步IoBox和Arm设备... IoBox: {activeIoBoxCount}个, Arm: {activeArmCount}个", false);
 
                 // 1. 移除已删除的设备
                 RemoveDeletedDevices(ioBoxDtos, armDtos);
@@ -40,36 +42,45 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 var tasks = new List<Task>();
 
                 // 处理IoBox设备
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(() => {
                     try {
+                        MainUtils.Info(_logger, $"开始处理 {activeIoBoxCount} 个IoBox设备...", false);
+                        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                         foreach (var dto in ioBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                             int? workstationId = ioMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                             CreateOrUpdateIoBoxDevice(dto, workstationId);
                         }
+                        stopwatch.Stop();
+                        MainUtils.Info(_logger, $"完成处理 {activeIoBoxCount} 个IoBox设备，耗时: {stopwatch.ElapsedMilliseconds}ms", false);
                     } catch (Exception ex) {
                         MainUtils.Error(_logger, $"处理IoBox设备时出错: {ex.Message}");
                     }
                 }));
 
                 // 处理Arm设备
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(() => {
                     try {
+                        MainUtils.Info(_logger, $"开始处理 {activeArmCount} 个Arm设备...", false);
+                        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                         foreach (var dto in armDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
                             int? workstationId = armMaps.TryGetValue(dto.id, out var wsId) ? wsId : null;
                             CreateOrUpdateArmDevice(dto, workstationId);
                         }
+                        stopwatch.Stop();
+                        MainUtils.Info(_logger, $"完成处理 {activeArmCount} 个Arm设备，耗时: {stopwatch.ElapsedMilliseconds}ms", false);
                     } catch (Exception ex) {
                         MainUtils.Error(_logger, $"处理Arm设备时出错: {ex.Message}");
                     }
                 }));
 
                 // 等待所有任务完成，设置30秒超时避免无限等待
-                bool allCompleted = await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(30))) == tasks[0];
+                var completedTask = await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(30)));
+                bool allCompleted = completedTask == Task.WhenAll(tasks);
                 if (!allCompleted) {
                     MainUtils.Warn(_logger, "IoBox和Arm设备同步超时（30秒）");
+                } else {
+                    MainUtils.Info(_logger, "IoBox和Arm设备同步在超时前完成", false);
                 }
-
-                MainUtils.Info(_logger, "IoBox和Arm设备同步完成", false);
                 return _tasks.Count;
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"同步IoBox和Arm设备时出错: {ex.Message}");
@@ -95,7 +106,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
 
                     MainUtils.Info(_logger, $"正在创建IoBox设备: {dto.ip}:{dto.port} {deviceDisplayName}...", false);
-                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port);
+                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
 
                     if (task != null) {
                         AddTaskToCache(key, task);
@@ -109,13 +120,19 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                             try {
                                 await Task.Delay(3000); // 最多等待3秒显示状态
 
-                                if (task != null && task.Connected) {
-                                    MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
-                                } else {
-                                    MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
+                                // 使用try-catch确保后台任务不会崩溃
+                                try {
+                                    if (task != null && task.Connected) {
+                                        MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
+                                    } else {
+                                        MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
+                                    }
+                                } catch (Exception innerEx) {
+                                    // 只记录异常，不抛出，避免影响后台任务
+                                    MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {innerEx.Message}");
                                 }
-                            } catch (Exception ex) {
-                                MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
+                            } catch {
+                                // 忽略所有后台任务异常
                             }
                         });
                     } else {
@@ -142,7 +159,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                         if (task.AutoReconnectingTrialDelay > 0) {
                             await Task.Delay(task.AutoReconnectingTrialDelay);
                         }
-                        var newTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
+                        var newTask = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
                         if (newTask != null) {
                             string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
                             AddTaskToCache(key, newTask);
@@ -188,7 +205,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
                 if (task == null) {
                     MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port}...", false);
-                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port);
+                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port, dto.type, dto.id);
 
                     if (task != null) {
                         AddTaskToCache(key, task);
@@ -269,28 +286,17 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             bool needsReconnect = task.Ip != dto.ip || task.Port != dto.port;
 
             // 检查设备类型是否改变
-            // IoBox设备的type范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
-            // Arm设备的type范围：应该是不同的ID（需要根据DeviceType_Arm确定）
-            // 由于IoBoxTask可以同时拥有多种类型，我们需要检查DTO.type是否与当前任务的任何类型匹配
-
             int dtoType = dto.type;
             bool typeMatches = false;
 
-            // 检查DTO.type是否与当前任务的类型匹配
-            // 如果DTO.type在1-4范围内，它应该匹配SetterSelectorType或ArrangerType
-            if (dtoType >= 1 && dtoType <= 4) {
-                // 检查Arranger类型 (ID=3)
-                if (dtoType == 3 && task.ArrangerType?.DeviceType.Id == dtoType) {
-                    typeMatches = true;
-                }
-                // 检查SetterSelector类型 (ID=1, 2, 4)
-                else if (dtoType != 3 && task.SetterSelectorType?.DeviceType.Id == dtoType) {
-                    typeMatches = true;
-                }
-            }
-            // 如果DTO.type不在1-4范围内，可能是Arm类型或其他类型
-            // 对于Arm类型，我们需要检查task.ArmType
-            else if (task.ArmType?.DeviceType.Id == dtoType) {
+            // 直接比较DTO.type与任务中设备类型的ID
+            // IoBox设备的type范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
+            // Arm设备的type范围：1-4 (CF01, CF02, CF03, CF04)
+            if (task.ArmType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            } else if (task.ArrangerType?.DeviceType.Id == dtoType) {
+                typeMatches = true;
+            } else if (task.SetterSelectorType?.DeviceType.Id == dtoType) {
                 typeMatches = true;
             }
 

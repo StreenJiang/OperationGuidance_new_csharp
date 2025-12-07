@@ -8,6 +8,7 @@ using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
@@ -805,17 +806,97 @@ namespace OperationGuidance_new.Utils {
 
         private static ConcurrentDictionary<string, IoBoxTask> _ioBoxTasks = new();
         public static ConcurrentDictionary<string, IoBoxTask> IoBoxTasks => _ioBoxTasks;
-        public static IoBoxTask NewIoBoxTask(string ip, int port) {
-            IoBoxTask task = new(ip, port);
-            task.Connect();
+
+        /// <summary>
+        /// 创建IoBoxTask并根据设备类型初始化相应的设备类型实例
+        /// </summary>
+        /// <param name="ip">IP地址</param>
+        /// <param name="port">端口号</param>
+        /// <param name="deviceTypeId">设备类型ID（来自DeviceIoDTO.type或DeviceArmDTO.type）</param>
+        /// <param name="deviceId">设备ID（来自DeviceIoDTO.id或DeviceArmDTO.id）</param>
+        /// <returns>初始化后的IoBoxTask</returns>
+        public static IoBoxTask NewIoBoxTask(string ip, int port, int deviceTypeId, int deviceId = -1) {
+            IoBoxTask task = new(ip, port, deviceId);
+            InitializeDeviceType(task, deviceTypeId);
+            // 移除自动连接，避免阻塞
+            // 连接将在后台异步进行
             _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
+            // 在后台异步连接，不阻塞调用方
+            _ = Task.Run(async () => {
+                try {
+                    await task.ConnectAsync();
+                } catch (Exception ex) {
+                    Warn(logger, $"后台连接IoBox设备 {ip}:{port} 失败: {ex.Message}", false);
+                }
+            });
             return task;
         }
-        public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port) {
-            IoBoxTask task = new(ip, port);
+
+        /// <summary>
+        /// 异步创建IoBoxTask并根据设备类型初始化相应的设备类型实例
+        /// </summary>
+        /// <param name="ip">IP地址</param>
+        /// <param name="port">端口号</param>
+        /// <param name="deviceTypeId">设备类型ID（来自DeviceIoDTO.type或DeviceArmDTO.type）</param>
+        /// <param name="deviceId">设备ID（来自DeviceIoDTO.id或DeviceArmDTO.id）</param>
+        /// <returns>初始化后的IoBoxTask</returns>
+        public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port, int deviceTypeId, int deviceId = -1) {
+            IoBoxTask task = new(ip, port, deviceId);
+            InitializeDeviceType(task, deviceTypeId);
             await task.ConnectAsync();
             _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
             return task;
+        }
+
+        /// <summary>
+        /// 根据设备类型ID初始化IoBoxTask中的设备类型实例
+        /// 支持IoBox设备类型（1-4）和Arm设备类型（1-4）
+        /// </summary>
+        /// <param name="task">要初始化的IoBoxTask</param>
+        /// <param name="deviceTypeId">设备类型ID</param>
+        private static void InitializeDeviceType(IoBoxTask task, int deviceTypeId) {
+            try {
+                // 根据deviceTypeId判断是IoBox设备还是Arm设备
+                // IoBox设备类型范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
+                // Arm设备类型范围：1-4 (CF01, CF02, CF03, CF04)
+                if (deviceTypeId >= 1 && deviceTypeId <= 4) {
+                    // 先尝试作为IoBox设备类型处理
+                    try {
+                        var ioBoxDeviceType = DeviceType_IoBox.GetById(deviceTypeId);
+                        InitializeIoBoxDeviceType(task, ioBoxDeviceType);
+                        return;
+                    } catch (NullReferenceException) {
+                        // 如果IoBox设备类型不存在，则作为Arm设备类型处理
+                    }
+
+                    // 作为Arm设备类型处理
+                    var armDeviceType = DeviceType_Arm.GetById(deviceTypeId);
+                    task.ArmType = new IoBoxTypeArm(armDeviceType, task.DeviceId);
+                } else {
+                    // 超出预定义范围，记录警告但不抛出异常
+                    Warn(logger, $"未知的设备类型ID: {deviceTypeId}，IoBoxTask将不会被初始化设备类型", false);
+                }
+            } catch (Exception ex) {
+                Warn(logger, $"初始化设备类型失败 (deviceTypeId={deviceTypeId}): {ex.Message}", false);
+            }
+        }
+
+        /// <summary>
+        /// 根据IoBox设备类型初始化IoBoxTask中的具体设备类型实例
+        /// </summary>
+        /// <param name="task">要初始化的IoBoxTask</param>
+        /// <param name="deviceType">IoBox设备类型</param>
+        private static void InitializeIoBoxDeviceType(IoBoxTask task, DeviceTypeIoBox deviceType) {
+            int deviceId = task.DeviceId;
+            if (deviceType is IoBoxArranger arrangerType) {
+                task.ArrangerType = new IoBoxTypeArranger(task, arrangerType, deviceId);
+            } else if (deviceType is IoBoxSetterSelector_4 setterSelector4Type) {
+                task.SetterSelectorType = new IoBoxTypeSetterSelector(task, setterSelector4Type, deviceId);
+            } else if (deviceType is IoBoxSetterSelector_8 setterSelector8Type) {
+                task.SetterSelectorType = new IoBoxTypeSetterSelector(task, setterSelector8Type, deviceId);
+            } else if (deviceType is IoBoxSetterSelector_4_plus setterSelector4PlusType) {
+                task.SetterSelectorType = new IoBoxTypeSetterSelectorPlus(task, setterSelector4PlusType, deviceId);
+            }
         }
         public static IoBoxTask GetIoBoxTask(string ip, int port) => GetIoBoxTask(GetTCPClientKey(ip, port));
         public static IoBoxTask GetIoBoxTask(string key) {

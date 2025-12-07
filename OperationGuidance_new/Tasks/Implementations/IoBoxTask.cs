@@ -21,7 +21,7 @@ namespace OperationGuidance_new.Tasks {
         #region Properties
         // Override properties
         public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
-        public new int DeviceId { private get => base.DeviceId; set { } }
+        public new int DeviceId => base.DeviceId;
         // Other properties
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
@@ -32,7 +32,7 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Constructors
-        public IoBoxTask(string ip, int port) : base(-1, null) {
+        public IoBoxTask(string ip, int port, int deviceId = -1) : base(deviceId, null) {
             _ip = ip;
             _port = port;
             Locked = false;
