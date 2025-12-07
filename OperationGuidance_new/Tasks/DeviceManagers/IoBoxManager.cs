@@ -123,33 +123,25 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     MainUtils.Info(_logger, $"IoBox配置已更改，正在重新创建 {dto.ip}:{dto.port} {deviceDisplayName}...");
                     CleanupTask(task);
 
-                    System.Threading.Thread.Sleep(task.AutoReconnectingTrialDelay);
-
-                    task = MainUtils.NewIoBoxTask(dto.ip, dto.port);
-                    if (task != null) {
-                        AddTaskToCache(key, task);
-                        MainUtils.Info(_logger, $"成功重新创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName}");
-                        if (workstationId.HasValue) {
-                            task.WorkstationId = workstationId.Value;
+                    // 移除阻塞性Thread.Sleep，直接重新创建设备
+                    // 延迟重新创建逻辑移到后台异步执行
+                    _ = Task.Run(async () => {
+                        if (task.AutoReconnectingTrialDelay > 0) {
+                            await Task.Delay(task.AutoReconnectingTrialDelay);
                         }
-
-                        // 显示连接状态日志给UI（后台执行）
-                        _ = Task.Run(async () => {
-                            try {
-                                await Task.Delay(3000);
-
-                                if (task != null && task.Connected) {
-                                    MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
-                                } else {
-                                    MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
-                                }
-                            } catch (Exception ex) {
-                                MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {ex.Message}");
+                        var newTask = MainUtils.NewIoBoxTask(dto.ip, dto.port);
+                        if (newTask != null) {
+                            string key = MainUtils.GetTCPClientKey(dto.ip, dto.port);
+                            AddTaskToCache(key, newTask);
+                            MainUtils.Info(_logger, $"成功重新创建IoBox设备 {dto.ip}:{dto.port} {deviceDisplayName}");
+                            if (workstationId.HasValue) {
+                                newTask.WorkstationId = workstationId.Value;
                             }
-                        });
-                    }
+                        }
+                    });
 
-                    return task;
+                    // 返回null表示设备将在后台重新创建
+                    return null;
                 }
 
                 // 设备配置未变，检查是否需要重连
