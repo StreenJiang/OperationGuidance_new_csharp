@@ -172,16 +172,14 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
 
                             // 使用try-catch确保后台任务不会崩溃
                             try {
-                                string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
                                 if (task != null && task.Connected) {
-                                    MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName}");
+                                    MainUtils.Info(_logger, $"✓ 成功连接到IoBox[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")}");
                                 } else {
-                                    MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 失败");
+                                    MainUtils.Warn(_logger, $"✗ 连接到IoBox[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")} 失败");
                                 }
                             } catch (Exception innerEx) {
                                 // 只记录异常，不抛出，避免影响后台任务
-                                string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
-                                MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {deviceDisplayName} 连接状态时出错: {innerEx.Message}");
+                                MainUtils.Warn(_logger, $"检查IoBox[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")} 连接状态时出错: {innerEx.Message}");
                             }
                         } catch {
                             // 忽略所有后台任务异常
@@ -246,6 +244,27 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     if (workstationId.HasValue) {
                         task.WorkstationId = workstationId.Value;
                     }
+
+                    // 显示连接状态日志给UI（后台执行）
+                    _ = Task.Run(async () => {
+                        try {
+                            await Task.Delay(3000); // 最多等待3秒显示状态
+
+                            // 使用try-catch确保后台任务不会崩溃
+                            try {
+                                if (task != null && task.Connected) {
+                                    MainUtils.Info(_logger, $"✓ 成功连接到Arm[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")}");
+                                } else {
+                                    MainUtils.Warn(_logger, $"✗ 连接到Arm[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")} 失败");
+                                }
+                            } catch (Exception innerEx) {
+                                // 只记录异常，不抛出，避免影响后台任务
+                                MainUtils.Warn(_logger, $"检查Arm[{dto.ip}:{dto.port}] {(!string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "")} 连接状态时出错: {innerEx.Message}");
+                            }
+                        } catch {
+                            // 忽略所有后台任务异常
+                        }
+                    });
                 } else {
                     MainUtils.Warn(_logger, $"创建Arm设备 {dto.ip}:{dto.port} 失败");
                     return null;
