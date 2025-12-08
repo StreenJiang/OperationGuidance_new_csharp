@@ -44,84 +44,84 @@ namespace OperationGuidance_new.Tasks {
         protected override async Task RunTaskAsync(CancellationToken cancellationToken = default) {
             try {
                 while (!cancellationToken.IsCancellationRequested && Connected) {
-                        // Check arm
-                        if (ArmType != null && ArmType.RetrieveResult) {
-                            try {
-                                // Send and get response from TCP server if action is not null
-                                if (ArmType.ActionAfterCoordinatesReceived != null) {
-                                    string x = SendCommand(ArmType.DeviceType.COMMAND_READ_X_HEX.GetMessage());
-                                    string y = SendCommand(ArmType.DeviceType.COMMAND_READ_Y_HEX.GetMessage());
-                                    string? z = null;
-                                    if (ArmType.DeviceType.COMMAND_READ_Z_HEX != null) {
-                                        z = SendCommand(ArmType.DeviceType.COMMAND_READ_Z_HEX.GetMessage());
-                                    }
-                                    // logger.Debug($"[_ioBoxType.Name:{ArmType.DeviceType.Name}] result: x = {x}, y = {y}, z = {z}");
-
-                                    // Analyze data
-                                    ArmType.DeviceType.AnalyzeData(x, y, z, ArmType.ActionAfterCoordinatesReceived, ArmType.DeviceId);
+                    // Check arm
+                    if (ArmType != null && ArmType.RetrieveResult) {
+                        try {
+                            // Send and get response from TCP server if action is not null
+                            if (ArmType.ActionAfterCoordinatesReceived != null) {
+                                string x = SendCommand(ArmType.DeviceType.COMMAND_READ_X_HEX.GetMessage());
+                                string y = SendCommand(ArmType.DeviceType.COMMAND_READ_Y_HEX.GetMessage());
+                                string? z = null;
+                                if (ArmType.DeviceType.COMMAND_READ_Z_HEX != null) {
+                                    z = SendCommand(ArmType.DeviceType.COMMAND_READ_Z_HEX.GetMessage());
                                 }
-                            } catch (Exception e) {
-                                logger.Warn($"Exception has been thrown while sending and getting coordinates from _ioBoxType.Name:{ArmType.DeviceType.Name}], e = {e}");
+                                // logger.Debug($"[_ioBoxType.Name:{ArmType.DeviceType.Name}] result: x = {x}, y = {y}, z = {z}");
+
+                                // Analyze data
+                                ArmType.DeviceType.AnalyzeData(x, y, z, ArmType.ActionAfterCoordinatesReceived, ArmType.DeviceId);
                             }
+                        } catch (Exception e) {
+                            logger.Warn($"Exception has been thrown while sending and getting coordinates from _ioBoxType.Name:{ArmType.DeviceType.Name}], e = {e}");
                         }
+                    }
 
-                        // Check arranger
-                        if (ArrangerType != null && ArrangerType.RetrieveResult) {
-                            if (ArrangerType.ActionAfterIoSignalReceived != null) {
-                                string readResult = "empty";
-                                try {
-                                    readResult = SendCommand(ArrangerType.DeviceType.COMMAND_READ.GetMessage());
-                                    // logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
-
-                                    // Analyze data
-                                    ArrangerType.DeviceType.AnalyzeReadResultData(readResult, ArrangerType.ActionAfterIoSignalReceived);
-                                } catch (Exception e) {
-                                    logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
-                                }
-                            }
-                        }
-
-                        // Check setter selector
-                        if (SetterSelectorType != null) {
+                    // Check arranger
+                    if (ArrangerType != null && ArrangerType.RetrieveResult) {
+                        if (ArrangerType.ActionAfterIoSignalReceived != null) {
                             string readResult = "empty";
                             try {
-                                if (SetterSelectorType is IoBoxTypeSetterSelectorPlus selectorPlus) {
-                                    readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
+                                readResult = SendCommand(ArrangerType.DeviceType.COMMAND_READ.GetMessage());
+                                // logger.Debug($"[_ioBoxType.Name:{ArrangerType.DeviceType.Name}] result: readResult = {readResult}");
 
-                                    // Analyze data
-                                    ((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).AnalyzeDataAndAction(readResult);
-
-                                    // Write based on data and current position
-                                    SendCommand(((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).LoopingWriteCommand().GetMessage());
-                                } else if (SetterSelectorType.RetrieveResult && SetterSelectorType.ActionAfterIoSignalReceived != null) {
-                                    readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
-
-                                    // Analyze data
-                                    SetterSelectorType.DeviceType.AnalyzeData(readResult, SetterSelectorType.ActionAfterIoSignalReceived);
-                                }
+                                // Analyze data
+                                ArrangerType.DeviceType.AnalyzeReadResultData(readResult, ArrangerType.ActionAfterIoSignalReceived);
                             } catch (Exception e) {
-                                logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{SetterSelectorType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
+                                logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{ArrangerType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
                             }
                         }
+                    }
 
-                        // Common delay
-                        await Task.Delay(LoopingInterval, cancellationToken);
+                    // Check setter selector
+                    if (SetterSelectorType != null) {
+                        string readResult = "empty";
+                        try {
+                            if (SetterSelectorType is IoBoxTypeSetterSelectorPlus selectorPlus) {
+                                readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
+
+                                // Analyze data
+                                ((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).AnalyzeDataAndAction(readResult);
+
+                                // Write based on data and current position
+                                SendCommand(((IoBoxSetterSelectorPlus) selectorPlus.DeviceType).LoopingWriteCommand().GetMessage());
+                            } else if (SetterSelectorType.RetrieveResult && SetterSelectorType.ActionAfterIoSignalReceived != null) {
+                                readResult = SendCommand(SetterSelectorType.DeviceType.COMMAND_READ.GetMessage());
+
+                                // Analyze data
+                                SetterSelectorType.DeviceType.AnalyzeData(readResult, SetterSelectorType.ActionAfterIoSignalReceived);
+                            }
+                        } catch (Exception e) {
+                            logger.Warn($"Exception has been thrown while reading from _ioBoxType.Name:{SetterSelectorType.DeviceType.Name}], readResult = [{readResult}], e = {e}");
+                        }
                     }
-                } catch (OperationCanceledException) {
-                    logger.Info($"Task execution cancelled for IOBOX[ {_ip}: {_port}]");
-                } catch (Exception e) {
-                    logger.Warn($"Error while running task for connection<IOBOX[ {_ip}: {_port}]>: {e}");
-                } finally {
-                    logger.Info($"Disconnected to IOBOX[ {_ip}: {_port}]");
-                    if (socketClient != null) {
-                        socketClient.Close();
-                        socketClient = null;
-                    }
-                    if (CloseConnectionManually) {
-                        logger.Info($"Socket connection<IOBOX[ {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
-                    }
+
+                    // Common delay
+                    await Task.Delay(LoopingInterval, cancellationToken);
+                }
+            } catch (OperationCanceledException) {
+                logger.Info($"Task execution cancelled for IOBOX[ {_ip}: {_port}]");
+            } catch (Exception e) {
+                logger.Warn($"Error while running task for connection<IOBOX[ {_ip}: {_port}]>: {e}");
+            } finally {
+                logger.Info($"Disconnected to IOBOX[ {_ip}: {_port}]");
+                if (socketClient != null) {
+                    socketClient.Close();
+                    socketClient = null;
+                }
+                if (CloseConnectionManually) {
+                    logger.Info($"Socket connection<IOBOX[ {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
                 }
             }
+        }
         public override async Task<bool> ConnectAsync(CancellationToken cancellationToken = default) {
             return await ConnectWithRetryAsync(async (ct) => {
                 if (await ConnectToServerAsync(ct)) {

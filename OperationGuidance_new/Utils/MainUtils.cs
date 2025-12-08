@@ -13,7 +13,6 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
-using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using RJCP.IO.Ports;
@@ -815,11 +814,20 @@ namespace OperationGuidance_new.Utils {
         /// <param name="deviceTypeId">设备类型ID（来自DeviceIoDTO.type或DeviceArmDTO.type）</param>
         /// <param name="deviceId">设备ID（来自DeviceIoDTO.id或DeviceArmDTO.id）</param>
         /// <returns>初始化后的IoBoxTask</returns>
-        public static IoBoxTask NewIoBoxTask(string ip, int port, int deviceTypeId, int deviceId = -1) {
-            IoBoxTask task = new(ip, port, deviceId);
-            InitializeDeviceType(task, deviceTypeId);
-            task.Connect();
-            _ioBoxTasks[GetTCPClientKey(ip, port)] = task;
+        public static IoBoxTask NewIoBoxTask(string ip, int port, int deviceTypeId, bool isArm, int deviceId = -1) {
+            string key = GetTCPClientKey(ip, port);
+
+            IoBoxTask task;
+            if (!_ioBoxTasks.TryGetValue(key, out IoBoxTask? value)) {
+                task = new(ip, port, deviceId);
+                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
+                task.Connect();
+                _ioBoxTasks[key] = task;
+            } else {
+                task = value;
+                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
+            }
+
             return task;
         }
 
@@ -831,14 +839,20 @@ namespace OperationGuidance_new.Utils {
         /// <param name="deviceTypeId">设备类型ID（来自DeviceIoDTO.type或DeviceArmDTO.type）</param>
         /// <param name="deviceId">设备ID（来自DeviceIoDTO.id或DeviceArmDTO.id）</param>
         /// <returns>初始化后的IoBoxTask</returns>
-        public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port, int deviceTypeId, int deviceId = -1) {
-            IoBoxTask task = new(ip, port, deviceId);
-            InitializeDeviceType(task, deviceTypeId);
-            await task.ConnectAsync();
-            // 使用线程安全的AddOrUpdate方法
-            _ioBoxTasks.AddOrUpdate(GetTCPClientKey(ip, port),
-                task,
-                (key, oldValue) => task);
+        public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port, int deviceTypeId, bool isArm, int deviceId = -1) {
+            string key = GetTCPClientKey(ip, port);
+
+            IoBoxTask task;
+            if (!_ioBoxTasks.TryGetValue(key, out IoBoxTask? value)) {
+                task = new(ip, port, deviceId);
+                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
+                await task.ConnectAsync();
+                _ioBoxTasks[key] = task;
+            } else {
+                task = value;
+                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
+            }
+
             return task;
         }
 
@@ -848,27 +862,29 @@ namespace OperationGuidance_new.Utils {
         /// </summary>
         /// <param name="task">要初始化的IoBoxTask</param>
         /// <param name="deviceTypeId">设备类型ID</param>
-        private static void InitializeDeviceType(IoBoxTask task, int deviceTypeId) {
+        private static void InitializeOrUpdateDeviceType(IoBoxTask task, int deviceTypeId, bool isArm) {
             try {
-                // 根据deviceTypeId判断是IoBox设备还是Arm设备
-                // IoBox设备类型范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
-                // Arm设备类型范围：1-4 (CF01, CF02, CF03, CF04)
-                if (deviceTypeId >= 1 && deviceTypeId <= 4) {
-                    // 先尝试作为IoBox设备类型处理
+                if (isArm) {
+                    // Arm设备类型范围：CF01, CF02, CF03, CF04
+                    try {
+                        // 作为Arm设备类型处理
+                        var armDeviceType = DeviceType_Arm.GetById(deviceTypeId);
+                        task.ArmType = new IoBoxTypeArm(armDeviceType, task.DeviceId);
+                        return;
+                    } catch (NullReferenceException) {
+                        // 超出预定义范围，记录警告但不抛出异常
+                        Warn(logger, $"未知的设备类型ID: {deviceTypeId}，IoBoxTask将不会被初始化设备类型", false);
+                    }
+                } else {
+                    // IoBox设备类型范围：SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus
                     try {
                         var ioBoxDeviceType = DeviceType_IoBox.GetById(deviceTypeId);
                         InitializeIoBoxDeviceType(task, ioBoxDeviceType);
                         return;
                     } catch (NullReferenceException) {
-                        // 如果IoBox设备类型不存在，则作为Arm设备类型处理
+                        // 超出预定义范围，记录警告但不抛出异常
+                        Warn(logger, $"未知的设备类型ID: {deviceTypeId}，IoBoxTask将不会被初始化设备类型", false);
                     }
-
-                    // 作为Arm设备类型处理
-                    var armDeviceType = DeviceType_Arm.GetById(deviceTypeId);
-                    task.ArmType = new IoBoxTypeArm(armDeviceType, task.DeviceId);
-                } else {
-                    // 超出预定义范围，记录警告但不抛出异常
-                    Warn(logger, $"未知的设备类型ID: {deviceTypeId}，IoBoxTask将不会被初始化设备类型", false);
                 }
             } catch (Exception ex) {
                 // 确保设备类型初始化失败时任务创建也失败，而不是创建带有null ArmType的损坏任务
