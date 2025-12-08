@@ -976,6 +976,19 @@ namespace OperationGuidance_new.Utils {
         }
 
         /// <summary>
+        /// 格式化设备日志消息
+        /// 统一格式：[设备类型]{设备标识} - 详细信息
+        /// </summary>
+        /// <param name="deviceType">设备类型，如TOOL、IOBOX、SERIALPORT等</param>
+        /// <param name="identifier">设备标识，如IP地址、设备名等</param>
+        /// <param name="details">详细信息，可选</param>
+        /// <returns>格式化后的日志消息</returns>
+        public static string FormatDeviceLog(string deviceType, string identifier, string details = "") {
+            return $"[{deviceType}]{{{identifier}}}" +
+                   (string.IsNullOrEmpty(details) ? "" : $" - {details}");
+        }
+
+        /// <summary>
         /// Get zooming ratio
         /// </summary>
         /// <param name="imageSize">Size of image.</param>

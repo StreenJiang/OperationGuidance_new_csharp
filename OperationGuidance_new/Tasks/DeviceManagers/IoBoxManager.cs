@@ -83,6 +83,10 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 MainUtils.Info(_logger, "正在清理已删除的设备...", false);
                 RemoveDeletedDevices(ioBoxDtos, armDtos);
 
+                // 步骤4：清理orphaned tasks（不再被任何活跃设备使用的IP:Port任务）
+                MainUtils.Info(_logger, "正在清理orphaned tasks...", false);
+                CleanupOrphanedTasks(ioBoxDtos, armDtos);
+
                 return MainUtils.IoBoxTasks.Count;
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"同步IoBox和Arm设备时出错: {ex.Message}");
@@ -103,7 +107,16 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             if (task == null && dto.id > 0) {
                 task = FindTaskByDeviceId(dto.id);
                 if (task != null) {
-                    MainUtils.Info(_logger, $"通过设备ID找到IoBox任务: {task.Ip}:{task.Port} (DeviceId={dto.id})", false);
+                    string oldKey = MainUtils.GetTCPClientKey(task.Ip, task.Port);
+                    // Check if IP:Port actually changed
+                    if (oldKey != key) {
+                        MainUtils.Info(_logger, $"Found task by DeviceId={dto.id} at {oldKey}, config has changed", false);
+                        // Config changed - handle migration
+                        HandleConfigChange(task, oldKey, key, dto.id);
+                        task = null; // Force creation at new key
+                    } else {
+                        MainUtils.Info(_logger, $"通过设备ID找到IoBox任务: {task.Ip}:{task.Port} (DeviceId={dto.id})", false);
+                    }
                 }
             }
 
@@ -224,11 +237,23 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             // 快速路径：检查现有任务，避免不必要的锁
             var task = GetExistingTask(key);
 
+            // 获取设备显示名称
+            string deviceDisplayName = !string.IsNullOrEmpty(dto.name) ? $"【{dto.name}】" : "";
+
             // 如果key查找失败，尝试通过设备ID查找（配置变更场景）
             if (task == null && dto.id > 0) {
                 task = FindTaskByDeviceId(dto.id);
                 if (task != null) {
-                    MainUtils.Info(_logger, $"通过设备ID找到Arm任务: {task.Ip}:{task.Port} (DeviceId={dto.id})", false);
+                    string oldKey = MainUtils.GetTCPClientKey(task.Ip, task.Port);
+                    // Check if IP:Port actually changed
+                    if (oldKey != key) {
+                        MainUtils.Info(_logger, $"Found task by DeviceId={dto.id} at {oldKey}, config has changed", false);
+                        // Config changed - handle migration
+                        HandleConfigChange(task, oldKey, key, dto.id);
+                        task = null; // Force creation at new key
+                    } else {
+                        MainUtils.Info(_logger, $"通过设备ID找到Arm任务: {task.Ip}:{task.Port} (DeviceId={dto.id})", false);
+                    }
                 }
             }
 
@@ -242,7 +267,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     string oldKey = MainUtils.GetTCPClientKey(task.Ip, task.Port);
                     string newKey = MainUtils.GetTCPClientKey(dto.ip, dto.port);
 
-                    MainUtils.Info(_logger, $"Arm配置已更改，正在重新创建: {oldKey} -> {newKey}...");
+                    MainUtils.Info(_logger, $"Arm配置已更改，正在重新创建: {oldKey} -> {newKey} {deviceDisplayName}...");
 
                     // 清理旧任务（先移除缓存，再关闭连接）
                     RemoveTaskFromCacheWithMapping(oldKey, task);
@@ -257,7 +282,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                         var newTask = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, true, dto.id);
                         if (newTask != null) {
                             AddTaskToCacheWithMapping(newKey, newTask);
-                            MainUtils.Info(_logger, $"成功重新创建Arm设备 {dto.ip}:{dto.port}");
+                            MainUtils.Info(_logger, $"成功重新创建Arm设备 {dto.ip}:{dto.port} {deviceDisplayName}");
                             if (workstationId.HasValue) {
                                 newTask.WorkstationId = workstationId.Value;
                             }
@@ -291,13 +316,13 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     return task;
                 }
 
-                MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port}...", false);
+                MainUtils.Info(_logger, $"正在创建Arm设备: {dto.ip}:{dto.port} {deviceDisplayName}...", false);
                 // 使用异步方法创建并连接任务
                 task = await MainUtils.NewIoBoxTaskAsync(dto.ip, dto.port, dto.type, true, dto.id);
 
                 if (task != null) {
                     AddTaskToCacheWithMapping(key, task);
-                    MainUtils.Info(_logger, $"成功创建Arm设备 {dto.ip}:{dto.port}");
+                    MainUtils.Info(_logger, $"成功创建Arm设备 {dto.ip}:{dto.port} {deviceDisplayName}");
                     if (workstationId.HasValue) {
                         task.WorkstationId = workstationId.Value;
                     }
@@ -344,37 +369,53 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             IEnumerable<DeviceIoDTO> activeIoBoxDtos,
             IEnumerable<DeviceArmDTO> activeArmDtos) {
             try {
-                // 构建活跃的IP:Port键集合（IoBox和Arm设备）
-                var activeIoBoxKeys = new HashSet<string>();
-                var activeArmKeys = new HashSet<string>();
+                // 构建活跃的设备ID集合（区分IoBox和Arm设备ID空间）
+                var activeIoBoxIds = activeIoBoxDtos
+                    .Where(d => d.deleted == (int) YesOrNo.NO)
+                    .Select(d => d.id)
+                    .ToHashSet();
 
-                foreach (var dto in activeIoBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                    activeIoBoxKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
-                }
-
-                foreach (var dto in activeArmDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
-                    activeArmKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
-                }
+                var activeArmIds = activeArmDtos
+                    .Where(d => d.deleted == (int) YesOrNo.NO)
+                    .Select(d => d.id)
+                    .ToHashSet();
 
                 // 使用锁保护整个移除操作，避免竞态条件
                 lock (MainUtils.IoBoxTasks) {
-                    // 移除不再活跃的IoBoxTask（基于键判断，支持共享IoBoxTask）
                     var tasksToRemove = new List<KeyValuePair<string, IoBoxTask>>();
+
                     foreach (var kvp in MainUtils.IoBoxTasks) {
                         var task = kvp.Value;
                         var key = kvp.Key;
 
-                        // 检查是否被任何活跃设备使用（IoBox或Arm）
-                        bool isUsedByIoBox = activeIoBoxKeys.Contains(key);
-                        bool isUsedByArm = activeArmKeys.Contains(key);
+                        // 检查主设备ID是否活跃
+                        bool primaryIsActive = activeIoBoxIds.Contains(task.DeviceId) ||
+                                               activeArmIds.Contains(task.DeviceId);
 
-                        // 只有在完全未被使用时才移除
-                        if (!isUsedByIoBox && !isUsedByArm) {
+                        // 移除不活跃的设备ID
+                        var deviceIdsToRemove = task.DeviceIds
+                            .Where(id => !activeIoBoxIds.Contains(id) && !activeArmIds.Contains(id))
+                            .ToList();
+
+                        foreach (var deviceId in deviceIdsToRemove) {
+                            // Lock on the task instance to ensure thread-safe device ID removal
+                            lock (task) {
+                                task.RemoveDeviceId(deviceId);
+                            }
+                            MainUtils.Info(_logger, $"Removed deleted device {deviceId} from task at {key}", false);
+                        }
+
+                        // 检查任务是否应该被移除
+                        bool hasActiveDevices = primaryIsActive || task.DeviceIds.Any();
+
+                        if (!hasActiveDevices) {
                             tasksToRemove.Add(kvp);
+                        } else {
+                            MainUtils.Info(_logger, $"Task at {key} kept alive with {task.DeviceIds.Count} device(s)", false);
                         }
                     }
 
-                    // 执行删除
+                    // 执行移除
                     foreach (var kvp in tasksToRemove) {
                         if (MainUtils.IoBoxTasks.TryRemove(kvp.Key, out var task)) {
                             string deviceInfo = $"{task.Ip}:{task.Port}";
@@ -382,16 +423,73 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                             // 清理信号量
                             CleanupSemaphoreForDevice(kvp.Key);
                             CleanupTask(task);
-                            MainUtils.Info(_logger, $"设备已删除: {deviceInfo} ({deviceType}, DeviceId={task.DeviceId})", false);
+                            MainUtils.Info(_logger, $"Task removed: {deviceInfo} ({deviceType}, DeviceId={task.DeviceId})", false);
                         }
                     }
 
                     if (tasksToRemove.Count > 0) {
-                        MainUtils.Info(_logger, $"已移除 {tasksToRemove.Count} 个已删除的IoBox/Arm设备");
+                        MainUtils.Info(_logger, $"已移除 {tasksToRemove.Count} 个无设备的IoBox/Arm任务");
                     }
                 }
             } catch (Exception ex) {
                 MainUtils.Error(_logger, $"移除已删除的IoBox/Arm设备时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 清理orphaned tasks（不再被任何活跃设备使用的IP:Port任务）
+        /// 当设备修改IP/Port后，旧IP/Port对应的任务如果没有其他设备使用，就会成为orphaned task
+        /// 修复：移除DeviceId <= 0的检查（DeviceId是只读属性，永远不会<=0）
+        /// </summary>
+        private void CleanupOrphanedTasks(
+            IEnumerable<DeviceIoDTO> activeIoBoxDtos,
+            IEnumerable<DeviceArmDTO> activeArmDtos) {
+            try {
+                // 构建活跃键集合
+                var activeKeys = new HashSet<string>();
+                foreach (var dto in activeIoBoxDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
+                    activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
+                }
+                foreach (var dto in activeArmDtos.Where(d => d.deleted == (int) YesOrNo.NO)) {
+                    activeKeys.Add(MainUtils.GetTCPClientKey(dto.ip, dto.port));
+                }
+
+                // 构建当前所有任务的键集合
+                var taskKeys = new HashSet<string>();
+                lock (MainUtils.IoBoxTasks) {
+                    foreach (var kvp in MainUtils.IoBoxTasks) {
+                        taskKeys.Add(kvp.Key);
+                    }
+                }
+
+                // 找出真正orphaned的键（存在于任务中但不存在于活跃设备中）
+                var orphanedKeys = taskKeys.Except(activeKeys).ToList();
+
+                // 执行清理（扩展锁范围避免竞态条件）
+                foreach (var key in orphanedKeys) {
+                    // 使用嵌套锁确保TryRemove和task检查的原子性
+                    lock (MainUtils.IoBoxTasks) {
+                        if (MainUtils.IoBoxTasks.TryRemove(key, out var task)) {
+                            lock (task) {
+                                // 验证任务确实无人使用（只检查DeviceIds集合）
+                                // 移除task.DeviceId <= 0的检查，因为DeviceId是只读属性永远不会<=0
+                                if (!task.DeviceIds.Any()) {
+                                    CleanupTask(task);
+                                    MainUtils.Info(_logger, $"Cleaned up orphaned task: {key}", false);
+                                } else {
+                                    // 有附加设备在使用，重新添加回去
+                                    MainUtils.IoBoxTasks[key] = task;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (orphanedKeys.Count > 0) {
+                    MainUtils.Info(_logger, $"已清理 {orphanedKeys.Count} 个orphaned IoBox/Arm任务");
+                }
+            } catch (Exception ex) {
+                MainUtils.Error(_logger, $"清理orphaned tasks时出错: {ex.Message}");
             }
         }
 
@@ -429,6 +527,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             // 检查IP地址、端口是否改变
             bool needsReconnect = task.Ip != dto.ip || task.Port != dto.port;
 
+            // 检测是否为共享任务（任务中存在Arm设备类型）
+            bool isSharedTask = task.ArmType != null;
+
             // 检查设备类型是否改变
             int dtoType = dto.type;
             bool typeMatches = false;
@@ -449,7 +550,14 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 typeMatches = true;
             }
 
-            // 如果类型不匹配，也需要重连
+            // 共享任务场景：如果IP/Port未变，即使类型缺失也不重连
+            // 这是因为共享任务中设备类型会在使用时自动初始化
+            if (isSharedTask && !needsReconnect) {
+                // 共享任务且IP/Port未变，不需要重连
+                return false;
+            }
+
+            // 独立任务场景：如果类型不匹配，需要重连
             if (!typeMatches) {
                 needsReconnect = true;
             }
@@ -458,7 +566,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 MainUtils.Info(_logger, $"IoBox[{dto.ip}:{dto.port}] 需要重连 - " +
                     $"IP变化: {task.Ip} -> {dto.ip}, " +
                     $"Port变化: {task.Port} -> {dto.port}, " +
-                    $"Type变化: {currentTypeInfo} -> ID={dtoType}");
+                    $"Type变化: {currentTypeInfo} -> ID={dtoType}" +
+                    (isSharedTask ? " [共享任务]" : " [独立任务]"));
             }
             return needsReconnect;
         }
@@ -469,6 +578,9 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         private bool NeedsReconnection(IoBoxTask task, DeviceArmDTO dto) {
             // 检查IP地址、端口是否改变
             bool needsReconnect = task.Ip != dto.ip || task.Port != dto.port;
+
+            // 检测是否为共享任务（任务中存在IoBox设备类型）
+            bool isSharedTask = task.ArrangerType != null || task.SetterSelectorType != null;
 
             // 检查设备类型是否改变
             int dtoType = dto.type;
@@ -486,7 +598,14 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 typeMatches = true;
             }
 
-            // 如果类型不匹配，也需要重连
+            // 共享任务场景：如果IP/Port未变，即使类型缺失也不重连
+            // 这是因为共享任务中设备类型会在使用时自动初始化
+            if (isSharedTask && !needsReconnect) {
+                // 共享任务且IP/Port未变，不需要重连
+                return false;
+            }
+
+            // 独立任务场景：如果类型不匹配，需要重连
             if (!typeMatches) {
                 needsReconnect = true;
             }
@@ -495,7 +614,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 MainUtils.Info(_logger, $"Arm[{dto.ip}:{dto.port}] 需要重连 - " +
                     $"IP变化: {task.Ip} -> {dto.ip}, " +
                     $"Port变化: {task.Port} -> {dto.port}, " +
-                    $"Type变化: {currentTypeInfo} -> ID={dtoType}");
+                    $"Type变化: {currentTypeInfo} -> ID={dtoType}" +
+                    (isSharedTask ? " [共享任务]" : " [独立任务]"));
             }
             return needsReconnect;
         }
@@ -559,25 +679,47 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         }
 
         /// <summary>
-        /// 通过设备ID查找任务（线程安全版本）
+        /// Find task by device ID - searches both primary DeviceId and DeviceIds list
         /// </summary>
+        /// <param name="deviceId">Device ID to search for</param>
+        /// <returns>IoBoxTask if found, null otherwise</returns>
         private IoBoxTask? FindTaskByDeviceId(int deviceId) {
-            // 创建快照以避免遍历时的竞态条件
-            var tasksSnapshot = MainUtils.IoBoxTasks.Values.ToList();
-            return tasksSnapshot.FirstOrDefault(t => t.DeviceId == deviceId);
+            if (deviceId <= 0)
+                return null;
+
+            // Use lock to ensure thread safety during search
+            lock (MainUtils.IoBoxTasks) {
+                return MainUtils.IoBoxTasks.Values.FirstOrDefault(t => t.HasDeviceId(deviceId));
+            }
         }
 
         /// <summary>
-        /// 添加任务到缓存
+        /// Add task to cache and register device ID
         /// </summary>
         private void AddTaskToCacheWithMapping(string key, IoBoxTask task) {
-            MainUtils.IoBoxTasks[key] = task;
+            // Use lock to ensure atomic dictionary operations and device ID management
+            lock (MainUtils.IoBoxTasks) {
+                // Check if task already exists at this key (shared scenario)
+                if (MainUtils.IoBoxTasks.TryGetValue(key, out var existingTask)) {
+                    // Same task, just add the device ID
+                    if (existingTask == task) {
+                        lock (existingTask) {
+                            int oldCount = existingTask.DeviceIds.Count;
+                            existingTask.AddDeviceId(task.DeviceId);
+                            int newCount = existingTask.DeviceIds.Count;
+                        }
 
-            // 记录共享任务信息
-            var existingTask = MainUtils.IoBoxTasks[key];
-            if (existingTask != task) {
-                // 这是一个新任务，可能与现有任务共享同一个key
-                MainUtils.Info(_logger, $"新任务创建: {key} (DeviceId={task.DeviceId})", false);
+                        MainUtils.Info(_logger, $"Device ID {task.DeviceId} added to existing shared task at {key} (total devices: {existingTask.DeviceIds.Count})", false);
+                        return;
+                    }
+                }
+
+                // New task or different task at this key
+                MainUtils.IoBoxTasks[key] = task;
+                lock (task) {
+                    task.AddDeviceId(task.DeviceId);
+                }
+                MainUtils.Info(_logger, $"New task created: {key} (DeviceId={task.DeviceId})", false);
             }
         }
 
@@ -586,6 +728,40 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         /// </summary>
         private void RemoveTaskFromCacheWithMapping(string key, IoBoxTask task) {
             MainUtils.RemoveIoBoxTask(key);
+        }
+
+        /// <summary>
+        /// Handle device configuration change (IP/Port migration)
+        /// </summary>
+        /// <param name="oldTask">Task at old IP:Port</param>
+        /// <param name="oldKey">Old IP:Port key</param>
+        /// <param name="newKey">New IP:Port key</param>
+        /// <param name="deviceId">Device ID that changed config</param>
+        private void HandleConfigChange(IoBoxTask oldTask, string oldKey, string newKey, int deviceId) {
+            // 检查是否还有其他设备共享此任务
+            bool hasOtherDevices;
+            lock (oldTask) {
+                hasOtherDevices = oldTask.DeviceIds.Any() || oldTask.DeviceId != deviceId;
+            }
+
+            if (hasOtherDevices) {
+                // 有其他设备共享，只移除deviceId，不关闭task
+                lock (oldTask) {
+                    oldTask.RemoveDeviceId(deviceId);
+                }
+                int remainingCount;
+                lock (oldTask) {
+                    remainingCount = oldTask.DeviceIds.Count + (oldTask.DeviceId != deviceId ? 1 : 0);
+                }
+                MainUtils.Info(_logger, $"Device {deviceId} migrated from {oldKey} to {newKey}, " +
+                    $"shared task kept alive with {remainingCount} device(s)", false);
+                return;
+            }
+
+            // 只有这一个设备在使用，可以安全关闭旧task
+            MainUtils.Info(_logger, $"No other devices using task at {oldKey}, safe to close", false);
+            RemoveTaskFromCacheWithMapping(oldKey, oldTask);
+            CleanupTask(oldTask);
         }
     }
 }

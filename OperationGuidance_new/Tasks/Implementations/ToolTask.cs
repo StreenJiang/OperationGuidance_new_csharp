@@ -69,7 +69,7 @@ namespace OperationGuidance_new.Tasks {
                         if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
                             // Send heart beat command to controller
                             SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                            logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
+                            logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Sending heart beating command to {_device_name}"));
                         }
                         // Reset heart beat counter even no command has been sent
                         HeartBeatCounter = 0;
@@ -106,17 +106,17 @@ namespace OperationGuidance_new.Tasks {
                     LockWaitTimeCounter += LoopingInterval;
                 }
             } catch (OperationCanceledException) {
-                logger.Info($"Task execution cancelled for TOOL[{_device_name} - {_ip}: {_port}]");
+                logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Task execution cancelled for {_device_name}"));
             } catch (Exception e) {
-                logger.Warn($"Error while running task for connection<TOOL[{_device_name} - {_ip}: {_port}]>, e: {e}");
+                logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Error while running task for {_device_name}: {e.Message}"));
             } finally {
-                logger.Info($"Disconnected to TOOL[{_device_name} - {_ip}: {_port}]");
+                logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Disconnected from {_device_name}"));
                 if (socketClient != null) {
                     socketClient.Close();
                     socketClient = null;
                 }
                 if (CloseConnectionManually) {
-                    logger.Info($"Socket connection<TOOL[{_device_name} - {_ip}: {_port}]> has been closed manually, won't try to reconnecte anymore.");
+                    logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Socket connection closed manually for {_device_name}, won't reconnect"));
                 }
             }
 
@@ -190,7 +190,7 @@ namespace OperationGuidance_new.Tasks {
 
         public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
             await Task.Run(() => {
-                logger.Info($"Close connection<TOOL[{_device_name} - {_ip}: {_port}]> manually...");
+                logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Close connection manually for {_device_name}"));
 
                 if (Connected) {
                     socketClient.Close();
@@ -213,11 +213,11 @@ namespace OperationGuidance_new.Tasks {
         private async Task<bool> ConnectToServer(CancellationToken cancellationToken = default) {
             try {
                 if (Connected) {
-                    logger.Warn($"Already connecting to TOOL[{_device_name} - {_ip}: {_port}], please don't connect repeatedly.");
+                    logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Already connecting for {_device_name}, please don't connect repeatedly"));
                     return false;
                 }
 
-                logger.Info($"Connecting to TOOL[{_device_name} - {_ip}: {_port}]");
+                logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Connecting to {_device_name}"));
                 bool pingSuccess = false;
                 bool connectSuccess = false;
                 bool sendConnectMsgSuceess = false;
@@ -267,14 +267,14 @@ namespace OperationGuidance_new.Tasks {
                             dataEnableMsgSuccess = true;
                         }
                     } catch (Exception e) {
-                        logger.Warn($"Connect error while connecting to TOOL[{_device_name} - {_ip}: {_port}], e: {e}");
+                        logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Connect error for {_device_name}: {e.Message}"));
                     }
                 } else {
-                    logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                    logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Failed to connect to {_device_name}"));
                 }
                 bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess;
                 if (isConnected) {
-                    MainUtils.Info(logger, $"Successfully connect to TOOL[{_device_name} - {_ip}: {_port}]");
+                    MainUtils.Info(logger, MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Successfully connect to {_device_name}"));
                 } else {
                     if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
                         socketClient.Close();
@@ -283,7 +283,7 @@ namespace OperationGuidance_new.Tasks {
                 }
                 return isConnected;
             } catch (Exception e) {
-                logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}], e = {e}");
+                logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Failed to connect to {_device_name}: {e.Message}"));
             }
 
             return false;
@@ -308,7 +308,7 @@ namespace OperationGuidance_new.Tasks {
                 // Dequeue to allow new command to enqueue
                 _commands.Dequeue();
             } catch (Exception ex) {
-                logger.Error($"Error while sending command to TOOL[{_device_name} - {_ip}: {_port}]", ex);
+                logger.Error(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Error while sending command to {_device_name}: {ex.Message}"), ex);
             }
         }
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
@@ -318,18 +318,18 @@ namespace OperationGuidance_new.Tasks {
                     // Reset heart beat counter to prevent multiple response
                     HeartBeatCounter = 0;
                     // Send command to controller
-                    logger.Info($"Sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
+                    logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Sending command[{command}] to {_device_name}"));
                     socketClient.Send(Encoding.ASCII.GetBytes(command));
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
-                    logger.Info($"Waiting for receving response for command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
+                    logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Waiting for response for command[{command}] to {_device_name}"));
                     int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
-                    logger.Info($"Received response[{result}] for command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
+                    logger.Info(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Received response[{result}] for command[{command}] to {_device_name}"));
                     return result;
                 } catch (Exception e) {
-                    logger.Error($"Error while sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}], e: {e}");
+                    logger.Error(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Error while sending command[{command}] to {_device_name}: {e.Message}"), e);
                     return await SendAndReceiveOnlyForPreparingAsync(command);
                 }
             }

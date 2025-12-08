@@ -64,17 +64,17 @@ namespace OperationGuidance_new.Tasks {
                     await Task.Delay(LoopingInterval, cancellationToken);
                 }
             } catch (OperationCanceledException) {
-                logger.Info($"Task execution cancelled for SerialPort[{_device_name}]");
+                logger.Info(MainUtils.FormatDeviceLog("SERIALPORT", _portName, $"Task execution cancelled for {_device_name}"));
             } catch (Exception e) {
-                logger.Warn($"Error while running task for connection<SerialPort[{_device_name}]>, e: {e}");
+                logger.Warn(MainUtils.FormatDeviceLog("SERIALPORT", _portName, $"Error while running task for {_device_name}: {e.Message}"));
             } finally {
-                logger.Info($"Disconnected to SerialPort[{_device_name}]");
+                logger.Info(MainUtils.FormatDeviceLog("SERIALPORT", _portName, $"Disconnected from {_device_name}"));
                 if (serialPortStreamClient != null) {
                     serialPortStreamClient.Close();
                     serialPortStreamClient = null;
                 }
                 if (CloseConnectionManually) {
-                    logger.Info($"Serial port device connection<SerialPort[{_device_name}] has been closed manually, won't try to reconnecte anymore.");
+                    logger.Info(MainUtils.FormatDeviceLog("SERIALPORT", _portName, $"Connection closed manually for {_device_name}, won't reconnect"));
                 }
             }
         }
@@ -88,7 +88,7 @@ namespace OperationGuidance_new.Tasks {
                     }, cancellationToken);
 
                     Status = CONNECTED;
-                    logger.Info($"[SERIALPORT] Connection established successfully - Port: {_portName}");
+                    logger.Info(MainUtils.FormatDeviceLog("SERIALPORT", _portName, "Connection established successfully"));
                     return true;
                 }
                 return false;
@@ -97,7 +97,7 @@ namespace OperationGuidance_new.Tasks {
 
         public override async Task CloseConnectionAsync(CancellationToken cancellationToken = default) {
             await Task.Run(() => {
-                logger.Info($"Close SerialPort[{_device_name}] manually...");
+                logger.Info(MainUtils.FormatDeviceLog("SERIALPORT", _portName, $"Close connection manually for {_device_name}"));
                 if (Connected) {
                     serialPortStreamClient.Close();
                 }
