@@ -806,6 +806,9 @@ namespace OperationGuidance_new.Utils {
         private static ConcurrentDictionary<string, IoBoxTask> _ioBoxTasks = new();
         public static ConcurrentDictionary<string, IoBoxTask> IoBoxTasks => _ioBoxTasks;
 
+        // Lock object for synchronizing task creation to prevent race conditions
+        private static readonly object _taskCreationLock = new object();
+
         /// <summary>
         /// 创建IoBoxTask并根据设备类型初始化相应的设备类型实例
         /// </summary>
@@ -842,20 +845,28 @@ namespace OperationGuidance_new.Utils {
         public static async Task<IoBoxTask> NewIoBoxTaskAsync(string ip, int port, int deviceTypeId, bool isArm, int deviceId = -1) {
             string key = GetTCPClientKey(ip, port);
 
-            IoBoxTask task;
-            if (!_ioBoxTasks.TryGetValue(key, out IoBoxTask? value)) {
-                task = new(ip, port, deviceId);
-                task.AddDeviceId(deviceId);
-                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
-                await task.ConnectAsync();
-                _ioBoxTasks[key] = task;
-            } else {
-                task = value;
-                task.AddDeviceId(deviceId);
-                InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
-            }
+            // Use lock to prevent race condition during task creation
+            lock (_taskCreationLock) {
+                // Check if task already exists
+                if (_ioBoxTasks.TryGetValue(key, out IoBoxTask? existingTask)) {
+                    existingTask.AddDeviceId(deviceId);
+                    InitializeOrUpdateDeviceType(existingTask, deviceTypeId, isArm);
+                    return existingTask;
+                }
 
-            return task;
+                // Create new task
+                IoBoxTask newTask = new(ip, port, deviceId);
+                newTask.AddDeviceId(deviceId);
+                InitializeOrUpdateDeviceType(newTask, deviceTypeId, isArm);
+
+                // Add to dictionary BEFORE connecting to prevent race condition
+                _ioBoxTasks[key] = newTask;
+
+                // Connect the task outside the lock to avoid holding lock during async operation
+                _ = Task.Run(async () => await newTask.ConnectAsync());
+
+                return newTask;
+            }
         }
 
         /// <summary>
