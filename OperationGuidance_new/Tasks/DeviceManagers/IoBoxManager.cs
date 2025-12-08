@@ -127,6 +127,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 if (workstationId.HasValue) {
                     task.WorkstationId = workstationId.Value;
                 }
+                // 再次 add 防止是新的 dto 转移过来的
                 task.AddDeviceId(dto.id);
 
                 // 检查是否需要重新连接（IP地址、端口或设备类型改变）
@@ -179,6 +180,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     if (workstationId.HasValue) {
                         task.WorkstationId = workstationId.Value;
                     }
+                    // 再次 add 防止是新的 dto 转移过来的
                     task.AddDeviceId(dto.id);
                     return task;
                 }
@@ -259,6 +261,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                 if (workstationId.HasValue) {
                     task.WorkstationId = workstationId.Value;
                 }
+                // 再次 add 防止是新的 dto 转移过来的
                 task.AddDeviceId(dto.id);
 
                 // 检查是否需要重新连接（IP地址、端口或设备类型改变）
@@ -311,6 +314,7 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
                     if (workstationId.HasValue) {
                         task.WorkstationId = workstationId.Value;
                     }
+                    // 再次 add 防止是新的 dto 转移过来的
                     task.AddDeviceId(dto.id);
                     return task;
                 }
