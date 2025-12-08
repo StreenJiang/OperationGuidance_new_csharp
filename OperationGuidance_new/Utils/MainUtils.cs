@@ -845,11 +845,13 @@ namespace OperationGuidance_new.Utils {
             IoBoxTask task;
             if (!_ioBoxTasks.TryGetValue(key, out IoBoxTask? value)) {
                 task = new(ip, port, deviceId);
+                task.AddDeviceId(deviceId);
                 InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
                 await task.ConnectAsync();
                 _ioBoxTasks[key] = task;
             } else {
                 task = value;
+                task.AddDeviceId(deviceId);
                 InitializeOrUpdateDeviceType(task, deviceTypeId, isArm);
             }
 
