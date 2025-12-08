@@ -527,12 +527,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // 禁用当前输入框
                     box.Enabled = false;
                     // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
+                    bool hasNext = false;
                     RecalcPartsRemainingCount();
                     if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
                         CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
                         nextBox.Enabled = true;
                         nextBox.GetTextBox(0).Box.Focus();
                         ActiveControl = nextBox.GetTextBox(0).Box;
+
+                        hasNext = true;
                     }
                     // 检查是否可以激活任务
                     if (!_workplace.Activated) {
@@ -548,8 +551,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         await Task.Delay(300);
                     }
 
-                    // Hide/Close pop up form
-                    Hide();
+                    if (!hasNext) {
+                        // Hide/Close pop up form
+                        // 没有下一个就关闭弹窗
+                        Hide();
+                    }
                 } else {
                     logger.Info($"Check fails for mission = [id = {_mission.id}], parts barcode = [{barCode}]...");
                     box.GetTextBox(0).IsError = true;

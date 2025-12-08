@@ -1929,6 +1929,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
                         if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
                             AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                            OpenBarCodePopUpForm(null);
                         }
                     }
                 });
