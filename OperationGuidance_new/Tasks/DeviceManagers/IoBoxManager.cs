@@ -423,9 +423,6 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         }
 
         /// <summary>
-        /// 检查设备是否需要重新连接
-        /// </summary>
-        /// <summary>
         /// 检查IoBox设备是否需要重新连接
         /// </summary>
         private bool NeedsReconnection(IoBoxTask task, DeviceIoDTO dto) {
@@ -547,20 +544,6 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
         }
 
         /// <summary>
-        /// 从缓存中移除任务（使用MainUtils的全局缓存）
-        /// </summary>
-        public void RemoveTaskFromCache(string key) {
-            MainUtils.IoBoxTasks.TryRemove(key, out _);
-        }
-
-        /// <summary>
-        /// 添加任务到缓存（使用MainUtils的全局缓存）
-        /// </summary>
-        public void AddTaskToCache(string key, IoBoxTask task) {
-            MainUtils.IoBoxTasks[key] = task;
-        }
-
-        /// <summary>
         /// 查找现有任务（通过key查找）
         /// </summary>
         private IoBoxTask? GetExistingTask(string key) {
@@ -595,36 +578,6 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             if (existingTask != task) {
                 // 这是一个新任务，可能与现有任务共享同一个key
                 MainUtils.Info(_logger, $"新任务创建: {key} (DeviceId={task.DeviceId})", false);
-            }
-        }
-
-        /// <summary>
-        /// 检查并记录共享任务的使用情况
-        /// </summary>
-        private void LogSharedTaskUsage(IoBoxTask task) {
-            try {
-                // 统计使用此任务的设备数量
-                int deviceCount = 0;
-                string deviceTypes = "";
-
-                // 遍历所有任务查找相同IP:Port的设备
-                foreach (var kvp in MainUtils.IoBoxTasks) {
-                    if (kvp.Value.Ip == task.Ip && kvp.Value.Port == task.Port) {
-                        deviceCount++;
-                        if (kvp.Value.ArmType != null) {
-                            deviceTypes += (deviceTypes.Length > 0 ? "+" : "") + "Arm";
-                        } else {
-                            deviceTypes += (deviceTypes.Length > 0 ? "+" : "") + "IoBox";
-                        }
-                    }
-                }
-
-                if (deviceCount > 1) {
-                    MainUtils.Info(_logger, $"共享任务: {task.Ip}:{task.Port} 被 {deviceCount} 个设备使用 ({deviceTypes})", false);
-                }
-            } catch (Exception ex) {
-                // 忽略日志错误
-                MainUtils.Warn(_logger, $"记录共享任务使用情况时出错: {ex.Message}");
             }
         }
 
