@@ -436,6 +436,14 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             int dtoType = dto.type;
             bool typeMatches = false;
 
+            // 获取当前设备类型信息（用于日志）
+            string currentTypeInfo = "无";
+            if (task.ArrangerType != null) {
+                currentTypeInfo = $"Arranger(ID={task.ArrangerType.DeviceType.Id})";
+            } else if (task.SetterSelectorType != null) {
+                currentTypeInfo = $"SetterSelector(ID={task.SetterSelectorType.DeviceType.Id})";
+            }
+
             // 直接比较DTO.type与任务中设备类型的ID
             // IoBox设备的type范围：1-4 (SetterSelector_4, SetterSelector_8, Arranger, SetterSelector_4_plus)
             if (task.ArrangerType?.DeviceType.Id == dtoType) {
@@ -445,14 +453,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             }
 
             // 如果类型不匹配，也需要重连
-            string currentTypeInfo = "无";
             if (!typeMatches) {
                 needsReconnect = true;
-                if (task.ArrangerType != null) {
-                    currentTypeInfo = $"Arranger(ID={task.ArrangerType.DeviceType.Id})";
-                } else if (task.SetterSelectorType != null) {
-                    currentTypeInfo = $"SetterSelector(ID={task.SetterSelectorType.DeviceType.Id})";
-                }
             }
 
             if (needsReconnect) {
@@ -475,6 +477,12 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             int dtoType = dto.type;
             bool typeMatches = false;
 
+            // 获取当前设备类型信息（用于日志）
+            string currentTypeInfo = "无";
+            if (task.ArmType != null) {
+                currentTypeInfo = $"Arm(ID={task.ArmType.DeviceType.Id})";
+            }
+
             // 直接比较DTO.type与任务中设备类型的ID
             // Arm设备的type范围：1-4 (CF01, CF02, CF03, CF04)
             if (task.ArmType?.DeviceType.Id == dtoType) {
@@ -482,12 +490,8 @@ namespace OperationGuidance_new.Tasks.DeviceManagers {
             }
 
             // 如果类型不匹配，也需要重连
-            string currentTypeInfo = "无";
             if (!typeMatches) {
                 needsReconnect = true;
-                if (task.ArmType != null) {
-                    currentTypeInfo = $"Arm(ID={task.ArmType.DeviceType.Id})";
-                }
             }
 
             if (needsReconnect) {
