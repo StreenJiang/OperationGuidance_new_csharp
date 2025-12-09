@@ -620,13 +620,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
-                                        _adminConfirmed = false;
-                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
-                                        if (!_adminConfirmed.Value) {
-                                            _adminConfirmed = null;
+                                        bool confirmed = OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
+                                        if (!confirmed) {
                                             return;
                                         }
-                                        _adminConfirmed = null;
                                     }
 
                                     int? currentWorkstationId = null;
@@ -708,7 +705,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         return;
                                     }
 
-                                    if (!OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false)) {
+                                    bool confirmed = OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
+                                    if (!confirmed) {
                                         return;
                                     }
 
@@ -1931,6 +1929,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
                         if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
                             AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                            OpenBarCodePopUpForm(null);
                         }
                     }
                 });

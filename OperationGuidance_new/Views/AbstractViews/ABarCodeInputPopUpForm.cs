@@ -334,9 +334,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], waiting for administrators to confirm...");
 
                         // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
-                        needRedo = _workplace.AdminConfirmed.Value;
+                        needRedo = _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false);
                     } else {
                         logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
@@ -500,9 +498,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], waiting for administrators to confirm...");
 
                             // 需要管理员密码弹窗
-                            _workplace.AdminConfirmed = false;
-                            _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
-                            needRedo = _workplace.AdminConfirmed.Value;
+                            needRedo = _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false);
                         } else {
                             logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;
@@ -531,12 +527,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // 禁用当前输入框
                     box.Enabled = false;
                     // 如果还有下一个物料需要录入，则自动聚焦到下一个物料输入框
+                    bool hasNext = false;
                     RecalcPartsRemainingCount();
                     if (_workplace.BarCodeObj.PartsBarCodes.Count < _workplace.BarCodeObj.PartsRulesCount) {
                         CustomTextBoxButtonGroup nextBox = (CustomTextBoxButtonGroup) _partsBarCodeContentPanel.Controls[_workplace.BarCodeObj.PartsBarCodes.Count];
                         nextBox.Enabled = true;
                         nextBox.GetTextBox(0).Box.Focus();
                         ActiveControl = nextBox.GetTextBox(0).Box;
+
+                        hasNext = true;
                     }
                     // 检查是否可以激活任务
                     if (!_workplace.Activated) {
@@ -552,8 +551,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         await Task.Delay(300);
                     }
 
-                    // Hide/Close pop up form
-                    Hide();
+                    if (!hasNext) {
+                        // Hide/Close pop up form
+                        // 没有下一个就关闭弹窗
+                        Hide();
+                    }
                 } else {
                     logger.Info($"Check fails for mission = [id = {_mission.id}], parts barcode = [{barCode}]...");
                     box.GetTextBox(0).IsError = true;
@@ -710,14 +712,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        public new void Show() {
-            // 弹窗会阻塞，因此异步判断可以让里面可能出现的弹窗不阻塞后面的逻辑
-            BeginInvoke(new(() => {
+
+        protected override void AfterShown() {
+            base.AfterShown();
+            // 弹窗显示后异步执行条码校验，避免阻塞弹窗显示
+            BeginInvoke(async () => {
                 if (_barCode != null) {
+                    await Task.Delay(500);
                     ValidateBarCode(_barCode);
                 }
-            }));
-            base.Show();
+            });
         }
 
         public void ResizeSelf() {
