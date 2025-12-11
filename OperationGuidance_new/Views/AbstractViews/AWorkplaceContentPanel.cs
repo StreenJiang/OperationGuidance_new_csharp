@@ -1596,48 +1596,129 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Task.Run(async () => {
                     while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
-                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                            // Check if is multi-device independence mode
+                            bool isMultiDeviceMode = CheckIfIsMultiDeviceIndependenceMode();
 
-                            CheckCurrentPSetForLockMsg();
-                            CheckAdminConfirmationForLockMsg();
+                            if (isMultiDeviceMode) {
+                                // Multi-device mode: process all bolts in _currentWorkingBoltIndependence dictionary
+                                foreach (var kvp in _currentWorkingBoltIndependence) {
+                                    int workstationId = kvp.Key;
+                                    BoltButton boltButton = kvp.Value;
 
-                            string statusDesc = string.Empty;
-                            if (lockMsgs.Count > 0) {
-                                statusDesc = string.Join("\r\n", lockMsgs);
-                                statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
-                                // Set status to working proccess panel
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                    try {
+                                        // Skip if boltButton is null
+                                        if (boltButton == null) {
+                                            continue;
+                                        }
 
-                                // Lock tools
-                                toolTask.ForceSendLock();
-                            } else {
-                                if (_needLoosening) {
-                                    statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
-                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-                                } else {
-                                    statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _workingProcessPanel.BoltSerialNum);
-                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+
+                                        // Clear messages for this bolt
+                                        ClearLockMsgs();
+                                        ClearInformationMsgs();
+
+                                        CheckCurrentPSetForLockMsg();
+                                        CheckAdminConfirmationForLockMsg();
+
+                                        string statusDesc = string.Empty;
+                                        if (lockMsgs.Count > 0) {
+                                            statusDesc = string.Join("\r\n", lockMsgs);
+                                            statusDesc = string.Format(statusDesc, boltDTO.serial_num);
+                                            // Set status to working proccess panel
+                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+
+                                            // Lock tools
+                                            toolTask.ForceSendLock();
+                                        } else {
+                                            if (_needLoosening) {
+                                                statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, boltDTO.serial_num);
+                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                            } else {
+                                                statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, boltDTO.serial_num);
+                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                            }
+                                            // Set status to working proccess panel
+                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+
+                                            // Unlock tools
+                                            toolTask.ForceSendUnlock();
+                                        }
+
+                                        // Add information
+                                        if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
+                                            statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
+                                        }
+
+                                        // Set description to working proccess panel
+                                        _workingProcessPanel.StatusDesc = statusDesc;
+                                    } catch (OperationCanceledException) {
+                                        // 任务被取消，退出循环
+                                        throw;
+                                    } catch (Exception e) {
+                                        // Log error for this specific bolt but continue processing others
+                                        logger.Error($"StartLockCheckingTask [Multi-Device Mode, WorkstationId={workstationId}]: e = {e}");
+                                    }
                                 }
-                                // Set status to working proccess panel
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                            } else {
+                                // Normal mode: process single _currentWorkingBolt
+                                try {
+                                    // Skip if _currentWorkingBolt is null
+                                    if (_currentWorkingBolt == null) {
+                                        await Task.Delay(_lockCheckingTaskDelay, cts.Token);
+                                        continue;
+                                    }
 
-                                // Unlock tools
-                                toolTask.ForceSendUnlock();
+                                    ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                                    ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+
+                                    CheckCurrentPSetForLockMsg();
+                                    CheckAdminConfirmationForLockMsg();
+
+                                    string statusDesc = string.Empty;
+                                    if (lockMsgs.Count > 0) {
+                                        statusDesc = string.Join("\r\n", lockMsgs);
+                                        statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
+                                        // Set status to working proccess panel
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+
+                                        // Lock tools
+                                        toolTask.ForceSendLock();
+                                    } else {
+                                        if (_needLoosening) {
+                                            statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
+                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                        } else {
+                                            statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _currentWorkingBolt.BoltDTO.serial_num);
+                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                        }
+                                        // Set status to working proccess panel
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+
+                                        // Unlock tools
+                                        toolTask.ForceSendUnlock();
+                                    }
+
+                                    // Add information
+                                    if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
+                                        statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
+                                    }
+
+                                    // Set description to working proccess panel
+                                    _workingProcessPanel.StatusDesc = statusDesc;
+                                } catch (OperationCanceledException) {
+                                    // 任务被取消，退出循环
+                                    throw;
+                                } catch (Exception e) {
+                                    // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
+                                    logger.Error($"StartLockCheckingTask [Normal Mode]: e = {e}");
+                                }
                             }
-
-                            // Add information
-                            if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
-                                statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
-                            }
-
-                            // Set description to working proccess panel
-                            _workingProcessPanel.StatusDesc = statusDesc;
                         } catch (OperationCanceledException) {
                             // 任务被取消，退出循环
                             break;
                         } catch (Exception e) {
-                            // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
+                            // Catch any outer exceptions
                             logger.Error($"StartLockCheckingTask: e = {e}");
                         } finally {
                             // Delay a little bit and check again
@@ -2673,6 +2754,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
+            // Cancel all background tasks before locking tools to avoid race condition
+            // where lock checking task might call ForceSendUnlock() after we lock tools
+            if (_backgroundTaskCts.Count > 0) {
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Cancel();
+                }
+
+                // Wait for tasks to actually stop (with timeout to avoid hanging)
+                var stopTasks = new List<Task>();
+                foreach (var cts in _backgroundTaskCts) {
+                    stopTasks.Add(Task.Run(async () => {
+                        // Wait for cancellation to propagate and task to exit
+                        await Task.Delay(100);
+                    }));
+                }
+
+                try {
+                    await Task.WhenAll(stopTasks);
+                } catch (Exception) {
+                    // Ignore exceptions during task cancellation
+                }
+
+                // Dispose and clear all cancellation token sources
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Dispose();
+                }
+                _backgroundTaskCts.Clear();
+            }
+
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();
