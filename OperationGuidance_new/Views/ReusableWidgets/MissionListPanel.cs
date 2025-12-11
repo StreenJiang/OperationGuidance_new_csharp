@@ -115,12 +115,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// 同步版本的刷新方法（基于原有代码）
         /// 修复严重问题 #11: 作为异步版本的回退机制
         /// 修复图片显示问题：使用修复后的GetProductImage方法，确保图片对象生命周期正确
+        /// P0级UI线程阻塞修复: 为同步版本添加延时等待Loading显示
         /// </summary>
         private void RefreshMissionBlocksSync(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock) {
             MainUtils.logger?.Info($"[RefreshMissionBlocksSync] Using synchronous fallback for {missionDTOs.Count} missions");
 
             try {
                 ShowLoadingIndicator();
+
+                // 关键修复: 给UI线程时间显示Loading
+                Thread.Sleep(50);
 
                 _contentPanel.BigButtonPanel.Hide();
                 _contentPanel.MissionsTable.Show();
@@ -173,6 +177,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// <summary>
         /// P0级性能优化：异步刷新任务块（内部实现）
         /// 修复严重问题 #11: 简化异步流程，移除嵌套 BeginInvoke，使用同步 Invoke 进行关键UI操作
+        /// P0级UI线程阻塞修复: 使用BeginInvoke替代Invoke，添加Task.Delay给UI时间，添加Application.DoEvents处理UI消息
         /// </summary>
         private async Task RefreshMissionBlocksAsync(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
             // 取消之前的操作（如果正在加载）
@@ -185,8 +190,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             try {
                 MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Starting refresh for {missionDTOs.Count} missions");
 
-                // 步骤1: 显示Loading (UI线程)
+                // 步骤1: 显示Loading (UI线程，非阻塞)
                 ShowLoadingIndicator();
+
+                // 关键修复: 给UI线程50ms时间显示Loading，避免被立即覆盖
+                await Task.Delay(50);
 
                 if (missionDTOs.Count > 0) {
                     // 步骤2: 后台线程并行加载所有图片 (无UI操作)
@@ -220,45 +228,58 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     var results = await Task.WhenAll(imageLoadTasks);
                     MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Images loaded, creating UI controls");
 
-                    // 步骤3: UI线程中批量创建控件 (直接使用 Invoke，避免线程池线程阻塞)
-                    _contentPanel.Invoke(() => {
-                        try {
-                            MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Starting UI operations on UI thread");
+                    // 步骤3: UI线程中批量创建控件 (使用 BeginInvoke 非阻塞，避免线程池线程阻塞)
+                    if (cancellationToken.IsCancellationRequested) return;
 
-                            // 清理现有控件
-                            _contentPanel.MissionsTable.Controls.Clear();
-                            _contentPanel.BigButtonPanel.Hide();
-                            _contentPanel.MissionsTable.Show();
+                    if (_contentPanel.IsHandleCreated && !_contentPanel.IsDisposed) {
+                        var taskResults = results.ToList();
 
-                            // 批量创建新控件
-                            foreach (var (mission, coverImage) in results) {
-                                if (cancellationToken.IsCancellationRequested) return;
-                                CreateMissionBlock(mission, coverImage, blockClickAction, toggleBlock);
+                        _contentPanel.BeginInvoke(() => {
+                            try {
+                                MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Starting UI operations on UI thread");
+
+                                // 清理现有控件
+                                _contentPanel.MissionsTable.Controls.Clear();
+                                _contentPanel.BigButtonPanel.Hide();
+                                _contentPanel.MissionsTable.Show();
+
+                                // 分批创建UI控件，避免一次性创建过多导致UI卡顿
+                                const int batchSize = 10;
+                                for (int i = 0; i < taskResults.Count; i += batchSize) {
+                                    var batch = taskResults.Skip(i).Take(batchSize);
+                                    foreach (var (mission, coverImage) in batch) {
+                                        if (cancellationToken.IsCancellationRequested) return;
+                                        CreateMissionBlock(mission, coverImage, blockClickAction, toggleBlock);
+                                    }
+
+                                    // 每批之间短暂休息，处理UI消息，让UI有机会更新
+                                    Application.DoEvents();
+                                }
+
+                                MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Created {taskResults.Count} mission blocks");
+
+                                // 更新字段
+                                _missionDTOs = missionDTOs;
+
+                                // 强制重绘
+                                _contentOuterPanel.ResizeChildren();
+                                _contentPanel.ResizeCells();
+                                _contentPanel.MissionsTable.Invalidate();
+                                _contentPanel.MissionsTable.Refresh();
+
+                                MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] UI refresh completed");
+                            } catch (Exception ex) {
+                                MainUtils.logger?.Error($"[RefreshMissionBlocksAsync] Error in UI thread operations", ex);
+                                throw;
                             }
-
-                            MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] Created {results.Length} mission blocks");
-
-                            // 更新字段
-                            _missionDTOs = missionDTOs;
-
-                            // 强制重绘
-                            _contentOuterPanel.ResizeChildren();
-                            _contentPanel.ResizeCells();
-                            _contentPanel.MissionsTable.Invalidate();
-                            _contentPanel.MissionsTable.Refresh();
-
-                            MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] UI refresh completed");
-                        } catch (Exception ex) {
-                            MainUtils.logger?.Error($"[RefreshMissionBlocksAsync] Error in UI thread operations", ex);
-                            throw;
-                        }
-                    });
+                        });
+                    }
                 } else {
                     // 没有任务时显示空状态
                     MainUtils.logger?.Info($"[RefreshMissionBlocksAsync] No missions, showing empty state");
 
                     if (_contentPanel.IsHandleCreated && !_contentPanel.IsDisposed) {
-                        _contentPanel.Invoke(() => {
+                        _contentPanel.BeginInvoke(() => {
                             _contentPanel.MissionsTable.Hide();
                             _contentPanel.BigButtonPanel.Show();
                             _contentPanel.ResizeCells();
@@ -278,7 +299,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
                 throw;
             } finally {
-                // 步骤4: 隐藏Loading (UI线程)
+                // 步骤4: 隐藏Loading (UI线程，非阻塞)
                 HideLoadingIndicator();
             }
         }
@@ -323,64 +344,97 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// <summary>
         /// P0级性能优化：显示Loading指示器
         /// 修复严重问题 #11: 添加可视化的Loading指示器
+        /// 使用TableLayoutPanel方案彻底解决Loading文字居中问题（水平+垂直）
+        /// P0级UI线程阻塞修复: 使用BeginInvoke而非Invoke，确保非阻塞显示
         /// </summary>
         private void ShowLoadingIndicator() {
-            MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Showing loading indicator");
-
             _isLoading = true;
 
-            _contentPanel.Invoke(() => {
-                try {
-                    // 如果Loading标签不存在，创建它
-                    if (_loadingLabel == null) {
-                        _loadingLabel = new Label();
-                        _loadingLabel.Text = "正在加载任务...";
-                        _loadingLabel.Font = new Font("Microsoft YaHei", 12, FontStyle.Bold);
-                        _loadingLabel.ForeColor = Color.Blue;
-                        _loadingLabel.AutoSize = true;
-                        _loadingLabel.TextAlign = ContentAlignment.MiddleCenter;
-                        _loadingLabel.Anchor = AnchorStyles.None;
+            // 使用BeginInvoke非阻塞调用，确保UI线程不被阻塞
+            if (_contentPanel.IsHandleCreated && !_contentPanel.IsDisposed) {
+                _contentPanel.BeginInvoke(() => {
+                    try {
+                        if (_loadingLabel == null) {
+                            // ✅ 创建TableLayoutPanel作为容器
+                            TableLayoutPanel centerPanel = new TableLayoutPanel();
+                            centerPanel.Dock = DockStyle.Fill;
+                            centerPanel.ColumnCount = 1;
+                            centerPanel.RowCount = 1;
+                            centerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+                            centerPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+                            centerPanel.BackColor = Color.Transparent;
+                            centerPanel.Padding = new Padding(0);
+                            centerPanel.Margin = new Padding(0);
 
-                        // 添加到容器
-                        _contentPanel.MissionsTable.Controls.Add(_loadingLabel);
+                            // 创建Label - 恢复原始样式
+                            _loadingLabel = new Label();
+                            _loadingLabel.Text = "正在加载任务...";
+                            _loadingLabel.Font = new Font("Microsoft YaHei", 12, FontStyle.Bold);
+                            _loadingLabel.ForeColor = Color.FromArgb(96, 96, 96); // 深灰色
+                            _loadingLabel.AutoSize = true;
+                            _loadingLabel.TextAlign = ContentAlignment.MiddleCenter;
+                            _loadingLabel.Anchor = AnchorStyles.None;
+                            _loadingLabel.Dock = DockStyle.None;
+
+                            // ✅ 将Label添加到TableLayoutPanel的单个单元格
+                            centerPanel.Controls.Add(_loadingLabel, 0, 0);
+
+                            // ✅ 将TableLayoutPanel添加到主容器
+                            _contentPanel.MissionsTable.Controls.Add(centerPanel);
+                        }
+
+                        _loadingLabel.Visible = true;
+                        _loadingLabel.BringToFront();
+
+                        // 强制刷新，确保Loading立即显示
+                        _contentPanel.Refresh();
+                        _contentPanel.MissionsTable.Refresh();
+
+                        MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Loading indicator shown");
+                    } catch (Exception ex) {
+                        MainUtils.logger?.Error("Error showing loading indicator", ex);
                     }
-
-                    // 修复优化建议 #5: 确保Label尺寸已计算
-                    _loadingLabel.Refresh();
-
-                    // 居中定位
-                    _loadingLabel.Location = new Point(
-                        (_contentPanel.MissionsTable.Width - _loadingLabel.Width) / 2,
-                        (_contentPanel.MissionsTable.Height - _loadingLabel.Height) / 2
-                    );
-
-                    _loadingLabel.Visible = true;
-                    _loadingLabel.BringToFront();
-                    MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Loading indicator shown");
-                } catch (Exception ex) {
-                    MainUtils.logger?.Error("Error showing loading indicator", ex);
-                }
-            });
+                });
+            }
         }
 
         /// <summary>
         /// P0级性能优化：隐藏Loading指示器
         /// 修复严重问题 #11: 隐藏可视化的Loading指示器
+        /// 清理TableLayoutPanel容器
+        /// P0级UI线程阻塞修复: 使用BeginInvoke而非Invoke，确保非阻塞隐藏
         /// </summary>
         private void HideLoadingIndicator() {
-            MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Hiding loading indicator");
+            // 使用BeginInvoke非阻塞调用，确保UI线程不被阻塞
+            if (_contentPanel.IsHandleCreated && !_contentPanel.IsDisposed) {
+                _contentPanel.BeginInvoke(() => {
+                    try {
+                        if (_loadingLabel != null) {
+                            _loadingLabel.Visible = false;
 
-            _contentPanel.Invoke(() => {
-                try {
-                    if (_loadingLabel != null) {
-                        _loadingLabel.Visible = false;
+                            // ✅ 找到并移除TableLayoutPanel容器
+                            if (_contentPanel.MissionsTable.Controls.Contains(_loadingLabel)) {
+                                // TableLayoutPanel是_loadingLabel的父控件
+                                Control? parent = _loadingLabel.Parent;
+                                if (parent is TableLayoutPanel) {
+                                    _contentPanel.MissionsTable.Controls.Remove(parent);
+                                    parent.Dispose(); // 释放TableLayoutPanel资源
+                                } else {
+                                    // 如果直接是MissionsTable，移除Label
+                                    _contentPanel.MissionsTable.Controls.Remove(_loadingLabel);
+                                }
+                            }
+
+                            _loadingLabel.Dispose();
+                            _loadingLabel = null;
+                        }
+                        _isLoading = false;
+                        MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Loading indicator hidden");
+                    } catch (Exception ex) {
+                        MainUtils.logger?.Error("Error hiding loading indicator", ex);
                     }
-                    _isLoading = false;
-                    MainUtils.logger?.Info("[RefreshMissionBlocksAsync] Loading indicator hidden");
-                } catch (Exception ex) {
-                    MainUtils.logger?.Error("Error hiding loading indicator", ex);
-                }
-            });
+                });
+            }
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {

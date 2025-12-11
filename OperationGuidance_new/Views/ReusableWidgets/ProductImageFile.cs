@@ -229,16 +229,30 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return null;
         }
 
-        public void RefreshImage() {
+        public void RefreshImage(int retryCount = 0) {
+            const int maxRetries = 10;
+
             Image? imageDisplay = GetDisplayImage();
             if (imageDisplay != null) {
-                _centerLocation = new((_container.Width - imageDisplay.Width) / 2, (_container.Height - imageDisplay.Height) / 2);
-                _centerLocation.X += _locationOffset.X;
-                _centerLocation.Y += _locationOffset.Y;
-                _centerLocation.X += _locationOffsetMoving.X;
-                _centerLocation.Y += _locationOffsetMoving.Y;
-                _container.SetImage(imageDisplay, _centerLocation);
-                _imageRange = new(_centerLocation, imageDisplay.Size);
+                if (_container.Width > 0 && _container.Height > 0) {
+                    _centerLocation = new((_container.Width - imageDisplay.Width) / 2,
+                                         (_container.Height - imageDisplay.Height) / 2);
+                    _centerLocation.X += _locationOffset.X;
+                    _centerLocation.Y += _locationOffset.Y;
+                    _centerLocation.X += _locationOffsetMoving.X;
+                    _centerLocation.Y += _locationOffsetMoving.Y;
+
+                    _container.SetImage(imageDisplay, _centerLocation);
+                    _imageRange = new(_centerLocation, imageDisplay.Size);
+                } else {
+                    if (retryCount < maxRetries) {
+                        MainUtils.logger?.Debug($"[RefreshImage] Container not initialized, deferring refresh (attempt {retryCount + 1}/{maxRetries})");
+                        _container.BeginInvoke(new Action(() => RefreshImage(retryCount + 1)));
+                        return;
+                    } else {
+                        MainUtils.logger?.Warn($"[RefreshImage] Max retries reached, giving up on refresh");
+                    }
+                }
             } else {
                 _container.SetImage(null, null);
             }

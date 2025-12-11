@@ -1881,6 +1881,12 @@ namespace OperationGuidance_new.Views {
             protected override void InvokeResizing() {
                 // Make maximum width equals to 95% of parent width to ensure all retangles can be seen
 
+                // ✅ 确保 Width/Height 已有效值
+                if (Width <= 0 || Height <= 0) {
+                    MainUtils.logger?.Debug("[InvokeResizing] Width/Height not initialized, skipping");
+                    return; // 跳过未初始化的计算
+                }
+
                 int mainFormWidth = WidgetUtils.MainForm.Width;
                 int mainFormHeight = WidgetUtils.MainForm.Height;
                 int workPlacePadding = WidgetUtils.ContentInnerBorderMargin() * 2 + 1;
@@ -1891,9 +1897,12 @@ namespace OperationGuidance_new.Views {
                 MaxRectSize = MainUtils.GetProperSizeAccordingToSizeRatio((Size * .95F).ToSize(), workPlaceImageDisplayPanelSize);
                 MaxRectWidth = MaxRectSize.Width;
                 MaxRectHeight = MaxRectSize.Height;
-                // Calculate location of max rectangle depends on size
-                MaxRectLocation = new((Width - MaxRectWidth) / 2, (Height - MaxRectHeight) / 2);
-                MaxRect = new(MaxRectLocation, MaxRectSize);
+
+                // ✅ 确保 MaxRectSize 有有效值
+                if (MaxRectWidth > 0 && MaxRectHeight > 0) {
+                    MaxRectLocation = new((Width - MaxRectWidth) / 2, (Height - MaxRectHeight) / 2);
+                    MaxRect = new(MaxRectLocation, MaxRectSize);
+                }
                 // Get enumerator again and iterate over it to resize all rectangles
                 // int index = 0;
                 // List<SizeRatioNRectColor>.Enumerator enumerator = WidthHeightRatio.GetEnumerator();
