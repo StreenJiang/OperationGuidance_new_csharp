@@ -349,7 +349,6 @@ namespace CustomLibrary.Utils {
                     // 原图的宽和高
                     int w = image.Width;
                     int h = image.Height;
-                    Image dsImage = new Bitmap(w, h);
 
                     int W = w;
                     int H = h;
@@ -384,32 +383,38 @@ namespace CustomLibrary.Utils {
                         throw new ArgumentException("Calculated dimensions must be positive.");
                     }
 
-                    // 目标位图
-                    dsImage = new Bitmap(W, H);
+                    // 修复严重问题 #2: 只有在计算成功后才创建Bitmap，避免内存泄漏
+                    Image? dsImage = null;
+                    try {
+                        dsImage = new Bitmap(W, H);
 
-                    using (Graphics g = Graphics.FromImage(dsImage)) {
-                        g.InterpolationMode = InterpolationMode.Bilinear;
-                        g.SmoothingMode = SmoothingMode.HighQuality;
+                        using (Graphics g = Graphics.FromImage(dsImage)) {
+                            g.InterpolationMode = InterpolationMode.Bilinear;
+                            g.SmoothingMode = SmoothingMode.HighQuality;
 
-                        // 计算偏移量
-                        Point Offset = new Point((W - w) / 2, (H - h) / 2);
+                            // 计算偏移量
+                            Point Offset = new Point((W - w) / 2, (H - h) / 2);
 
-                        // 构造图像显示区域：让图像的中心与窗口的中心点一致
-                        Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
-                        Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
-                        g.TranslateTransform(center.X, center.Y);
-                        g.RotateTransform(360 + angle);
+                            // 构造图像显示区域：让图像的中心与窗口的中心点一致
+                            Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
+                            Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+                            g.TranslateTransform(center.X, center.Y);
+                            g.RotateTransform(360 + angle);
 
-                        // 恢复图像在水平和垂直方向的平移
-                        g.TranslateTransform(-center.X, -center.Y);
-                        g.DrawImage(image, rect);
+                            // 恢复图像在水平和垂直方向的平移
+                            g.TranslateTransform(-center.X, -center.Y);
+                            g.DrawImage(image, rect);
 
-                        // 重置绘图的所有变换
-                        g.ResetTransform();
-                        g.Save();
+                            // 重置绘图的所有变换
+                            g.ResetTransform();
+                            g.Save();
+                        }
+
+                        return dsImage;
+                    } catch {
+                        dsImage?.Dispose(); // 确保失败时释放
+                        throw;
                     }
-
-                    return dsImage;
                 } catch (Exception e) {
                     if (logger != null) {
                         logger.Error($"Error while rotating image, e = {e}");
@@ -560,7 +565,7 @@ namespace CustomLibrary.Utils {
                 if (logger != null) {
                     logger.Error($"Error while rotating image, e = {e}");
                 }
-                throw e;
+                throw; // 修复严重问题 #3: 使用 throw 保持原始异常堆栈跟踪
             }
         }
 

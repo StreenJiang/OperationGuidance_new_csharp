@@ -169,8 +169,14 @@ namespace OperationGuidance_new.Utils {
             private static async Task AddToCacheAsync(string fileName, Image image) {
                 await Task.Run(() => {
                     lock (_lock) {
+                        // 修复优化建议 #4: 双重检查锁，避免重复添加和正确释放
+                        if (_cache.ContainsKey(fileName)) {
+                            image.Dispose(); // 如果已存在，释放新图片
+                            return;
+                        }
+
                         // 如果缓存已满，移除最久未使用的项
-                        if (_cache.Count >= MaxCacheSize && !_cache.ContainsKey(fileName)) {
+                        if (_cache.Count >= MaxCacheSize) {
                             RemoveOldestItem();
                         }
 
