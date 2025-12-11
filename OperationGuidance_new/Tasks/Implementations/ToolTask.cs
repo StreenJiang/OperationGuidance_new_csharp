@@ -210,7 +210,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        private async Task<bool> ConnectToServer(CancellationToken cancellationToken = default) {
         /// <summary>
         /// Performs deep connection validation using Socket.Poll.
         /// This provides more accurate connection status than Socket.Connected property alone.
@@ -249,7 +248,7 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
-        private async Task<bool> ConnectToServer() {
+        private async Task<bool> ConnectToServer(CancellationToken cancellationToken = default) {
             try {
                 if (Connected) {
                     logger.Warn(MainUtils.FormatDeviceLog("TOOL", $"{_ip}:{_port}", $"Already connecting for {_device_name}, please don't connect repeatedly"));
