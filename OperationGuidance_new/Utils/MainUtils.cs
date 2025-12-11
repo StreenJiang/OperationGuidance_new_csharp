@@ -55,6 +55,177 @@ namespace OperationGuidance_new.Utils {
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD = "yyyy-MM-dd_ddd";
         public static readonly string DATETIME_FORMAT_YYYY_MM_DD_DDD_2 = "yyyy/MM/dd_ddd";
 
+        /// <summary>
+        /// P0级性能优化：图片缓存机制
+        /// 使用LRU策略缓存加载的图片，避免重复文件系统I/O操作
+        /// </summary>
+        internal static class ImageCache {
+            private static readonly ConcurrentDictionary<string, CachedImage> _cache = new();
+            private static readonly ConcurrentDictionary<string, Task<Image>> _loadingTasks = new();
+            private const int MaxCacheSize = 100;
+            private static readonly LinkedList<string> _accessOrder = new();
+            private static readonly object _lock = new();
+
+            // 缓存命中统计
+            private static int _hitCount = 0;
+            private static int _missCount = 0;
+
+            public static (int HitCount, int MissCount, double HitRate) Statistics {
+                get {
+                    int total = _hitCount + _missCount;
+                    return (_hitCount, _missCount, total > 0 ? (double)_hitCount / total : 0.0);
+                }
+            }
+
+            private class CachedImage {
+                public Image Image { get; }
+                public LinkedListNode<string> AccessNode { get; set; }
+
+                /// <summary>
+                /// 修复严重问题 #1: 使用实际缓存键而不是随机GUID
+                /// 确保AccessNode存储的值能够正确映射到缓存条目
+                /// </summary>
+                public CachedImage(Image image, string cacheKey, LinkedList<string> accessOrder) {
+                    Image = image;
+                    AccessNode = new LinkedListNode<string>(cacheKey);
+                    lock (_lock) {
+                        accessOrder.AddLast(AccessNode);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// 从缓存获取图片，如果不存在则异步加载
+            /// </summary>
+            public static async Task<Image?> GetProductImageAsync(string? fileName) {
+                if (string.IsNullOrEmpty(fileName)) {
+                    return null;
+                }
+
+                // 尝试从缓存获取
+                if (_cache.TryGetValue(fileName, out var cachedImage)) {
+                    // 修复警告问题 #7: 使用原子操作增加计数器
+                    Interlocked.Increment(ref _hitCount);
+                    UpdateAccessOrder(cachedImage.AccessNode);
+                    return cachedImage.Image;
+                }
+
+                // 缓存未命中，检查是否正在加载
+                if (_loadingTasks.TryGetValue(fileName, out var loadingTask)) {
+                    // 等待正在进行的加载任务，不算作 miss
+                    return await loadingTask;
+                }
+
+                // 启动新的加载任务 - 这里是真正的 miss
+                // 修复警告问题 #7: 使用原子操作增加计数器
+                Interlocked.Increment(ref _missCount);
+                var task = LoadImageAsync(fileName);
+                _loadingTasks[fileName] = task;
+
+                try {
+                    var image = await task;
+                    if (image != null) {
+                        await AddToCacheAsync(fileName, image);
+                    }
+                    return image;
+                } finally {
+                    _loadingTasks.TryRemove(fileName, out _);
+                }
+            }
+
+            private static async Task<Image?> LoadImageAsync(string fileName) {
+                return await Task.Run(() => {
+                    try {
+                        string imageFilePath = GetProductImagesPath() + "\\" + fileName;
+                        if (!File.Exists(imageFilePath)) {
+                            return null;
+                        }
+
+                        try {
+                            // 原始方案：转换为基础64再转回Image
+                            Bitmap bitmap = new Bitmap(imageFilePath);
+                            Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
+                            bitmap.Dispose();
+                            return image;
+                        } catch {
+                            // 备用方案：使用MemoryStream避免文件锁定
+                            using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
+                            using (Bitmap bitmap = new Bitmap(ms)) {
+                                Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
+                                using (Graphics g = Graphics.FromImage(newBitmap)) {
+                                    g.DrawImage(bitmap, Point.Empty);
+                                    g.Flush();
+                                }
+                                return newBitmap;
+                            }
+                        }
+                    } catch (Exception ex) {
+                        logger.Error($"Failed to load image: {fileName}", ex);
+                        return null;
+                    }
+                });
+            }
+
+            private static async Task AddToCacheAsync(string fileName, Image image) {
+                await Task.Run(() => {
+                    lock (_lock) {
+                        // 如果缓存已满，移除最久未使用的项
+                        if (_cache.Count >= MaxCacheSize && !_cache.ContainsKey(fileName)) {
+                            RemoveOldestItem();
+                        }
+
+                        // 添加新项 - 修复严重问题 #1: 传入实际缓存键
+                        var cachedImage = new CachedImage(image, fileName, _accessOrder);
+                        _cache[fileName] = cachedImage;
+                    }
+                });
+            }
+
+            private static void UpdateAccessOrder(LinkedListNode<string> node) {
+                lock (_lock) {
+                    _accessOrder.Remove(node);
+                    _accessOrder.AddLast(node);
+                }
+            }
+
+            private static void RemoveOldestItem() {
+                lock (_lock) {
+                    if (_accessOrder.First != null) {
+                        var oldest = _accessOrder.First.Value;
+                        _accessOrder.RemoveFirst();
+                        _cache.TryRemove(oldest, out var cachedImage);
+                        cachedImage?.Image?.Dispose();
+                    }
+                }
+            }
+
+            /// <summary>
+            /// 清空缓存
+            /// </summary>
+            public static void Clear() {
+                lock (_lock) {
+                    foreach (var kvp in _cache.Values) {
+                        kvp.Image?.Dispose();
+                    }
+                    _cache.Clear();
+                    _accessOrder.Clear();
+                    _loadingTasks.Clear();
+                    _hitCount = 0;
+                    _missCount = 0;
+                }
+            }
+
+            /// <summary>
+            /// 预热缓存 - 预加载指定图片
+            /// </summary>
+            public static async Task WarmUpAsync(IEnumerable<string> fileNames) {
+                var warmUpTasks = fileNames
+                    .Where(f => !string.IsNullOrEmpty(f))
+                    .Select(f => GetProductImageAsync(f));
+                await Task.WhenAll(warmUpTasks);
+            }
+        }
+
         static MainUtils() {
             XmlConfigurator.Configure();
         }
@@ -222,21 +393,52 @@ namespace OperationGuidance_new.Utils {
         public static string GenerateProductImageName() {
             return $"ProductSideImage_{DateTime.Now.ToString(DATETIME_FORMAT_FULL_NO_PUNCTUATION)}.png";
         }
+        /// <summary>
+        /// P0级性能优化：同步版本图片加载（保持向后兼容）
+        /// 优先使用异步版本GetProductImageAsync以避免UI阻塞
+        /// </summary>
         public static Image? GetProductImage(string? fileName) {
+            // 首先尝试从缓存获取（同步检查，避免阻塞）
+            if (_syncCache.TryGetValue(fileName ?? "", out var cachedImage)) {
+                // 修复警告问题 #10: 使用原子操作增加访问计数
+                Interlocked.Increment(ref _syncCacheAccessCount);
+                return cachedImage;
+            }
+
+            // 同步加载（保持原有行为，但已不是最优方案）
             if (string.IsNullOrEmpty(fileName)) {
                 return null;
             }
+
+            // 修复警告问题 #10: 定期清理同步缓存
+            if (_syncCacheAccessCount > 1000) {
+                _syncCacheAccessCount = 0;
+                foreach (var kvp in _syncCache.Values) {
+                    kvp?.Dispose();
+                }
+                _syncCache.Clear();
+            }
+
             string imageFilePath = GetProductImagesPath() + "\\" + fileName;
             if (!File.Exists(imageFilePath)) {
                 return null;
             }
 
             try {
-                // 这里居然出现过一次 Out of Memory，也很奇怪。。所以放到 try-catch 里面，然后下面用另一个方案
-                Bitmap bitmap = new Bitmap(imageFilePath);
-                Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
-                bitmap.Dispose();
-                return image;
+                // 修复警告问题 #12: 使用 using 确保资源释放
+                using (Bitmap bitmap = new Bitmap(imageFilePath)) {
+                    Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
+
+                    // 异步添加到缓存
+                    _ = Task.Run(async () => {
+                        var cached = await ImageCache.GetProductImageAsync(fileName);
+                        if (cached != null) {
+                            _syncCache[fileName] = cached;
+                        }
+                    });
+
+                    return image;
+                }
             } catch {
                 // 这个很奇怪，只会画出图片的一部分，真奇葩
                 // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
@@ -247,10 +449,39 @@ namespace OperationGuidance_new.Utils {
                         g.DrawImage(bitmap, Point.Empty);
                         g.Flush();
                     }
+
+                    // 异步添加到缓存
+                    _ = Task.Run(async () => {
+                        var cached = await ImageCache.GetProductImageAsync(fileName);
+                        if (cached != null) {
+                            _syncCache[fileName] = cached;
+                        }
+                    });
+
                     return newBitmap;
                 }
             }
         }
+
+        /// <summary>
+        /// P0级性能优化：异步图片加载
+        /// 使用缓存机制，避免重复文件系统I/O操作
+        /// </summary>
+        public static async Task<Image?> GetProductImageAsync(string? fileName) {
+            var image = await ImageCache.GetProductImageAsync(fileName);
+
+            // 同步更新同步缓存（用于向后兼容）
+            if (image != null && !string.IsNullOrEmpty(fileName)) {
+                _syncCache[fileName] = image;
+            }
+
+            return image;
+        }
+
+        // 同步缓存用于向后兼容
+        // 修复警告问题 #10: 添加访问计数和定期清理机制
+        private static readonly ConcurrentDictionary<string, Image> _syncCache = new();
+        private static int _syncCacheAccessCount = 0;
         public static void SaveProductImage(Image? image, string? fileName) {
             if (image == null || string.IsNullOrEmpty(fileName)) {
                 return;

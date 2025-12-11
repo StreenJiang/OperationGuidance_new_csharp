@@ -10,6 +10,7 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.Panels.BaseClasses;
 using log4net.Config;
 using log4net;
+using System.Collections.Concurrent;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
@@ -293,11 +294,203 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
+        /// <summary>
+        /// P0级性能优化：旋转图片缓存
+        /// 缓存旋转后的图片，避免重复计算旋转操作
+        /// </summary>
+        internal static class RotatedImageCache {
+            private static readonly ConcurrentDictionary<string, Image> _cache = new();
+            private const int MaxCacheSize = 100;
+            private static readonly LinkedList<string> _accessOrder = new();
+            private static readonly object _lock = new();
+
+            // 缓存命中统计
+            private static int _hitCount = 0;
+            private static int _missCount = 0;
+
+            public static (int HitCount, int MissCount, double HitRate) Statistics {
+                get {
+                    int total = _hitCount + _missCount;
+                    return (_hitCount, _missCount, total > 0 ? (double)_hitCount / total : 0.0);
+                }
+            }
+
+            private static string GetCacheKey(Image image, float angle) {
+                // 修复严重问题 #2: 使用更稳定的键生成方式，避免GetHashCode()的不可靠性
+                // 使用图片尺寸 + 格式信息作为键 (更稳定且避免GC问题)
+                return $"{image.Width}x{image.Height}_{image.RawFormat.Guid}_{angle:F1}";
+            }
+
+            public static Image? GetRotatedImage(Image image, float angle, ILog? logger = null) {
+                string key = GetCacheKey(image, angle);
+
+                // 尝试从缓存获取
+                if (_cache.TryGetValue(key, out var cachedImage)) {
+                    // 修复警告问题 #7: 使用原子操作增加计数器
+                    Interlocked.Increment(ref _hitCount);
+                    UpdateAccessOrder(key);
+                    return cachedImage;
+                }
+
+                // 缓存未命中，执行旋转
+                // 修复警告问题 #7: 使用原子操作增加计数器
+                Interlocked.Increment(ref _missCount);
+                var rotatedImage = RotateImageInternal(image, angle, logger);
+
+                if (rotatedImage != null) {
+                    AddToCache(key, rotatedImage);
+                }
+
+                return rotatedImage;
+            }
+
+            private static Image? RotateImageInternal(Image image, float angle, ILog? logger) {
+                try {
+                    // 原图的宽和高
+                    int w = image.Width;
+                    int h = image.Height;
+                    Image dsImage = new Bitmap(w, h);
+
+                    int W = w;
+                    int H = h;
+
+                    angle = angle % 360; // 弧度转换
+                    double radian = angle * Math.PI / 180.0;
+                    double cos = Math.Cos(radian);
+                    double sin = Math.Sin(radian);
+
+                    // INFO: need to varify
+                    cos = Math.Round(cos, 10); // 保留 10 位小数
+                    sin = Math.Round(sin, 10);
+
+                    // Check for values
+                    if (double.IsNaN(cos) || double.IsInfinity(cos) || double.IsNaN(sin) || double.IsInfinity(sin)) {
+                        throw new ArgumentException("Cosine or sine value is invalid.");
+                    }
+
+                    long W_long = (long) (Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
+                    long H_long = (long) (Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
+
+                    // Check for values again
+                    if (W_long > int.MaxValue || H_long > int.MaxValue) {
+                        throw new ArgumentException("Calculated dimensions are too large.");
+                    }
+
+                    W = (int) W_long;
+                    H = (int) H_long;
+
+                    // Check for final values
+                    if (W <= 0 || H <= 0) {
+                        throw new ArgumentException("Calculated dimensions must be positive.");
+                    }
+
+                    // 目标位图
+                    dsImage = new Bitmap(W, H);
+
+                    using (Graphics g = Graphics.FromImage(dsImage)) {
+                        g.InterpolationMode = InterpolationMode.Bilinear;
+                        g.SmoothingMode = SmoothingMode.HighQuality;
+
+                        // 计算偏移量
+                        Point Offset = new Point((W - w) / 2, (H - h) / 2);
+
+                        // 构造图像显示区域：让图像的中心与窗口的中心点一致
+                        Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
+                        Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+                        g.TranslateTransform(center.X, center.Y);
+                        g.RotateTransform(360 + angle);
+
+                        // 恢复图像在水平和垂直方向的平移
+                        g.TranslateTransform(-center.X, -center.Y);
+                        g.DrawImage(image, rect);
+
+                        // 重置绘图的所有变换
+                        g.ResetTransform();
+                        g.Save();
+                    }
+
+                    return dsImage;
+                } catch (Exception e) {
+                    if (logger != null) {
+                        logger.Error($"Error while rotating image, e = {e}");
+                    }
+                    return null;
+                }
+            }
+
+            private static void AddToCache(string key, Image image) {
+                lock (_lock) {
+                    // 如果缓存已满，移除最久未使用的项
+                    if (_cache.Count >= MaxCacheSize && !_cache.ContainsKey(key)) {
+                        RemoveOldestItem();
+                    }
+
+                    _cache[key] = image;
+                    _accessOrder.AddLast(key);
+                }
+            }
+
+            private static void UpdateAccessOrder(string key) {
+                lock (_lock) {
+                    _accessOrder.Remove(key);
+                    _accessOrder.AddLast(key);
+                }
+            }
+
+            private static void RemoveOldestItem() {
+                lock (_lock) {
+                    if (_accessOrder.First != null) {
+                        var oldest = _accessOrder.First.Value;
+                        _accessOrder.RemoveFirst();
+                        _cache.TryRemove(oldest, out var cachedImage);
+                        cachedImage?.Dispose();
+                    }
+                }
+            }
+
+            /// <summary>
+            /// 清空缓存
+            /// </summary>
+            public static void Clear() {
+                lock (_lock) {
+                    foreach (var image in _cache.Values) {
+                        image?.Dispose();
+                    }
+                    _cache.Clear();
+                    _accessOrder.Clear();
+                    _hitCount = 0;
+                    _missCount = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// P0级性能优化：旋转图片（使用缓存）
+        /// 优先使用缓存机制，避免重复计算旋转操作
+        /// </summary>
         public static Image RotateImage(Image image, float angle, ILog? logger = null) {
+            // 标准化角度（处理360度倍数）
+            angle = angle % 360;
+            if (angle < 0) {
+                angle += 360;
+            }
+
+            // 常见角度（0, 90, 180, 270）优先使用缓存优化
+            if (angle == 0 || angle == 90 || angle == 180 || angle == 270) {
+                return RotatedImageCache.GetRotatedImage(image, angle, logger) ?? image;
+            }
+
+            // 其他角度直接计算（不缓存）
+            return RotateImageInternal(image, angle, logger) ?? image;
+        }
+
+        /// <summary>
+        /// 内部方法：执行图片旋转（无缓存）
+        /// </summary>
+        private static Image RotateImageInternal(Image image, float angle, ILog? logger = null) {
             // 原图的宽和高
             int w = image.Width;
             int h = image.Height;
-            Image dsImage = new Bitmap(w, h);
 
             int W = w;
             int H = h;
@@ -332,15 +525,10 @@ namespace CustomLibrary.Utils {
                     throw new ArgumentException("Calculated dimensions must be positive.");
                 }
 
-                // 目标位图
-                dsImage = new Bitmap(W, H);
-            } catch (Exception e) {
-                if (logger != null) {
-                    logger.Error($"Error while rotating image, e = {e}");
-                }
-                throw e;
-            } finally {
+                // 修复严重问题 #3: 只有在计算成功后才创建Bitmap，避免内存泄漏
+                Bitmap? dsImage = null;
                 try {
+                    dsImage = new Bitmap(W, H);
                     using (Graphics g = Graphics.FromImage(dsImage)) {
                         g.InterpolationMode = InterpolationMode.Bilinear;
                         g.SmoothingMode = SmoothingMode.HighQuality;
@@ -362,14 +550,18 @@ namespace CustomLibrary.Utils {
                         g.ResetTransform();
                         g.Save();
                     }
+                    return dsImage;
                 } catch (Exception e) {
-                    if (logger != null) {
-                        logger.Error($"Error while rotating image in finally block, e = {e}");
-                    }
-                    throw e;
+                    logger?.Error($"Error rotating image, e = {e}");
+                    dsImage?.Dispose(); // 确保失败时释放
+                    throw;
                 }
+            } catch (Exception e) {
+                if (logger != null) {
+                    logger.Error($"Error while rotating image, e = {e}");
+                }
+                throw e;
             }
-            return dsImage;
         }
 
         // Check if type if a sub class of T
