@@ -316,32 +316,95 @@ namespace CustomLibrary.Utils {
             }
 
             private static string GetCacheKey(Image image, float angle) {
-                // 修复严重问题 #2: 使用更稳定的键生成方式，避免GetHashCode()的不可靠性
-                // 使用图片尺寸 + 格式信息作为键 (更稳定且避免GC问题)
-                return $"{image.Width}x{image.Height}_{image.RawFormat.Guid}_{angle:F1}";
+                // 修复缓存混乱问题: 使用更唯一、更稳定的键生成方式
+                // 添加图片的内存地址标识，确保即使尺寸和格式相同也不同对象
+                // 使用 GetHashCode() 结合对象标识，确保唯一性
+                int imageHash = image.GetHashCode();
+                return $"{image.Width}x{image.Height}_{image.PixelFormat}_{imageHash}_{angle:F1}";
             }
 
             public static Image? GetRotatedImage(Image image, float angle, ILog? logger = null) {
-                string key = GetCacheKey(image, angle);
+                try {
+                    // 验证图片是否有效
+                    if (image == null) {
+                        logger?.Warn("[GetRotatedImage] Null image provided for rotation");
+                        return null;
+                    }
 
-                // 尝试从缓存获取
-                if (_cache.TryGetValue(key, out var cachedImage)) {
+                    if (image.Width <= 0 || image.Height <= 0) {
+                        logger?.Warn($"[GetRotatedImage] Invalid image dimensions: {image.Width}x{image.Height}");
+                        return null;
+                    }
+
+                    if (image.PixelFormat == System.Drawing.Imaging.PixelFormat.Undefined) {
+                        logger?.Warn($"[GetRotatedImage] Invalid pixel format: {image.PixelFormat}");
+                        return null;
+                    }
+
+                    string key = GetCacheKey(image, angle);
+                    logger?.Debug($"[GetRotatedImage] Cache key: {key}");
+
+                    // 尝试从缓存获取
+                    if (_cache.TryGetValue(key, out var cachedImage)) {
+                        // 修复警告问题 #7: 使用原子操作增加计数器
+                        Interlocked.Increment(ref _hitCount);
+                        UpdateAccessOrder(key);
+                        logger?.Debug($"[GetRotatedImage] Cache hit for key: {key}");
+
+                        // 修复缓存混乱问题: 返回缓存图片的深拷贝，避免原始图片被修改
+                        if (cachedImage != null) {
+                            return DeepCopyImage(cachedImage);
+                        }
+                    }
+
+                    // 缓存未命中，执行旋转
                     // 修复警告问题 #7: 使用原子操作增加计数器
-                    Interlocked.Increment(ref _hitCount);
-                    UpdateAccessOrder(key);
-                    return cachedImage;
+                    Interlocked.Increment(ref _missCount);
+                    logger?.Debug($"[GetRotatedImage] Cache miss, rotating image {image.Size} by {angle} degrees");
+
+                    var rotatedImage = RotateImageInternal(image, angle, logger);
+
+                    if (rotatedImage != null) {
+                        // 修复缓存混乱问题: 添加旋转后图片的深拷贝到缓存，确保独立性
+                        var cachedCopy = DeepCopyImage(rotatedImage);
+                        if (cachedCopy != null) {
+                            AddToCache(key, cachedCopy);
+                            logger?.Debug($"[GetRotatedImage] Rotation completed: {rotatedImage.Size}, added to cache");
+                            // 返回原始旋转图片的深拷贝
+                            return DeepCopyImage(rotatedImage);
+                        }
+                    } else {
+                        logger?.Warn($"[GetRotatedImage] Rotation failed for image {image.Size}");
+                    }
+
+                    return rotatedImage;
+                } catch (Exception ex) {
+                    logger?.Error($"[GetRotatedImage] Error in GetRotatedImage: {ex.Message}", ex);
+                    return null;
+                }
+            }
+
+            /// <summary>
+            /// 深拷贝图片，确保图片对象独立
+            /// </summary>
+            private static Image? DeepCopyImage(Image image) {
+                if (image == null) {
+                    return null;
                 }
 
-                // 缓存未命中，执行旋转
-                // 修复警告问题 #7: 使用原子操作增加计数器
-                Interlocked.Increment(ref _missCount);
-                var rotatedImage = RotateImageInternal(image, angle, logger);
-
-                if (rotatedImage != null) {
-                    AddToCache(key, rotatedImage);
+                try {
+                    // 使用MemoryStream创建图片的独立副本
+                    using (MemoryStream ms = new MemoryStream()) {
+                        // 保存图片到流
+                        image.Save(ms, image.RawFormat);
+                        ms.Position = 0;
+                        // 从流中重新创建图片
+                        return Image.FromStream(ms);
+                    }
+                } catch {
+                    // 如果深拷贝失败，返回null而不是原始图片引用
+                    return null;
                 }
-
-                return rotatedImage;
             }
 
             private static Image? RotateImageInternal(Image image, float angle, ILog? logger) {
@@ -467,6 +530,29 @@ namespace CustomLibrary.Utils {
                     _missCount = 0;
                 }
             }
+
+            /// <summary>
+            /// 修复缓存混乱问题: 清除所有旋转图片缓存
+            /// 当源图片被修改时，需要清除所有相关的旋转缓存
+            /// </summary>
+            public static void ClearRotatedImageCache() {
+                lock (_lock) {
+                    foreach (var image in _cache.Values) {
+                        image?.Dispose();
+                    }
+                    _cache.Clear();
+                    _accessOrder.Clear();
+                    // 注意: RotatedImageCache类中没有logger字段，仅清除缓存不记录日志
+                }
+            }
+        }
+
+        /// <summary>
+        /// 修复缓存混乱问题: 清空旋转图片缓存
+        /// 当源图片被修改时调用，清除所有旋转缓存
+        /// </summary>
+        public static void ClearRotatedImageCache() {
+            RotatedImageCache.Clear();
         }
 
         /// <summary>

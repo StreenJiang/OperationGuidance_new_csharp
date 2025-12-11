@@ -114,6 +114,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// <summary>
         /// 同步版本的刷新方法（基于原有代码）
         /// 修复严重问题 #11: 作为异步版本的回退机制
+        /// 修复图片显示问题：使用修复后的GetProductImage方法，确保图片对象生命周期正确
         /// </summary>
         private void RefreshMissionBlocksSync(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock) {
             MainUtils.logger?.Info($"[RefreshMissionBlocksSync] Using synchronous fallback for {missionDTOs.Count} missions");
@@ -125,13 +126,25 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _contentPanel.MissionsTable.Show();
                 _contentPanel.MissionsTable.Controls.Clear();
 
+                int imageLoadCount = 0;
+                int imageLoadSuccessCount = 0;
+
                 foreach (var mission in missionDTOs) {
                     Image? coverImage = null;
                     if (mission.ProductSides != null) {
                         foreach (var sideDTO in mission.ProductSides) {
                             if (!string.IsNullOrEmpty(sideDTO.image)) {
+                                imageLoadCount++;
                                 coverImage = MainUtils.GetProductImage(sideDTO.image);
+                                if (coverImage != null) {
+                                    imageLoadSuccessCount++;
+                                    MainUtils.logger?.Debug($"[RefreshMissionBlocksSync] Image loaded successfully: {sideDTO.image}, Size: {coverImage.Size}");
+                                } else {
+                                    MainUtils.logger?.Warn($"[RefreshMissionBlocksSync] Failed to load image: {sideDTO.image}");
+                                }
+
                                 if (coverImage != null && sideDTO.rotate_angle.HasValue) {
+                                    MainUtils.logger?.Debug($"[RefreshMissionBlocksSync] Rotating image {sideDTO.image} by {sideDTO.rotate_angle.Value} degrees");
                                     coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value);
                                 }
                                 break;
@@ -148,7 +161,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _contentPanel.MissionsTable.Invalidate();
                 _contentPanel.MissionsTable.Refresh();
 
-                MainUtils.logger?.Info($"[RefreshMissionBlocksSync] Sync refresh completed");
+                MainUtils.logger?.Info($"[RefreshMissionBlocksSync] Sync refresh completed. Images: {imageLoadSuccessCount}/{imageLoadCount} loaded successfully");
             } catch (Exception ex) {
                 MainUtils.logger?.Error($"[RefreshMissionBlocksSync] Error during sync refresh", ex);
                 throw;

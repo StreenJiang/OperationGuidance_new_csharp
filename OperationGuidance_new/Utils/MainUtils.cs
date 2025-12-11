@@ -96,6 +96,7 @@ namespace OperationGuidance_new.Utils {
 
             /// <summary>
             /// 从缓存获取图片，如果不存在则异步加载
+            /// 修复缓存混乱问题: 为缓存的图片创建深拷贝，避免引用混乱
             /// </summary>
             public static async Task<Image?> GetProductImageAsync(string? fileName) {
                 if (string.IsNullOrEmpty(fileName)) {
@@ -107,7 +108,9 @@ namespace OperationGuidance_new.Utils {
                     // 修复警告问题 #7: 使用原子操作增加计数器
                     Interlocked.Increment(ref _hitCount);
                     UpdateAccessOrder(cachedImage.AccessNode);
-                    return cachedImage.Image;
+
+                    // 修复缓存混乱问题: 返回缓存图片的深拷贝，避免原始图片被修改
+                    return MainUtils.DeepCopyImage(cachedImage.Image);
                 }
 
                 // 缓存未命中，检查是否正在加载
@@ -126,6 +129,8 @@ namespace OperationGuidance_new.Utils {
                     var image = await task;
                     if (image != null) {
                         await AddToCacheAsync(fileName, image);
+                        // 返回原始图片的深拷贝
+                        return MainUtils.DeepCopyImage(image);
                     }
                     return image;
                 } finally {
@@ -137,30 +142,22 @@ namespace OperationGuidance_new.Utils {
                 return await Task.Run(() => {
                     try {
                         string imageFilePath = GetProductImagesPath() + "\\" + fileName;
+                        logger?.Debug($"[LoadImageAsync] Loading image: {fileName} from {imageFilePath}");
+
                         if (!File.Exists(imageFilePath)) {
+                            logger?.Warn($"[LoadImageAsync] Image file not found: {imageFilePath}");
                             return null;
                         }
 
-                        try {
-                            // 原始方案：转换为基础64再转回Image
-                            Bitmap bitmap = new Bitmap(imageFilePath);
-                            Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
-                            bitmap.Dispose();
+                        // 修复核心问题：使用MemoryStream作为中介，确保图片数据完整且独立
+                        // 从MemoryStream创建图片，确保是独立的图片对象，不依赖原始文件或Bitmap
+                        using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath))) {
+                            Image image = Image.FromStream(ms);
+                            logger?.Debug($"[LoadImageAsync] Image loaded successfully. Size: {image.Size}, PixelFormat: {image.PixelFormat}");
                             return image;
-                        } catch {
-                            // 备用方案：使用MemoryStream避免文件锁定
-                            using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
-                            using (Bitmap bitmap = new Bitmap(ms)) {
-                                Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
-                                using (Graphics g = Graphics.FromImage(newBitmap)) {
-                                    g.DrawImage(bitmap, Point.Empty);
-                                    g.Flush();
-                                }
-                                return newBitmap;
-                            }
                         }
                     } catch (Exception ex) {
-                        logger.Error($"Failed to load image: {fileName}", ex);
+                        logger?.Error($"[LoadImageAsync] Failed to load image: {fileName}", ex);
                         return null;
                     }
                 });
@@ -218,6 +215,25 @@ namespace OperationGuidance_new.Utils {
                     _loadingTasks.Clear();
                     _hitCount = 0;
                     _missCount = 0;
+                }
+            }
+
+            /// <summary>
+            /// 修复缓存混乱问题: 清除指定图片文件的缓存
+            /// </summary>
+            /// <param name="fileName">要清除的图片文件名</param>
+            public static void ClearImageCache(string? fileName) {
+                if (string.IsNullOrEmpty(fileName)) {
+                    return;
+                }
+
+                lock (_lock) {
+                    if (_cache.TryRemove(fileName, out var cachedImage)) {
+                        cachedImage.Image?.Dispose();
+                        _accessOrder.Remove(fileName);
+                        logger?.Debug($"[ImageCache.ClearImageCache] 已清除异步缓存: {fileName}");
+                    }
+                    _loadingTasks.TryRemove(fileName, out _);
                 }
             }
 
@@ -402,13 +418,19 @@ namespace OperationGuidance_new.Utils {
         /// <summary>
         /// P0级性能优化：同步版本图片加载（保持向后兼容）
         /// 优先使用异步版本GetProductImageAsync以避免UI阻塞
+        /// 修复图片对象生命周期管理问题：确保返回的图片是独立的，不依赖原始Bitmap
+        /// 修复缓存混乱问题：为缓存的图片创建深拷贝，避免引用混乱
         /// </summary>
         public static Image? GetProductImage(string? fileName) {
             // 首先尝试从缓存获取（同步检查，避免阻塞）
             if (_syncCache.TryGetValue(fileName ?? "", out var cachedImage)) {
                 // 修复警告问题 #10: 使用原子操作增加访问计数
                 Interlocked.Increment(ref _syncCacheAccessCount);
-                return cachedImage;
+
+                // 修复缓存混乱问题: 返回缓存图片的深拷贝，避免原始图片被修改
+                if (cachedImage != null) {
+                    return DeepCopyImage(cachedImage);
+                }
             }
 
             // 同步加载（保持原有行为，但已不是最优方案）
@@ -417,55 +439,45 @@ namespace OperationGuidance_new.Utils {
             }
 
             // 修复警告问题 #10: 定期清理同步缓存
-            if (_syncCacheAccessCount > 1000) {
-                _syncCacheAccessCount = 0;
-                foreach (var kvp in _syncCache.Values) {
-                    kvp?.Dispose();
-                }
+            if (Interlocked.Increment(ref _syncCacheAccessCount) >= 1000) {
+                Interlocked.Exchange(ref _syncCacheAccessCount, 0);
                 _syncCache.Clear();
             }
 
             string imageFilePath = GetProductImagesPath() + "\\" + fileName;
+            logger?.Info($"[GetProductImage] Loading image: {fileName} from {imageFilePath}");
+
             if (!File.Exists(imageFilePath)) {
+                logger?.Warn($"[GetProductImage] Image file not found: {imageFilePath}");
                 return null;
             }
 
             try {
-                // 修复警告问题 #12: 使用 using 确保资源释放
-                using (Bitmap bitmap = new Bitmap(imageFilePath)) {
-                    Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
+                // 修复核心问题：使用MemoryStream作为中介，确保图片数据完整且独立
+                // 从MemoryStream创建图片，确保是独立的图片对象，不依赖原始文件
+                using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath))) {
+                    Image image = Image.FromStream(ms);
+                    logger?.Info($"[GetProductImage] Image loaded successfully. Size: {image.Size}, PixelFormat: {image.PixelFormat}");
 
-                    // 异步添加到缓存
-                    _ = Task.Run(async () => {
-                        var cached = await ImageCache.GetProductImageAsync(fileName);
-                        if (cached != null) {
-                            _syncCache[fileName] = cached;
-                        }
-                    });
-
-                    return image;
-                }
-            } catch {
-                // 这个很奇怪，只会画出图片的一部分，真奇葩
-                // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
-                using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
-                using (Bitmap bitmap = new Bitmap(ms)) {
-                    Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
-                    using (Graphics g = Graphics.FromImage(newBitmap)) {
-                        g.DrawImage(bitmap, Point.Empty);
-                        g.Flush();
+                    // 修复缓存混乱问题: 为缓存的图片创建深拷贝
+                    var cachedCopy = DeepCopyImage(image);
+                    if (cachedCopy != null) {
+                        // 添加到缓存（异步，不阻塞）
+                        _ = Task.Run(() => {
+                            try {
+                                _syncCache[fileName] = cachedCopy;
+                            } catch {
+                                // 忽略缓存添加失败
+                            }
+                        });
                     }
 
-                    // 异步添加到缓存
-                    _ = Task.Run(async () => {
-                        var cached = await ImageCache.GetProductImageAsync(fileName);
-                        if (cached != null) {
-                            _syncCache[fileName] = cached;
-                        }
-                    });
-
-                    return newBitmap;
+                    // 返回原始图片的深拷贝
+                    return DeepCopyImage(image);
                 }
+            } catch (Exception ex) {
+                logger?.Error($"[GetProductImage] Failed to load image: {imageFilePath}", ex);
+                return null;
             }
         }
 
@@ -507,6 +519,37 @@ namespace OperationGuidance_new.Utils {
 
             string base64str = CommonUtils.ImageToBase64(image);
             return CommonUtils.ImageBase64ToImage(base64str);
+        }
+
+        /// <summary>
+        /// 修复缓存混乱问题: 失效指定图片文件的缓存
+        /// 在图片被修改或替换后调用，确保后续加载获取最新图片
+        /// </summary>
+        /// <param name="fileName">要失效缓存的图片文件名</param>
+        public static void InvalidateImageCache(string? fileName) {
+            if (string.IsNullOrEmpty(fileName)) {
+                return;
+            }
+
+            logger?.Info($"[InvalidateImageCache] 失效图片缓存: {fileName}");
+
+            try {
+                // 清除同步缓存
+                if (_syncCache.TryRemove(fileName, out var syncCachedImage)) {
+                    syncCachedImage?.Dispose();
+                    logger?.Debug($"[InvalidateImageCache] 已清除同步缓存: {fileName}");
+                }
+
+                // 清除异步缓存
+                ImageCache.ClearImageCache(fileName);
+
+                // 清除旋转图片缓存（需要遍历所有旋转缓存项）
+                CustomLibrary.Utils.WidgetUtils.ClearRotatedImageCache();
+
+                logger?.Info($"[InvalidateImageCache] 图片缓存失效完成: {fileName}");
+            } catch (Exception ex) {
+                logger?.Error($"[InvalidateImageCache] 失效缓存失败: {fileName}", ex);
+            }
         }
 
         // Settings

@@ -291,6 +291,19 @@ namespace OperationGuidance_new.Views {
                         foreach (SideButton sideBtn in _sideButtons) {
                             MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
                         }
+
+                        // 修复缓存混乱问题: 保存图片后清除相关缓存，确保列表界面显示最新图片
+                        try {
+                            foreach (SideButton sideBtn in _sideButtons) {
+                                if (!string.IsNullOrEmpty(sideBtn.ProductImageFileNew.ImageFileName)) {
+                                    MainUtils.InvalidateImageCache(sideBtn.ProductImageFileNew.ImageFileName);
+                                }
+                            }
+                        } catch (Exception ex) {
+                            // 缓存清除失败不影响主要流程
+                            System.Console.WriteLine($"清除图片缓存失败: {ex.Message}");
+                        }
+
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // 保存后跳转至任务列表界面
                         WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
@@ -431,6 +444,19 @@ namespace OperationGuidance_new.Views {
                                 foreach (SideButton sideBtn in _sideButtons) {
                                     MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
                                 }
+
+                                // 修复缓存混乱问题: 保存图片后清除相关缓存，确保列表界面显示最新图片
+                                try {
+                                    foreach (SideButton sideBtn in _sideButtons) {
+                                        if (!string.IsNullOrEmpty(sideBtn.ProductImageFileNew.ImageFileName)) {
+                                            MainUtils.InvalidateImageCache(sideBtn.ProductImageFileNew.ImageFileName);
+                                        }
+                                    }
+                                } catch (Exception ex) {
+                                    // 缓存清除失败不影响主要流程
+                                    System.Console.WriteLine($"清除图片缓存失败: {ex.Message}");
+                                }
+
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 // 复制成功后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
