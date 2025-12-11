@@ -430,6 +430,7 @@ namespace OperationGuidance_new.Tasks {
                             _locked = true;
                         }
                     } else {
+                        logger.Warn($"SendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
                     }
 
                     LockCounter++;
@@ -463,6 +464,7 @@ namespace OperationGuidance_new.Tasks {
                 _locked = true;
                 logger.Info($"Lock command sent for ToolSudongX7, updated local _locked state to true");
             } else {
+                logger.Warn($"ForceSendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
             }
         }
         private void SendUnlock() {
@@ -479,6 +481,7 @@ namespace OperationGuidance_new.Tasks {
                             _locked = false;
                         }
                     } else {
+                        logger.Warn($"SendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
                     }
 
                     UnLockCounter++;
@@ -512,6 +515,7 @@ namespace OperationGuidance_new.Tasks {
                 _locked = false;
                 logger.Info($"Unlock command sent for ToolSudongX7, updated local _locked state to false");
             } else {
+                logger.Warn($"ForceSendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
             }
         }
         #endregion
