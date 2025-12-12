@@ -84,10 +84,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// P0级性能优化：异步刷新任务块
         /// 使用并行加载图片，避免UI阻塞
         /// 修复严重问题 #11: 添加回退机制
+        /// P1级优化：智能比较任务列表，避免无变化时的重复刷新
         /// </summary>
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
             try {
+                // 【性能优化】检查任务列表是否真的变化了
+                if (IsMissionListUnchanged(missionDTOs)) {
+                    MainUtils.logger?.Info("[RefreshMissionBlocks] Mission list unchanged, skipping refresh");
+                    return;  // 直接返回，不刷新
+                }
+
                 MainUtils.logger?.Info($"[RefreshMissionBlocks] Starting refresh (async with fallback)");
+
+                // 更新缓存的任务列表
+                _missionDTOs = missionDTOs;
 
                 // 启动异步刷新（不阻塞UI线程）
                 _ = RefreshMissionBlocksAsync(missionDTOs, blockClickAction, toggleBlock)
@@ -111,15 +121,153 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         /// <summary>
+        /// P1级性能优化：检查任务列表是否未变化
+        /// 比较数量、ID、顺序和图片，避免不必要的UI重绘
+        /// </summary>
+        private bool IsMissionListUnchanged(List<ProductMissionDTO> newMissionDTOs) {
+            // 快速路径：数量不同，说明肯定有变化
+            if (_missionDTOs == null || _missionDTOs.Count != newMissionDTOs.Count) {
+                return false;
+            }
+
+            // 比较每个任务的ID和图片
+            for (int i = 0; i < _missionDTOs.Count; i++) {
+                var oldMission = _missionDTOs[i];
+                var newMission = newMissionDTOs[i];
+
+                // 【检查1】任务ID不同，说明任务列表有变化
+                if (oldMission.id != newMission.id) {
+                    return false;
+                }
+
+                // 【检查2】任务对应的图片是否有变化
+                if (!AreImagesUnchanged(oldMission.ProductSides, newMission.ProductSides)) {
+                    return false;
+                }
+            }
+
+            // 所有ID和图片都相同，说明列表未变化
+            return true;
+        }
+
+        /// <summary>
+        /// P1级性能优化：比较两个ProductSideDTO列表的图片是否未变化
+        /// 不仅比较图片路径，还比较位置、旋转、缩放等所有影响显示的属性
+        /// </summary>
+        private bool AreImagesUnchanged(List<ProductSideDTO>? oldSides, List<ProductSideDTO>? newSides) {
+            // 快速路径1：都为null，认为未变化
+            if (oldSides == null && newSides == null) {
+                return true;
+            }
+
+            // 快速路径2：一个为null一个有值，说明有变化
+            if (oldSides == null || newSides == null) {
+                return false;
+            }
+
+            // 快速路径3：数量不同，说明有变化
+            if (oldSides.Count != newSides.Count) {
+                return false;
+            }
+
+            // 比较每个ProductSide的所有影响显示的属性
+            for (int i = 0; i < oldSides.Count; i++) {
+                var oldSide = oldSides[i];
+                var newSide = newSides[i];
+
+                // 【检查1】图片路径
+                if (oldSide.image != newSide.image) {
+                    return false;  // 图片路径变了，需要刷新
+                }
+
+                // 【检查2】旋转角度
+                if (!AreFloatsEqual(oldSide.rotate_angle, newSide.rotate_angle)) {
+                    return false;  // 旋转角度变了，需要刷新
+                }
+
+                // 【检查3】缩放比例
+                if (!AreFloatsEqual(oldSide.zooming_ratio, newSide.zooming_ratio)) {
+                    return false;  // 缩放比例变了，需要刷新
+                }
+
+                // 【检查4】额外缩放比例
+                if (!AreFloatsEqual(oldSide.zooming_ratio_extra, newSide.zooming_ratio_extra)) {
+                    return false;  // 额外缩放比例变了，需要刷新
+                }
+
+                // 【检查5】最大矩形位置
+                if (oldSide.max_rectangle_location != newSide.max_rectangle_location) {
+                    return false;  // 位置变了，需要刷新
+                }
+
+                // 【检查6】中心位置
+                if (oldSide.center_location != newSide.center_location) {
+                    return false;  // 中心位置变了，需要刷新
+                }
+
+                // 【检查7】位置偏移
+                if (oldSide.location_offset != newSide.location_offset) {
+                    return false;  // 位置偏移变了，需要刷新
+                }
+
+                // 【检查8】移动位置偏移
+                if (oldSide.location_offset_moving != newSide.location_offset_moving) {
+                    return false;  // 移动位置偏移变了，需要刷新
+                }
+
+                // 【检查9】最大矩形尺寸
+                if (oldSide.max_rectangle_width != newSide.max_rectangle_width ||
+                    oldSide.max_rectangle_height != newSide.max_rectangle_height) {
+                    return false;  // 矩形尺寸变了，需要刷新
+                }
+
+                // 【检查10】裁剪状态
+                if (oldSide.cropped != newSide.cropped) {
+                    return false;  // 裁剪状态变了，需要刷新
+                }
+            }
+
+            // 所有影响显示的属性都相同，说明图片未变化
+            return true;
+        }
+
+        /// <summary>
+        /// P1级性能优化：安全比较两个float?值
+        /// 考虑浮点数精度问题，使用近似比较
+        /// </summary>
+        private bool AreFloatsEqual(float? oldValue, float? newValue) {
+            // 两者都为null，相等
+            if (oldValue == null && newValue == null) {
+                return true;
+            }
+
+            // 一个为null一个不为null，不相等
+            if (oldValue == null || newValue == null) {
+                return false;
+            }
+
+            // 使用很小的 epsilon 比较浮点数（考虑精度误差）
+            const float epsilon = 0.001f;
+            return Math.Abs(oldValue.Value - newValue.Value) < epsilon;
+        }
+
+        /// <summary>
         /// 同步版本的刷新方法（基于原有代码）
         /// 修复严重问题 #11: 作为异步版本的回退机制
         /// 修复图片显示问题：使用修复后的GetProductImage方法，确保图片对象生命周期正确
         /// P0级UI线程阻塞修复: 为同步版本添加延时等待Loading显示
+        /// P1级优化：同步版本也应用智能比较
         /// </summary>
         private void RefreshMissionBlocksSync(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock) {
             MainUtils.logger?.Info($"[RefreshMissionBlocksSync] Using synchronous fallback for {missionDTOs.Count} missions");
 
             try {
+                // 【性能优化】检查任务列表是否真的变化了
+                if (IsMissionListUnchanged(missionDTOs)) {
+                    MainUtils.logger?.Info("[RefreshMissionBlocksSync] Mission list unchanged, skipping refresh");
+                    return;  // 直接返回，不刷新
+                }
+
                 ShowLoadingIndicator();
 
                 _contentPanel.BigButtonPanel.Hide();
@@ -304,6 +452,52 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         /// <summary>
+        /// P2级性能优化：共享的事件处理器
+        /// 避免每次创建新的Lambda委托，提高性能
+        /// 修复内存泄漏：使用弱引用持有Panel，避免循环引用
+        /// </summary>
+        private class MissionBlockEventHandler {
+            // 使用弱引用避免内存泄漏
+            private readonly WeakReference<MissionListPanel> _weakPanel;
+            private readonly Action<int?>? _blockClickAction;
+            private readonly bool _toggleBlock;
+
+            public MissionBlockEventHandler(MissionListPanel panel, Action<int?>? blockClickAction, bool toggleBlock) {
+                _weakPanel = new WeakReference<MissionListPanel>(panel);
+                _blockClickAction = blockClickAction;
+                _toggleBlock = toggleBlock;
+            }
+
+            public void HandleMouseUp(object? sender, MouseEventArgs eventArgs) {
+                if (sender is not ProductMissionBlock<ProductMissionDTO> block) {
+                    return;
+                }
+
+                // 使用弱引用获取Panel，如果Panel已被垃圾回收，则直接返回
+                if (!_weakPanel.TryGetTarget(out var panel)) {
+                    return;
+                }
+
+                if (block.InnerButton.ToggledButton) {
+                    if (panel._currentToggledMission == null) {
+                        panel._currentToggledMission = block;
+                    } else {
+                        panel._currentToggledMission.InnerButton.SetToggle(false);
+                        if (panel._currentToggledMission == block) {
+                            panel._currentToggledMission = null;
+                        } else {
+                            panel._currentToggledMission = block;
+                            panel._currentToggledMission.InnerButton.SetToggle(true);
+                        }
+                    }
+                }
+                if (_blockClickAction != null) {
+                    _blockClickAction(block.Entity.id);
+                }
+            }
+        }
+
+        /// <summary>
         /// 创建单个任务块
         /// </summary>
         private void CreateMissionBlock(ProductMissionDTO mission, Image? coverImage, Action<int?>? blockClickAction, bool toggleBlock) {
@@ -320,6 +514,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             };
             block.InnerButton.ToggledButton = toggleBlock;
             block.InnerButton.ToggledColor = WidgetUtils.DarkenColor(block.BackColor, .2);
+
+            // 【修复】恢复原始Lambda事件处理器，确保点击事件正常工作
+            // 弱引用检查会导致事件处理失效，破坏核心功能
             block.InnerButton.MouseUp += (sender, eventArgs) => {
                 if (block.InnerButton.ToggledButton) {
                     if (_currentToggledMission == null) {

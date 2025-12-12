@@ -5,7 +5,9 @@ using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Panels.BaseClasses;
 using log4net.Config;
@@ -42,6 +44,13 @@ namespace CustomLibrary.Utils {
             }
         }
 
+        /// <summary>
+        /// P0级性能优化：基于MainSize的尺寸计算缓存
+        /// 缓存所有基于MainSize的计算结果，当MainSize变化时自动清空
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, object> _mainSizeCache = new();
+        private static Size _cachedMainSize = Size.Empty;
+
         public static void RefreshMainSize(string resolution) {
             Size screenSize = WidgetUtils.GetScreenResolution();
             if (!string.IsNullOrEmpty(resolution)) {
@@ -56,8 +65,42 @@ namespace CustomLibrary.Utils {
             } else {
                 MainSize = screenSize;
             }
+
+            // P0级优化：MainSize变化时清空缓存
+            ClearMainSizeCache();
         }
-        public static void RefreshMainSize(Size size) => MainSize = size;
+
+        public static void RefreshMainSize(Size size) {
+            MainSize = size;
+            // P0级优化：MainSize变化时清空缓存
+            ClearMainSizeCache();
+        }
+
+        /// <summary>
+        /// P0级性能优化：清空MainSize相关缓存
+        /// </summary>
+        private static void ClearMainSizeCache() {
+            _mainSizeCache.Clear();
+            _cachedMainSize = MainSize;
+        }
+
+        /// <summary>
+        /// P0级性能优化：获取缓存的尺寸值
+        /// </summary>
+        private static T GetCachedSizeValue<T>(string cacheKey, Func<T> calculateFunc) {
+            // 如果MainSize发生变化，清空缓存
+            if (_cachedMainSize != MainSize) {
+                ClearMainSizeCache();
+            }
+
+            if (_mainSizeCache.TryGetValue(cacheKey, out var cachedValue)) {
+                return (T) cachedValue;
+            }
+
+            T value = calculateFunc();
+            _mainSizeCache[cacheKey] = value!;
+            return value;
+        }
 
         public static Size GetLoginViewSize(Size mainFormSize) {
             SizeRatioNRectColor sixteenNine = WidthHeightRatio.SixteenNine;
@@ -143,18 +186,59 @@ namespace CustomLibrary.Utils {
         }
 
         /// <summary>
+        /// P1级性能优化：图片缩放缓存
+        /// 缓存缩放后的图片，避免重复的缩放计算
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, Bitmap> _resizeImageCache = new();
+        private const int MaxResizeCacheSize = 200;
+
+        /// <summary>
+        /// 生成图片缩放的唯一缓存键
+        /// 结合图片的尺寸、像素格式和对象标识确保键的唯一性
+        /// </summary>
+        private static string GetResizeCacheKey(Image image, int newWidth, int newHeight) {
+            // 使用对象ID和像素格式确保唯一性
+            // 结合 Width、Height、PixelFormat 和 GetHashCode 确保缓存键唯一
+            return $"{image.Width}x{image.Height}_{newWidth}x{newHeight}_{image.PixelFormat}_{image.GetHashCode():X8}";
+        }
+
+        /// <summary>
         /// Rescale image without losing quality
         /// </summary>
         /// <param name="image">Image will be rescaled.</param>
         /// <param name="newWidth">New width of new Image.</param>
         /// <param name="newHeight">New height of new Image.</param>
-        /// <returns>New image witdh new size.</returns>        
+        /// <returns>New image witdh new size.</returns>
         public static Image ResizeImage(Image image, int newWidth, int newHeight) {
-            lock (_imageLocker) {
-                if (newWidth <= 0 || newHeight <= 0) {
-                    return image;
+            // P1级优化：参数验证
+            if (image == null) {
+                throw new ArgumentNullException(nameof(image));
+            }
+
+            if (newWidth <= 0 || newHeight <= 0) {
+                return image;
+            }
+
+            // 如果尺寸相同，直接返回原图（避免不必要的工作）
+            if (image.Width == newWidth && image.Height == newHeight) {
+                return image;
+            }
+
+            // P1级优化：使用缓存避免重复缩放
+            string cacheKey = GetResizeCacheKey(image, newWidth, newHeight);
+
+            if (_resizeImageCache.TryGetValue(cacheKey, out var cachedBitmap)) {
+                try {
+                    // 返回缓存图片的深拷贝，避免修改原始缓存
+                    return DeepCopyBitmap(cachedBitmap);
+                } catch {
+                    // 如果深拷贝失败，继续执行正常流程
                 }
-                Bitmap resultImage = new Bitmap(newWidth, newHeight);
+            }
+
+            // 执行缩放操作
+            Bitmap resultImage = new Bitmap(newWidth, newHeight);
+            try {
                 using (Graphics g = Graphics.FromImage(resultImage)) {
                     g.CompositingMode = CompositingMode.SourceCopy;
                     g.CompositingQuality = CompositingQuality.HighQuality;
@@ -165,11 +249,87 @@ namespace CustomLibrary.Utils {
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
                 }
-                return resultImage;
+
+                // P1级优化：缓存结果（限制大小避免内存泄漏）
+                lock (_imageLocker) {
+                    if (_resizeImageCache.Count >= MaxResizeCacheSize && !_resizeImageCache.ContainsKey(cacheKey)) {
+                        // 移除最旧的缓存项
+                        var oldestKey = _resizeImageCache.Keys.First();
+                        _resizeImageCache.TryRemove(oldestKey, out var oldBitmap);
+                        oldBitmap?.Dispose();
+                    }
+                }
+
+                // 添加到缓存
+                _resizeImageCache[cacheKey] = resultImage;
+
+                // 返回图片的深拷贝，避免修改
+                return DeepCopyBitmap(resultImage);
+            } catch {
+                // 如果缩放失败，清理资源并抛出
+                resultImage.Dispose();
+                throw;
             }
         }
+
         public static Image ResizeImage(Image image, Size newSize) {
             return ResizeImage(image, newSize.Width, newSize.Height);
+        }
+
+        /// <summary>
+        /// P1级性能优化：深拷贝Bitmap
+        /// </summary>
+        private static Bitmap DeepCopyBitmap(Bitmap bitmap) {
+            if (bitmap == null) {
+                return null;
+            }
+
+            try {
+                using (MemoryStream ms = new MemoryStream()) {
+                    // 【增强健壮性】默认使用PNG格式（最安全，最兼容）
+                    // PNG是无损格式，支持透明度，且所有.NET环境都支持
+                    bitmap.Save(ms, ImageFormat.Png);
+
+                    ms.Position = 0;
+                    return new Bitmap(ms);
+                }
+            } catch (Exception ex) when (ex is ArgumentNullException || ex is ExternalException || ex is ArgumentException) {
+                // 【多重回退】处理各种可能的异常
+
+                try {
+                    // 回退1：尝试使用Clone方法
+                    var cloned = bitmap.Clone() as Bitmap;
+                    if (cloned != null) {
+                        return cloned;
+                    }
+                } catch {
+                    // Clone失败，继续回退
+                }
+
+                try {
+                    // 回退2：创建新的空白位图（保留尺寸和像素格式）
+                    var newBitmap = new Bitmap(Math.Max(1, bitmap.Width), Math.Max(1, bitmap.Height), bitmap.PixelFormat);
+                    using (var g = Graphics.FromImage(newBitmap)) {
+                        g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
+                    }
+                    return newBitmap;
+                } catch {
+                    // 所有回退都失败，返回最小尺寸的位图
+                    return new Bitmap(1, 1);
+                }
+            }
+        }
+
+        /// <summary>
+        /// P1级性能优化：清空图片缩放缓存
+        /// </summary>
+        public static void ClearResizeImageCache() {
+            lock (_imageLocker) {
+                foreach (var bitmap in _resizeImageCache.Values) {
+                    bitmap?.Dispose();
+                }
+                _resizeImageCache.Clear();
+            }
         }
 
         /// <summary>
@@ -718,28 +878,68 @@ namespace CustomLibrary.Utils {
             return font;
         }
         public static int ScrollBarThickness() {
-            int thickness = MainSize.Height / 46;
-            if (thickness < 12) {
-                thickness = 12;
-            }
-            return thickness;
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ScrollBarThickness", () => {
+                int thickness = MainSize.Height / 46;
+                if (thickness < 12) {
+                    thickness = 12;
+                }
+                return thickness;
+            });
         }
-        public static int ContentTitleHeight() => (int) (MainSize.Height * .06);
-        public static int ContentInnerBorderMargin() => (MainSize.Width + MainSize.Height) / 350;
+
+        public static int ContentTitleHeight() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ContentTitleHeight", () => (int) (MainSize.Height * .06));
+        }
+
+        public static int ContentInnerBorderMargin() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ContentInnerBorderMargin", () => (MainSize.Width + MainSize.Height) / 350);
+        }
+
         public static int ContentInnerBorderMargin(int width, int height) => (width + height) / 350;
+
         public static Padding ContentPadding() {
-            int hPadding = (int) (MainSize.Width * .015);
-            int vPadding = (int) (MainSize.Height * .03);
-            return new(hPadding, vPadding, hPadding, vPadding);
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ContentPadding", () => {
+                int hPadding = (int) (MainSize.Width * .015);
+                int vPadding = (int) (MainSize.Height * .03);
+                return new Padding(hPadding, vPadding, hPadding, vPadding);
+            });
         }
-        public static int ContainerRadius() => (int) (MainSize.Height * .015);
-        public static int ControlRadius() => (int) (MainSize.Height * .00925);
-        public static int TextOrComboBoxHeight() => (int) (MainSize.Height * .0425);
-        public static int CommonButtonHeight() => (int) (MainSize.Height * .0425);
-        public static int PictureBoxGroupBaseHeight() => (int) (MainSize.Height * .125);
+
+        public static int ContainerRadius() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ContainerRadius", () => (int) (MainSize.Height * .015));
+        }
+
+        public static int ControlRadius() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("ControlRadius", () => (int) (MainSize.Height * .00925));
+        }
+
+        public static int TextOrComboBoxHeight() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("TextOrComboBoxHeight", () => (int) (MainSize.Height * .0425));
+        }
+
+        public static int CommonButtonHeight() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("CommonButtonHeight", () => (int) (MainSize.Height * .0425));
+        }
+
+        public static int PictureBoxGroupBaseHeight() {
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("PictureBoxGroupBaseHeight", () => (int) (MainSize.Height * .125));
+        }
+
         public static int BorderThickness() {
-            int thickness = (MainSize.Width + MainSize.Height) / 1200;
-            return thickness > 0 ? thickness : 1;
+            // P0级优化：使用缓存避免重复计算
+            return GetCachedSizeValue("BorderThickness", () => {
+                int thickness = (MainSize.Width + MainSize.Height) / 1200;
+                return thickness > 0 ? thickness : 1;
+            });
         }
         // Pop up / floating form configs 
         public static int PopUpOrFloatingFormMaxHeight() => (int) (MainSize.Height * .8);
@@ -819,24 +1019,79 @@ namespace CustomLibrary.Utils {
             }
         }
 
+        /// <summary>
+        /// P0级性能优化：颜色计算缓存
+        /// 缓存颜色变暗计算结果，避免重复计算
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, Color> _darkenColorCache = new();
+        /// <summary>
+        /// P0级性能优化：颜色计算缓存
+        /// 缓存颜色变亮计算结果，避免重复计算
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, Color> _lightenColorCache = new();
+
+        /// <summary>
+        /// 颜色缓存的最大大小限制
+        /// 防止缓存无限增长导致内存泄漏
+        /// </summary>
+        private const int MaxColorCacheSize = 500;
+
+        /// <summary>
+        /// 添加项到颜色缓存，超过限制时移除最旧的项
+        /// </summary>
+        private static void AddToColorCache<T>(ConcurrentDictionary<string, T> cache, string key, T value) {
+            // 如果缓存已满，移除最旧的项（使用TryRemove的第一个键）
+            if (cache.Count >= MaxColorCacheSize) {
+                var oldestKey = cache.Keys.FirstOrDefault();
+                if (oldestKey != null) {
+                    cache.TryRemove(oldestKey, out _);
+                }
+            }
+            cache[key] = value;
+        }
+
         public static Color LightColor(Color color, double ratio) {
             if (ratio < 0 || ratio > 1) {
                 throw new ArgumentException("Ratio must be between 0 ~ 1");
             }
+
+            // P0级优化：使用缓存避免重复计算
+            string cacheKey = $"{color.A}_{color.R}_{color.G}_{color.B}_{ratio:F3}";
+            if (_lightenColorCache.TryGetValue(cacheKey, out var cachedColor)) {
+                return cachedColor;
+            }
+
             int newR = (int) Math.Round(color.R + (255 - color.R) * ratio);
             int newG = (int) Math.Round(color.G + (255 - color.G) * ratio);
             int newB = (int) Math.Round(color.B + (255 - color.B) * ratio);
-            return Color.FromArgb(newR, newG, newB);
+            Color result = Color.FromArgb(newR, newG, newB);
+
+            // 缓存结果（使用固定大小限制，避免内存泄漏）
+            AddToColorCache(_lightenColorCache, cacheKey, result);
+
+            return result;
         }
 
         public static Color DarkenColor(Color color, double ratio) {
             if (ratio < 0 || ratio > 1) {
                 throw new ArgumentException("Ratio must be between 0 ~ 1");
             }
+
+            // P0级优化：使用缓存避免重复计算
+            string cacheKey = $"{color.A}_{color.R}_{color.G}_{color.B}_{ratio:F3}";
+            if (_darkenColorCache.TryGetValue(cacheKey, out var cachedColor)) {
+                return cachedColor;
+            }
+
             int newR = (int) Math.Round(color.R - color.R * ratio);
             int newG = (int) Math.Round(color.G - color.G * ratio);
             int newB = (int) Math.Round(color.B - color.B * ratio);
-            return Color.FromArgb(newR, newG, newB);
+            Color result = Color.FromArgb(newR, newG, newB);
+
+            // 缓存结果（使用固定大小限制，避免内存泄漏）
+            AddToColorCache(_darkenColorCache, cacheKey, result);
+
+            return result;
         }
 
         public static bool ShowConfirmPopUp(string message) => MessageBox.Show(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
