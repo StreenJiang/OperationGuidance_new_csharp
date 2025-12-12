@@ -19,6 +19,7 @@ using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using OperationGuidance_new.Views.SubViews;
 using System.Reflection;
 
 namespace OperationGuidance_new.Views {
@@ -193,11 +194,11 @@ namespace OperationGuidance_new.Views {
             await Task.CompletedTask;
         }
 
-        protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
             // Use task to store data asynchronously
-            StoreDataToDatabase(operationDataDTO);
+            await StoreDataToDatabaseAsync(operationDataDTO);
 
             // 将数据暂存，用于发送给 MES
             _operationDataDTOs.Add(operationDataDTO);
@@ -211,7 +212,7 @@ namespace OperationGuidance_new.Views {
             logger.Info("StoreTighteningData showing to panel end ........");
 
             // 最后再存进本地文件
-            StoreDataToFiles(operationDataDTO);
+            await StoreDataToFilesAsync(operationDataDTO);
 
             logger.Info("StoreTighteningData end ........");
         }

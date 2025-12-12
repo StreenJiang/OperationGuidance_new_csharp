@@ -2626,40 +2626,37 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously with proper cancellation support
-            _ = Task.Run(async () => {
-                try {
-                    // 并行执行数据库和文件存储操作，直接await异步方法
-                    await Task.WhenAll(
-                        StoreDataToDatabaseAsync(operationDataDTO),
-                        StoreDataToFilesAsync(operationDataDTO)
-                    );
+            try {
+                // 并行执行数据库和文件存储操作，直接await异步方法
+                await Task.WhenAll(
+                    StoreDataToDatabaseAsync(operationDataDTO),
+                    StoreDataToFilesAsync(operationDataDTO)
+                );
 
-                    // 转换数据并更新UI（在UI线程）
-                    BeginInvoke(() => {
-                        try {
-                            OperationDataVO dataFormatted = new();
-                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                // 转换数据并更新UI（在UI线程）
+                BeginInvoke(() => {
+                    try {
+                        OperationDataVO dataFormatted = new();
+                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                            // 使用线程安全的ConcurrentBag
-                            _tighteningDataVOs.Add(dataFormatted);
+                        // 使用线程安全的ConcurrentBag
+                        _tighteningDataVOs.Add(dataFormatted);
 
-                            // 创建快照用于UI显示
-                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                            logger.Info("StoreTighteningData showing to panel end ........");
-                        } catch (Exception e) {
-                            logger.Error($"Error in data conversion or UI update: {e}");
-                        }
-                    });
-                } catch (Exception e) {
-                    logger.Error($"Error during data storage operations: {e}");
-                } finally {
-                    logger.Info("StoreTighteningData end ........");
-                }
-            }, _activeMissionCts.Token);
+                        // 创建快照用于UI显示
+                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                        logger.Info("StoreTighteningData showing to panel end ........");
+                    } catch (Exception e) {
+                        logger.Error($"Error in data conversion or UI update: {e}");
+                    }
+                });
+            } catch (Exception e) {
+                logger.Error($"Error during data storage operations: {e}");
+            } finally {
+                logger.Info("StoreTighteningData end ........");
+            }
         }
 
         protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
