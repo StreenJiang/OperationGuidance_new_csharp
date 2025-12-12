@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Threading.Tasks;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
@@ -206,7 +207,10 @@ namespace CustomLibrary.Forms {
         public new void Show() {
             // Sometimes cursor will hide and don't know why for now
             Cursor.Show();
-            BeginInvoke(() => AfterShown());
+            BeginInvoke(async () => {
+                await Task.Delay(50); // 确保窗口和内部组件完全准备好后再调用AfterShown
+                AfterShown();
+            });
             base.Hide();
             _popUpFormBackboard.Show();
             if (_clickOutsideToClose) {
@@ -226,7 +230,10 @@ namespace CustomLibrary.Forms {
 
         public new DialogResult ShowDialog() {
             Cursor.Show();
-            BeginInvoke(() => AfterShown());
+            BeginInvoke(async () => {
+                await Task.Delay(50); // 确保窗口和内部组件完全准备好后再调用AfterShown
+                AfterShown();
+            });
             base.Hide();
             _popUpFormBackboard.Show();
             if (_clickOutsideToClose) {

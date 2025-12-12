@@ -9,6 +9,7 @@ using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_new.Views.SubViews;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
@@ -489,7 +490,9 @@ namespace OperationGuidance_new.Views {
                 AutoDown = true,
             };
             _tighteningDataPanel.HandleCreated += (s, e) => {
-                _tighteningDataPanel.DataSource = _tighteningDataVOs;
+                // 创建快照以避免UI初始化期间的竞态条件
+                var snapshot = _tighteningDataVOs.ToList();
+                _tighteningDataPanel.DataSource = snapshot;
             };
         }
         protected override void RefreshImageDisplayPanel() => ResizeTopLeftBottom();

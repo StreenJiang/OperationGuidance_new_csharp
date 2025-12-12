@@ -287,11 +287,27 @@ namespace OperationGuidance_new.Constants {
 
         public bool AnalyzeReadResultData(string dataMessage) {
             try {
+                Settings settings = ConfigUtils.LoadConfig<Settings>();
+                bool reverseFirstFour = settings.reverse_arranger.ToYesOrNoBool();
+
                 // 1. 读取输出字节
                 string outputByteHex = dataMessage.Substring(6, 2); // 字符索引 6~7
                 int outputByte = Convert.ToInt32(outputByteHex, 16);
                 string outputBin = Convert.ToString(outputByte, 2).PadLeft(8, '0'); // 补齐8位
                 string outStr = new string(outputBin.Reverse().ToArray()); // 反转：bit0 -> out1
+
+                // 处理前4位的转换
+                if (reverseFirstFour) {
+                    // 将字符串转为字符数组以便修改
+                    char[] arr = outStr.ToCharArray();
+
+                    // 交换前4位的位置（索引0-3对应位1-4）
+                    // 位1<->位4, 位2<->位3
+                    (arr[0], arr[3]) = (arr[3], arr[0]); // 交换索引0和3
+                    (arr[1], arr[2]) = (arr[2], arr[1]); // 交换索引1和2
+
+                    outStr = new string(arr);
+                }
 
                 // 2. 读取输入字节
                 string inputByteHex = dataMessage.Substring(8, 2); // 字符索引 8~9

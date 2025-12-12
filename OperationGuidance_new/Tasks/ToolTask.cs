@@ -1,6 +1,6 @@
 using log4net;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Tasks.AsbtractClasses;
+using OperationGuidance_new.Tasks.AbstractClasses;
 using OperationGuidance_new.Utils;
 using System.Net;
 using System.Net.Sockets;
@@ -204,6 +204,44 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
+        /// <summary>
+        /// Performs deep connection validation using Socket.Poll.
+        /// This provides more accurate connection status than Socket.Connected property alone.
+        /// </summary>
+        /// <returns>true if connection is valid and active, false otherwise</returns>
+        private bool ValidateConnection() {
+            try {
+                if (socketClient == null || !socketClient.Connected || CloseConnectionManually) {
+                    return false;
+                }
+
+                // Use Socket.Poll for quick connection check
+                // Poll with SelectRead: returns true if connection is closed, reset, terminated,
+                // or pending data is available. If Available is 0 after Poll returns true,
+                // it means the connection has been closed/reset.
+                if (socketClient.Poll(100000, SelectMode.SelectRead)) {
+                    // Check if there's data available to read
+                    if (socketClient.Available == 0) {
+                        // No data available but Poll returned true - connection is closed
+                        logger.Warn($"ValidateConnection: Connection to TOOL[{_device_name} - {_ip}: {_port}] appears to be closed");
+                        return false;
+                    }
+                    // There's data available - connection is still valid
+                }
+
+                return true;
+            } catch (SocketException se) {
+                logger.Warn($"ValidateConnection: SocketException while validating connection to TOOL[{_device_name} - {_ip}: {_port}], error code: {se.ErrorCode}");
+                return false;
+            } catch (ObjectDisposedException) {
+                logger.Warn($"ValidateConnection: Socket already disposed for TOOL[{_device_name} - {_ip}: {_port}]");
+                return false;
+            } catch (Exception e) {
+                logger.Warn($"ValidateConnection: Unexpected error while validating connection to TOOL[{_device_name} - {_ip}: {_port}], e: {e.Message}");
+                return false;
+            }
+        }
+
         private async Task<bool> ConnectToServer() {
             try {
                 if (Connected) {
@@ -392,6 +430,7 @@ namespace OperationGuidance_new.Tasks {
                             _locked = true;
                         }
                     } else {
+                        logger.Warn($"SendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
                     }
 
                     LockCounter++;
@@ -401,23 +440,31 @@ namespace OperationGuidance_new.Tasks {
                 logger.Info($"Locking failure, it's not connected...");
             }
         }
-        public void ForceSendLock() {
-            if (Connected) {
-                logger.Info($"Force locking tool...");
-                if (_toolType is ToolPFSeries toolPF) {
-                    if (!_locked) {
-                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-                    }
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    Thread.Sleep(500);
-                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    _locked = true;
+        public void ForceSendLock(bool ignoreLocalLockState = false) {
+            // Use deep connection validation instead of simple Connected check
+            if (!ValidateConnection()) {
+                _locked = true;  // Set to safe state (locked) when connection is invalid
+                logger.Warn($"ForceSendLock: Connection validation failed for TOOL[{_device_name} - {_ip}: {_port}], setting _locked to true (safe state)");
+                return;
+            }
+
+            logger.Info($"Force locking tool... (ignoreLocalLockState={ignoreLocalLockState})");
+            if (_toolType is ToolPFSeries toolPF) {
+                if (ignoreLocalLockState || !_locked) {
+                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    _locked = true;  // Force update local state
+                    logger.Info($"Lock command sent, updated local _locked state to true");
                 } else {
+                    logger.Info($"Skip lock command - already locked (ignoreLocalLockState={ignoreLocalLockState}, _locked={_locked})");
                 }
+            } else if (_toolType is ToolSudongX7 toolX7) {
+                SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                Thread.Sleep(500);
+                SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                _locked = true;
+                logger.Info($"Lock command sent for ToolSudongX7, updated local _locked state to true");
             } else {
-                _locked = false;
-                logger.Info($"Force locking failure, it's not connected...");
+                logger.Warn($"ForceSendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
             }
         }
         private void SendUnlock() {
@@ -434,6 +481,7 @@ namespace OperationGuidance_new.Tasks {
                             _locked = false;
                         }
                     } else {
+                        logger.Warn($"SendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
                     }
 
                     UnLockCounter++;
@@ -443,23 +491,31 @@ namespace OperationGuidance_new.Tasks {
                 logger.Info($"Unlocking failure, it's not connected...");
             }
         }
-        public void ForceSendUnlock() {
-            if (Connected) {
-                logger.Info($"Force unlocking tool...");
-                if (_toolType is ToolPFSeries toolPF) {
-                    if (_locked) {
-                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-                    }
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    Thread.Sleep(500);
-                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    _locked = false;
+        public void ForceSendUnlock(bool ignoreLocalLockState = false) {
+            // Use deep connection validation instead of simple Connected check
+            if (!ValidateConnection()) {
+                _locked = true;  // Set to safe state (locked) when connection is invalid
+                logger.Warn($"ForceSendUnlock: Connection validation failed for TOOL[{_device_name} - {_ip}: {_port}], setting _locked to true (safe state)");
+                return;
+            }
+
+            logger.Info($"Force unlocking tool... (ignoreLocalLockState={ignoreLocalLockState})");
+            if (_toolType is ToolPFSeries toolPF) {
+                if (ignoreLocalLockState || _locked) {
+                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    _locked = false;  // Force update local state
+                    logger.Info($"Unlock command sent, updated local _locked state to false");
                 } else {
+                    logger.Info($"Skip unlock command - already unlocked (ignoreLocalLockState={ignoreLocalLockState}, _locked={_locked})");
                 }
+            } else if (_toolType is ToolSudongX7 toolX7) {
+                SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                Thread.Sleep(500);
+                SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                _locked = false;
+                logger.Info($"Unlock command sent for ToolSudongX7, updated local _locked state to false");
             } else {
-                _locked = true;
-                logger.Info($"Force unlocking failure, it's not connected...");
+                logger.Warn($"ForceSendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}] for TOOL[{_device_name} - {_ip}: {_port}]");
             }
         }
         #endregion

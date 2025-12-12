@@ -11,6 +11,7 @@ using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_new.Views.SubViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
@@ -253,9 +254,8 @@ namespace OperationGuidance_new.Views {
                                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
                                 int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
                                 if (okSum >= int.Parse(shifts[1])) {
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
-                                    if (!_adminConfirmed.Value) {
+                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
+                                    if (!confirmed) {
                                         if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                                             _barCodePopUpForm.Hide();
                                         }
@@ -440,14 +440,14 @@ namespace OperationGuidance_new.Views {
         }
         private void SetPset() => SetPset(null);
         private void SetPset(string? customMsg) {
+            if (InvokeRequired) {
+                Invoke(() => SetPset(customMsg));
+                return;
+            }
             if (!string.IsNullOrEmpty(customMsg)) {
                 _pset.SetValue(0, customMsg);
             } else if (_currentWorkingBolt != null) {
-                if (_currentWorkingBolt.CurrentParameterSet != null) {
-                    _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet + "");
-                } else {
-                    _pset.SetValue(0, "未配置程序号");
-                }
+                _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet?.ToString() ?? "未配置程序号");
             } else {
                 _pset.SetValue(0, null);
             }
@@ -481,7 +481,9 @@ namespace OperationGuidance_new.Views {
                 AutoDown = true,
             };
             _tighteningDataPanel.HandleCreated += (s, e) => {
-                _tighteningDataPanel.DataSource = _tighteningDataVOs;
+                // 创建快照以避免UI初始化期间的竞态条件
+                var snapshot = _tighteningDataVOs.ToList();
+                _tighteningDataPanel.DataSource = snapshot;
             };
         }
 
@@ -1021,11 +1023,10 @@ namespace OperationGuidance_new.Views {
             ScrewBitCounterDTO screwBitCounter;
             if (!CountScrewBitUsedTime(out screwBitCounter)) {
                 _adminConfirmed = false;
-                bool isChecked = false;
-                OpenAdminPasswordPopUpForm(
+                bool confirmed = OpenAdminPasswordPopUpForm(
                     $"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码",
-                    false, yes => isChecked = yes);
-                if (isChecked) {
+                    false);
+                if (confirmed) {
                     _adminConfirmed = null;
                     screwBitCounter.current_counts = 0;
                     _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));

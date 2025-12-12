@@ -1,6 +1,4 @@
 using CustomLibrary.Buttons;
-using CustomLibrary.Buttons.BaseClasses;
-using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
 using CustomLibrary.Forms;
 using CustomLibrary.Panels;
@@ -12,17 +10,17 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
-using OperationGuidance_new.Tasks.AsbtractClasses;
+using OperationGuidance_new.Tasks.AbstractClasses;
 using OperationGuidance_new.Tasks.DeviceTypes;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
+using OperationGuidance_new.Views.SubViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
-using System.Collections;
-using System.Drawing.Drawing2D;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace OperationGuidance_new.Views.AbstractViews {
@@ -65,6 +63,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
 
+        // 任务取消相关
+        protected CancellationTokenSource _activeMissionCts = new();
+        protected List<CancellationTokenSource> _backgroundTaskCts = new();
+
         // Widgets
         protected Image _barCodeImage;
         protected PictureBox _barCodePictureBox;
@@ -94,7 +96,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected CustomTextBoxButtonGroup _currentSideName;
 
         protected DataGridViewPanel<OperationDataVO> _tighteningDataPanel;
-        protected List<OperationDataVO> _tighteningDataVOs = new();
+        protected ConcurrentBag<OperationDataVO> _tighteningDataVOs = new();
 
         protected WorkingProcessPanel _workingProcessPanel;
 
@@ -528,7 +530,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 AutoDown = true,
             };
             _tighteningDataPanel.HandleCreated += (s, e) => {
-                _tighteningDataPanel.DataSource = _tighteningDataVOs;
+                _tighteningDataPanel.DataSource = _tighteningDataVOs.ToList();
             };
         }
 
@@ -591,11 +593,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 contentSize.Height = panelHeight * _communicationTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
                             }
                         } else if (deviceBlock.Category == DeviceCategories.IOBOX_ARRANGER) {
-                            // if (_communicationTasks.Count > 0) {
-                            //     deviceBlock.FloatingForm = new CommunicationDetailFloatingForm(deviceBlock.CategoryName, _communicationTasks, panelHeight);
-                            //     contentSize.Height = panelHeight * _communicationTasks.Count + deviceBlock.FloatingForm.ContentPanel.Padding.Size.Height;
-                            // }
+                            // TODO:
                         } else if (deviceBlock.Category == DeviceCategories.IOBOX_SETTERSELECTOR) {
+                            // TODO:
                         } else {
                             // TODO:
                         }
@@ -622,14 +622,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
-                                        _adminConfirmed = false;
-                                        bool isChecked = false;
-                                        OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false, yes => isChecked = yes);
-                                        if (!isChecked) {
-                                            _adminConfirmed = null;
+                                        bool confirmed = OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
+                                        if (!confirmed) {
                                             return;
                                         }
-                                        _adminConfirmed = null;
                                     }
 
                                     int? currentWorkstationId = null;
@@ -711,13 +707,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         return;
                                     }
 
-                                    _adminConfirmed = false;
-                                    OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
-                                    if (!_adminConfirmed.Value) {
-                                        _adminConfirmed = null;
+                                    bool confirmed = OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
+                                    if (!confirmed) {
                                         return;
                                     }
-                                    _adminConfirmed = null;
 
                                     ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
                                     deviceBlock.PopUpForm = popUpForm;
@@ -945,13 +938,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         action(true);
                     }
                 }
-                // foreach (T task in tasks) {
-                //     if (!task.WorkplaceCheckConnection()) {
-                //         block.ResetIconByStatus(DeviceStatus.ERROR);
-                //         return;
-                //     }
-                // }
-                // block.ResetIconByStatus(DeviceStatus.NORMAL);
             }
         }
 
@@ -1097,15 +1083,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             currentBoltBtn.ResetStatusWithoutChangingVisible();
                             currentBoltBtn.StopFlickering();
                             _boltPopUpForm.Dispose();
-
-                            // 切换点位时，只能向后选择没有拧的点位，不能选择前面的。即只能跳过某些点，不能重新打某些点
-                            // if (_allBolts.IndexOf(_currentWorkingBolt) > newIndex) {
-                            //     WidgetUtils.ShowErrorPopUp("无法切换到已完成的螺栓点位！");
-                            // } else {
-                            //     _currentWorkingBolt.ResetStatusWithoutChangingVisible();
-                            //     _currentWorkingBolt.StopFlickering();
-                            //     _currentWorkingBolt = SwitchBoltAndChangeStatus(newIndex);
-                            // }
                         }
                     }
                 };
@@ -1286,11 +1263,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
 
-                // Check if any bolt needs to be excluded
-                // if (_ruleIdsCheckedCached != null && _ruleIdsCheckedCached.Count > 0) {
-                //     allBolts.RemoveAll(b => _ruleIdsCheckedCached.Contains(b.id));
-                // }
-                // Check if current bolt is not null and if it is not null, then remove current bolt from List[allBolts]
                 if (boltDTO != null) {
                     allBolts.RemoveAll(b => b.id == boltDTO.id);
 
@@ -1323,6 +1295,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 激活任务
         public virtual async void ActivateMission() {
             // *0. Reset all before activating mission
+            // 清理之前的后台任务
+            _backgroundTaskCts.ForEach(cts => {
+                cts.Cancel();
+                cts.Dispose();
+            });
+            _backgroundTaskCts.Clear();
+
+            // 重置主取消令牌
+            _activeMissionCts.Cancel();
+            _activeMissionCts.Dispose();
+            _activeMissionCts = new CancellationTokenSource();
+
             PrepareBeforeActivatingMission();
 
             // 1. Check can activate mission
@@ -1611,56 +1595,143 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void StartLockCheckingTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             BeginInvoke(() => {
                 Task.Run(async () => {
-                    while (!IsDisposed && _activated) {
+                    while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
-                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                            // Check if is multi-device independence mode
+                            bool isMultiDeviceMode = CheckIfIsMultiDeviceIndependenceMode();
 
-                            CheckCurrentPSetForLockMsg();
-                            CheckAdminConfirmationForLockMsg();
+                            if (isMultiDeviceMode) {
+                                // Multi-device mode: process all bolts in _currentWorkingBoltIndependence dictionary
+                                foreach (var kvp in _currentWorkingBoltIndependence) {
+                                    int workstationId = kvp.Key;
+                                    BoltButton boltButton = kvp.Value;
 
-                            string statusDesc = string.Empty;
-                            if (lockMsgs.Count > 0) {
-                                statusDesc = string.Join("\r\n", lockMsgs);
-                                statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
-                                // Set status to working proccess panel
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+                                    try {
+                                        // Skip if boltButton is null
+                                        if (boltButton == null) {
+                                            continue;
+                                        }
 
-                                // Lock tools
-                                toolTask.ForceSendLock();
-                            } else {
-                                if (_needLoosening) {
-                                    statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
-                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-                                } else {
-                                    statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _workingProcessPanel.BoltSerialNum);
-                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+
+                                        // Clear messages for this bolt
+                                        ClearLockMsgs();
+                                        ClearInformationMsgs();
+
+                                        CheckCurrentPSetForLockMsg();
+                                        CheckAdminConfirmationForLockMsg();
+
+                                        string statusDesc = string.Empty;
+                                        if (lockMsgs.Count > 0) {
+                                            statusDesc = string.Join("\r\n", lockMsgs);
+                                            statusDesc = string.Format(statusDesc, boltDTO.serial_num);
+                                            // Set status to working proccess panel
+                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+
+                                            // Lock tools
+                                            toolTask.ForceSendLock();
+                                        } else {
+                                            if (_needLoosening) {
+                                                statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, boltDTO.serial_num);
+                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                            } else {
+                                                statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, boltDTO.serial_num);
+                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                            }
+                                            // Set status to working proccess panel
+                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+
+                                            // Unlock tools
+                                            toolTask.ForceSendUnlock();
+                                        }
+
+                                        // Add information
+                                        if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
+                                            statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
+                                        }
+
+                                        // Set description to working proccess panel
+                                        _workingProcessPanel.StatusDesc = statusDesc;
+                                    } catch (OperationCanceledException) {
+                                        // 任务被取消，退出循环
+                                        throw;
+                                    } catch (Exception e) {
+                                        // Log error for this specific bolt but continue processing others
+                                        logger.Error($"StartLockCheckingTask [Multi-Device Mode, WorkstationId={workstationId}]: e = {e}");
+                                    }
                                 }
-                                // Set status to working proccess panel
-                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+                            } else {
+                                // Normal mode: process single _currentWorkingBolt
+                                try {
+                                    // Skip if _currentWorkingBolt is null
+                                    if (_currentWorkingBolt == null) {
+                                        await Task.Delay(_lockCheckingTaskDelay, cts.Token);
+                                        continue;
+                                    }
 
-                                // Unlock tools
-                                toolTask.ForceSendUnlock();
+                                    ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                                    ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+
+                                    CheckCurrentPSetForLockMsg();
+                                    CheckAdminConfirmationForLockMsg();
+
+                                    string statusDesc = string.Empty;
+                                    if (lockMsgs.Count > 0) {
+                                        statusDesc = string.Join("\r\n", lockMsgs);
+                                        statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
+                                        // Set status to working proccess panel
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
+
+                                        // Lock tools
+                                        toolTask.ForceSendLock();
+                                    } else {
+                                        if (_needLoosening) {
+                                            statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
+                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                        } else {
+                                            statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _currentWorkingBolt.BoltDTO.serial_num);
+                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+                                        }
+                                        // Set status to working proccess panel
+                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+
+                                        // Unlock tools
+                                        toolTask.ForceSendUnlock();
+                                    }
+
+                                    // Add information
+                                    if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
+                                        statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
+                                    }
+
+                                    // Set description to working proccess panel
+                                    _workingProcessPanel.StatusDesc = statusDesc;
+                                } catch (OperationCanceledException) {
+                                    // 任务被取消，退出循环
+                                    throw;
+                                } catch (Exception e) {
+                                    // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
+                                    logger.Error($"StartLockCheckingTask [Normal Mode]: e = {e}");
+                                }
                             }
-
-                            // Add information
-                            if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
-                                statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
-                            }
-
-                            // Set description to working proccess panel
-                            _workingProcessPanel.StatusDesc = statusDesc;
+                        } catch (OperationCanceledException) {
+                            // 任务被取消，退出循环
+                            break;
                         } catch (Exception e) {
-                            // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
+                            // Catch any outer exceptions
                             logger.Error($"StartLockCheckingTask: e = {e}");
                         } finally {
                             // Delay a little bit and check again
-                            await Task.Delay(_lockCheckingTaskDelay);
+                            await Task.Delay(_lockCheckingTaskDelay, cts.Token);
                         }
                     }
-                });
+                }, cts.Token);
             });
         }
 
@@ -1690,9 +1761,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public void ClearInformationMsgs() => informationMsgs.Clear();
 
         protected void StartArrangerTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             _resendSignalToArrangerTimes = 0;
             BeginInvoke(async () => {
-                while (!IsDisposed && _activated && _arrangerNeeded) {
+                while (!IsDisposed && _activated && _arrangerNeeded && !cts.Token.IsCancellationRequested) {
                     if (_arrangerPositionOk != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
@@ -1739,15 +1813,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay);
+                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
                 }
             });
         }
 
         protected void StartSetterSelectorTask() {
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_activeMissionCts.Token);
+            _backgroundTaskCts.Add(cts);
+
             _resendSignalToSetterSelectorTimes = 0;
             BeginInvoke(async () => {
-                while (!IsDisposed && _activated && _setterSelectorNeeded) {
+                while (!IsDisposed && _activated && _setterSelectorNeeded && !cts.Token.IsCancellationRequested) {
                     if (_bitPositionOk != null) {
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
@@ -1793,7 +1870,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay);
+                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
                 }
             });
         }
@@ -1917,7 +1994,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
 
             // Send pset of current working bolt to controller
-            SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+            _ = Task.Run(async () => {
+                try {
+                    await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+                } catch (Exception ex) {
+                    logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
+                }
+            });
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
@@ -1933,6 +2016,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
                         if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
                             AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                            OpenBarCodePopUpForm(null);
                         }
                     }
                 });
@@ -1940,79 +2024,120 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // Send pset to controller
-        protected virtual async void SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
+        protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
             logger.Info("SendPSet start ......");
 
-            await Task.Run(() => {
-                BeginInvoke(async () => {
-                    // // Initialize pset text box first
-                    // SetPset();
+            try {
+                // 直接在UI线程启动异步操作，避免Task.Run包装
+                BeginInvoke(() => {
                     _pset.SetValue(0, null);
-
-                    if (pset == null && !string.IsNullOrEmpty(_matCode)) {
-                        // Use MatCode to switch parameter program
-                        MatCodeMapWhycDTO? matCodeMapWhycDTO = _apis.FindMatCodeMapByMatCode(new(_matCode)).MatCodeMapWhycDTO;
-                        if (matCodeMapWhycDTO != null) {
-                            logger.Info($"Get parameter set[{matCodeMapWhycDTO.parameter_set}] by mat code[{_matCode}]");
-                            pset = matCodeMapWhycDTO.parameter_set;
-                        } else {
-                            logger.Info($"Get parameter set[null] by mat code[{_matCode}]");
-                        }
-                    }
-
-                    // Check pset here again
-                    if (pset == null) {
-                        // If pset is null, show error message in working proccess panel
-                        AddLockMsg(WorkingProcessPanel.LockedPsetNull);
-                        return;
-                    }
-
-                    // Do send pset to controller
-                    int sendTimes = 0;
-                    while (!IsDisposed) {
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        if (await task.SendPSetAsync(pset.Value)) {
-                            break;
-                        }
-                        if (boltButton.CurrentParameterSet != null) {
-                            return;
-                        }
-
-                        // Count failure times
-                        sendTimes++;
-
-                        // If sending times reaches maximun, show pop up form
-                        if (_resendPsetMaxTimes > 0 && sendTimes >= _resendPsetMaxTimes) {
-                            WidgetUtils.ShowWarningPopUp($"同一个点位下发程序号达到{_resendPsetMaxTimes}次，请检查配置或机器是否处于正常状态");
-                            return;
-                        }
-
-                        // Show reason of sending failure
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                        AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-
-                        // // 实时显示pset到任务信息框
-                        // SetPset("程序号下发失败");
-                        _pset.SetValue(0, "程序号下发失败");
-
-                        // Confirm if retry needed
-                        if (!WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，是否重发？")) {
-                            return;
-                        }
-                    }
-
-                    // Send successfully if step to here
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                    boltButton.CurrentParameterSet = pset;
-
-                    // SetPset();
-                    _pset.SetValue(0, pset + "");
                 });
-            });
 
-            logger.Info("SendPSet end ......");
+                // === 保持原有MatCode逻辑 ===
+                if (pset == null && !string.IsNullOrEmpty(_matCode)) {
+                    MatCodeMapWhycDTO? matCodeMapWhycDTO = _apis.FindMatCodeMapByMatCode(new(_matCode)).MatCodeMapWhycDTO;
+                    if (matCodeMapWhycDTO != null) {
+                        logger.Info($"Get parameter set[{matCodeMapWhycDTO.parameter_set}] by mat code[{_matCode}]");
+                        pset = matCodeMapWhycDTO.parameter_set;
+                    } else {
+                        logger.Info($"Get parameter set[null] by mat code[{_matCode}]");
+                    }
+                }
+
+                // === 保持原有null检查逻辑 ===
+                if (pset == null) {
+                    BeginInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
+                    return;
+                }
+
+                // === 使用新的通用重试策略 ===
+                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 1000);
+
+                bool success = false;
+                try {
+                    success = await retryStrategy.ExecuteAsync(
+                        async () => {
+                            // 每次尝试前更新UI状态
+                            BeginInvoke(() => {
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                AddLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                _pset.SetValue(0, $"程序号下发中... ({pset})");
+                            });
+
+                            // 执行发送
+                            bool result = await task.SendPSetAsync(pset.Value);
+
+                            if (result) {
+                                BeginInvoke(() => {
+                                    // === 成功时保持原有逻辑 ===
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                    boltButton.CurrentParameterSet = pset;
+                                    _pset.SetValue(0, $"程序号 {pset} (发送成功)");
+                                });
+                                return true;
+                            }
+
+                            // 检查是否已通过其他方式设置成功（保持原有逻辑）
+                            if (boltButton.CurrentParameterSet != null) {
+                                BeginInvoke(() => {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                    boltButton.CurrentParameterSet = pset;
+                                    _pset.SetValue(0, $"程序号 {pset} (已存在)");
+                                });
+                                return true;
+                            }
+
+                            return false;
+                        },
+                        (currentAttempt, maxAttempts) => {
+                            // === 实时显示重试进度 ===
+                            BeginInvoke(() => {
+                                _pset.SetValue(0, $"程序号下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                            });
+                        },
+                        () => {
+                            // === 每次失败时更新UI（但不阻塞） ===
+                            BeginInvoke(() => {
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                _pset.SetValue(0, "程序号下发失败，正在重试...");
+                            });
+                        },
+                        null,
+                        _activeMissionCts.Token);
+                } catch (RetryException ex) {
+                    // 处理重试异常
+                    logger.Warn($"程序号{pset}发送失败，已重试{_resendPsetMaxTimes}次: {ex.Message}");
+                    success = false;
+                }
+
+                // === 失败后处理（无对话框，改为状态提示） ===
+                if (!success && boltButton.CurrentParameterSet == null) {
+                    BeginInvoke(() => {
+                        // 移除失败锁定状态
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+
+                        // 添加失败状态提示（但不阻塞）
+                        AddLockMsg(string.Format(WorkingProcessPanel.LockedPsetFailed, pset));
+                        _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
+
+                        // 显示一次性警告（不阻塞）
+                        WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
+                    });
+                }
+            } catch (OperationCanceledException) {
+                logger.Info("SendPSet operation was cancelled");
+            } catch (Exception ex) {
+                logger.Error($"SendPSet发生未预期异常: {ex.Message}", ex);
+                BeginInvoke(() => {
+                    _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
+                });
+            } finally {
+                logger.Info("SendPSet end ......");
+            }
         }
 
         // Send bit position to arranger
@@ -2504,41 +2629,70 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously
-            StoreDataToDatabase(operationDataDTO);
-
-            // 先将VOs加入到实时显示数据列表中
-            OperationDataVO dataFormatted = new();
-            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-            _tighteningDataVOs.Add(dataFormatted);
-
-            RefreshTighteningDataPanel(_tighteningDataVOs);
-            logger.Info("StoreTighteningData showing to panel end ........");
-
-            // 最后再存进本地文件
-            StoreDataToFiles(operationDataDTO);
-
-            logger.Info("StoreTighteningData end ........");
-        }
-
-        protected virtual async void StoreDataToDatabase(OperationDataDTO operationDataDTO) {
-            await Task.Run(() => {
-                logger.Info("StoreTighteningData save to database start ........");
-
+            // Use task to store data asynchronously with proper cancellation support
+            _ = Task.Run(async () => {
                 try {
-                    currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+                    // 并行执行数据库和文件存储操作，直接await异步方法
+                    await Task.WhenAll(
+                        StoreDataToDatabaseAsync(operationDataDTO),
+                        StoreDataToFilesAsync(operationDataDTO)
+                    );
+
+                    // 转换数据并更新UI（在UI线程）
+                    BeginInvoke(() => {
+                        try {
+                            OperationDataVO dataFormatted = new();
+                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+
+                            // 使用线程安全的ConcurrentBag
+                            _tighteningDataVOs.Add(dataFormatted);
+
+                            // 创建快照用于UI显示
+                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                            logger.Info("StoreTighteningData showing to panel end ........");
+                        } catch (Exception e) {
+                            logger.Error($"Error in data conversion or UI update: {e}");
+                        }
+                    });
                 } catch (Exception e) {
-                    logger.Error($"StoreTighteningData save to database error: {e}");
+                    logger.Error($"Error during data storage operations: {e}");
                 } finally {
-                    logger.Info("StoreTighteningData save to database end ........");
+                    logger.Info("StoreTighteningData end ........");
                 }
-            });
+            }, _activeMissionCts.Token);
         }
 
-        protected virtual void StoreDataToFiles(OperationDataDTO operationDataDTO) {
-            BeginInvoke(() => {
-                logger.Info("StoreDataToFiles start ........");
+        protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreTighteningData save to database start ........");
 
+            try {
+                currentOperationData = _apis.AddOrUpdateOperationData(new(operationDataDTO)).OperationDataDTO;
+            } catch (Exception e) {
+                logger.Error($"StoreTighteningData save to database error: {e}");
+                throw; // 重新抛出异常以便调用者处理
+            } finally {
+                logger.Info("StoreTighteningData save to database end ........");
+            }
+        }
+
+        protected virtual async Task StoreDataToFilesAsync(OperationDataDTO operationDataDTO) {
+            logger.Info("StoreDataToFiles start ........");
+
+            try {
+                // 直接执行，让 BeginInvoke 处理UI线程异步性
+                // 避免多余的 Task.Run 包装，减少线程池压力
+                StoreDataToFilesCore(operationDataDTO);
+                logger.Info("StoreDataToFiles end ........");
+            } catch (Exception e) {
+                logger.Error($"StoreDataToFiles error: {e}");
+                throw; // 重新抛出异常以便调用者处理
+            }
+        }
+
+        // 核心文件存储逻辑（在UI线程中执行）
+        private void StoreDataToFilesCore(OperationDataDTO operationDataDTO) {
+            // 使用BeginInvoke确保在UI线程中执行（因为涉及UI相关操作）
+            BeginInvoke(() => {
                 try {
                     OperationDataVO dataFormatted = new();
                     CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
@@ -2584,20 +2738,56 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     finalData.ExportToTextFile(headers, textFilePath, textFileExists);
                     finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
                 } catch (Exception e) {
-                    logger.Error($"StoreDataToFiles error: {e}");
-                } finally {
-                    logger.Info("StoreDataToFiles end ........");
+                    logger.Error($"StoreDataToFiles core error: {e}");
+                    throw; // 重新抛出到外部catch块
                 }
             });
         }
 
-        protected void RefreshTighteningDataPanel(List<OperationDataVO> vos) {
-            _tighteningDataPanel.DataSource = vos;
+        protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
+            // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
+            if (vos == null) return;
+            var snapshot = vos.ToList();
+            _tighteningDataPanel.DataSource = snapshot;
         }
 
-        protected virtual void ResetMissionToDefault() => _ = TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
+        // 获取_tighteningDataVOs的线程安全快照
+        protected List<OperationDataVO> GetTighteningDataSnapshot() {
+            return _tighteningDataVOs.ToList();
+        }
+
+        protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
+            // Cancel all background tasks before locking tools to avoid race condition
+            // where lock checking task might call ForceSendUnlock() after we lock tools
+            if (_backgroundTaskCts.Count > 0) {
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Cancel();
+                }
+
+                // Wait for tasks to actually stop (with timeout to avoid hanging)
+                var stopTasks = new List<Task>();
+                foreach (var cts in _backgroundTaskCts) {
+                    stopTasks.Add(Task.Run(async () => {
+                        // Wait for cancellation to propagate and task to exit
+                        await Task.Delay(100);
+                    }));
+                }
+
+                try {
+                    await Task.WhenAll(stopTasks);
+                } catch (Exception) {
+                    // Ignore exceptions during task cancellation
+                }
+
+                // Dispose and clear all cancellation token sources
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Dispose();
+                }
+                _backgroundTaskCts.Clear();
+            }
+
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();
@@ -2743,6 +2933,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
         protected override void OnHandleDestroyed(EventArgs e) {
+            // 取消所有后台任务
+            _activeMissionCts.Cancel();
+            _backgroundTaskCts.ForEach(cts => {
+                cts.Cancel();
+                cts.Dispose();
+            });
+            _backgroundTaskCts.Clear();
+            _activeMissionCts.Dispose();
+
             base.OnHandleDestroyed(e);
 
             if (MainUtils.IsAutoLockToolEnabled() || MainUtils.IsArmLocatingEnabled()) {
@@ -2785,1175 +2984,5 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
         #endregion
-    }
-
-    public class ProductImageDisplayPanel: AProductImageDisplayPanel {
-        public ProductImageDisplayPanel(Image productDefaultImage) : base() {
-            ProductDefaultImage = productDefaultImage;
-        }
-
-        protected override void InvokeResizing() {
-            // MaxRectSize = MainUtils.GetProperSizeAccordingToSizeRatio((Size * .95F).ToSize(), Size);
-            // MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByWidth(Width);
-            // if (MaxRectSize.Height > Height) {
-            //     MaxRectSize = MainUtils.GetMaxSizeOfSizeRatioByHeight(Height);
-            // }
-            MaxRectSize = Size;
-            MaxRectWidth = MaxRectSize.Width;
-            MaxRectHeight = MaxRectSize.Height;
-            // Calculate location of max rectangle depends on size
-            MaxRectLocation = new((Width - MaxRectWidth) / 2, (Height - MaxRectHeight) / 2);
-            MaxRect = new(MaxRectLocation, MaxRectSize);
-        }
-
-        protected override void InvokePaint(Graphics g) {
-            g.SmoothingMode = SmoothingMode.HighSpeed;
-            if (ProductImage == null || ImageLocation == null) {
-                int newImageSide = Height / 2;
-                ProductDefaultImageShowing = WidgetUtils.ResizeImage(ProductDefaultImage, newImageSide, newImageSide);
-                g.DrawImage(ProductDefaultImageShowing, new Point((Width - ProductDefaultImageShowing.Width) / 2, (Height - newImageSide) / 2));
-            } else {
-                g.DrawImage(ProductImage, ImageLocation.Value);
-            }
-        }
-    }
-
-    public class WorkingProcessPanel: CustomContentPanel {
-        private ILog logger = LogManager.GetLogger(typeof(WorkingProcessPanel));
-
-        private readonly int _loopingInterval = 50;
-        public static readonly string UnlockedManually = "已手动解锁";
-        public static readonly string TighteningDesc = "正在拧紧{0}号螺丝";
-        public static readonly string LooseningDesc = "正在反松{0}号螺丝";
-        public static readonly string LockedArmPosition = "力臂未在指定位置";
-        public static readonly string AdminConfirmation = "需要管理员确认";
-        public static readonly string LockedArmDisconnected = "力臂连接异常";
-        public static readonly string LockedManually = "已手动锁止";
-        public static readonly string LockedPsetSending = "正在下发程序号";
-        public static readonly string LockedPsetNull = "{0}号螺丝未配置程序号";
-        public static readonly string LockedPsetFailed = "{0}号螺丝程序号下发失败";
-        public static readonly string LockedPsetNotMatched = "{0}号螺丝程序号与控制器不匹配";
-        public static readonly string LockedArrangerTimedOut = "{0}号螺丝送钉超时";
-        public static readonly string LockedArrangerNotDone = "{0}号螺丝送钉未完成";
-        public static readonly string LockedSetterSelectorTimedOut = "{0}号螺丝套筒选择超时";
-        public static readonly string LockedSetterSelectorNotMatched = "{0}号螺丝套筒选择错误";
-        public static readonly string LockedBoltBarCode = "{0}号螺丝需要录入绑定的物料码";
-
-        private Image _clockwiseIcon;
-        private Image _anticlockwiseIcon;
-        private Image _iconShowing;
-        private Color _correctColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
-        private Color _warningColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
-        private Color _errorColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-        private int _borderSize;
-        private Rectangle _borderRect;
-
-        private Panel _picturePanel;
-        private PictureBox _pictureBox;
-        private int _picturePanelHeight;
-        private float _rotateAngle;
-
-        private string _statusTxt;
-        private string _statusDesc;
-        private Font _statusFont;
-        private Font _statusDescFont;
-
-        private WorkplaceProcessStatus _workplaceProcessStatus;
-        private int? _boltSerialNum;
-        private TightenOrLoosen _tightenOrLoosen;
-
-        public int? BoltSerialNum { get => _boltSerialNum; set => _boltSerialNum = value; }
-        public string? NGReasons { get; set; }
-        public TightenOrLoosen TightenOrLoosen {
-            get => _tightenOrLoosen;
-            set {
-                _tightenOrLoosen = value;
-                InvokeResizing();
-            }
-        }
-        public string StatusDesc { get => _statusDesc; set => _statusDesc = value; }
-        public WorkplaceProcessStatus WorkplaceProcessStatus {
-            get => _workplaceProcessStatus;
-            set {
-                if (_workplaceProcessStatus != value) {
-                    _workplaceProcessStatus = value;
-                    BeginInvoke(() => {
-                        switch (_workplaceProcessStatus) {
-                            case WorkplaceProcessStatus.UNACTIVATED:
-                                _statusTxt = "未激活";
-                                _picturePanel.Visible = false;
-                                break;
-                            case WorkplaceProcessStatus.ACTIVATED:
-                                _statusTxt = "已激活";
-                                _picturePanel.Visible = false;
-                                break;
-                            case WorkplaceProcessStatus.OPERATION_ENABLE:
-                                _picturePanel.Visible = true;
-                                break;
-                            case WorkplaceProcessStatus.OPERATION_DISABLE:
-                                _statusTxt = "已锁定";
-                                _picturePanel.Visible = false;
-                                break;
-                            case WorkplaceProcessStatus.FINISHED_NG:
-                                _statusTxt = "NG";
-                                _statusDesc = "任务失败";
-                                _picturePanel.Visible = false;
-                                break;
-                            case WorkplaceProcessStatus.FINISHED_OK:
-                                _statusTxt = "OK";
-                                _statusDesc = "任务完成";
-                                _picturePanel.Visible = false;
-                                break;
-                            default:
-                                break;
-                        }
-                    });
-                }
-            }
-        }
-
-        public WorkingProcessPanel() : base() {
-            _clockwiseIcon = Properties.Resources.processing_clockwise;
-            _anticlockwiseIcon = Properties.Resources.processing_anticlockwise;
-            _statusTxt = "未激活";
-            _statusDesc = string.Empty;
-            _workplaceProcessStatus = WorkplaceProcessStatus.UNACTIVATED;
-
-            BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
-            _borderRect = new();
-            _picturePanel = new() {
-                Parent = this,
-                Margin = new(0),
-                Padding = new(0),
-                Visible = false,
-            };
-            _pictureBox = new() {
-                Parent = _picturePanel,
-                Margin = new(0),
-                Padding = new(0),
-            };
-        }
-
-        protected override void OnHandleCreated(EventArgs e) {
-            base.OnHandleCreated(e);
-            // Run loop to check/dsiplay continually
-            RunLoop();
-        }
-
-        private void RunLoop() {
-            Task.Run(() => {
-                BeginInvoke(async () => {
-                    while (!IsDisposed) {
-                        switch (_workplaceProcessStatus) {
-                            case WorkplaceProcessStatus.UNACTIVATED:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_THEME.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_THEME;
-                                }
-                                break;
-                            case WorkplaceProcessStatus.ACTIVATED:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_BLUE.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_BLUE;
-                                }
-                                break;
-                            case WorkplaceProcessStatus.OPERATION_ENABLE:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_WHITE.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_WHITE;
-                                }
-                                // 旋转图标
-                                if (_tightenOrLoosen == TightenOrLoosen.TIGHTENING) {
-                                    _rotateAngle += 15;
-                                } else {
-                                    _rotateAngle -= 15;
-                                }
-                                Image oldImage = _pictureBox.Image;
-                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, logger, false);
-                                _pictureBox.Size = image.Size;
-                                _pictureBox.Image = image;
-                                oldImage?.Dispose();
-
-                                _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
-                                break;
-                            case WorkplaceProcessStatus.OPERATION_DISABLE:
-                            case WorkplaceProcessStatus.FINISHED_NG:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_RED.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_RED;
-                                }
-                                break;
-                            case WorkplaceProcessStatus.FINISHED_OK:
-                                if (BackColor.ToArgb() != ColorConfigs.COLOR_WORKING_PROCESS_GREEN.ToArgb()) {
-                                    BackColor = ColorConfigs.COLOR_WORKING_PROCESS_GREEN;
-                                }
-                                break;
-                            default:
-                                break;
-                        }
-                        Invalidate();
-                        Update();
-                        await Task.Delay(_loopingInterval);
-                    }
-                });
-            });
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            if (IsHandleCreated && !IsDisposed) {
-                InvokeResizing();
-            }
-        }
-
-        private void InvokeResizing() {
-            _borderRect.Size = Size;
-            _borderSize = Width / 40 + Height / 80;
-            if (ConerRadius == 0) {
-                _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F);
-                _picturePanel.Size = new(Width - _borderSize * 2, _picturePanelHeight);
-                _picturePanel.Margin = new(_borderSize);
-            } else {
-                _picturePanelHeight = (int) ((Height - _borderSize * 2) * .6F) - ConerRadius * 2;
-                _picturePanel.Size = new(Width - _borderSize * 2 - ConerRadius * 2, _picturePanelHeight);
-                _picturePanel.Margin = new(_borderSize + ConerRadius);
-            }
-
-            int imageSide = (int) (_picturePanel.Height * .85);
-            if (_picturePanel.Height > _picturePanel.Width) {
-                imageSide = (int) (_picturePanel.Width * .85);
-            }
-            if (_tightenOrLoosen == TightenOrLoosen.TIGHTENING) {
-                _iconShowing = WidgetUtils.ResizeImage(_clockwiseIcon, new Size(imageSide, imageSide));
-            } else {
-                _iconShowing = WidgetUtils.ResizeImage(_anticlockwiseIcon, new Size(imageSide, imageSide));
-            }
-        }
-
-        protected override void OnPaint(PaintEventArgs e) {
-            Graphics graphics = e.Graphics;
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.Clear(BackColor);
-            base.OnPaint(e);
-
-            _statusFont = WidgetUtils.GetProperFont(Size, _statusTxt, .375f, .9F);
-            int lines = _statusDesc.Split("\r\n").Count();
-            _statusDescFont = WidgetUtils.GetProperFont(Size, _statusDesc, .1f - lines * .005F, .9F);
-            int statusWidth = (int) (graphics.MeasureString(_statusTxt, _statusFont).Width);
-            int statusDescWidth = (int) (graphics.MeasureString(_statusDesc, _statusDescFont).Width);
-            Point statusPoint;
-            Point statusDescPoint;
-            int otherHeihgt = _borderSize + _picturePanelHeight;
-            StringFormat stringFormat = new StringFormat();
-            stringFormat.Alignment = StringAlignment.Center;
-            stringFormat.LineAlignment = StringAlignment.Center;
-            switch (_workplaceProcessStatus) {
-                case WorkplaceProcessStatus.UNACTIVATED:
-                case WorkplaceProcessStatus.ACTIVATED:
-                    // graphics.FillRectangle(new SolidBrush(_warningColor), _borderRect);
-                    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 2);
-                    graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
-                    break;
-                case WorkplaceProcessStatus.OPERATION_ENABLE:
-                    if (ConerRadius == 0) {
-                        graphics.DrawRectangle(new(_correctColor, _borderSize), _borderRect);
-                    } else {
-                        int temp = _borderSize / 2;
-                        using (GraphicsPath path = WidgetUtils.RoundedRect(new(new Point(temp, temp), _borderRect.Size - new Size(1 + _borderSize, 1 + _borderSize)), ConerRadius)) {
-                            graphics.DrawPath(new(_correctColor, _borderSize), path);
-                        }
-                    }
-                    string descShowing = _statusDesc;
-                    // 使用 StringFormat 进行居中时，是以坐标点位为中心，因此 x，y 都要设置为中心点
-                    statusDescPoint = new Point(Width / 2, otherHeihgt + (Height - otherHeihgt) / 2);
-                    graphics.DrawString(descShowing, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_GREEN), statusDescPoint, stringFormat);
-                    break;
-                case WorkplaceProcessStatus.OPERATION_DISABLE:
-                case WorkplaceProcessStatus.FINISHED_NG:
-                case WorkplaceProcessStatus.FINISHED_OK:
-                    statusPoint = new Point((Width - statusWidth) / 2, (Height - _statusFont.Height) / 3 - lines * (int) (_statusFont.Height * 0.05));
-                    graphics.DrawString(_statusTxt, _statusFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusPoint);
-                    // 使用 StringFormat 进行居中时，是以坐标点位为中心，因此 x，y 都要设置为中心点
-                    statusDescPoint = new Point(Width / 2, otherHeihgt + (Height - otherHeihgt) / 2);
-                    if (!string.IsNullOrEmpty(NGReasons) && !_statusDesc.Contains(NGReasons)) {
-                        _statusDesc += "\r\n" + NGReasons;
-                    }
-                    graphics.DrawString(_statusDesc, _statusDescFont, new SolidBrush(ColorConfigs.COLOR_WORKING_PROCESS_WHITE), statusDescPoint, stringFormat);
-                    break;
-            }
-        }
-    }
-
-    public class DataPanel: CustomContentPanel {
-        private string _data;
-        private string _unit;
-
-        public string Data {
-            get => _data;
-            set {
-                _data = value;
-                Invalidate();
-            }
-        }
-        public string Title { get => _unit; set => _unit = value; }
-
-        public DataPanel(string unit) {
-            _data = "0";
-            _unit = unit;
-            ForeColor = ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL;
-            BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
-        }
-
-        protected override void OnPaint(PaintEventArgs e) {
-            Graphics graphics = e.Graphics;
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.Clear(BackColor);
-            base.OnPaint(e);
-
-            Font dataFont;
-            if (float.Parse(_data) > 0) {
-                dataFont = WidgetUtils.GetProperFont(Size, _data, .45F, .95F);
-            } else {
-                dataFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .45F, FontStyle.Bold, GraphicsUnit.Pixel);
-            }
-            Font unitFont = new Font(WidgetsConfigs.SystemFontFamily, Height * .15F, FontStyle.Regular, GraphicsUnit.Pixel);
-
-            StringFormat dataStrFormat = new StringFormat();
-            dataStrFormat.Alignment = StringAlignment.Near;
-            dataStrFormat.LineAlignment = StringAlignment.Near;
-
-            StringFormat unitStrFormat = new StringFormat();
-            unitStrFormat.Alignment = StringAlignment.Far;
-            unitStrFormat.LineAlignment = StringAlignment.Far;
-
-            graphics.DrawString(_data, dataFont, new SolidBrush(ForeColor), new Point(0, 0), dataStrFormat);
-            graphics.DrawString(_unit, unitFont, new SolidBrush(WidgetUtils.LightColor(ColorConfigs.COLOR_TIGHTENING_DATA_NORMAL, .5)), new Point(Width, (int) (Height * .95)), unitStrFormat);
-        }
-    }
-
-    public class DeviceBlock: CustomImageTextButtonBase {
-        private DeviceCategory _category;
-
-        private readonly float _imageRatio = 0.75F;
-        private Rectangle _borderRect;
-        private Color? _borderColor;
-        private string _categoryName;
-        private CustomFloatingForm? _floatingForm;
-        private CustomPopUpForm? _popUpForm;
-
-        public DeviceCategory Category { get => _category; set => _category = value; }
-        public Color? BorderColor { get => _borderColor; set => _borderColor = value; }
-        public string CategoryName { get => _categoryName; set => _categoryName = value; }
-        public CustomFloatingForm? FloatingForm { get => _floatingForm; set => _floatingForm = value; }
-        public CustomPopUpForm? PopUpForm { get => _popUpForm; set => _popUpForm = value; }
-
-        public DeviceBlock(DeviceCategory category) : base() {
-            _category = category;
-            _categoryName = category.Name;
-            Icon = CommonUtils.ImageBase64ToImage(category.IconEmptyStr);
-        }
-
-        protected override void OnSizeChanged(EventArgs e) {
-            base.OnSizeChanged(e);
-            _borderRect = new(0, 0, Width, Height);
-        }
-
-        public void ResetIconByStatus(DeviceStatus status) {
-            switch (status) {
-                case DeviceStatus.NORMAL:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconStr);
-                    break;
-                case DeviceStatus.ERROR:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconErrorStr);
-                    break;
-                case DeviceStatus.EMPTY:
-                    Icon = CommonUtils.ImageBase64ToImage(_category.IconEmptyStr);
-                    break;
-            }
-            ResizeIconImage();
-        }
-
-        protected override void PaintAfter(PaintEventArgs e) {
-            base.PaintAfter(e);
-            if (_borderColor != null) {
-                e.Graphics.DrawRectangle(new Pen(_borderColor.Value, 1), _borderRect);
-            }
-        }
-
-        protected override void ResizeIconImage() {
-            if (Icon != null) {
-                Size newSize = (Size * _imageRatio).ToSize();
-                ImageShowing = WidgetUtils.ResizeImage(Icon, newSize);
-                // Recalculate image position
-                ImageX = (Width - newSize.Width) / 2;
-                ImageY = (Height - newSize.Height) / 2;
-            }
-        }
-
-        protected override void ResizeTextLabel() {
-        }
-    }
-
-    public class ArmDetailFloatingForm: CustomFloatingForm {
-        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
-        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
-
-        private int _panelHeight;
-
-        public ArmDetailFloatingForm(string categoryName, List<IoBoxTask> armTasks, int panelHeight) {
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "设备连接信息 - " + categoryName;
-            ContentPanel.FlowDirection = FlowDirection.TopDown;
-            _panelHeight = panelHeight;
-
-            DisplayArmDetails(armTasks);
-        }
-
-        private void DisplayArmDetails(List<IoBoxTask> armTasks) {
-            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
-
-            foreach (IoBoxTask armTask in armTasks) {
-                CustomContentPanel panel = new() {
-                    Parent = ContentPanel,
-                };
-                ContentPanel.SizeChanged += (sender, eventArgs) => {
-                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
-                };
-                panel.Paint += (sender, eventArgs) => {
-                    Graphics g = eventArgs.Graphics;
-                    Image icon;
-                    int imageSide = (int) (_panelHeight * .8);
-                    if (armTask.Connected) {
-                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
-                    } else {
-                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
-                    }
-                    int imageY = (_panelHeight - imageSide) / 2;
-                    g.DrawImage(icon, new Point(0, imageY));
-                    g.DrawString($"{armTask.Ip} : {armTask.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
-                };
-            }
-        }
-    }
-
-    public class ArmDetailPopUpForm: CustomPopUpForm {
-        private List<WorkstationDTO> _workstationDTOs;
-        private List<IoBoxTask> _armTasks;
-        private int _panelHeight;
-
-        private List<CoordinatesPanel> armPanels = new();
-
-        public ArmDetailPopUpForm(string categoryName, List<WorkstationDTO> workstationDTOs, List<IoBoxTask> armTasks, int panelHeight) {
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "设备连接信息 - " + categoryName;
-            _workstationDTOs = workstationDTOs;
-            _armTasks = armTasks;
-            _panelHeight = panelHeight;
-
-            InitializeDisplay();
-        }
-
-        private void InitializeDisplay() {
-            foreach (IoBoxTask task in _armTasks) {
-                if (task.ArmType != null) {
-                    int armId = task.ArmType.DeviceId;
-                    WorkstationDTO? dto = _workstationDTOs.SingleOrDefault(dto => dto.arm_id == armId);
-                    CoordinatesPanel panel = new(dto != null ? dto.name : "未配置站点", _panelHeight, ResetCoordinatesPositionX) {
-                        Parent = ContentPanel,
-                    };
-                    ContentPanel.SizeChanged += (sender, eventArgs) => {
-                        panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, this._panelHeight);
-                    };
-                    armPanels.Add(panel);
-                    // Bind delegate 
-                    task.ArmType.ActionAfterCoordinatesReceived += panel.SetCoordinates;
-                    // Remove delegate
-                    panel.HandleDestroyed += (sender, eventArgs) => {
-                        task.ArmType.ActionAfterCoordinatesReceived -= panel.SetCoordinates;
-                    };
-                }
-            }
-            void ResetCoordinatesPositionX() {
-                int maxX = armPanels.Select(p => p.CoordinatesX).Max();
-                foreach (CoordinatesPanel panel in armPanels) {
-                    if (panel.CoordinatesX < maxX) {
-                        panel.CoordinatesX = maxX;
-                    }
-                }
-            }
-        }
-
-        private class CoordinatesPanel: CustomContentPanel {
-            private int _panelHeight;
-            private string _content;
-            private int _Y = 0;
-            private int _coordinatesX = 0;
-            private Action _resetPositionX;
-
-            public string XStr { get; set; }
-            public string YStr { get; set; }
-            public string ZStr { get; set; }
-            public int CoordinatesX { get => _coordinatesX; set => _coordinatesX = value; }
-
-            public CoordinatesPanel(string workstationName, int panelHeight, Action resetPositionX) {
-                _content = $"站点：{workstationName}";
-                _panelHeight = panelHeight;
-                _resetPositionX = resetPositionX;
-
-                XStr = "0";
-                YStr = "0";
-                ZStr = "0";
-            }
-
-            protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-                base.ResizeChildren(sender, eventArgs);
-                Font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .45F, FontStyle.Regular, GraphicsUnit.Pixel);
-                _coordinatesX = (int) (TextRenderer.MeasureText(_content, Font).Width * 1.2);
-                _Y = (_panelHeight - Font.Height) / 2;
-                _resetPositionX();
-            }
-
-            protected override void OnPaint(PaintEventArgs e) {
-                base.OnPaint(e);
-                Graphics g = e.Graphics;
-
-                string coordinates = $"坐标：  X-{XStr}    Y-{YStr}";
-                if (ZStr != "0") {
-                    coordinates += $"    Z-{ZStr}";
-                }
-                g.DrawString(_content, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(0, _Y));
-                g.DrawString(coordinates, Font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point(_coordinatesX, _Y));
-            }
-
-            public void SetCoordinates(int maxValue, Coordinates3D coordinates) {
-                Task.Run(() => {
-                    BeginInvoke(() => {
-                        XStr = coordinates.X + "";
-                        YStr = coordinates.Y + "";
-                        ZStr = coordinates.Z + "";
-                        Invalidate();
-                    });
-                });
-            }
-        }
-    }
-
-    public class ToolDetailFloatingForm: CustomFloatingForm {
-        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
-        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
-
-        private int _panelHeight;
-
-        public ToolDetailFloatingForm(string categoryName, Dictionary<int, ToolTask> toolTasks, int panelHeight) {
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "设备连接信息 - " + categoryName;
-            ContentPanel.FlowDirection = FlowDirection.TopDown;
-            _panelHeight = panelHeight;
-
-            DisplayToolDetails(toolTasks);
-        }
-
-        private void DisplayToolDetails(Dictionary<int, ToolTask> toolTasks) {
-            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
-
-            foreach (KeyValuePair<int, ToolTask> toolTask in toolTasks) {
-                CustomContentPanel panel = new() {
-                    Parent = ContentPanel,
-                };
-                ContentPanel.SizeChanged += (sender, eventArgs) => {
-                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
-                };
-                panel.Paint += (sender, eventArgs) => {
-                    Graphics g = eventArgs.Graphics;
-                    Image icon;
-                    ToolTask task = toolTask.Value;
-                    int imageSide = (int) (_panelHeight * .8);
-                    if (task.Connected) {
-                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
-                    } else {
-                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
-                    }
-                    int imageY = (_panelHeight - imageSide) / 2;
-                    g.DrawImage(icon, new Point(0, imageY));
-                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
-                };
-            }
-        }
-    }
-
-    public class ToolOperationPopUpForm: CustomPopUpForm {
-        private ILog logger = MainUtils.GetLogger(typeof(ToolOperationPopUpForm));
-
-        private List<WorkstationDTO> _workstationDTOs;
-        private Dictionary<int, ToolTask> _toolTasks;
-        private AWorkplaceContentPanel _workplace;
-        private Action? _setPset;
-        private BoltButton? _currentWorkingBolt;
-        private Dictionary<int, BoltButton> _currentWorkingBoltIndependence;
-        private bool _isMultiDeviceIndependenceMode;
-
-        private TableLayoutPanel _tablePanel;
-        private int _boxHeight;
-        private int _boxMargin;
-        private CustomComboBoxGroup<int> _stationComboBox;
-        private CustomTextBoxGroup _parameterSetTextBox;
-        private FunctionButton _btnLock;
-        private FunctionButton _btnUnlock;
-        private CommonButton _btnPSet;
-
-        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-        public Action? SetPset { get => _setPset; set => _setPset = value; }
-        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
-        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
-        public FunctionButton BtnLock { get => _btnLock; set => _btnLock = value; }
-        public FunctionButton BtnUnlock { get => _btnUnlock; set => _btnUnlock = value; }
-        public CommonButton BtnPSet { get => _btnPSet; set => _btnPSet = value; }
-
-        public ToolOperationPopUpForm(BoltButton? currentWorkingBolt, Dictionary<int, BoltButton> currentWorkingBoltIndependence,
-                bool isMultiDeviceIndependenceMode, string categoryName, AWorkplaceContentPanel workplace,
-                List<WorkstationDTO> workstationDTOs, Dictionary<int, ToolTask> toolTasks, int? currentWorkstationId, Action? setPset) {
-            _currentWorkingBolt = currentWorkingBolt;
-            _currentWorkingBoltIndependence = currentWorkingBoltIndependence;
-            _isMultiDeviceIndependenceMode = isMultiDeviceIndependenceMode;
-            _workstationDTOs = workstationDTOs;
-            _toolTasks = toolTasks;
-            _workplace = workplace;
-            _setPset = setPset;
-
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "手动操作 - " + categoryName + "";
-
-            _tablePanel = new() {
-                Margin = new(0),
-                Padding = new(0),
-                ColumnCount = 2,
-                Parent = ContentPanel,
-            };
-
-            Dictionary<string, int> workstationOptions = _workstationDTOs.ToDictionary(dto => CommonUtils.CannotBeNull(dto.name), dto => dto.id);
-            _stationComboBox = new("站点") {
-                Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            foreach (KeyValuePair<string, int> pair in workstationOptions) {
-                _stationComboBox.AddItem(pair.Key, pair.Value);
-            }
-            _parameterSetTextBox = new("程序") {
-                Parent = _tablePanel,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                PositiveIntOnly = true,
-            };
-            _parameterSetTextBox.SetValue(0, "1");
-
-            _btnLock = AddButton("锁枪");
-            _btnLock.Click += (s, e) => {
-                SendCommand(async toolTask => {
-                    _workplace.RemoveInformationMsg(WorkingProcessPanel.UnlockedManually);
-                    _workplace.AddLockMsg(WorkingProcessPanel.LockedManually);
-                    toolTask.ForceSendLock();
-
-                    await Task.Delay(500);
-                    if (toolTask.Locked) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
-                    } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令");
-                    }
-                });
-            };
-            _btnUnlock = AddButton("解锁");
-            _btnUnlock.Click += (s, e) => {
-                SendCommand(async toolTask => {
-                    _workplace.ClearLockMsgs();
-                    _workplace.AddInformationMsg(WorkingProcessPanel.UnlockedManually);
-                    toolTask.ForceSendUnlock();
-
-                    await Task.Delay(500);
-                    if (!toolTask.Locked) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
-                    } else {
-                        string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】");
-                    }
-                });
-            };
-            _btnPSet = AddButton("下发");
-            _btnPSet.Click += (s, e) => {
-                SendCommand(async toolTask => {
-                    string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
-                    int pset = int.Parse(parameterSet);
-                    if (await toolTask.SendPSetAsync(pset)) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
-
-                        BoltButton? boltButton = null;
-                        int workstationId = _stationComboBox.Value;
-                        if (_isMultiDeviceIndependenceMode && _currentWorkingBoltIndependence.ContainsKey(workstationId)) {
-                            boltButton = _currentWorkingBoltIndependence[workstationId];
-                        } else {
-                            boltButton = _currentWorkingBolt;
-                        }
-                        if (boltButton != null) {
-                            boltButton.CurrentParameterSet = pset;
-                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                            _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                            if (_setPset != null) {
-                                _setPset();
-                            }
-                            // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
-                            Dispose();
-                        }
-                    } else {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】, 工具锁定\r\n3. 【控制器-虚拟站-任务】未配置为【source tightening】");
-                    }
-                });
-            };
-            CommonButton btnClose = AddButton("关闭");
-            btnClose.Click += (s, e) => {
-                Dispose();
-            };
-        }
-
-        private void SendCommand(Action<ToolTask> aciont) {
-            if (_stationComboBox.IsDefaultValue()) {
-                WidgetUtils.ShowErrorPopUp("操作失败！请选择需要操作的工具所在的站点！");
-            } else {
-                int workstationId = _stationComboBox.Value;
-                WorkstationDTO workstationDTO = _workstationDTOs.Single(dto => dto.id == workstationId);
-                if (workstationDTO.tool_id == null) {
-                    WidgetUtils.ShowErrorPopUp("操作失败！当前选择的站点没有配置工具，请检查配置。");
-                } else {
-                    if (!_toolTasks.ContainsKey(workstationDTO.tool_id.Value)) {
-                        WidgetUtils.ShowErrorPopUp($"操作失败！未找到当前站点配置的工具。");
-                    } else {
-                        ToolTask toolTask = _toolTasks[workstationDTO.tool_id.Value];
-                        aciont(toolTask);
-                    }
-                }
-            }
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            base.ResizeChildren(sender, eventArgs);
-            _tablePanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
-
-            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
-            IList list = _tablePanel.Controls;
-            for (int i = 0; i < list.Count; i++) {
-                Control? control = (Control?) list[i];
-                if (control != null) {
-                    control.Margin = new(_boxMargin);
-                    control.Size = new(boxW, _boxHeight);
-                }
-            }
-        }
-    }
-
-    public class SerialPortDetailFloatingForm: CustomFloatingForm {
-        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
-        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
-
-        private int _panelHeight;
-
-        public SerialPortDetailFloatingForm(string categoryName, Dictionary<int, SerialPortTask> serialPortTasks, int panelHeight) {
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "设备连接信息 - " + categoryName;
-            ContentPanel.FlowDirection = FlowDirection.TopDown;
-            _panelHeight = panelHeight;
-
-            DisplaySerialPortDetails(serialPortTasks);
-        }
-
-        private void DisplaySerialPortDetails(Dictionary<int, SerialPortTask> serialPortTasks) {
-            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
-
-            foreach (KeyValuePair<int, SerialPortTask> serialPortTask in serialPortTasks) {
-                CustomContentPanel panel = new() {
-                    Parent = ContentPanel,
-                };
-                ContentPanel.SizeChanged += (sender, eventArgs) => {
-                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
-                };
-                panel.Paint += (sender, eventArgs) => {
-                    Graphics g = eventArgs.Graphics;
-                    Image icon;
-                    SerialPortTask task = serialPortTask.Value;
-                    int imageSide = (int) (_panelHeight * .8);
-                    if (task.Connected) {
-                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
-                    } else {
-                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
-                    }
-                    int imageY = (_panelHeight - imageSide) / 2;
-                    g.DrawImage(icon, new Point(0, imageY));
-                    g.DrawString($"{task.PortName} - {task.FullName}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
-                };
-            }
-        }
-    }
-
-    public class CommunicationDetailFloatingForm: CustomFloatingForm {
-        private readonly Image _statusIconConnected = Properties.Resources.device_connected;
-        private readonly Image _statusIconDisconnected = Properties.Resources.device_disconnected;
-
-        private int _panelHeight;
-
-        public CommunicationDetailFloatingForm(string categoryName, Dictionary<int, CommunicationTask> armTasks, int panelHeight) {
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "设备连接信息 - " + categoryName;
-            ContentPanel.FlowDirection = FlowDirection.TopDown;
-            _panelHeight = panelHeight;
-
-            DisplayCommunicationDetails(armTasks);
-        }
-
-        private void DisplayCommunicationDetails(Dictionary<int, CommunicationTask> armTasks) {
-            Font font = new(WidgetsConfigs.SystemFontFamily, _panelHeight * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
-
-            foreach (KeyValuePair<int, CommunicationTask> armTask in armTasks) {
-                CustomContentPanel panel = new() {
-                    Parent = ContentPanel,
-                };
-                ContentPanel.SizeChanged += (sender, eventArgs) => {
-                    panel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, _panelHeight);
-                };
-                panel.Paint += (sender, eventArgs) => {
-                    Graphics g = eventArgs.Graphics;
-                    Image icon;
-                    CommunicationTask task = armTask.Value;
-                    int imageSide = (int) (_panelHeight * .8);
-                    if (task.Connected) {
-                        icon = WidgetUtils.ResizeImage(_statusIconConnected, imageSide, imageSide);
-                    } else {
-                        icon = WidgetUtils.ResizeImage(_statusIconDisconnected, imageSide, imageSide);
-                    }
-                    int imageY = (_panelHeight - imageSide) / 2;
-                    g.DrawImage(icon, new Point(0, imageY));
-                    g.DrawString($"{task.Ip} : {task.Port}", font, new SolidBrush(ColorConfigs.COLOR_TEXT_BOX_FOREGROUND), new Point((int) (_panelHeight * 1.15), imageY));
-                };
-            }
-        }
-    }
-
-    public class ArrangerOperationPopUpForm: CustomPopUpForm {
-        private ILog log = MainUtils.GetLogger(typeof(ArrangerOperationPopUpForm));
-
-        private IoBoxTask ioBoxTask;
-        private AWorkplaceContentPanel _workplace;
-
-        private TableLayoutPanel _tablePanel;
-        private int _boxHeight;
-        private int _boxMargin;
-        private List<SignalButton> _outBtns;
-        private List<SignalLabel> _inBtns;
-
-        private System.Windows.Forms.Timer updateTimer;
-        private readonly CancellationTokenSource _cts = new();
-
-        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
-        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
-
-        public ArrangerOperationPopUpForm(string categoryName,
-                                          AWorkplaceContentPanel workplace,
-                                          IoBoxTask ioBoxTask) {
-            this.ioBoxTask = ioBoxTask;
-            _workplace = workplace;
-
-            BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "螺丝机信号点测试 - " + categoryName + "";
-
-            _tablePanel = new() {
-                Margin = new(0),
-                Padding = new(0),
-                ColumnCount = 8,
-                Parent = ContentPanel,
-            };
-
-            _outBtns = new();
-            for (int i = 0; i < 8; i++) {
-                SignalButton signalButton = new() {
-                    Label = $"输出-{(i + 1)}",
-                    Index = i,
-                    Parent = _tablePanel,
-                };
-                signalButton.Click += OutClick;
-                _outBtns.Add(signalButton);
-            }
-
-            _inBtns = new();
-            for (int i = 0; i < 8; i++) {
-                _inBtns.Add(new SignalLabel() {
-                    Text = $"输入-{(i + 1)}",
-                    Index = i,
-                    Parent = _tablePanel,
-                });
-            }
-
-            updateTimer = new();
-            updateTimer.Interval = 50; // 50ms
-            updateTimer.Tick += UpdateTimerTick;
-            updateTimer.Start();
-        }
-
-        private void UpdateTimerTick(object? sender, EventArgs e) {
-            try {
-                var (outPos, inPos) = ioBoxTask.ArrangerType!.ReadCurrent();
-
-                BeginInvoke(() => {
-                    UpdateButtonStates(_outBtns, outPos);
-                    UpdateLabelStates(_inBtns, inPos);
-                });
-            } catch (OperationCanceledException) {
-                log.Info("Cancel looping...");
-                updateTimer.Stop();
-            } catch (Exception ex) {
-                log.Warn("Failed to read IO status", ex);
-            }
-        }
-
-        private void UpdateButtonStates(List<SignalButton> buttons, int?[] values) {
-            for (int i = 0; i < Math.Min(buttons.Count, values.Length); i++) {
-                buttons[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
-                buttons[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
-            }
-        }
-
-        private void UpdateLabelStates(List<SignalLabel> labels, int?[] values) {
-            for (int i = 0; i < Math.Min(labels.Count, values.Length); i++) {
-                labels[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
-                labels[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
-            }
-        }
-
-        private async void OutClick(object? sender, EventArgs eventArgs) {
-            SignalButton btn = (SignalButton) sender!;
-
-            // 立即禁用按钮防止重复点击
-            btn.Enabled = false;
-
-            try {
-                int?[] sendPos = { null, null, null, null, null, null, null, null };
-                sendPos[btn.Index] = 1;
-
-                // 直接await，不要再用Task.Run包装
-                await ioBoxTask.ArrangerType!.SendPulseAsync(sendPos);
-
-            } catch (Exception ex) {
-                log.Warn("Error while sending pulse...", ex);
-            } finally {
-                // 重新启用按钮
-                btn.Enabled = true;
-            }
-        }
-
-        // 确保窗体关闭时释放资源
-        protected override void OnFormClosed(FormClosedEventArgs e) {
-            base.OnFormClosed(e);
-            _cts.Cancel();
-            _cts.Dispose();
-            updateTimer.Stop();
-        }
-
-        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
-            base.ResizeChildren(sender, eventArgs);
-            _tablePanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
-
-            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
-            IList list = _tablePanel.Controls;
-            for (int i = 0; i < list.Count; i++) {
-                Control? control = (Control?) list[i];
-                if (control != null) {
-                    control.Margin = new(_boxMargin);
-                    control.Size = new(boxW, _boxHeight);
-                }
-            }
-        }
-    }
-
-    public class BarCodeObj {
-        public string ProductBarCode { get; set; } = string.Empty;
-        public List<string> PartsBarCodes { get; } = new();
-        public List<int> PartsMatchingRulesCached { get; } = new();
-        public int PartsRulesCount { get; set; } = 0;
-
-        public void Reset() {
-            ProductBarCode = string.Empty;
-            PartsBarCodes.Clear();
-            PartsMatchingRulesCached.Clear();
-            PartsRulesCount = 0;
-        }
-    }
-
-    public class SidePopUpForm: CustomPopUpForm2 {
-        private AWorkplaceContentPanel _workplace;
-        public Label ProductSideTitle { get; set; }
-        public PictureBox SmallSideImage { get; set; }
-        public PageSwitchButton First { get; set; }
-        public PageSwitchButton Backward { get; set; }
-        public Label PageInfo { get; set; }
-        public PageSwitchButton Forward { get; set; }
-        public PageSwitchButton Last { get; set; }
-        public TableLayoutPanel ButtonPanel { get; set; }
-
-        public SidePopUpForm(AWorkplaceContentPanel workplace) {
-            _workplace = workplace;
-
-            // Title of current side
-            ProductSideTitle = new() {
-                Parent = ContentPanel,
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-            };
-            SmallSideImage = new() {
-                Parent = ContentPanel,
-                BackColor = ColorConfigs.COLOR_EMPTY_PRODUCT_CONTENT_BACKGROUND,
-            };
-            // Page info
-            int currentPage = 1;
-            int totalPages = 1;
-            List<ProductSideDTO>? productSides = workplace._mission.ProductSides;
-            if (productSides != null) {
-                ProductSideTitle.Text = productSides[0].name;
-                totalPages = productSides.Count;
-            }
-            First = new() {
-                Icon = Properties.Resources.page_btn_backward_fast,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            Backward = new() {
-                Icon = Properties.Resources.page_btn_backward,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            PageInfo = new() {
-                Margin = new(0),
-                Padding = new(0),
-                AutoSize = true,
-                ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-            };
-            Forward = new() {
-                Icon = Properties.Resources.page_btn_forward,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            Last = new() {
-                Icon = Properties.Resources.page_btn_forward_fast,
-                TotalPages = totalPages,
-                CurrentPage = currentPage,
-            };
-            PageInfo.Text = Text = $"{currentPage}/{totalPages}";
-            ButtonPanel = new() {
-                Parent = ButtonsPanel,
-                Margin = new(0),
-                Padding = new(0),
-                ColumnCount = 5,
-            };
-            ButtonPanel.Controls.Add(First);
-            ButtonPanel.Controls.Add(Backward);
-            ButtonPanel.Controls.Add(PageInfo);
-            ButtonPanel.Controls.Add(Forward);
-            ButtonPanel.Controls.Add(Last);
-
-            First.Click += (sender, eventArgs) => {
-                if (workplace._mission.id > 0) {
-                    workplace._currentSideIndex = 0;
-                    workplace.ChangeSideAndInvalidate();
-                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
-                }
-            };
-            Backward.Click += (sender, eventArgs) => {
-                if (workplace._mission.id > 0) {
-                    if (workplace._currentSideIndex <= 0) {
-                        workplace._currentSideIndex = 0;
-                    } else {
-                        workplace._currentSideIndex -= 1;
-                    }
-                    workplace.ChangeSideAndInvalidate();
-                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
-                }
-            };
-            Forward.Click += (sender, eventArgs) => {
-                if (workplace._mission.id > 0) {
-                    if (workplace._currentSideIndex >= workplace._missionImages.Count - 1) {
-                        workplace._currentSideIndex = workplace._missionImages.Count - 1;
-                    } else {
-                        workplace._currentSideIndex += 1;
-                    }
-                    workplace.ChangeSideAndInvalidate();
-                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
-                }
-            };
-            Last.Click += (sender, eventArgs) => {
-                if (workplace._mission.id > 0) {
-                    workplace._currentSideIndex = workplace._missionImages.Count - 1;
-                    workplace.ChangeSideAndInvalidate();
-                    PageInfo.Text = Text = $"{workplace._currentSideIndex + 1}/{totalPages}";
-                }
-            };
-        }
-
-        public void ResizeSelf() {
-            int buttonsAreaWidth = ButtonsPanel.Width - ButtonsPanel.Padding.Size.Width;
-            int buttonsAreaHeight = ButtonsPanel.Height - ButtonsPanel.Padding.Size.Height;
-            int switchBtnSide = (int) (buttonsAreaHeight * .725);
-            int vPadding = (buttonsAreaHeight - switchBtnSide) / 2;
-            int hPadding = (int) (switchBtnSide * .5);
-
-            PageInfo.Font = new(WidgetsConfigs.SystemFontFamily, switchBtnSide * .75F, FontStyle.Regular, GraphicsUnit.Pixel);
-            First.Size = new(switchBtnSide, switchBtnSide);
-            Backward.Size = new(switchBtnSide, switchBtnSide);
-            Forward.Size = new(switchBtnSide, switchBtnSide);
-            Last.Size = new(switchBtnSide, switchBtnSide);
-
-            First.Margin = new(0, vPadding, hPadding, 0);
-            Backward.Margin = new(0, vPadding, hPadding, 0);
-            PageInfo.Margin = new(0, vPadding, hPadding, 0);
-            Forward.Margin = new(0, vPadding, hPadding, 0);
-            Last.Margin = new(0, vPadding, 0, 0);
-
-            ButtonPanel.Size = new(switchBtnSide * 4 + PageInfo.Width + hPadding * 4 + ContentPanel.Padding.Right, buttonsAreaHeight);
-            ButtonPanel.Location = new(ContentPanel.Padding.Left, 0);
-
-            int contentVPadding = ContentPanel.Padding.Top;
-            ProductSideTitle.Font = new(WidgetsConfigs.SystemFontFamily, WidgetUtils.PopUpOrFloatingFormTextOrComboBoxHeight() * .55F, FontStyle.Regular, GraphicsUnit.Pixel);
-            int sideTitleHeight = ProductSideTitle.Font.Height;
-            int contentRealWidth = ButtonsInnerPanel.Width + ButtonPanel.Width;
-            int smallImageHeight = _workplace._productImageDisplayPanel.Height * contentRealWidth / _workplace._productImageDisplayPanel.Width;
-            int contentRealHeight = contentVPadding + smallImageHeight + sideTitleHeight;
-
-            ProductSideTitle.Size = new(contentRealWidth, sideTitleHeight);
-            SmallSideImage.Size = new(contentRealWidth, smallImageHeight);
-            SmallSideImage.Margin = new(0, contentVPadding, 0, 0);
-            ResetImage();
-
-            Size contentSize = new(ContentPanel.Padding.Size.Width + contentRealWidth, ContentPanel.Padding.Size.Height + contentRealHeight);
-            SetContentSizeAndSelfSize(contentSize);
-        }
-
-        public void ResetImage() {
-            if (_workplace._mission.id > 0) {
-                Image? image = _workplace._missionImages[_workplace._currentSideIndex];
-                if (image != null) {
-                    float zoomingRatio = MainUtils.GetZoomingRatio(image.Size, SmallSideImage.Size);
-                    Image imageTemp = MainUtils.ResizeImageByZoomingRatio(image, zoomingRatio);
-                    SmallSideImage.Image = imageTemp;
-                    if (SmallSideImage.Width > imageTemp.Width) {
-                        int iHPadding = (SmallSideImage.Width - imageTemp.Width) / 2;
-                        SmallSideImage.Padding = new(iHPadding, 0, iHPadding, 0);
-                    } else if (SmallSideImage.Height > imageTemp.Height) {
-                        int iVPadding = (SmallSideImage.Height - imageTemp.Height) / 2;
-                        SmallSideImage.Padding = new(0, iVPadding, 0, iVPadding);
-                    }
-                }
-            } else {
-                float zoomingRatio = (MainUtils.GetZoomingRatio(_workplace._defaultImage.Size, SmallSideImage.Size) * .5F);
-                Image imageTemp = MainUtils.ResizeImageByZoomingRatio(_workplace._defaultImage, zoomingRatio);
-                SmallSideImage.Image = imageTemp;
-                int iHPadding = (SmallSideImage.Width - imageTemp.Width) / 2;
-                int iVPadding = (SmallSideImage.Height - imageTemp.Height) / 2;
-                SmallSideImage.Padding = new(iHPadding, iVPadding, iHPadding, iVPadding);
-            }
-        }
     }
 }
