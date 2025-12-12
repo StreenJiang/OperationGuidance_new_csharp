@@ -14,6 +14,7 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
@@ -300,6 +301,94 @@ namespace OperationGuidance_new.Views {
             // for (int i = 0; i < 5000; i++) {
             //     workstationVOs.Add(workstationVOs[0]);
             // }
+            return vos;
+        }
+
+        // 【分页查询】新增分页查询方法，支持搜索条件
+        private List<MissionRecordVO> QueryListWithPagination(int pageNumber, int pageSize, string? productBarCode = null, string? partsBarCode = null, DateTime? startDate = null, DateTime? endDate = null, string? missionName = null, List<int?>? ids = null, bool? isChallengeMission = null) {
+            var req = new QueryMissionRecordListReq {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                ProductBarCode = productBarCode,
+                PartsBarCode = partsBarCode,
+                Date = startDate, // 注意：这里只使用startDate，SCII版本只支持单个日期
+                MissionName = missionName,
+                Ids = ids?.Where(id => id.HasValue).Select(id => id.Value).ToList(),
+                IsChallengeMission = isChallengeMission
+            };
+
+            QueryMissionRecordListRsp rsp = apis.QueryMissionRecordList(req);
+            _dataDTOList = rsp.MissionRecordDTOs;
+            List<MissionRecordVO> vos = new();
+            CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(_dataDTOList, vos);
+
+            // 查询站点信息，并给每个任务记录填上对应的站点
+            List<int> missionRecordIds = vos.Select(vo => (int) vo.id).Distinct().ToList();
+            if (missionRecordIds.Count > 0) {
+                Dictionary<int, Dictionary<int, string>> workstationInfos = apis.QueryWorkstationInfoByMissionRecordIds(new(missionRecordIds)).WorkstationInfos;
+                vos.ForEach(vo => {
+                    if (workstationInfos.ContainsKey(vo.id.Value)) {
+                        Dictionary<int, string> dict = workstationInfos[vo.id.Value];
+                        vo.workstation_id = dict.Keys.ToList()[0];
+                        vo.workstation_name = dict.Values.ToList()[0];
+                    }
+                });
+            }
+
+            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+            _missions = _missions.Where(m => vos.Select(v => v.mission_id).Distinct().ToList().Contains(m.id)).ToList();
+            vos.ForEach(vo => {
+                ProductMissionDTO? productMissionDTO = _missions.SingleOrDefault(m => m.id == vo.mission_id);
+                if (productMissionDTO != null) {
+                    vo.mission_name = productMissionDTO.name;
+                    vo.is_challenge_mission = productMissionDTO.is_challenge_mission == (int) YesOrNo.YES;
+                }
+            });
+
+            return vos;
+        }
+
+        // 【分页查询】新增全量查询方法，用于导出功能
+        private List<MissionRecordVO> QueryListForExport(string? productBarCode = null, string? partsBarCode = null, DateTime? startDate = null, DateTime? endDate = null, string? missionName = null, List<int?>? ids = null, bool? isChallengeMission = null) {
+            var req = new QueryMissionRecordListReq {
+                PageNumber = 1,
+                PageSize = int.MaxValue, // 获取所有数据
+                ProductBarCode = productBarCode,
+                PartsBarCode = partsBarCode,
+                Date = startDate,
+                MissionName = missionName,
+                Ids = ids?.Where(id => id.HasValue).Select(id => id.Value).ToList(),
+                IsChallengeMission = isChallengeMission
+            };
+
+            QueryMissionRecordListRsp rsp = apis.QueryMissionRecordList(req);
+            _dataDTOList = rsp.MissionRecordDTOs;
+            List<MissionRecordVO> vos = new();
+            CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(_dataDTOList, vos);
+
+            // 查询站点信息，并给每个任务记录填上对应的站点
+            List<int> missionRecordIds = vos.Select(vo => (int) vo.id).Distinct().ToList();
+            if (missionRecordIds.Count > 0) {
+                Dictionary<int, Dictionary<int, string>> workstationInfos = apis.QueryWorkstationInfoByMissionRecordIds(new(missionRecordIds)).WorkstationInfos;
+                vos.ForEach(vo => {
+                    if (workstationInfos.ContainsKey(vo.id.Value)) {
+                        Dictionary<int, string> dict = workstationInfos[vo.id.Value];
+                        vo.workstation_id = dict.Keys.ToList()[0];
+                        vo.workstation_name = dict.Values.ToList()[0];
+                    }
+                });
+            }
+
+            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+            _missions = _missions.Where(m => vos.Select(v => v.mission_id).Distinct().ToList().Contains(m.id)).ToList();
+            vos.ForEach(vo => {
+                ProductMissionDTO? productMissionDTO = _missions.SingleOrDefault(m => m.id == vo.mission_id);
+                if (productMissionDTO != null) {
+                    vo.mission_name = productMissionDTO.name;
+                    vo.is_challenge_mission = productMissionDTO.is_challenge_mission == (int) YesOrNo.YES;
+                }
+            });
+
             return vos;
         }
         protected override void AddOrUpdate(MissionRecordDTO dto, Action action) { }

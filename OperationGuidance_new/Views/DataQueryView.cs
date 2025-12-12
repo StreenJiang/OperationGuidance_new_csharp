@@ -12,6 +12,7 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Reflection;
@@ -254,6 +255,42 @@ namespace OperationGuidance_new.Views {
             // for (int i = 0; i < 5000; i++) {
             //     workstationVOs.Add(workstationVOs[0]);
             // }
+            return vos;
+        }
+
+        // 【分页查询】新增分页查询方法，支持搜索条件
+        private List<OperationDataVO> QueryListWithPagination(int pageNumber, int pageSize, string? vinNumber = null, int? workstationId = null, DateTime? startDate = null, DateTime? endDate = null) {
+            var req = new QueryOperationDataListReq {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                VinNumber = vinNumber,
+                WorkstationId = workstationId,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            QueryOperationDataListRsp rsp = apis.QueryOperationDataList(req);
+            _dataDTOList = rsp.OperationDataDTOs;
+            List<OperationDataVO> vos = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
+            return vos;
+        }
+
+        // 【分页查询】新增全量查询方法，用于导出功能
+        private List<OperationDataVO> QueryListForExport(string? vinNumber = null, int? workstationId = null, DateTime? startDate = null, DateTime? endDate = null) {
+            var req = new QueryOperationDataListReq {
+                PageNumber = 1,
+                PageSize = int.MaxValue, // 获取所有数据
+                VinNumber = vinNumber,
+                WorkstationId = workstationId,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            QueryOperationDataListRsp rsp = apis.QueryOperationDataList(req);
+            _dataDTOList = rsp.OperationDataDTOs;
+            List<OperationDataVO> vos = new();
+            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
             return vos;
         }
         protected override void AddOrUpdate(OperationDataDTO dto, Action action) { }

@@ -703,41 +703,24 @@ namespace OperationGuidance_service.Controllers {
         #region 任务记录相关
         // 查询任务记录列表
         public QueryMissionRecordListRsp QueryMissionRecordList(QueryMissionRecordListReq req) {
-            string sql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId}";
-            Dictionary<string, object> parameters = new();
+            // 【分页查询】使用新的分页查询方法
+            PagedResult<MissionRecord> pagedResult = _missionRecordService.QueryMissionRecordListWithPagination(req);
 
-            string condition = "";
-            if (req.Ids != null && req.Ids.Count > 0) {
-                condition += " and id in @ids";
-                parameters.Add("ids", req.Ids);
-            }
-            if (req.Date != null) {
-                condition += " and create_time between @date1 and @date2";
-                string date1 = req.Date.Value.Date.ToString("yyyy-MM-dd HH:mm:ss");
-                string date2 = req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss");
-                parameters.Add("date1", date1);
-                parameters.Add("date2", date2);
-            }
-            if (req.UserId != null) {
-                condition += " and user_id = @userId";
-                parameters.Add("userId", req.UserId.Value);
-            }
-            if (req.MissionId != null) {
-                condition += " and mission_id = @mission_id";
-                parameters.Add("mission_id", req.MissionId.Value);
-            }
-            if (req.ProductBatch != null) {
-                condition += " and product_batch = @product_batch";
-                parameters.Add("product_batch", req.ProductBatch);
-            }
-
-            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
+            // 转换为DTO
             List<MissionRecordDTO> missionRecordDTOs = new();
-            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
+            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(pagedResult.Data, missionRecordDTOs);
 
-            return new() {
-                MissionRecordDTOs = missionRecordDTOs,
+            // 构建返回结果
+            QueryMissionRecordListRsp rsp = new() {
+                PagedResult = new PagedResult<MissionRecordDTO> {
+                    Data = missionRecordDTOs,
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
+                }
             };
+
+            return rsp;
         }
         // 新增或修改任务记录
         public AddOrUpdateMissionRecordRsp AddOrUpdateMissionRecord(AddOrUpdateMissionRecordReq req) {
@@ -806,12 +789,24 @@ namespace OperationGuidance_service.Controllers {
 
         #region 拧紧数据相关
         public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
-            List<OperationData> operationDatas = _operationDataService.QueryList(req.UserId, req.MissionRecordId);
+            // 【分页查询】使用新的分页查询方法
+            PagedResult<OperationData> pagedResult = _operationDataService.QueryOperationDataListWithPagination(req);
 
+            // 转换为DTO
             List<OperationDataDTO> operationDataDTOs = new();
-            CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
+            CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(pagedResult.Data, operationDataDTOs);
 
-            return new(operationDataDTOs);
+            // 构建返回结果
+            var rsp = new QueryOperationDataListRsp {
+                PagedResult = new PagedResult<OperationDataDTO> {
+                    Data = operationDataDTOs,
+                    TotalCount = pagedResult.TotalCount,
+                    PageNumber = pagedResult.PageNumber,
+                    PageSize = pagedResult.PageSize
+                }
+            };
+
+            return rsp;
         }
         public AddOrUpdateOperationDataRsp AddOrUpdateOperationData(AddOrUpdateOperationDataReq req) {
             OperationData operationData = new();

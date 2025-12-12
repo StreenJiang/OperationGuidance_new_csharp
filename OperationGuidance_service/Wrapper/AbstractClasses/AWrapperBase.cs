@@ -1,14 +1,17 @@
 ﻿using Dapper;
 using log4net;
 using OperationGuidance_service.Attributes;
+using OperationGuidance_service.Configurations;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
 using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.AbstractClasses;
+using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Common;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
@@ -20,10 +23,23 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private DbTransaction? _transaction;
         private const int commandTimeout = 10;
 
+        // 允许的ORDER BY字段白名单（从实体类反射获取）
+        private static readonly HashSet<string> AllowedOrderByFields = new(StringComparer.OrdinalIgnoreCase);
+
         public string TableName { get => _tabelName; }
 
         public AWrapperBase() {
             _tabelName = GetTableName();
+            InitializeAllowedFields();
+        }
+
+        /// <summary>
+        /// 从实体类T的属性中获取允许的ORDER BY字段
+        /// </summary>
+        private static void InitializeAllowedFields() {
+            var properties = typeof(T).GetProperties().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            AllowedOrderByFields.Clear();
+            AllowedOrderByFields.UnionWith(properties);
         }
 
         public void UseConnection(DbConnection conn, DbTransaction transaction) {
@@ -376,5 +392,255 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             // }
             return false;
         }
+
+        #region Pagination Methods
+
+        /// <summary>
+        /// Finds all records with pagination support.
+        /// </summary>
+        /// <param name="pagination">Pagination parameters.</param>
+        /// <returns>A paged result containing the data and pagination metadata.</returns>
+        public PagedResult<T> FindWithPagination(PaginationParams pagination) {
+            string whereClause = ConditionWithoutUserId();
+            return FindWithPagination(whereClause, null, pagination);
+        }
+
+        /// <summary>
+        /// Finds records matching the WHERE clause with pagination support.
+        /// </summary>
+        /// <param name="whereClause">The WHERE clause without 'WHERE' keyword.</param>
+        /// <param name="params">Optional parameters for the WHERE clause.</param>
+        /// <param name="pagination">Pagination parameters.</param>
+        /// <returns>A paged result containing the data and pagination metadata.</returns>
+        public PagedResult<T> FindWithPagination(string whereClause, Dictionary<string, object>? @params, PaginationParams pagination) {
+            // 【参数验证】确保分页参数的有效性
+            if (pagination.PageNumber < 1) {
+                logger.Warn($"Invalid page number: {pagination.PageNumber}, using default value 1");
+                pagination.PageNumber = 1;
+            }
+            if (pagination.PageSize < 1) {
+                logger.Warn($"Invalid page size: {pagination.PageSize}, using default value 10");
+                pagination.PageSize = 10;
+            }
+            if (pagination.PageSize > 1000) {
+                logger.Warn($"Page size exceeds maximum (1000): {pagination.PageSize}, using default value 10");
+                pagination.PageSize = 10;
+            }
+
+            PagedResult<T> result = new() {
+                PageNumber = pagination.PageNumber,
+                PageSize = pagination.PageSize
+            };
+
+            try {
+                string baseSql = $"SELECT * FROM {_tabelName} WHERE {whereClause}";
+                result = FindWithPaginationBySql(baseSql, @params, pagination);
+            } catch (Exception e) {
+                logger.Warn($"FindWithPagination error: {e}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Executes a custom SQL query with pagination support.
+        /// </summary>
+        /// <param name="baseSql">The base SQL query (without pagination clauses).</param>
+        /// <param name="params">Optional parameters for the query.</param>
+        /// <param name="pagination">Pagination parameters.</param>
+        /// <returns>A paged result containing the data and pagination metadata.</returns>
+        public PagedResult<T> FindWithPaginationBySql(string baseSql, Dictionary<string, object>? @params, PaginationParams pagination) {
+            PagedResult<T> result = new() {
+                PageNumber = pagination.PageNumber,
+                PageSize = pagination.PageSize
+            };
+
+            try {
+                // Get total count
+                result.TotalCount = GetTotalCount(baseSql, @params);
+
+                // Build pagination SQL
+                string paginatedSql = BuildPaginationSqlFromBase(baseSql, pagination);
+
+                // Prepare parameters with pagination values
+                var sqlParams = @params != null ? new Dictionary<string, object>(@params) : new Dictionary<string, object>();
+                sqlParams["Offset"] = pagination.Offset;
+                sqlParams["PageSize"] = pagination.PageSize;
+
+                // Execute query
+                result.Data = FindBySqlWithParams(paginatedSql, sqlParams);
+
+                logger.Info($"FindWithPaginationBySql: Page {pagination.PageNumber}, Size {pagination.PageSize}, Total {result.TotalCount}, Returned {result.Data.Count}");
+            } catch (Exception e) {
+                logger.Error($"Pagination query failed - Page: {pagination.PageNumber}, Size: {pagination.PageSize}, OrderBy: {pagination.OrderBy}, Descending: {pagination.Descending}, Base SQL: {baseSql}", e);
+                throw new InvalidOperationException($"Pagination query failed for page {pagination.PageNumber} with size {pagination.PageSize}: {e.Message}", e);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Builds pagination SQL based on the current database type.
+        /// </summary>
+        /// <param name="orderBy">The ORDER BY clause (e.g., "id ASC").</param>
+        /// <returns>The pagination SQL fragment.</returns>
+        protected string BuildPaginationSql(string? orderBy = null) {
+            string orderClause = BuildOrderByClause(orderBy);
+            DBTypes dbType = SystemUtils.GetDBTypes();
+
+            return dbType switch {
+                DBTypes.SQLSERVER => BuildSqlServerPagination(orderClause),
+                DBTypes.MYSQL => BuildMySqlPagination(orderClause),
+                DBTypes.SQLITE => BuildSqlitePagination(orderClause),
+                _ => BuildSqlitePagination(orderClause)
+            };
+        }
+
+        /// <summary>
+        /// Builds a complete paginated SQL query from a base SQL statement.
+        /// </summary>
+        /// <param name="baseSql">The base SQL query.</param>
+        /// <param name="pagination">Pagination parameters.</param>
+        /// <returns>The complete paginated SQL query.</returns>
+        protected string BuildPaginationSqlFromBase(string baseSql, PaginationParams pagination) {
+            string orderBy = pagination.OrderBy ?? "id";
+            string direction = pagination.Descending ? "DESC" : "ASC";
+            string orderClause = $"{orderBy} {direction}";
+
+            // Remove any existing ORDER BY clause from the base SQL
+            string cleanedSql = RemoveOrderByClause(baseSql);
+
+            DBTypes dbType = SystemUtils.GetDBTypes();
+
+            return dbType switch {
+                DBTypes.SQLSERVER => $"{cleanedSql} {BuildSqlServerPagination(orderClause)}",
+                DBTypes.MYSQL => $"{cleanedSql} {BuildMySqlPagination(orderClause)}",
+                DBTypes.SQLITE => $"{cleanedSql} {BuildSqlitePagination(orderClause)}",
+                _ => $"{cleanedSql} {BuildSqlitePagination(orderClause)}"
+            };
+        }
+
+        /// <summary>
+        /// Builds SQL Server specific pagination clause.
+        /// Uses OFFSET...FETCH syntax (SQL Server 2012+).
+        /// </summary>
+        private string BuildSqlServerPagination(string orderClause) {
+            return $"ORDER BY {orderClause} OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+        }
+
+        /// <summary>
+        /// Builds MySQL specific pagination clause.
+        /// Uses LIMIT...OFFSET syntax.
+        /// </summary>
+        private string BuildMySqlPagination(string orderClause) {
+            return $"ORDER BY {orderClause} LIMIT @PageSize OFFSET @Offset";
+        }
+
+        /// <summary>
+        /// Builds SQLite specific pagination clause.
+        /// Uses LIMIT...OFFSET syntax (same as MySQL).
+        /// </summary>
+        private string BuildSqlitePagination(string orderClause) {
+            return $"ORDER BY {orderClause} LIMIT @PageSize OFFSET @Offset";
+        }
+
+        /// <summary>
+        /// Builds an ORDER BY clause from the given column specification.
+        /// </summary>
+        /// <param name="orderBy">The order specification (e.g., "name DESC" or just "name").</param>
+        /// <returns>A valid ORDER BY clause value.</returns>
+        private string BuildOrderByClause(string? orderBy) {
+            if (string.IsNullOrWhiteSpace(orderBy)) {
+                return "id ASC";
+            }
+
+            // 【强化安全检查】防止SQL注入
+            // 只允许字母、数字、下划线，不允许其他特殊字符
+            string sanitized = orderBy.Trim();
+
+            // 字段白名单验证 - 确保orderBy字段是实体类的有效属性
+            if (!AllowedOrderByFields.Contains(sanitized)) {
+                logger.Warn($"Invalid ORDER BY column: {orderBy}. Allowed columns: {string.Join(", ", AllowedOrderByFields)}. Using default 'id ASC'.");
+                return "id ASC";
+            }
+
+            // 严格正则验证 - 只允许字母、数字、下划线作为字段名
+            if (!Regex.IsMatch(sanitized, @"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.IgnoreCase)) {
+                logger.Warn($"Invalid ORDER BY clause format: {orderBy}. Only letters, numbers and underscore are allowed. Using default 'id ASC'.");
+                return "id ASC";
+            }
+
+            return sanitized + " ASC";
+        }
+
+        /// <summary>
+        /// Gets the total count of records matching the base SQL query.
+        /// </summary>
+        /// <param name="baseSql">The base SQL query.</param>
+        /// <param name="params">Optional parameters for the query.</param>
+        /// <returns>The total count of matching records.</returns>
+        private int GetTotalCount(string baseSql, Dictionary<string, object>? @params) {
+            try {
+                // Remove ORDER BY clause for count query
+                string cleanedSql = RemoveOrderByClause(baseSql);
+
+                // Build count query by wrapping the base SQL
+                string countSql = $"SELECT COUNT(*) FROM ({cleanedSql}) AS CountQuery";
+
+                logger.Info($"Count SQL: {countSql}");
+
+                int count;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        count = conn.QueryFirst<int>(countSql, @params, commandTimeout: commandTimeout);
+                    }
+                } else {
+                    count = _conn.QueryFirst<int>(countSql, @params, _transaction, commandTimeout: commandTimeout);
+                }
+
+                return count;
+            } catch (Exception e) {
+                logger.Warn($"GetTotalCount error: {e}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Removes the ORDER BY clause from a SQL statement.
+        /// </summary>
+        /// <param name="sql">The SQL statement.</param>
+        /// <returns>The SQL statement without the ORDER BY clause.</returns>
+        private string RemoveOrderByClause(string sql) {
+            // Match ORDER BY clause at the end of the SQL (case-insensitive)
+            // This regex handles ORDER BY with column names, directions, and multiple columns
+            string pattern = @"\s+ORDER\s+BY\s+[\w\s,\.]+(?:\s+(?:ASC|DESC))?(?:\s*,\s*[\w\s\.]+(?:\s+(?:ASC|DESC))?)*\s*$";
+            return Regex.Replace(sql, pattern, "", RegexOptions.IgnoreCase).Trim();
+        }
+
+        /// <summary>
+        /// Internal method to execute SQL with parameters (used by pagination).
+        /// </summary>
+        private List<T> FindBySqlWithParams(string sql, Dictionary<string, object> @params) {
+            List<T> result = new();
+            try {
+                logger.Info($"sql: [{sql}], @params: [{GetParamsStr(@params)}]");
+                IEnumerable<T> enumerable;
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        enumerable = conn.Query<T>(sql, @params, commandTimeout: commandTimeout);
+                    }
+                } else {
+                    enumerable = _conn.Query<T>(sql, @params, _transaction, commandTimeout: commandTimeout);
+                }
+                result = enumerable.ToList();
+
+                logger.Info("Size of result: " + result.Count);
+            } catch (Exception e) {
+                logger.Warn($"FindBySqlWithParams error: {e}");
+            }
+            return result;
+        }
+
+        #endregion
     }
 }
