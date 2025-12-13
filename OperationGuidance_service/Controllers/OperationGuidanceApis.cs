@@ -672,13 +672,18 @@ namespace OperationGuidance_service.Controllers {
             Workstation workstation = new();
             CommonUtils.ObjectConverter<WorkstationDTO, Workstation>(workstationDTO, workstation);
             Workstation? workstationNew = _workstationService.InsertOrUpdate(workstation);
+
+            AddOrUpdateWorkstationRsp rsp = new();
             if (workstationNew != null) {
                 workstationDTO.id = workstationNew.id;
+                rsp.WorkstationDTO = workstationDTO;
+            } else {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！";
+                rsp.WorkstationDTO = workstationDTO;
             }
 
-            return new() {
-                WorkstationDTO = workstationDTO,
-            };
+            return rsp;
         }
         // 删除站点
         public DeleteWorkstationByIdsRsp DeleteWorkstation(DeleteWorkstationByIdsReq req) {
@@ -760,13 +765,18 @@ namespace OperationGuidance_service.Controllers {
             MissionRecord missionRecord = new();
             CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecord>(missionRecordDTO, missionRecord);
             MissionRecord? missionRecordNew = _missionRecordService.InsertOrUpdate(missionRecord);
+
+            AddOrUpdateMissionRecordRsp rsp = new();
             if (missionRecordNew != null) {
                 missionRecordDTO.id = missionRecordNew.id;
+                rsp.MissionRecordDTO = missionRecordDTO;
+            } else {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！";
+                rsp.MissionRecordDTO = missionRecordDTO;
             }
 
-            return new() {
-                MissionRecordDTO = missionRecordDTO,
-            };
+            return rsp;
         }
         // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
@@ -824,10 +834,16 @@ namespace OperationGuidance_service.Controllers {
             CommonUtils.ObjectConverter<PartsBarCodeDTO, PartsBarCode>(req.PartsBarCodeDTO, partsBarCode);
 
             partsBarCode = _partsBarCodeService.InsertOrUpdate(partsBarCode);
-            PartsBarCodeDTO partsBarCodeDTO = new();
-            CommonUtils.ObjectConverter<PartsBarCode, PartsBarCodeDTO>(partsBarCode, partsBarCodeDTO);
-
-            return new AddOrUpdatePartsBarCodeRsp(partsBarCodeDTO);
+            if (partsBarCode != null) {
+                PartsBarCodeDTO partsBarCodeDTO = new();
+                CommonUtils.ObjectConverter<PartsBarCode, PartsBarCodeDTO>(partsBarCode, partsBarCodeDTO);
+                return new AddOrUpdatePartsBarCodeRsp(partsBarCodeDTO);
+            } else {
+                return new AddOrUpdatePartsBarCodeRsp(null) {
+                    RsponseCode = HttpResponseCode.ERROR,
+                    RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！"
+                };
+            }
         }
         public CheckPartsBarCodeRsp CheckPartsBarCode(CheckPartsBarCodeReq req) {
             string sql = $"select * from {_partsBarCodeService.TableName} where parts_bar_code = @parts_bar_code";
@@ -864,10 +880,16 @@ namespace OperationGuidance_service.Controllers {
             CommonUtils.ObjectConverter<OperationDataDTO, OperationData>(req.OperationDataDTO, operationData);
 
             operationData = _operationDataService.InsertOrUpdate(operationData);
-            OperationDataDTO curveDataDTO = new();
-            CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationData, curveDataDTO);
-
-            return new AddOrUpdateOperationDataRsp(curveDataDTO);
+            if (operationData != null) {
+                OperationDataDTO curveDataDTO = new();
+                CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationData, curveDataDTO);
+                return new AddOrUpdateOperationDataRsp(curveDataDTO);
+            } else {
+                return new AddOrUpdateOperationDataRsp(null) {
+                    RsponseCode = HttpResponseCode.ERROR,
+                    RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！"
+                };
+            }
         }
         public BatchAddOperationDataRsp BatchAddOperationData(BatchAddOperationDataReq req) {
             List<OperationDataDTO> operationDataDTOs = req.OperationDataDTOs;
@@ -898,10 +920,16 @@ namespace OperationGuidance_service.Controllers {
             CommonUtils.ObjectConverter<CurveDataDTO, CurveData>(req.CurveDataDTO, curveData);
 
             curveData = _curveDataService.InsertOrUpdate(curveData);
-            CurveDataDTO curveDataDTO = new();
-            CommonUtils.ObjectConverter<CurveData, CurveDataDTO>(curveData, curveDataDTO);
-
-            return new AddOrUpdateCurveDataRsp(curveDataDTO);
+            if (curveData != null) {
+                CurveDataDTO curveDataDTO = new();
+                CommonUtils.ObjectConverter<CurveData, CurveDataDTO>(curveData, curveDataDTO);
+                return new AddOrUpdateCurveDataRsp(curveDataDTO);
+            } else {
+                return new AddOrUpdateCurveDataRsp(null) {
+                    RsponseCode = HttpResponseCode.ERROR,
+                    RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！"
+                };
+            }
         }
         public FindCurveDataByOperationDataIdRsp FindCurveDataByOperationDataId(FindCurveDataByOperationDataIdReq req) {
             List<CurveData> curveDatas = _curveDataService.QueryDataByOperationDataId(req.OperationDataId);
@@ -950,13 +978,18 @@ namespace OperationGuidance_service.Controllers {
             DeviceArm deviceArm = new();
             CommonUtils.ObjectConverter<DeviceArmDTO, DeviceArm>(deviceArmDTO, deviceArm);
             DeviceArm? deviceArmNew = _deviceArmService.InsertOrUpdate(deviceArm);
+
+            AddOrUpdateDeviceArmRsp rsp = new();
             if (deviceArmNew != null) {
                 deviceArmDTO.id = deviceArmNew.id;
+                rsp.DeviceArmDTO = deviceArmDTO;
+            } else {
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = "保存失败：数据库操作失败，请检查日志或联系管理员！";
+                rsp.DeviceArmDTO = deviceArmDTO;
             }
 
-            return new() {
-                DeviceArmDTO = deviceArmDTO,
-            };
+            return rsp;
         }
         // 删除力臂
         public DeleteDeviceArmByIdsRsp DeleteDeviceArm(DeleteDeviceArmByIdsReq req) {
@@ -1235,17 +1268,23 @@ namespace OperationGuidance_service.Controllers {
         }
         // 新增或修改条码匹配规则
         public AddOrUpdateBarCodeMatchingRuleRsp AddOrUpdateBarCodeMatchingRule(AddOrUpdateBarCodeMatchingRuleReq req) {
+            AddOrUpdateBarCodeMatchingRuleRsp rsp = new();
             BarCodeMatchingRuleDTO barCodeMatchingRuleDTO = req.BarCodeMatchingRuleDTO;
             BarCodeMatchingRule barCodeMatchingRule = new();
             CommonUtils.ObjectConverter<BarCodeMatchingRuleDTO, BarCodeMatchingRule>(barCodeMatchingRuleDTO, barCodeMatchingRule);
             BarCodeMatchingRule? barCodeMatchingRuleNew = _barCodeMatchingRuleService.InsertOrUpdate(barCodeMatchingRule);
+
             if (barCodeMatchingRuleNew != null) {
                 barCodeMatchingRuleDTO.id = barCodeMatchingRuleNew.id;
+                rsp.BarCodeMatchingRuleDTO = barCodeMatchingRuleDTO;
+            } else {
+                // 数据库操作失败
+                rsp.RsponseCode = HttpResponseCode.ERROR;
+                rsp.RsponseMessage = $"保存失败：数据库操作失败，请检查日志或联系管理员！";
+                rsp.BarCodeMatchingRuleDTO = barCodeMatchingRuleDTO;
             }
 
-            return new() {
-                BarCodeMatchingRuleDTO = barCodeMatchingRuleDTO,
-            };
+            return rsp;
         }
         // 删除条码匹配规则
         public DeleteBarCodeMatchingRuleByIdsRsp DeleteBarCodeMatchingRule(DeleteBarCodeMatchingRuleByIdsReq req) {

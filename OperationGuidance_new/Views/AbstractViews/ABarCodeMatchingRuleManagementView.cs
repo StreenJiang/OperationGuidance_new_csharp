@@ -4,6 +4,7 @@ using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
@@ -17,6 +18,8 @@ using OperationGuidance_service.Utils;
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class ABarCodeMatchingRuleManagementView<V>: CustomDataGridViewOuterPanel<BarCodeMatchingRuleDTO, V> where V : BarCodeMatchingRuleVO, new() {
         #region Fields
+        // Logger
+        private static readonly ILog logger = LogManager.GetLogger(typeof(ABarCodeMatchingRuleManagementView<>));
         // Apis
         protected OperationGuidanceApis apis;
         protected List<BarCodeMatchingRuleDTO> _dataDTOList;
@@ -292,12 +295,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return vos;
         }
         protected override void AddOrUpdate(BarCodeMatchingRuleDTO dto, Action action) {
+            logger.Info($"[BarCodeMatchingRule] 开始保存操作: id={dto.id}, type={dto.type}, key_char={dto.key_char}, mission_id={dto.mission_id}");
+
             AddOrUpdateBarCodeMatchingRuleRsp rsp = apis.AddOrUpdateBarCodeMatchingRule(new(dto));
+
             if (rsp.RsponseCode == HttpResponseCode.OK) {
+                logger.Info($"[BarCodeMatchingRule] 保存成功: id={dto.id}");
                 WidgetUtils.ShowNoticePopUp("保存成功！");
             } else {
+                logger.Error($"[BarCodeMatchingRule] 保存失败: id={dto.id}, error={rsp.RsponseMessage}");
                 WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
             }
+
             action();
         }
         protected override void Delete(List<int> ids) {

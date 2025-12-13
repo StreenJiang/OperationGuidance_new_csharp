@@ -25,7 +25,7 @@ namespace OperationGuidance_service.Database {
             bool dbExists = File.Exists(dataSource);
             if (dbExists) {
                 logger.Info($"Connecting: {dataSource}");
-                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
+                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=5; BusyTimeout=5000; Journal Mode=WAL;");
                 conn.Open();
                 bool tableExists = ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName());
                 needToInit = !tableExists;
@@ -56,7 +56,7 @@ namespace OperationGuidance_service.Database {
 
             if (!dbExists) {
                 logger.Info($"Connecting: {dataSource}");
-                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;");
+                conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=5; BusyTimeout=5000; Journal Mode=WAL;");
                 conn.Open();
             }
             string sqlScriptPrefix = "modify_sqlite";
@@ -122,7 +122,7 @@ namespace OperationGuidance_service.Database {
                 Directory.CreateDirectory(dataSourcePath);
             }
             string dataSource = dataSourcePath + Database;
-            using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=2;"))
+            using (SQLiteConnection conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=5; BusyTimeout=5000; Journal Mode=WAL;"))
             using (SQLiteCommand command = conn.CreateCommand()) {
                 try {
                     conn.Open();
@@ -140,7 +140,7 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetOuterDbConnection(string host, int port, string databaseName, string? username = null, string? password = null) {
             try {
-                SQLiteConnection conn = new($"Data source = {host}; UseUTF16Encoding = True; Connection Timeout=2;");
+                SQLiteConnection conn = new($"Data source = {host}; UseUTF16Encoding = True; Connection Timeout=5; BusyTimeout=5000; Journal Mode=WAL;");
                 conn.Open();
                 return conn;
             } catch (Exception e) {

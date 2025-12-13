@@ -41,7 +41,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             }
         }
 
-        public T Add(T entity) {
+        public T? Add(T entity) {
             try {
                 string sql = GenerateInsertSql();
                 logger.Info("sql: " + sql);
@@ -52,10 +52,11 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 entity.id = QueryFirstWithRetry(newEntitySql, entity);
 
                 logger.Info("Result: " + result);
+                return entity;
             } catch (Exception e) {
-                logger.Warn($"Something wrong here, please check error: e = {e}");
+                logger.Error($"Failed to add entity to table {_tabelName}, please check error: e = {e}");
+                return null;
             }
-            return entity;
         }
 
         public int AddBatch(List<T> entities) {
@@ -122,7 +123,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return result;
         }
 
-        public T Update(T entity) {
+        public T? Update(T entity) {
             try {
                 entity.modifier = SystemUtils.LoggedUserName;
                 entity.modify_time = DateTime.Now;
@@ -131,10 +132,11 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
                 int result = ExecuteWithRetry(sql, entity);
                 logger.Info("Result: " + result);
+                return entity;
             } catch (Exception e) {
-                logger.Warn($"Something wrong here, please check error: e = {e}");
+                logger.Error($"Failed to update entity in table {_tabelName}, please check error: e = {e}");
+                return null;
             }
-            return entity;
         }
 
         public int UpdateBatch(List<T> entities) {
