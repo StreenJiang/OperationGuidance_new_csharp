@@ -10,6 +10,7 @@ using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
 using Newtonsoft.Json;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -1547,7 +1548,7 @@ namespace OperationGuidance_new.Views {
             protected readonly int _columnCount = 2;
             protected readonly double _boxRatioOneLine = 7.9;
             protected readonly double _boxRatio = 5.75;
-            protected readonly int _screwBitCounterMax = 10;
+            protected int _screwBitCounterMax = 10;
             protected ProductMissionDTO _missionDTO;
             protected TableLayoutPanel _tablePanel;
             protected CustomTextBoxGroup _missionName;
@@ -1579,6 +1580,9 @@ namespace OperationGuidance_new.Views {
             public ToggleButtonGroup IsFirstMission { get => _isFirstMission; set => _isFirstMission = value; }
             public CustomComboBoxGroup<int> ChallengMission { get => _challengMission; set => _challengMission = value; }
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs, List<ScrewBitCounterDTO> screwBitCounterDTOs) {
+                Settings settings = ConfigUtils.LoadConfig<Settings>();
+                _screwBitCounterMax = settings.screw_counter_max;
+
                 _missionDTO = missionDTO;
                 _allOtherMissions = allOtherMissions;
                 _barCodeMatchingRuleDTOs = barCodeMatchingRuleDTOs;

@@ -81,5 +81,9 @@ namespace OperationGuidance_new.Utils {
             }
 
         }
+
+        public static T GetDefault<T>() where T : ConfigBase, new() {
+            return new T();
+        }
     }
 }

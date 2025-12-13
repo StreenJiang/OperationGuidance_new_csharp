@@ -49,10 +49,8 @@ namespace OperationGuidance_new.Views {
 
     public class WorkplaceContentPanel_SCII_XT: WorkplaceContentPanel_SCII {
         private WorkplaceMissionView_SCII_XT _view;
-        public WorkplaceMissionView_SCII_XT View { get => _view; set => _view = value; }
+        public new WorkplaceMissionView_SCII_XT View { get => _view; set => _view = value; }
 
-        private Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
-        private Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
         private List<OperationDataDTO> _operationDataDTOs;
         private CancellationTokenSource? _plcLoopCts;
 
@@ -454,9 +452,7 @@ namespace OperationGuidance_new.Views {
 
         protected override Task<bool> CheckScrewBitCount() => Task.FromResult(true);
 
-        protected override void InitializeTopRightBottom() {
-            base.InitializeTopRightBottom();
-
+        protected override void HandleScrewBitCounter() {
             _screwBitCounterBoxes = new();
             _screwBitCounterDtos = new();
 
@@ -515,11 +511,19 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
+            int extraHeightTopRightBottom = 0;
+            if (_screwBitCounterBoxes.Count > 0 && _screwBitCounterBoxes.Count <= 2) {
+                extraHeightTopRightBottom += boxHeight + contentVPadding;
+            } else if (_screwBitCounterBoxes.Count > 2) {
+                extraHeightTopRightBottom += boxHeight * 2 + contentVPadding * 2;
+            }
+
             int padding = Padding.Left / 2;
             int workplaceWidth = Width - Padding.Left * 2;
             int workplaceHeight = Height - Padding.Top * 2;
             int barCodeHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
             int imagePanelHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
+            imagePanelHeight += extraHeightTopRightBottom;
             int topHeight = barCodeHeight + imagePanelHeight + padding;
             int bottomHeight = (int) (workplaceHeight * .045);
             int middleHeight = workplaceHeight - topHeight - bottomHeight - padding * 2; // 为了取整
@@ -527,11 +531,7 @@ namespace OperationGuidance_new.Views {
             int topRightWidth = workplaceWidth - topLeftWidth - padding;
             int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
             int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
-            if (_screwBitCounterBoxes.Count > 0 && _screwBitCounterBoxes.Count <= 2) {
-                topRightBottomHeight += boxHeight + contentVPadding;
-            } else if (_screwBitCounterBoxes.Count > 2) {
-                topRightBottomHeight += boxHeight * 2 + contentVPadding * 2;
-            }
+            topRightBottomHeight += extraHeightTopRightBottom;
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
             int topRightMiddleLeftWidth = (int) (topRightWidth * .55);
             int topRightMiddleRightWidth = topRightWidth - topRightMiddleLeftWidth - padding;

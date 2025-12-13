@@ -69,6 +69,9 @@ namespace OperationGuidance_new.Views {
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
 
+        protected Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
+        protected Dictionary<int, CustomTextBoxGroup> _screwBitRemainingBoxes;
+        protected Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
 
         // private Label _productSideTitle;
         // private List<Image?> _smallSideImagesForShowing;
@@ -388,8 +391,55 @@ namespace OperationGuidance_new.Views {
             _topRightBottom.Controls.Add(_okSumPerDay);
             _topRightBottom.Controls.Add(_ngRatePerDay);
             _topRightBottom.Controls.Add(_pset);
+
+            HandleScrewBitCounter();
         }
 
+        protected virtual void HandleScrewBitCounter() {
+            _screwBitCounterBoxes = new();
+            _screwBitRemainingBoxes = new();
+            _screwBitCounterDtos = new();
+
+            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            if (screwBitCounterDTOs.Count > 0) {
+                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
+                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
+                    if (_screwBitCounterDtos.ContainsKey(dto.bit_position)) {
+                        continue;
+                    }
+                    if (i >= 4) { // More than 4 are not supported.
+                        break;
+                    }
+                    _screwBitCounterDtos.Add(dto.bit_position, dto);
+
+                    CustomTextBoxGroup boxGroup = new("批头计数" + dto.bit_position) {
+                        ReadOnly = true,
+                        Enabled = false,
+                        NameAlignment = HorizontalAlignment.Right,
+                        Ratio = 6.85,
+                    };
+                    boxGroup.GetTextBox(0).Box.Text = dto.current_counts > 0 ? dto.current_counts + "" : "0";
+
+                    CustomTextBoxGroup boxGroup2 = new("剩余量") {
+                        ReadOnly = true,
+                        Enabled = false,
+                        NameAlignment = HorizontalAlignment.Right,
+                    };
+                    boxGroup2.GetTextBox(0).Box.Text = (dto.max_num - dto.current_counts) + "";
+
+                    _screwBitCounterBoxes.Add(dto.bit_position, boxGroup);
+                    _screwBitRemainingBoxes.Add(dto.bit_position, boxGroup2);
+                    _topRightBottom.Controls.Add(boxGroup);
+                    _topRightBottom.Controls.Add(boxGroup2);
+                }
+            }
+
+            _productSumPerDay.Ratio = 6.85;
+            _ngRatePerDay.Ratio = 6.85;
+
+            _missionSelectedName.Ratio = 8.45;
+            _productBatch.Ratio = 8.45;
+        }
         protected override void ActionAfterSwitchMission() {
             base.ActionAfterSwitchMission();
             ResetMissionDetails();
@@ -622,11 +672,17 @@ namespace OperationGuidance_new.Views {
 
         // 计算尺寸： 外框
         protected virtual void ResizeOuters(int boxHeight, int titleHeight, int contentVPadding) {
+            int extraHeightTopRightBottom = 0;
+            if (_screwBitCounterBoxes.Count > 0) {
+                extraHeightTopRightBottom += boxHeight * _screwBitCounterBoxes.Count + contentVPadding * _screwBitCounterBoxes.Count;
+            }
+
             int padding = Padding.Left / 2;
             int workplaceWidth = Width - Padding.Left * 2;
             int workplaceHeight = Height - Padding.Top * 2;
             int barCodeHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceBarCodeHeightRatio());
             int imagePanelHeight = (int) (workplaceHeight * WidgetUtils.WorkplaceImagePanelHeightRatio());
+            imagePanelHeight += extraHeightTopRightBottom;
             int topHeight = barCodeHeight + imagePanelHeight + padding;
             int bottomHeight = (int) (workplaceHeight * .045);
             int middleHeight = workplaceHeight - topHeight - bottomHeight - padding * 2; // 为了取整
@@ -634,6 +690,7 @@ namespace OperationGuidance_new.Views {
             int topRightWidth = workplaceWidth - topLeftWidth - padding;
             int topRightTopHeight = titleHeight + boxHeight + contentVPadding * 2;
             int topRightBottomHeight = titleHeight + boxHeight * 4 + contentVPadding * 5;
+            topRightBottomHeight += extraHeightTopRightBottom;
             int topRightMiddleHeight = topHeight - topRightTopHeight - topRightBottomHeight - padding * 2;
             int topRightMiddleLeftWidth = (int) (topRightWidth * .55);
             int topRightMiddleRightWidth = topRightWidth - topRightMiddleLeftWidth - padding;
@@ -798,6 +855,19 @@ namespace OperationGuidance_new.Views {
             } else {
                 _productBatch.Size = new(boxWidth2, boxHeight);
                 _productBatch.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            }
+
+            foreach (KeyValuePair<int, CustomTextBoxGroup> pair in _screwBitCounterBoxes) {
+                CustomTextBoxGroup boxGroup = pair.Value;
+                boxGroup.Size = new(boxWidth, boxHeight);
+                boxGroup.Margin = new(contentHPadding, contentVPadding, 0, 0);
+            }
+            if (_screwBitRemainingBoxes != null) {
+                foreach (KeyValuePair<int, CustomTextBoxGroup> pair in _screwBitRemainingBoxes) {
+                    CustomTextBoxGroup boxGroup = pair.Value;
+                    boxGroup.Size = new(boxWidth, boxHeight);
+                    boxGroup.Margin = new(contentHPadding, contentVPadding, 0, 0);
+                }
             }
 
             _missionSelectedName.Size = new(boxWidth2, boxHeight);
