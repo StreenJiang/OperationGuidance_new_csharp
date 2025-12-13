@@ -355,6 +355,12 @@ namespace OperationGuidance_new.Views {
 
         // 初始化顶部右侧的底部
         protected virtual void InitializeTopRightBottom() {
+            _productSumPerDay.Ratio = 6.85;
+            _ngRatePerDay.Ratio = 6.85;
+
+            _missionSelectedName.Ratio = 8.45;
+            _productBatch.Ratio = 8.45;
+
             _topRightBottom.Controls.Add(_missionDetailTitle);
             _topRightBottom.Controls.Add(_missionSelectedName);
 
@@ -362,6 +368,7 @@ namespace OperationGuidance_new.Views {
             // 特殊处理
             SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                _productBatch.Ratio = 6.85;
                 _productSumPerDay.TextName = "批次计数";
                 _batchDropDownBox = new("早晚班") {
                     NameAlignment = HorizontalAlignment.Right,
@@ -434,12 +441,6 @@ namespace OperationGuidance_new.Views {
                     _topRightBottom.Controls.Add(boxGroup2);
                 }
             }
-
-            _productSumPerDay.Ratio = 6.85;
-            _ngRatePerDay.Ratio = 6.85;
-
-            _missionSelectedName.Ratio = 8.45;
-            _productBatch.Ratio = 8.45;
         }
         protected override void ActionAfterSwitchMission() {
             base.ActionAfterSwitchMission();

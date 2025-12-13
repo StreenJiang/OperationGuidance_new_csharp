@@ -1435,7 +1435,7 @@ namespace OperationGuidance_service.Controllers {
         #region Screw bit counter related
         // Find by mission id
         public FindScrewBitCounterByMissionIdRsp FindScrewBitCounterByMissionId(FindScrewBitCounterByMissionIdReq req) {
-            string sql = $"select * from {_screwBitCounterService.TableName} where {_screwBitCounterService.ConditionWithoutUserId} and mission_id = @mission_id";
+            string sql = $"select * from {_screwBitCounterService.TableName} where {_screwBitCounterService.ConditionWithoutUserId} and mission_id = @mission_id and mission_id != -1";
             Dictionary<string, object> parameters = new();
             parameters.Add("mission_id", req.MissionId);
 

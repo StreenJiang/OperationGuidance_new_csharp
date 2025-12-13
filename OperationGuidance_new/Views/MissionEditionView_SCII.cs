@@ -435,7 +435,11 @@ namespace OperationGuidance_new.Views {
                 AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
                     // Save screw bit counters
-                    _screwBitCounterDTOs.ForEach(dto => _apis.AddOrUpdateScrewBitCounter(new(dto)));
+                    _screwBitCounterDTOs.ForEach(dto => {
+                        // Set mision_id in case its new mission
+                        dto.mission_id = rsp.ProductMissionDTO.id;
+                        _apis.AddOrUpdateScrewBitCounter(new(dto));
+                    });
 
                     Modified = false;
                     _missionDTO = rsp.ProductMissionDTO;
