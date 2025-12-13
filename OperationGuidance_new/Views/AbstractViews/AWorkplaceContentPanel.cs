@@ -417,8 +417,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // 手动切换任务需要清空一下条码缓存
                     _barCodeObj.Reset();
                     _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
-                    SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
                     popUpForm.Hide();
+
+                    this.BeginInvoke(async () => {
+                        await Task.Delay(200);
+                        SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
+                    });
                 }
             };
             popUpForm.AddButton("关闭").Click += (s, e) => {
