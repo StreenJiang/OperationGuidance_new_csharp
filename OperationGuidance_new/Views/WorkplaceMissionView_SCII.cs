@@ -404,6 +404,17 @@ namespace OperationGuidance_new.Views {
         }
 
         protected virtual void HandleScrewBitCounter() {
+            if (_topRightBottom == null) {
+                return;
+            }
+
+            if (_screwBitCounterBoxes != null && _screwBitCounterBoxes.Count > 0) {
+                foreach (var pair in _screwBitCounterBoxes) {
+                    _topRightBottom.Controls.Remove(_screwBitCounterBoxes[pair.Key]);
+                    _topRightBottom.Controls.Remove(_screwBitRemainingBoxes[pair.Key]);
+                }
+            }
+
             _screwBitCounterBoxes = new();
             _screwBitRemainingBoxes = new();
             _screwBitCounterDtos = new();
@@ -450,6 +461,8 @@ namespace OperationGuidance_new.Views {
         private void ResetMissionDetails() {
             SetTodayData();
             SetPset();
+            HandleScrewBitCounter();
+            ResizeChildren();
         }
         private void SetTodayData() {
             int sum = 0;

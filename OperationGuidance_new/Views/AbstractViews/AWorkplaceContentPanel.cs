@@ -419,8 +419,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _barCodeTextBox.Text = ConfigsVariables.BAR_CODE_NOTE;
                     SwitchToMission(_apis.QueryProductMissionDetail(new(missionListPanel.CurrentToggledMission.Entity.id)).ProductMissionDTO);
                     popUpForm.Hide();
-
-                    ActionAfterSwitchMission();
                 }
             };
             popUpForm.AddButton("关闭").Click += (s, e) => {
