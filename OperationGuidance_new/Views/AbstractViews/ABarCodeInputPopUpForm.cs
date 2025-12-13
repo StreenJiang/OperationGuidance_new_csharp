@@ -229,6 +229,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // 对产品码进行校验
             bool checkPassed = true;
             ProductMissionDTO? mission = null;
+            bool needToSwtich = false;
             // 已选任务
             if (_mission.id > 0) {
                 logger.Info($"Already chosen mission, mission id = [{_mission.id}], barcode = [{barCode}]...");
@@ -264,6 +265,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     else {
                         logger.Info($"Found another mission that matches this barcode [{barCode}], asking the user switch or not...");
                         checkPassed = WidgetUtils.ShowConfirmPopUp($"检测到当前条码【{barCode}】与另一任务【{mission.name}】匹配，是否切换任务？");
+
+                        // 不为空且如果确定切换，则需要切换任务
+                        needToSwtich = checkPassed;
                     }
                 }
             }
@@ -285,6 +289,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     checkPassed = false;
                     WidgetUtils.ShowWarningPopUp($"没有检索到匹配条码【{barCode}】的任务");
                     _productBarCodeBox.GetTextBox(0).IsError = true;
+                } else {
+                    // 不为空则需要切换任务
+                    needToSwtich = true;
                 }
             }
 
@@ -374,8 +381,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 禁用产品条码输入框
                 _productBarCodeBox.Enabled = false;
                 // 是否需要切换任务
-                mission = CommonUtils.CannotBeNull(mission);
-                SwitchToMission(mission);
+                if (needToSwtich) {
+                    mission = CommonUtils.CannotBeNull(mission);
+                    SwitchToMission(mission);
+                }
                 if (_partsBarCodeRules.ContainsKey(_mission.id)) {
                     logger.Info($"Recalculate count of parts barcodes for mission [id = {_mission.id}]...");
                     RecalcPartsRemainingCount();

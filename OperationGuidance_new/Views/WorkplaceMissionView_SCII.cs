@@ -314,8 +314,8 @@ namespace OperationGuidance_new.Views {
                 _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
                 _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
                 _barCodePopUpForm.ResizeSelf();
+                _barCodePopUpForm.Show();
             }
-            _barCodePopUpForm.Show();
         }
 
         // 初始化顶部中间的右侧
