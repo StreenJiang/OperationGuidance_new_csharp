@@ -1068,17 +1068,6 @@ namespace OperationGuidance_new.Views {
             // Set product batch
             _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-
-            // Store patrs bar code
-            if (_barCodeObj.PartsBarCodes.Count > 0) {
-                foreach (string partsBarCode in _barCodeObj.PartsBarCodes) {
-                    PartsBarCodeDTO partsBarCodeDTO = new PartsBarCodeDTO() {
-                        mission_record_id = _missionRecord.id,
-                        parts_bar_code = partsBarCode,
-                    };
-                    _apis.AddOrUpdatePartsBarCode(new AddOrUpdatePartsBarCodeReq(partsBarCodeDTO));
-                }
-            }
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
