@@ -69,6 +69,7 @@ namespace OperationGuidance_new.Views {
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
 
+        protected List<ScrewBitCounterDTO> screwBitCounterDTOsCached;
         protected Dictionary<int, CustomTextBoxGroup> _screwBitCounterBoxes;
         protected Dictionary<int, CustomTextBoxGroup> _screwBitRemainingBoxes;
         protected Dictionary<int, ScrewBitCounterDTO> _screwBitCounterDtos;
@@ -400,10 +401,10 @@ namespace OperationGuidance_new.Views {
             _screwBitRemainingBoxes = new();
             _screwBitCounterDtos = new();
 
-            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
-            if (screwBitCounterDTOs.Count > 0) {
-                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
-                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
+            screwBitCounterDTOsCached = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            if (screwBitCounterDTOsCached.Count > 0) {
+                for (int i = 0; i < screwBitCounterDTOsCached.Count; i++) {
+                    ScrewBitCounterDTO dto = screwBitCounterDTOsCached[i];
                     if (_screwBitCounterDtos.ContainsKey(dto.bit_position)) {
                         continue;
                     }
@@ -1072,7 +1073,19 @@ namespace OperationGuidance_new.Views {
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
             if (await base.ValidationBeforeActivatingMission()) {
-                return await CheckScrewBitCount();
+                if (await CheckScrewBitCount()) {
+                    // 更新批头计数器 boxes
+                    if (screwBitCounterDTOsCached.Count > 0) {
+                        for (int i = 0; i < screwBitCounterDTOsCached.Count; i++) {
+                            var dto = screwBitCounterDTOsCached[i];
+                            int bit_position = dto.bit_position;
+                            _screwBitCounterBoxes[bit_position].GetTextBox(0).Box.Text = dto.current_counts > 0 ? dto.current_counts + "" : "0";
+                            _screwBitRemainingBoxes[bit_position].GetTextBox(0).Box.Text = (dto.max_num - dto.current_counts) + "";
+                        }
+                    }
+                    return true;
+                }
+                return false;
             }
             return false;
         }
@@ -1099,10 +1112,8 @@ namespace OperationGuidance_new.Views {
         }
 
         private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {
-            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
-
             // Check first
-            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
+            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOsCached) {
                 if (sbc.current_counts + sbc.count_each_time > sbc.max_num) {
                     screwBitCounter = sbc;
                     return false;
@@ -1110,7 +1121,7 @@ namespace OperationGuidance_new.Views {
             }
 
             // Update
-            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
+            foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOsCached) {
                 sbc.current_counts += sbc.count_each_time;
                 _apis.AddOrUpdateScrewBitCounter(new(sbc));
             }
