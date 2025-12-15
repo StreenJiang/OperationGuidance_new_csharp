@@ -1146,14 +1146,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public bool CheckChallengeMissionConfirmation() {
             List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _mission.id).ToList();
-            ProductMissionDTO? challengeMission = allOtherMissions.Find(m => m.challenge_mission_id == _mission.id);
+            ProductMissionDTO? challengeMission = allOtherMissions.Find(m =>
+                                                                        m.challenge_mission_id != null &&
+                                                                        m.challenge_mission_id > 0 &&
+                                                                        m.challenge_mission_id == _mission.id
+                                                                    );
 
             // Check if current mission has challenge mission
             if (challengeMission != null) {
                 // Check if it's first mission
                 if (challengeMission.is_first_mission == (int) YesOrNo.YES) {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null) {
+                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
                         WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 首档岗位】，但此任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                         return false;
                     } else {
@@ -1164,8 +1168,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 } else {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null) {
-                        if (challengeMission.predecessor_mission_id == null) {
+                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
+                        if (challengeMission.predecessor_mission_id == null && challengeMission.predecessor_mission_id > 0) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务存在前置任务，但挑战任务不存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
                         } else {
@@ -1177,7 +1181,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         }
                     } else {
-                        if (challengeMission.predecessor_mission_id != null) {
+                        if (challengeMission.predecessor_mission_id != null && challengeMission.predecessor_mission_id > 0) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务不存在前置任务，但挑战任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
                         }
