@@ -1338,6 +1338,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset status of working proccess panel
             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
 
+            // Reset ng reasons of working proccess panel
+            _workingProcessPanel.NGReasons = null;
+
             // Reset other variables
             _sumBoltDone = 0;
 
@@ -2289,6 +2292,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             bool result = false;
+            _adminConfirmed = false;
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
             _adminPasswordPopUpForm.Dispose();
 
