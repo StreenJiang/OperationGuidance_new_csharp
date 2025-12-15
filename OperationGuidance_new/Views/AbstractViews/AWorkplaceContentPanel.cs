@@ -1734,7 +1734,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             logger.Error($"StartLockCheckingTask: e = {e}");
                         } finally {
                             // Delay a little bit and check again
-                            await Task.Delay(_lockCheckingTaskDelay, cts.Token);
+                            try {
+                                await Task.Delay(_lockCheckingTaskDelay, cts.Token);
+                            } catch (OperationCanceledException) {
+                                // 延迟被取消，任务结束
+                                // 不需要做任何事情，循环条件将检查到取消状态
+                            }
                         }
                     }
                 }, cts.Token);
@@ -1773,53 +1778,66 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _resendSignalToArrangerTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _arrangerNeeded && !cts.Token.IsCancellationRequested) {
-                    if (_arrangerPositionOk != null) {
-                        ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                    try {
+                        if (_arrangerPositionOk != null) {
+                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
-                        if (_arrangerPositionOk.Values.ToList().Count(ok => !ok) > 0) {
-                            if (!_arrangerPositionTimedOut) {
-                                AddLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                                AddLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                            if (_arrangerPositionOk.Values.ToList().Count(ok => !ok) > 0) {
+                                if (!_arrangerPositionTimedOut) {
+                                    AddLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                } else {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                    AddLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
 
-                                // Retry confirmation
-                                if (_resendSignalToArrangerMaxTimes > 0) {
-                                    if (_resendSignalToArrangerTimes < _resendSignalToArrangerMaxTimes) {
-                                        // Confirm if retry needed
-                                        if (WidgetUtils.ShowConfirmPopUp($"送钉时间已达到[{_currentWorkingBolt.Arranger_time_out / 1000}]秒，送钉失败，是否重试？")) {
-                                            _arrangerPositionTimedOut = false;
-                                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                                    // Retry confirmation
+                                    if (_resendSignalToArrangerMaxTimes > 0) {
+                                        if (_resendSignalToArrangerTimes < _resendSignalToArrangerMaxTimes) {
+                                            // Confirm if retry needed
+                                            if (WidgetUtils.ShowConfirmPopUp($"送钉时间已达到[{_currentWorkingBolt.Arranger_time_out / 1000}]秒，送钉失败，是否重试？")) {
+                                                _arrangerPositionTimedOut = false;
+                                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
 
-                                            // Counter plus 1
-                                            _resendSignalToArrangerTimes++;
+                                                // Counter plus 1
+                                                _resendSignalToArrangerTimes++;
 
-                                            // Resend signal
-                                            SendSignalToArrager(_currentWorkingBolt);
+                                                // Resend signal
+                                                SendSignalToArrager(_currentWorkingBolt);
+                                            } else {
+                                                _arrangerPositionOk = null;
+                                            }
                                         } else {
-                                            _arrangerPositionOk = null;
+                                            // Retry times reaches max, stop the mission
+                                            _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+
+                                            // Show notice
+                                            WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                         }
                                     } else {
-                                        // Retry times reaches max, stop the mission
+                                        // Do not have any retry chance then terminate mission
                                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
-                                        // Show notice
-                                        WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                     }
-                                } else {
-                                    // Do not have any retry chance then terminate mission
-                                    _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                 }
+                            } else {
+                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                                _arrangerPositionOk = null;
                             }
-                        } else {
-                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
-                            _arrangerPositionOk = null;
                         }
+                    } catch (OperationCanceledException) {
+                        // 任务被取消，退出循环
+                        break;
+                    } catch (Exception ex) {
+                        // 记录异常但不崩溃
+                        logger.Error($"StartArrangerTask: ex = {ex}");
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    try {
+                        await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    } catch (OperationCanceledException) {
+                        // 延迟被取消，正常退出
+                        break;
+                    }
                 }
             });
         }
@@ -1831,52 +1849,65 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _resendSignalToSetterSelectorTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _setterSelectorNeeded && !cts.Token.IsCancellationRequested) {
-                    if (_bitPositionOk != null) {
-                        ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
-                        if (!_bitPositionOk.Value) {
-                            if (!_bitPositionTimedOut) {
-                                AddLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                                AddLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                    try {
+                        if (_bitPositionOk != null) {
+                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                            if (!_bitPositionOk.Value) {
+                                if (!_bitPositionTimedOut) {
+                                    AddLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                } else {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                    AddLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
 
-                                // Retry confirmation
-                                if (_resendSignalToSetterSelectorMaxTimes > 0) {
-                                    if (_resendSignalToSetterSelectorTimes < _resendSignalToSetterSelectorMaxTimes) {
-                                        // Confirm if retry needed
-                                        if (WidgetUtils.ShowConfirmPopUp($"套筒选择时间已达到[{_currentWorkingBolt.Setter_selector_time_out / 1000}]秒，是否重试？")) {
-                                            _bitPositionTimedOut = false;
-                                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                                    // Retry confirmation
+                                    if (_resendSignalToSetterSelectorMaxTimes > 0) {
+                                        if (_resendSignalToSetterSelectorTimes < _resendSignalToSetterSelectorMaxTimes) {
+                                            // Confirm if retry needed
+                                            if (WidgetUtils.ShowConfirmPopUp($"套筒选择时间已达到[{_currentWorkingBolt.Setter_selector_time_out / 1000}]秒，是否重试？")) {
+                                                _bitPositionTimedOut = false;
+                                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
 
-                                            // Counter plus 1
-                                            _resendSignalToSetterSelectorTimes++;
+                                                // Counter plus 1
+                                                _resendSignalToSetterSelectorTimes++;
 
-                                            // Resend signal
-                                            SendSignalToSetterSelector(_currentWorkingBolt);
+                                                // Resend signal
+                                                SendSignalToSetterSelector(_currentWorkingBolt);
+                                            } else {
+                                                _bitPositionOk = null;
+                                            }
                                         } else {
-                                            _bitPositionOk = null;
+                                            // Retry times reaches max, stop the mission
+                                            TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+
+                                            // Show notice
+                                            WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToSetterSelectorMaxTimes}次，请检查任务及设备状态是否正常");
                                         }
                                     } else {
-                                        // Retry times reaches max, stop the mission
+                                        // Do not have any retry chance then terminate mission
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
-                                        // Show notice
-                                        WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToSetterSelectorMaxTimes}次，请检查任务及设备状态是否正常");
                                     }
-                                } else {
-                                    // Do not have any retry chance then terminate mission
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                 }
+                            } else {
+                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                _bitPositionOk = null;
                             }
-                        } else {
-                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
-                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                            _bitPositionOk = null;
                         }
+                    } catch (OperationCanceledException) {
+                        // 任务被取消，退出循环
+                        break;
+                    } catch (Exception ex) {
+                        // 记录异常但不崩溃
+                        logger.Error($"StartSetterSelectorTask: ex = {ex}");
                     }
 
-                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    try {
+                        await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    } catch (OperationCanceledException) {
+                        // 延迟被取消，正常退出
+                        break;
+                    }
                 }
             });
         }
@@ -2151,55 +2182,59 @@ namespace OperationGuidance_new.Views.AbstractViews {
             await Task.Run(() => {
                 BeginInvoke((Delegate) (() => {
                     Task.Run(() => {
-                        // Prepare all variables
-                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
-                        _specifications = new List<float>();
-                        _arrangerIds = new List<int>();
-                        if (boltDTO.specification != null && boltDTO.specification > 0) {
-                            _specifications.Add(boltDTO.specification.Value);
-                            _arrangerIds.Add(boltDTO.arranger_id.Value);
-                        }
-                        if (boltDTO.specification2 != null && boltDTO.specification2 > 0) {
-                            _specifications.Add(boltDTO.specification2.Value);
-                            _arrangerIds.Add(boltDTO.arranger_id2.Value);
-                        }
+                        try {
+                            // Prepare all variables
+                            ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                            _specifications = new List<float>();
+                            _arrangerIds = new List<int>();
+                            if (boltDTO.specification != null && boltDTO.specification > 0) {
+                                _specifications.Add(boltDTO.specification.Value);
+                                _arrangerIds.Add(boltDTO.arranger_id.Value);
+                            }
+                            if (boltDTO.specification2 != null && boltDTO.specification2 > 0) {
+                                _specifications.Add(boltDTO.specification2.Value);
+                                _arrangerIds.Add(boltDTO.arranger_id2.Value);
+                            }
 
-                        logger.Info($"Sending signal(s) to arranger(s) for specification(s) = [{string.Join(", ", _specifications)}]...");
+                            logger.Info($"Sending signal(s) to arranger(s) for specification(s) = [{string.Join(", ", _specifications)}]...");
 
-                        // Do action if specifications is not equal to 0
-                        if (_specifications.Count > 0) {
-                            // Initialize variables
-                            if (_arrangerPositionOk == null) {
-                                _arrangerPositionOk = new();
-                                foreach (float specification in _specifications) {
-                                    _arrangerPositionOk.Add(specification, false);
-                                }
-                            } else {
-                                List<float>.Enumerator enumerator = _specifications.GetEnumerator();
-                                while (enumerator.MoveNext()) {
-                                    float specification = enumerator.Current;
-                                    if (_arrangerPositionOk.ContainsKey(specification)) {
-                                        if (_arrangerPositionOk[specification]) {
-                                            _arrangerIds.RemoveAt(_specifications.IndexOf(specification));
-                                            _specifications.Remove(specification);
-                                            continue;
-                                        }
+                            // Do action if specifications is not equal to 0
+                            if (_specifications.Count > 0) {
+                                // Initialize variables
+                                if (_arrangerPositionOk == null) {
+                                    _arrangerPositionOk = new();
+                                    foreach (float specification in _specifications) {
+                                        _arrangerPositionOk.Add(specification, false);
                                     }
-                                    _arrangerPositionOk.Add(specification, false);
+                                } else {
+                                    List<float>.Enumerator enumerator = _specifications.GetEnumerator();
+                                    while (enumerator.MoveNext()) {
+                                        float specification = enumerator.Current;
+                                        if (_arrangerPositionOk.ContainsKey(specification)) {
+                                            if (_arrangerPositionOk[specification]) {
+                                                _arrangerIds.RemoveAt(_specifications.IndexOf(specification));
+                                                _specifications.Remove(specification);
+                                                continue;
+                                            }
+                                        }
+                                        _arrangerPositionOk.Add(specification, false);
+                                    }
                                 }
-                            }
 
-                            // Do send signal
-                            if (_arrangerIds.Distinct().Count() == 1) {
-                                SendSignal(_arrangerIds[0], _specifications);
-                            } else {
-                                for (int i = 0; i < _arrangerIds.Count; i++) {
-                                    SendSignal(_arrangerIds[i], _specifications.Skip(i).Take(1).ToList());
+                                // Do send signal
+                                if (_arrangerIds.Distinct().Count() == 1) {
+                                    SendSignal(_arrangerIds[0], _specifications);
+                                } else {
+                                    for (int i = 0; i < _arrangerIds.Count; i++) {
+                                        SendSignal(_arrangerIds[i], _specifications.Skip(i).Take(1).ToList());
+                                    }
                                 }
+                            } else {
+                                _arrangerPositionOk = null;
+                                _arrangerPositionTimedOut = false;
                             }
-                        } else {
-                            _arrangerPositionOk = null;
-                            _arrangerPositionTimedOut = false;
+                        } catch (Exception ex) {
+                            logger.Error($"SendSignalToArrager发生未预期异常: {ex.Message}", ex);
                         }
                     });
                 }));
@@ -2229,26 +2264,30 @@ namespace OperationGuidance_new.Views.AbstractViews {
             await Task.Run(() => {
                 BeginInvoke(() => {
                     Task.Run(() => {
-                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
-                        if (boltDTO.bit_specification != null && boltDTO.bit_specification > 0) {
-                            DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.setter_selector_id);
-                            IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
-                            if (setterSelectorType != null) {
-                                _bitPositionOk = false;
+                        try {
+                            ProductBoltDTO boltDTO = boltButton.BoltDTO;
+                            if (boltDTO.bit_specification != null && boltDTO.bit_specification > 0) {
+                                DeviceIoDTO ioDto = _ioBoxes.Single(box => box.id == boltDTO.setter_selector_id);
+                                IoBoxTypeSetterSelector? setterSelectorType = _ioBoxTasks[MainUtils.GetTCPClientKey(ioDto.ip, ioDto.port)].SetterSelectorType;
+                                if (setterSelectorType != null) {
+                                    _bitPositionOk = false;
 
-                                if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
-                                    _bitPositionTimedOut = false;
-                                    boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => _bitPositionOk = isOk);
-                                } else {
-                                    boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
-                                        _bitPositionOk = isOk;
-                                        _bitPositionTimedOut = isTimedOut;
-                                    });
+                                    if (setterSelectorType is IoBoxTypeSetterSelectorPlus setterSelectorPlus) {
+                                        _bitPositionTimedOut = false;
+                                        boltButton.SendSignalToSetterSelectorPlus(boltDTO.bit_specification.Value, setterSelectorPlus, isOk => _bitPositionOk = isOk);
+                                    } else {
+                                        boltButton.SendSignalToSetterSelector(boltDTO.bit_specification.Value, setterSelectorType, (isOk, isTimedOut) => {
+                                            _bitPositionOk = isOk;
+                                            _bitPositionTimedOut = isTimedOut;
+                                        });
+                                    }
                                 }
+                            } else {
+                                _bitPositionOk = null;
+                                _bitPositionTimedOut = false;
                             }
-                        } else {
-                            _bitPositionOk = null;
-                            _bitPositionTimedOut = false;
+                        } catch (Exception ex) {
+                            logger.Error($"SendSignalToSetterSelector发生未预期异常: {ex.Message}", ex);
                         }
                     });
                 });
@@ -2924,14 +2963,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             await Task.Run(() => {
                 BeginInvoke(async () => {
-                    // Load devices asynchronously to avoid delay UI creating
-                    await LoadDevicesAsync();
+                    try {
+                        // Load devices asynchronously to avoid delay UI creating
+                        await LoadDevicesAsync();
 
-                    // Initialize others
-                    InitializeAfterHandelCreated();
+                        // Initialize others
+                        InitializeAfterHandelCreated();
 
-                    // If is self looping mode, then activate mission automatically
-                    ActivateMissionAutomatically();
+                        // If is self looping mode, then activate mission automatically
+                        ActivateMissionAutomatically();
+                    } catch (Exception ex) {
+                        logger.Error($"OnHandleCreated发生未预期异常: {ex.Message}", ex);
+                    }
                 });
             });
         }
