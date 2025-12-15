@@ -407,8 +407,11 @@ namespace OperationGuidance_new.Views {
 
             if (_mission.id > 0) {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
-                sum = missionRecordDTOs.Count;
-                okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
+                sum = missionRecordDTOs.DistinctBy(dto => dto.mission_id).Count();
+                okSum = missionRecordDTOs
+                            .DistinctBy(dto => dto.mission_id)
+                            .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
+                            .Count();
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
                 }
