@@ -911,16 +911,28 @@ namespace OperationGuidance_new.Utils {
         /// </summary>
         /// <param name="image">Image that needs to be resized.</param>
         /// <param name="originalRatio">Zooming ratio.</param>
-        /// <returns>New Image with new size.</returns>        
+        /// <returns>New Image with new size.</returns>
         public static Image ResizeImageByZoomingRatio(Image image, float originalRatio) {
-            Size newSize = (image.Size * originalRatio).ToSize();
-            if (newSize.Width <= 0) {
-                newSize.Width = 1;
+            if (image == null) {
+                throw new ArgumentException("Image cannot be null");
             }
-            if (newSize.Height <= 0) {
-                newSize.Height = 1;
+
+            try {
+                Size newSize = (image.Size * originalRatio).ToSize();
+                if (newSize.Width <= 0) {
+                    newSize.Width = 1;
+                }
+                if (newSize.Height <= 0) {
+                    newSize.Height = 1;
+                }
+                return WidgetUtils.ResizeImage(image, newSize);
+            } catch (ArgumentException ex) {
+                logger.Warn($"访问图像属性失败: {ex.Message}");
+                throw new ArgumentException("Image is invalid or has been disposed", ex);
+            } catch (ObjectDisposedException ex) {
+                logger.Warn($"图像已被释放: {ex.Message}");
+                throw new ArgumentException("Image has been disposed", ex);
             }
-            return WidgetUtils.ResizeImage(image, newSize);
         }
 
         /// <summary>
