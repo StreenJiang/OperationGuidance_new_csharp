@@ -209,7 +209,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public void ImageCrop() {
             // Get real time displayed image, and will have its size and location
-            Image? imageDisplay = GetDisplayImage();
+            using Image? imageDisplay = GetDisplayImage();
             Console.WriteLine($"imageDisplay: {imageDisplay}");
             if (imageDisplay != null) {
                 // Set cropped to true here because if the image is smaller than rectangle, it won't go in the if block blow

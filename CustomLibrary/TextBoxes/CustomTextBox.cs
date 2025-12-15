@@ -358,7 +358,7 @@ namespace CustomLibrary.TextBoxes {
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
                 using (Image imageTemp = ResxUtils.Load("input_error")) {
                     if (imageTemp != null) {
-                        _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize);
+                        _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize, true);
                         // 使用 using 确保 Icon 被正确释放
                         using (var bitmap = new Bitmap(_iconShowing))
                         using (var icon = Icon.FromHandle(bitmap.GetHicon())) {

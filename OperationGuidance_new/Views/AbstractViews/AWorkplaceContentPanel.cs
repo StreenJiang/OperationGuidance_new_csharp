@@ -1596,7 +1596,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 while (!_barcodeRelatedDone) {
                     await Task.Delay(50);
                 }
-                OpenBarCodePopUpForm();
+                BeginInvoke(() => OpenBarCodePopUpForm());
             }
         }
 

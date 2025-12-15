@@ -150,8 +150,9 @@ namespace OperationGuidance_new.Views.SubViews {
                                 } else {
                                     _rotateAngle -= 15;
                                 }
-                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle);
+                                Image image = WidgetUtils.RotateImage(_iconShowing, _rotateAngle, null, false);
                                 _pictureBox.Size = image.Size;
+                                _pictureBox.Image?.Dispose();
                                 _pictureBox.Image = image;
                                 _pictureBox.Location = new((_picturePanel.Width - _pictureBox.Width) / 2, (_picturePanel.Height - _pictureBox.Height) / 2);
                                 break;
