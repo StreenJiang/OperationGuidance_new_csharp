@@ -1074,7 +1074,12 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
+        protected void MissionNGConfirmPopUp(string msg) {
+            bool result = false;
+            while (!result) {
+                result = OpenAdminPasswordPopUpForm(msg, true);
+            }
+        }
 
         protected override async Task ActionAfterActivatingMission() {
             await base.ActionAfterActivatingMission();
