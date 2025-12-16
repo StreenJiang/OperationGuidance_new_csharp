@@ -869,23 +869,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 await Task.Run(() => {
                     BeginInvoke(() => {
                         if (!IsDisposed) {
-                            if (_adminConfirmed == null || _adminConfirmed.Value) {
-                                DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
-                                // 如果有空的数据进来，则跳过
-                                if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                    logger.Warn("Message is null from serial port device, please check.");
-                                    return;
-                                }
-                                if (dto.invalid_char != null) {
-                                    msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
-                                }
+                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                            // 如果有空的数据进来，则跳过
+                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                logger.Warn("Message is null from serial port device, please check.");
+                                return;
+                            }
+                            if (dto.invalid_char != null) {
+                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                            }
 
-                                // 交给弹窗处理
-                                if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                                    OpenBarCodePopUpForm(msg);
-                                } else {
-                                    _barCodePopUpForm.ValidateBarCode(msg);
-                                }
+                            // 交给弹窗处理
+                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                OpenBarCodePopUpForm(msg);
+                            } else {
+                                _barCodePopUpForm.ValidateBarCode(msg);
                             }
                         }
                     });
