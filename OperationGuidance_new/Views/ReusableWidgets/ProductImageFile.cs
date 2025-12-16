@@ -329,17 +329,26 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public Image? GetDisplayImage() {
-            // 尝试生成有效图像
-            var result = TryCreateDisplayImage();
-            if (result != null)
-                return result;
+            try {
+                Image? result = TryCreateDisplayImage();
+                if (result != null)
+                    return result;
 
-            // 如果失败，尝试重载一次（避免无限重试）
-            logger.Info("图像处理失败，尝试重新加载源图像...");
-            _image = ReloadImage();
+                const int maxRetries = 5;
+                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                    logger.Info($"图像处理失败，第 {attempt} 次重试：重新加载源图像...");
+                    _image = ReloadImage();
 
-            // 再试一次
-            return TryCreateDisplayImage();
+                    result = TryCreateDisplayImage();
+                    if (result != null)
+                        return result;
+                }
+            } catch (Exception ex) {
+                logger.Error("图像处理异常", ex);
+            }
+
+            logger.Warn("图像处理失败：已达到最大重试次数（5次），放弃生成图像。");
+            return null;
         }
 
         private Image? TryCreateDisplayImage() {
@@ -348,7 +357,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             try {
                 float finalRatio = _zoomingRatio * (1 + _zoomingRatioExtra);
-                using var originalCopy = (Image)_image.Clone(); // 安全起见，操作副本
+                using var originalCopy = (Image) _image.Clone(); // 安全起见，操作副本
                 var resized = MainUtils.ResizeImageByZoomingRatio(originalCopy, finalRatio);
 
                 if (_rotateAngle == 0)
