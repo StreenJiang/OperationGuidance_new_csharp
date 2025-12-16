@@ -407,9 +407,10 @@ namespace OperationGuidance_new.Views {
 
             if (_mission.id > 0) {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
-                sum = missionRecordDTOs.DistinctBy(dto => dto.mission_id).Count();
-                okSum = missionRecordDTOs
-                            .DistinctBy(dto => dto.mission_id)
+                IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
+                            .DistinctBy(dto => dto.product_bar_code);
+                sum = distinctData.Count();
+                okSum = distinctData
                             .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
                             .Count();
                 if (sum > 0) {
