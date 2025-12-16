@@ -206,10 +206,14 @@ namespace OperationGuidance_new.Views {
                 BeginInvoke(() => {
                     // Nonactivated or finished will not handle any received data
                     if (!_activated) {
+                        logger.Info($"[WHYC][MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
                         return;
                     }
 
                     try {
+                        logger.Info($"[WHYC][MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
+                                    $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
+
                         ToolTask toolTask = _toolTasks[deviceId];
                         if (toolTask.WorkstationId != null) {
                             int workstationId = toolTask.WorkstationId.Value;
@@ -276,8 +280,17 @@ namespace OperationGuidance_new.Views {
                             // WHYC
                             _rundownTime = data.rundown_time;
 
+                            // 数据转换完成日志
+                            logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}|WORKSTATION:{workstationDTO.name}] " +
+                                        $"数据转换完成 - product_bar_code={missionRecord.product_bar_code}, " +
+                                        $"parts_bar_code={missionRecord.parts_bar_code}, product_batch={missionRecord.product_batch}, " +
+                                        $"tool={toolDTO.name}({toolDTO.ip}), rundown_time={data.rundown_time}");
+
                             // If result type is tightening
                             if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
+                                logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 开始拧紧结果验证 - torque={data.torque}, angle={data.angle}, " +
+                                            $"tightening_status={data.tightening_status}, torque_status={data.torque_status}, angle_status={data.angle_status}");
+
                                 bool tighteningOK = true;
                                 string errorMsg = "";
                                 // Initialize color to ok
@@ -363,6 +376,8 @@ namespace OperationGuidance_new.Views {
 
                                 // Switch to next bolt
                                 if (tighteningOK) {
+                                    logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 拧紧验证结果 - OK, actual_torque={data.torque}, torque_range=[{boltDTO.torque_min}, {boltDTO.torque_max}], actual_angle={data.angle}, angle_range=[{boltDTO.angle_min}, {boltDTO.angle_max}]");
+
                                     _errorMsg = null;
 
                                     // Reset tightening type to tightening in case somewhere did some changes
@@ -371,6 +386,7 @@ namespace OperationGuidance_new.Views {
                                     _workingProcessPanel.NGReasons = null;
 
                                     currentBolt.BoltStatus = BoltStatus.DONE;
+                                    logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧成功，状态更新为 DONE");
 
                                     // Check next index
                                     List<BoltButton> currentSideBolts;
@@ -398,9 +414,11 @@ namespace OperationGuidance_new.Views {
                                         if (CheckIfIsMultiDeviceIndependenceMode()) {
                                             _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
                                             ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
+                                            logger.Info($"[WHYC][MISSION:{_mission?.id}|WORKSTATION:{workstationId}] 切换到下一个螺栓 (index={nextIndex})");
                                         } else {
                                             _currentWorkingBolt = SwitchBolt(nextIndex);
                                             ChangeBoltStatusToWorking(_currentWorkingBolt);
+                                            logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 切换到下一个螺栓 (index={nextIndex})");
                                         }
                                     } else {
                                         bool allDone = true;
@@ -421,6 +439,7 @@ namespace OperationGuidance_new.Views {
                                                 ChangeBoltStatusToWorking(_currentWorkingBolt);
                                                 ChangeSideAndInvalidate();
                                                 allDone = false;
+                                                logger.Info($"[WHYC][MISSION:{_mission?.id}] 当前产品面完成，切换到下一个产品面 (index={_currentSideIndex})");
                                             }
                                         }
 
@@ -429,8 +448,13 @@ namespace OperationGuidance_new.Views {
                                             _missionRecord.mission_result = (int) TighteningStatus.OK;
                                             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
+                                            logger.Info($"[WHYC][MISSION:{_mission?.id}|RECORD_ID:{_missionRecord.id}] 任务完成 - mission_result=OK, " +
+                                                        $"product_bar_code={_missionRecord.product_bar_code}, product_batch={_missionRecord.product_batch}, " +
+                                                        $"is_redo={_missionRecord.is_redo}, rundown_time={_rundownTime}");
+
                                             // Checks for challenge mission
                                             if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                                                logger.Info($"[WHYC][MISSION:{_mission?.id}] 添加挑战任务完成记录");
                                                 AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
                                             }
 
@@ -438,6 +462,9 @@ namespace OperationGuidance_new.Views {
                                         }
                                     }
                                 } else {
+                                    logger.Warn($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧失败 - " +
+                                                $"ng_times={currentBolt.NgTimes}, tightening_status=NG, error_msg={errorMsg}");
+
                                     // Change bolt status
                                     currentBolt.BoltStatus = BoltStatus.ERROR;
 
@@ -458,6 +485,9 @@ namespace OperationGuidance_new.Views {
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;
                                 }
                             } else {
+                                logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 处理反松结果 - result_type=LOOSENING, " +
+                                            $"torque={data.torque}, angle={data.angle}");
+
                                 _needLoosening = false;
 
                                 // 反松结束后把扭矩角度改回黑色
@@ -471,11 +501,15 @@ namespace OperationGuidance_new.Views {
                                 if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
                                     StoreTighteningData(dataDTO);
+                                    logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据已存储");
+                                } else {
+                                    logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据未存储 (配置禁用)");
                                 }
                             }
                         }
                     } catch (Exception e) {
-                        logger.Error($"Error occurred while handling tightening data, e: {e}");
+                        logger.Error($"[WHYC][MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
+                                    $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
                     }
                 });
             });
@@ -532,6 +566,10 @@ namespace OperationGuidance_new.Views {
         private async void UploadDataToMES(OperationDataDTO operationDataDTO) {
             string uploadDataUri = MainUtils.GetUploadDataApi();
 
+            logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 开始上传数据到MES - " +
+                        $"workstation={operationDataDTO.workstation_name}, torque={operationDataDTO.torque}, " +
+                        $"angle={operationDataDTO.angle}, result={((TighteningStatus) operationDataDTO.tightening_status.Value).ToString()}");
+
             // Check uri
             if (!string.IsNullOrEmpty(uploadDataUri)) {
                 WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == operationDataDTO.workstation_id);
@@ -559,8 +597,14 @@ namespace OperationGuidance_new.Views {
 
                 HttpResponseUploadData response = await HttpUtils.SendPost_WHYC<HttpRequestUploadData, HttpResponseUploadData>(uploadDataUri, request);
                 if (response.unStatus == HttpStatus_WHYC.FAILURE) {
+                    logger.Error($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 上传数据到MES失败 - " +
+                                $"status={response.unStatus}, message={response.ucMsg}");
                     WidgetUtils.ShowErrorPopUp($"上传数据失败，返回信息：{response.ucMsg}");
+                } else {
+                    logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 上传数据到MES成功");
                 }
+            } else {
+                logger.Warn($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 未配置MES上传地址，跳过数据上传");
             }
 
             string _round_3<T>(T? num) {
@@ -579,6 +623,8 @@ namespace OperationGuidance_new.Views {
         protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
             await base.StoreTighteningData(operationDataDTO);
             UploadDataToMES(operationDataDTO);
+
+            logger.Debug($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 拧紧数据存储完成");
         }
 
         // Action after receving bar code msg

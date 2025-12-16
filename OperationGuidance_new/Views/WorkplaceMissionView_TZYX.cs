@@ -572,10 +572,14 @@ namespace OperationGuidance_new.Views {
             BeginInvoke(() => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
+                    logger.Info($"[TZYX][MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
                     return;
                 }
 
                 try {
+                    logger.Info($"[TZYX][MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
+                                $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
+
                     ToolTask toolTask = _toolTasks[deviceId];
                     // Lock first
                     if (MainUtils.IsArmLocatingEnabled()) {
@@ -842,7 +846,8 @@ namespace OperationGuidance_new.Views {
                         }
                     }
                 } catch (Exception e) {
-                    logger.Error($"Error occurred while handling tightening data, e: {e}");
+                    logger.Error($"[TZYX][MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
+                                $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
                 }
             });
         }
