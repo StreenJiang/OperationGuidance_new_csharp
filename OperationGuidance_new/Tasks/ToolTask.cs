@@ -21,7 +21,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private int? CurrentPSet = null;
+        private volatile int CurrentPSet = -1;
         private bool? PSetOk = false;
         private Socket? socketClient = null;
         private string _ip;
@@ -180,7 +180,7 @@ namespace OperationGuidance_new.Tasks {
                             RunTask();
                             Status = CONNECTED;
 
-                            ForceSendUnlock();
+                            InitVariablesAfterConnected();
                             break;
                         }
                         await Task.Delay(AutoReconnectingTrialDelay);
@@ -313,6 +313,7 @@ namespace OperationGuidance_new.Tasks {
                         socketClient = null;
                     }
                 }
+
                 return isConnected;
             } catch (Exception e) {
                 logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}], e = {e}");
@@ -320,6 +321,15 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
+
+        private void InitVariablesAfterConnected() {
+            // 初始化当前 pset
+            CurrentPSet = -1;
+
+            // 初始状态保持枪是解锁的
+            ForceSendUnlock();
+        }
+
         private void SendCommand(string command) {
             if (!_commands.Contains(command)) {
                 // Enqueue to avoid duplicated calls
