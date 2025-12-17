@@ -99,56 +99,69 @@ namespace OperationGuidance_new.Constants {
         }
 
         public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
-            string dataMessageTemp = Encoding.ASCII.GetString(msgBytes);
-            logger.Info($"Analyzing data from {this.Name}: [{dataMessageTemp}]");
-
-
-            // Analyze msg one by one
-            string[] msgs = dataMessageTemp.Split('\0');
-            for (int i = 0; i < msgs.Length; i++) {
-                string msg = msgs[i];
-                if (_getLengthOfOne(msg) > 0) {
-                    if (GetMid(msg) == "0900") {
-                        if (i == 0) {
-                            _analyzeData(msg, msgBytes);
-                        } else {
-                            List<byte> bytes = msgBytes.ToList();
-
-                            int index = -1;
-                            do {
-                                index = bytes.IndexOf(0);
-                                if (index > 0) {
-                                    string msgTemp = Encoding.ASCII.GetString(bytes.Take(index).ToArray());
-                                    if (GetMid(msgTemp) == "0900") {
-                                        _analyzeData(msgTemp, bytes.Skip(index).Take(bytes.Count).ToArray());
-                                        logger.Info("Curve data analysis done ...........");
-                                        break;
-                                    }
-                                }
-
-                                bytes = bytes.Take(index).ToList();
-                                logger.Info("Curve data looping ...........");
-                            } while (index > 0);
-                        }
-
-                        break;
-                    } else {
-                        _analyzeData(msg);
-                    }
+            int offset = 0;
+            while (offset < msgBytes.Length) {
+                // 1. 找到第一个 \0 获取 Header
+                int nullIndex = Array.IndexOf(msgBytes, (byte) 0, offset);
+                if (nullIndex == -1) {
+                    logger.Warn("No header terminator found, incomplete data");
+                    return; // 缓存剩余数据
                 }
-            }
 
-            // Inner method that check and count length of msg
-            int _getLengthOfOne(string msg) {
-                if (msg.Length >= 4) {
-                    try {
-                        return int.Parse(new String(msg.Take(4).ToArray()));
-                    } catch (FormatException fe) {
-                        logger.Warn($"Exception occurred while checking length of message got from controller: msg = {msg}, e = {fe}");
-                        return 0;
-                    }
+                // 2. 提取 Header（\0 之前）
+                int headerLength = nullIndex - offset;
+                if (headerLength < 4) {
+                    logger.Warn("Header too short");
+                    offset = nullIndex + 1;
+                    continue;
                 }
-                return 0;
+
+                byte[] headerBytes = new byte[headerLength];
+                Array.Copy(msgBytes, offset, headerBytes, 0, headerLength);
+
+                // 验证是否为有效 ASCII
+                if (!MainUtils.IsAscii(headerBytes)) {
+                    logger.Warn("Non-ASCII header, skipping");
+                    offset = nullIndex + 1;
+                    continue;
+                }
+
+                string header = Encoding.ASCII.GetString(headerBytes);
+
+                // 3. 解析整条消息长度（前4字节）
+                int totalMessageLength;
+                try {
+                    totalMessageLength = int.Parse(header.Substring(0, 4));
+                } catch (Exception ex) {
+                    logger.Warn($"Invalid length in header: {header}, ex: {ex}");
+                    offset = nullIndex + 1;
+                    continue;
+                }
+
+                // 4. 检查是否有完整消息
+                int expectedEnd = offset + totalMessageLength;
+                if (expectedEnd > msgBytes.Length) {
+                    logger.Info($"Incomplete message (need {totalMessageLength}, have {msgBytes.Length - offset}), caching...");
+                    return; // 缓存，等待更多数据
+                }
+
+                // 5. 提取 Payload（\0 之后到消息结束）
+                int payloadStart = nullIndex + 1;
+                int payloadLength = totalMessageLength - (headerLength + 1); // -1 for \0
+                byte[] payloadBytes = payloadLength > 0
+            ? msgBytes.Skip(payloadStart).Take(payloadLength).ToArray()
+            : Array.Empty<byte>();
+
+                // 6. 处理消息
+                string mid = GetMid(header);
+                if (mid == "0900") {
+                    _analyzeData(header, payloadBytes);
+                } else {
+                    _analyzeData(header);
+                }
+
+                // 7. 移动到下一条消息
+                offset = expectedEnd;
             }
 
             // Inner method that do analyze
@@ -262,7 +275,9 @@ namespace OperationGuidance_new.Constants {
                         string time = $"{new(header.Skip(30).Take(10).ToArray())} {new(header.Skip(41).Take(8).ToArray())}";
                         string dataType = new(header.Skip(52).Take(2).ToArray());
                         byte[] dataBytes = cureData.Skip(header.Length + 1).ToArray();
-                        double coefficient = double.Parse(new(header.Skip(header.IndexOf("02214") + 17).Take(9).ToArray()));
+                        int pidIndex = header.IndexOf("02214");
+                        int coefficientLength = int.Parse(new(header.Skip(pidIndex + 5).Take(3).ToArray()));
+                        double coefficient = double.Parse(new(header.Skip(pidIndex + 17).Take(coefficientLength).ToArray()));
                         int decimals = int.Parse(dataType) == (int) CurveDataType.TORQUE ? 2 : 0;
                         double[] values = AnalyseCurveData(dataBytes, coefficient, decimals);
 
@@ -273,6 +288,7 @@ namespace OperationGuidance_new.Constants {
                 }
             }
         }
+
 
         double[] AnalyseCurveData(byte[] dataBytes, double coefficient, int decimals) {
             List<double> results = new();

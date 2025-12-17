@@ -1674,5 +1674,18 @@ namespace OperationGuidance_new.Utils {
             // 从 JSON 字符串反序列化为新的对象
             return JsonConvert.DeserializeObject<T>(jsonString);
         }
+
+        public static bool IsAscii(byte[] bytes) {
+            if (bytes == null || bytes.Length == 0)
+                return false;
+
+            foreach (byte b in bytes) {
+                // 可打印 ASCII: 32 (space) 到 126 (~)
+                // 如果协议允许制表符 \t (9)、换行 \n (10)、回车 \r (13)，可额外加判断
+                if (b < 32 || b > 126)
+                    return false;
+            }
+            return true;
+        }
     }
 }
