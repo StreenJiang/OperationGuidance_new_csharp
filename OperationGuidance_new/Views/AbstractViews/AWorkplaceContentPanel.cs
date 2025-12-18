@@ -2796,7 +2796,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
             if (vos == null) return;
-            var snapshot = vos.ToList();
+            var snapshot = vos.OrderBy(vo => vo.modify_time).ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
 
