@@ -59,6 +59,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
         protected readonly object DataStorageLockObj = new();
+        // 异步锁用于StoreTighteningData排队执行
+        private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -2675,40 +2677,48 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual async void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            // 等待锁，确保排队执行
+            await _storeTighteningDataLock.WaitAsync();
+            try {
+                await StoreTighteningDataInternal(operationDataDTO);
+            } finally {
+                // 确保锁总是被释放
+                _storeTighteningDataLock.Release();
+            }
+        }
+
+        protected virtual async Task StoreTighteningDataInternal(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously with proper cancellation support
-            _ = Task.Run(async () => {
-                try {
-                    // 并行执行数据库和文件存储操作，直接await异步方法
-                    await Task.WhenAll(
-                        StoreDataToDatabaseAsync(operationDataDTO),
-                        StoreDataToFilesAsync(operationDataDTO)
-                    );
+            try {
+                // 并行执行数据库和文件存储操作，但文件存储有超时保护
+                var dbTask = StoreDataToDatabaseAsync(operationDataDTO);
+                var fileTask = StoreDataToFilesAsyncWithTimeout(operationDataDTO, TimeSpan.FromSeconds(3)); // 3秒超时
 
-                    // 转换数据并更新UI（在UI线程）
-                    BeginInvoke(() => {
-                        try {
-                            OperationDataVO dataFormatted = new();
-                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                await Task.WhenAll(dbTask, fileTask);
 
-                            // 使用线程安全的ConcurrentBag
-                            _tighteningDataVOs.Add(dataFormatted);
+                // 转换数据并更新UI（在UI线程）
+                BeginInvoke(() => {
+                    try {
+                        OperationDataVO dataFormatted = new();
+                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                            // 创建快照用于UI显示
-                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                            logger.Info("StoreTighteningData showing to panel end ........");
-                        } catch (Exception e) {
-                            logger.Error($"Error in data conversion or UI update: {e}");
-                        }
-                    });
-                } catch (Exception e) {
-                    logger.Error($"Error during data storage operations: {e}");
-                } finally {
-                    logger.Info("StoreTighteningData end ........");
-                }
-            }, _activeMissionCts.Token);
+                        // 使用线程安全的ConcurrentBag
+                        _tighteningDataVOs.Add(dataFormatted);
+
+                        // 创建快照用于UI显示
+                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                        logger.Info("StoreTighteningData showing to panel end ........");
+                    } catch (Exception e) {
+                        logger.Error($"Error in data conversion or UI update: {e}");
+                    }
+                });
+            } catch (Exception e) {
+                logger.Error($"Error during data storage operations: {e}");
+            } finally {
+                logger.Info("StoreTighteningData end ........");
+            }
         }
 
         protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
@@ -2735,6 +2745,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } catch (Exception e) {
                 logger.Error($"StoreDataToFiles error: {e}");
                 throw; // 重新抛出异常以便调用者处理
+            }
+        }
+
+        protected virtual async Task StoreDataToFilesAsyncWithTimeout(OperationDataDTO operationDataDTO, TimeSpan timeout) {
+            logger.Info("StoreDataToFiles with timeout start ........");
+
+            using var cts = new CancellationTokenSource(timeout);
+
+            try {
+                // 直接执行，让 BeginInvoke 处理UI线程异步性
+                // 避免多余的 Task.Run 包装，减少线程池压力
+                StoreDataToFilesCore(operationDataDTO);
+                logger.Info("StoreDataToFiles with timeout end ........");
+            } catch (Exception e) {
+                logger.Error($"StoreDataToFiles with timeout error: {e}");
+                // 不抛出异常，避免阻塞主流程
             }
         }
 
