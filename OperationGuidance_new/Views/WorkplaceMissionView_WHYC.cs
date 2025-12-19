@@ -621,6 +621,8 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
+            logger.Debug($"[WHYC][MISSION:{_mission?.id}|BOLT:{operationDataDTO.bolt_serial_num}] 开始存储拧紧数据");
+
             await base.StoreTighteningData(operationDataDTO);
             UploadDataToMES(operationDataDTO);
 
