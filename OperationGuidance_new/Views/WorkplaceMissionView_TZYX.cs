@@ -515,9 +515,9 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
             OperationDataDTOs.Add(operationDataDTO);
-            base.StoreTighteningData(operationDataDTO);
+            await base.StoreTighteningData(operationDataDTO);
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {

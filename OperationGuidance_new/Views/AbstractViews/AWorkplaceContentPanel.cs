@@ -2677,7 +2677,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual async void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
             // 等待锁，确保排队执行
             await _storeTighteningDataLock.WaitAsync();
             try {
