@@ -100,6 +100,7 @@ namespace OperationGuidance_new.Constants {
 
         public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
             int offset = 0;
+            bool foundTighteningData = false;
             while (offset < msgBytes.Length) {
                 // 1. 找到第一个 \0 获取 Header
                 int nullIndex = Array.IndexOf(msgBytes, (byte) 0, offset);
@@ -157,6 +158,16 @@ namespace OperationGuidance_new.Constants {
                 if (mid == "0900") {
                     _analyzeData(header, payloadBytes);
                 } else {
+                    if (mid == "0061") {
+                        // 如果在同一个消息中找到多个拧紧数据，跳过后面的
+                        // 正常情况下不可能存在一次信息有多个拧紧数据
+                        // 因为拧紧数据处理完一次才会切换点位、下发程序号、解锁枪等
+                        // 一个消息中存在多个数据很可能是控制器出错导致多发
+                        if (foundTighteningData) {
+                            continue;
+                        }
+                        foundTighteningData = true;
+                    }
                     _analyzeData(header);
                 }
 
@@ -288,7 +299,6 @@ namespace OperationGuidance_new.Constants {
                 }
             }
         }
-
 
         double[] AnalyseCurveData(byte[] dataBytes, double coefficient, int decimals) {
             List<double> results = new();

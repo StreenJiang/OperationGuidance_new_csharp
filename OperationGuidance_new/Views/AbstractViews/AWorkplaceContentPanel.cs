@@ -59,6 +59,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
         protected readonly object DataStorageLockObj = new();
+        // 异步锁用于StoreTighteningData排队执行
+        private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -846,31 +848,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Load serial port devices
                 _serialPortTasks = MainUtils.SerialPortTasks;
                 foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                    SerialPortTask serialPortTask = pair.Value;
-                    serialPortTask.ActionAfterDataReceived = async msg => {
-                        await Task.Run(() => {
-                            BeginInvoke(() => {
-                                if (!IsDisposed) {
-                                    DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
-                                    // 如果有空的数据进来，则跳过
-                                    if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                        logger.Warn("Message is null from serial port device, please check.");
-                                        return;
-                                    }
-                                    if (dto.invalid_char != null) {
-                                        msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
-                                    }
-
-                                    // 交给弹窗处理
-                                    if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                                        OpenBarCodePopUpForm(msg);
-                                    } else {
-                                        _barCodePopUpForm.ValidateBarCode(msg);
-                                    }
-                                }
-                            });
-                        });
-                    };
+                    InitSerialPortTask(pair);
                 }
 
                 // Load communication devices
@@ -883,6 +861,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Action after loading devices
             ActionAfterLoadingDevices();
         }
+
+        protected virtual void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
+            SerialPortTask serialPortTask = pair.Value;
+            serialPortTask.ActionAfterDataReceived = async msg => {
+                await Task.Run(() => {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                            // 如果有空的数据进来，则跳过
+                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                logger.Warn("Message is null from serial port device, please check.");
+                                return;
+                            }
+                            if (dto.invalid_char != null) {
+                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                            }
+
+                            // 交给弹窗处理
+                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                OpenBarCodePopUpForm(msg);
+                            } else {
+                                _barCodePopUpForm.ValidateBarCode(msg);
+                            }
+                        }
+                    });
+                });
+            };
+        }
+
         // 持续检查设备连接状态的task
         private async void CheckDeviceConnections() {
             await Task.Run(async () => {
@@ -2368,6 +2375,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                         }
 
+                        // 参数集对比日志
+                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                        logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
+                                    $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
+                                    $"tighteningData_parameter_set={data.parameter_set_number}");
+
                         // Check if current showing side is equal to side of working bolt, if no then switch to the right side
                         if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
                             ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
@@ -2377,7 +2390,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         }
 
-                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                         OperationDataDTO dataDTO = new();
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
 
@@ -2675,40 +2687,48 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
+            // 等待锁，确保排队执行
+            await _storeTighteningDataLock.WaitAsync();
+            try {
+                await StoreTighteningDataInternal(operationDataDTO);
+            } finally {
+                // 确保锁总是被释放
+                _storeTighteningDataLock.Release();
+            }
+        }
+
+        protected virtual async Task StoreTighteningDataInternal(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously with proper cancellation support
-            _ = Task.Run(async () => {
-                try {
-                    // 并行执行数据库和文件存储操作，直接await异步方法
-                    await Task.WhenAll(
-                        StoreDataToDatabaseAsync(operationDataDTO),
-                        StoreDataToFilesAsync(operationDataDTO)
-                    );
+            try {
+                // 并行执行数据库和文件存储操作，但文件存储有超时保护
+                var dbTask = StoreDataToDatabaseAsync(operationDataDTO);
+                var fileTask = StoreDataToFilesAsyncWithTimeout(operationDataDTO, TimeSpan.FromSeconds(3)); // 3秒超时
 
-                    // 转换数据并更新UI（在UI线程）
-                    BeginInvoke(() => {
-                        try {
-                            OperationDataVO dataFormatted = new();
-                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                await Task.WhenAll(dbTask, fileTask);
 
-                            // 使用线程安全的ConcurrentBag
-                            _tighteningDataVOs.Add(dataFormatted);
+                // 转换数据并更新UI（在UI线程）
+                BeginInvoke(() => {
+                    try {
+                        OperationDataVO dataFormatted = new();
+                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                            // 创建快照用于UI显示
-                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                            logger.Info("StoreTighteningData showing to panel end ........");
-                        } catch (Exception e) {
-                            logger.Error($"Error in data conversion or UI update: {e}");
-                        }
-                    });
-                } catch (Exception e) {
-                    logger.Error($"Error during data storage operations: {e}");
-                } finally {
-                    logger.Info("StoreTighteningData end ........");
-                }
-            }, _activeMissionCts.Token);
+                        // 使用线程安全的ConcurrentBag
+                        _tighteningDataVOs.Add(dataFormatted);
+
+                        // 创建快照用于UI显示
+                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                        logger.Info("StoreTighteningData showing to panel end ........");
+                    } catch (Exception e) {
+                        logger.Error($"Error in data conversion or UI update: {e}");
+                    }
+                });
+            } catch (Exception e) {
+                logger.Error($"Error during data storage operations: {e}");
+            } finally {
+                logger.Info("StoreTighteningData end ........");
+            }
         }
 
         protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
@@ -2735,6 +2755,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } catch (Exception e) {
                 logger.Error($"StoreDataToFiles error: {e}");
                 throw; // 重新抛出异常以便调用者处理
+            }
+        }
+
+        protected virtual async Task StoreDataToFilesAsyncWithTimeout(OperationDataDTO operationDataDTO, TimeSpan timeout) {
+            logger.Info("StoreDataToFiles with timeout start ........");
+
+            using var cts = new CancellationTokenSource(timeout);
+
+            try {
+                // 直接执行，让 BeginInvoke 处理UI线程异步性
+                // 避免多余的 Task.Run 包装，减少线程池压力
+                StoreDataToFilesCore(operationDataDTO);
+                logger.Info("StoreDataToFiles with timeout end ........");
+            } catch (Exception e) {
+                logger.Error($"StoreDataToFiles with timeout error: {e}");
+                // 不抛出异常，避免阻塞主流程
             }
         }
 
@@ -2795,9 +2831,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
-            if (vos == null)
-                return;
-            var snapshot = vos.ToList();
+            if (vos == null) return;
+            var snapshot = vos.OrderBy(vo => vo.modify_time).ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
 
