@@ -587,7 +587,9 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 // Build count query by wrapping the base SQL
                 string countSql = $"SELECT COUNT(*) FROM ({cleanedSql}) AS CountQuery";
 
-                logger.Info($"Count SQL: {countSql}");
+                // Log count SQL and parameters for debugging (use Debug level to reduce noise in production)
+                logger.Debug($"Count SQL: {countSql}");
+                logger.Debug($"Count Params: {GetParamsStr(@params)}");
 
                 int count;
                 if (_conn == null) {
@@ -598,10 +600,12 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                     count = _conn.QueryFirst<int>(countSql, @params, _transaction, commandTimeout: commandTimeout);
                 }
 
+                logger.Info($"Total count result: {count}");
                 return count;
             } catch (Exception e) {
-                logger.Warn($"GetTotalCount error: {e}");
-                return 0;
+                // Improved error handling: log detailed info and rethrow exception
+                logger.Error($"GetTotalCount failed. SQL: {baseSql}, Params: {GetParamsStr(@params)}", e);
+                throw new InvalidOperationException($"Failed to get total count: {e.Message}", e);
             }
         }
 

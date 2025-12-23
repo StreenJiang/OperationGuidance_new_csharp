@@ -1,6 +1,5 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
@@ -13,9 +12,11 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
 using RJCP.IO.Ports;
+using CustomLibrary.Panels.AbstractClasses;
 
-namespace OperationGuidance_new.Views {
-    public class DeviceSerialPortView: CustomDataGridViewOuterPanel<DeviceSerialPortDTO, ViewObjects.DeviceSerialPortVO> {
+namespace OperationGuidance_new.Views
+{
+    public class DeviceSerialPortView: ACustomDataGridViewOuterPanel<DeviceSerialPortDTO, ViewObjects.DeviceSerialPortVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;

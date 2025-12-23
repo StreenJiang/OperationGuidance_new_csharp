@@ -1,14 +1,14 @@
-﻿using System.Reflection;
-using CustomLibrary.Buttons;
+﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.DataGridViewRelateds;
 using CustomLibrary.Panels;
-using CustomLibrary.Utils;
-using OperationGuidance_new.Attributes;
-using OperationGuidance_new.ViewObjects.AbstractClasses;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Utils;
 using log4net;
+using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.ViewObjects.AbstractClasses;
+using System.Reflection;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
@@ -41,6 +41,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _totalPages;
         private Action<DataGridView>? _initializeColumnHeader;
         private List<T> _dataSource;
+        private bool _queryPagedData = false;
+        private Func<List<T>>? _queryList;
+        private Func<int>? _getTotalFromDB;
         #endregion
 
         #region Properties
@@ -71,13 +74,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             set {
                 _dataSource = value;
                 _currentPage = 1;
-                _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
-                if (_totalPages == 0) {
-                    _totalPages = 1;
+                // When pagination is enabled, defer total pages calculation until after data is loaded
+                if (!_queryPagedData) {
+                    _totalPages = (int) Math.Ceiling(GetTotal() / (double) _pageSize);
+                    if (_totalPages == 0) {
+                        _totalPages = 1;
+                    }
                 }
                 Paging(_currentPage, _pageSize);
             }
         }
+        public bool QueryPagedData { get => _queryPagedData; set => _queryPagedData = value; }
+        public Func<List<T>>? QueryList { get => _queryList; set => _queryList = value; }
+        public Func<int>? GetTotalFromDB { get => _getTotalFromDB; set => _getTotalFromDB = value; }
         #endregion
 
         #region Constructors
@@ -89,6 +98,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             PenBorderColor = ColorConfigs.COLOR_CONTENT_PANEL_INNER_BORDER;
             // Data source
             _dataSource = new();
+            _totalPages = 1; // Initialize to 1 to avoid division by zero before first data load
             // Data grid view
             InitializeGridView(initializeColumnHeader);
             // Page info
@@ -560,8 +570,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         public void ResetPageInfo() {
             _countPerPage.Text = $"{_pageSize} 条/页";
-            _dataCountInfo.Text = $"共 {_dataSource.Count} 条";
+            _dataCountInfo.Text = $"共 {GetTotal()} 条";
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+        }
+        private int GetTotal() {
+            if (_queryPagedData && _getTotalFromDB != null) {
+                return _getTotalFromDB();
+            } else {
+                return _dataSource.Count;
+            }
         }
         private void ResizePageInfoContent(Label label, int newPageInfoHeight) {
             label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .475F, FontStyle.Regular, GraphicsUnit.Pixel);
@@ -573,11 +590,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (IsHandleCreated) {
                 BeginInvoke(new Action(ClearAllToggleButtonCells));
                 BindingSource bindingSource = new();
-                if (_dataSource.Count > 0) {
-                    bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
+
+                if (_queryPagedData) {
+                    if (_queryList != null) {
+                        _dataSource = _queryList();
+                    }
+                    bindingSource.DataSource = _dataSource;
                 } else {
-                    bindingSource.DataSource = null;
+                    if (_dataSource.Count > 0) {
+                        bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
+                    } else {
+                        bindingSource.DataSource = null;
+                    }
                 }
+
                 BeginInvoke(new Action<BindingSource>(LoadDataAsync), bindingSource);
             }
             System.Console.WriteLine($"========================================== Paging finished in {(DateTime.Now - startTime).Milliseconds}ms");
@@ -587,6 +613,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (IsHandleCreated) {
                 _gridView.DataSource = bindingSource;
                 BeginInvoke(new Action(() => {
+                    // Note: Nested BeginInvoke ensures this runs on UI thread after data binding completes
+                    // Calculate total pages after data is loaded for pagination queries
+                    if (_queryPagedData) {
+                        _totalPages = (int) Math.Ceiling(GetTotal() / (double) _pageSize);
+                        if (_totalPages == 0) {
+                            _totalPages = 1;
+                        }
+                    }
                     ResetPageInfo();
                     ResizeChildren();
                 }));

@@ -1,6 +1,5 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -10,9 +9,11 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Panels.AbstractClasses;
 
-namespace OperationGuidance_new.Views {
-    public class MatCodeMapWhycView_WHYC: CustomDataGridViewOuterPanel<MatCodeMapWhycDTO, MatCodeMapWhycVO> {
+namespace OperationGuidance_new.Views
+{
+    public class MatCodeMapWhycView_WHYC: ACustomDataGridViewOuterPanel<MatCodeMapWhycDTO, MatCodeMapWhycVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;

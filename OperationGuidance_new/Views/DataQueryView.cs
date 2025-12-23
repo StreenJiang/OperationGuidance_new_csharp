@@ -1,7 +1,7 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.DateTimePickers;
-using CustomLibrary.Panels;
+using CustomLibrary.Panels.AbstractClasses;
 using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Configs;
@@ -18,13 +18,14 @@ using OperationGuidance_service.Utils;
 using System.Reflection;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView: CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
+    public class DataQueryView: ACustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
         private ILog logger = MainUtils.GetLogger(typeof(DataQueryView));
 
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
         private List<OperationDataDTO> _dataDTOList;
+        private int _totalCount;
         private List<OperationDataField> _operationDataFields;
         // DataGridView panel
         private DataGridViewGroup<OperationDataVO> _dataGridView;
@@ -122,7 +123,7 @@ namespace OperationGuidance_new.Views {
                 // 组装数据 
                 List<Dictionary<int, object?>> dataWithConfigFields = new();
                 List<OperationDataVO> dataFormatted = new();
-                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(QueryList(), dataFormatted);
                 // 根据过滤条件过滤数据
                 dataFormatted = DataFiltering(dataFormatted, _dataGridView.FilterParametersVO);
                 // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
@@ -147,8 +148,12 @@ namespace OperationGuidance_new.Views {
                 finalData.ExportToExcelFile(headers, filePath, excelFileExists);
             };
 
+            _dataGridView.VoGridView.QueryPagedData = true;
+            _dataGridView.VoGridView.QueryList = QueryListWithPagination;
+            _dataGridView.VoGridView.GetTotalFromDB = () => _totalCount;
+
             // 按钮逻辑
-            _dataGridView.QueryData = (vo) => DataFiltering(QueryList(), vo);
+            _dataGridView.QueryData = (vo) => new();
             // 隐藏不需要的按钮 
             _dataGridView.AddNewButtonVisible = false;
             _dataGridView.ModifyButtonVisible = false;
@@ -259,18 +264,33 @@ namespace OperationGuidance_new.Views {
         }
 
         // 【分页查询】新增分页查询方法，支持搜索条件
-        private List<OperationDataVO> QueryListWithPagination(int pageNumber, int pageSize, string? vinNumber = null, int? workstationId = null, DateTime? startDate = null, DateTime? endDate = null) {
+        private List<OperationDataVO> QueryListWithPagination() {
             var req = new QueryOperationDataListReq {
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                VinNumber = vinNumber,
-                WorkstationId = workstationId,
-                StartDate = startDate,
-                EndDate = endDate
+                PageNumber = _dataGridView.VoGridView.CurrentPage,
+                PageSize = _dataGridView.VoGridView.PageSize,
             };
+
+            var VinNumber = _dataGridView.FilterParametersVO.vin_number;
+            var WorkstationId = _dataGridView.FilterParametersVO.workstation_id;
+            var StartDate = ((OperationDataVO) _dataGridView.FilterParametersVO).filter_create_time_min;
+            var EndDate = ((OperationDataVO) _dataGridView.FilterParametersVO).filter_create_time_max;
+
+            if (!string.IsNullOrEmpty(VinNumber)) {
+                req.VinNumber = VinNumber;
+            }
+            if (WorkstationId.HasValue) {
+                req.WorkstationId = WorkstationId;
+            }
+            if (!string.IsNullOrEmpty(StartDate?.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD))) {
+                req.StartDate = StartDate;
+            }
+            if (!string.IsNullOrEmpty(EndDate?.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD))) {
+                req.EndDate = EndDate;
+            }
 
             QueryOperationDataListRsp rsp = apis.QueryOperationDataList(req);
             _dataDTOList = rsp.OperationDataDTOs;
+            _totalCount = rsp.TotalCount;
             List<OperationDataVO> vos = new();
             CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
             return vos;

@@ -10,6 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Panels\Interfaces\**" />
+    <EmbeddedResource Remove="Panels\Interfaces\**" />
+    <None Remove="Panels\Interfaces\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Buttons\BaseClasses\CommonButtonBase.cs" />
     <Compile Update="Buttons\PageSwitchButton.cs" />
     <Compile Update="Panels\CustomChildMenuFirstPanel.cs" />
@@ -27,7 +33,6 @@
 
   <ItemGroup>
     <Folder Include="Buttons\Interfaces\" />
-    <Folder Include="Panels\Interfaces\" />
   </ItemGroup>
 
   <ItemGroup>

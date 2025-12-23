@@ -1,6 +1,5 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
@@ -12,9 +11,11 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Panels.AbstractClasses;
 
-namespace OperationGuidance_new.Views {
-    public class DeviceIoView : CustomDataGridViewOuterPanel<DeviceIoDTO, DeviceIoVO> {
+namespace OperationGuidance_new.Views
+{
+    public class DeviceIoView : ACustomDataGridViewOuterPanel<DeviceIoDTO, DeviceIoVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;

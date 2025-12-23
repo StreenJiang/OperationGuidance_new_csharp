@@ -1,5 +1,4 @@
 ﻿using CustomLibrary.Buttons;
-using CustomLibrary.Panels;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
@@ -14,9 +13,11 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Responses;
 using CustomLibrary.TextBoxes;
 using System.IO.Ports;
+using CustomLibrary.Panels.AbstractClasses;
 
-namespace OperationGuidance_new.Views {
-    public class WorkStationView: CustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
+namespace OperationGuidance_new.Views
+{
+    public class WorkStationView: ACustomDataGridViewOuterPanel<WorkstationDTO, WorkstationVO> {
         #region Fields
         // Apis
         protected OperationGuidanceApis apis;

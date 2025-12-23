@@ -1,6 +1,5 @@
 ﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -12,9 +11,11 @@ using OperationGuidance_service.Utils;
 using CustomLibrary.TextBoxes;
 using OperationGuidance_service.Models.Requests;
 using CustomLibrary.ComboBoxes;
+using CustomLibrary.Panels.AbstractClasses;
 
-namespace OperationGuidance_new.Views {
-    public class AccountManagementView: CustomDataGridViewOuterPanel<UserAccountInfoDTO, UserAccountInfoVO> {
+namespace OperationGuidance_new.Views
+{
+    public class AccountManagementView: ACustomDataGridViewOuterPanel<UserAccountInfoDTO, UserAccountInfoVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;

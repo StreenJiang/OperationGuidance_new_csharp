@@ -1,7 +1,7 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
-using CustomLibrary.Panels;
+using CustomLibrary.Panels.AbstractClasses;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.ViewObjects;
@@ -14,8 +14,9 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
-namespace OperationGuidance_new.Views {
-    public class OuterDatabaseConfigGlbView: CustomDataGridViewOuterPanel<OuterDatabaseConfigGlbDTO, OuterDatabaseConfigGlbVO> {
+namespace OperationGuidance_new.Views
+{
+    public class OuterDatabaseConfigGlbView: ACustomDataGridViewOuterPanel<OuterDatabaseConfigGlbDTO, OuterDatabaseConfigGlbVO> {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;

@@ -3,7 +3,7 @@ using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Forms;
-using CustomLibrary.Panels;
+using CustomLibrary.Panels.AbstractClasses;
 using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Configs;
@@ -19,7 +19,7 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class DataQueryView_SCII: CustomDataGridViewOuterPanel<MissionRecordDTO, MissionRecordVO> {
+    public class DataQueryView_SCII: ACustomDataGridViewOuterPanel<MissionRecordDTO, MissionRecordVO> {
         private ILog logger = MainUtils.GetLogger(typeof(DataQueryView_SCII));
 
         #region Fields
