@@ -1121,6 +1121,12 @@ namespace OperationGuidance_new.Views {
                             // Get current bolt
                             BoltButton currentBolt = _currentWorkingBolt;
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+
+                            // 参数集对比日志
+                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
+                                        $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
+                                        $"tighteningData_parameter_set={data.parameter_set_number}");
+
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
                             // Set pset manualy if tool type is sudong x7
