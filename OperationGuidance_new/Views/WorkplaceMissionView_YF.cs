@@ -890,7 +890,12 @@ namespace OperationGuidance_new.Views {
                             currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                         }
 
+                        // 参数集对比日志
                         ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                        logger.Info($"[YF][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
+                                    $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
+                                    $"tighteningData_parameter_set={data.parameter_set_number}");
+
                         OperationDataDTO dataDTO = new();
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
 

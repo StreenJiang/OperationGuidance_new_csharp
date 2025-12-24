@@ -243,6 +243,12 @@ namespace OperationGuidance_new.Views {
                                 currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                             }
 
+                            // 参数集对比日志
+                            ProductBoltDTO boltDTO = currentBolt.BoltDTO;
+                            logger.Info($"[WHYC][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
+                                        $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
+                                        $"tighteningData_parameter_set={data.parameter_set_number}");
+
                             // Check if current showing side is equal to side of working bolt, if no then switch to the right side
                             if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
                                 ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
@@ -252,7 +258,6 @@ namespace OperationGuidance_new.Views {
                                 }
                             }
 
-                            ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
                             // Set pset manualy if tool type is sudong x7
