@@ -26,6 +26,7 @@ namespace OperationGuidance_new.Views {
         // Apis
         private OperationGuidanceApis apis;
         private List<MissionRecordDTO> _dataDTOList;
+        private int _totalCount;
         private List<OperationDataField> _operationDataFields;
         // DataGridView panel
         private DataGridViewGroup<MissionRecordVO> _dataGridView;
@@ -119,9 +120,14 @@ namespace OperationGuidance_new.Views {
                 }
             };
 
+            // 设置分页查询支持
+            _dataGridView.VoGridView.QueryPagedData = true;
+            _dataGridView.VoGridView.QueryList = QueryListWithPagination;
+            _dataGridView.VoGridView.GetTotalFromDB = () => _totalCount;
+
             // 按钮逻辑
-            _dataGridView.QueryData = (vo) => DataFiltering(QueryList(), vo);
-            // 隐藏不需要的按钮 
+            _dataGridView.QueryData = (vo) => new();
+            // 隐藏不需要的按钮
             _dataGridView.AddNewButtonVisible = false;
             _dataGridView.ModifyButtonVisible = false;
             _dataGridView.DeleteButtonVisible = false;
@@ -305,20 +311,42 @@ namespace OperationGuidance_new.Views {
         }
 
         // 【分页查询】新增分页查询方法，支持搜索条件
-        private List<MissionRecordVO> QueryListWithPagination(int pageNumber, int pageSize, string? productBarCode = null, string? partsBarCode = null, DateTime? startDate = null, DateTime? endDate = null, string? missionName = null, List<int?>? ids = null, bool? isChallengeMission = null) {
+        private List<MissionRecordVO> QueryListWithPagination() {
             var req = new QueryMissionRecordListReq {
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                ProductBarCode = productBarCode,
-                PartsBarCode = partsBarCode,
-                Date = startDate, // 注意：这里只使用startDate，SCII版本只支持单个日期
-                MissionName = missionName,
-                Ids = ids?.Where(id => id.HasValue).Select(id => id.Value).ToList(),
-                IsChallengeMission = isChallengeMission
+                PageNumber = _dataGridView.VoGridView.CurrentPage,
+                PageSize = _dataGridView.VoGridView.PageSize,
             };
+
+            var ProductBarCode = _dataGridView.FilterParametersVO.product_bar_code;
+            var PartsBarCode = _dataGridView.FilterParametersVO.parts_bar_code;
+            var StartDate = ((MissionRecordVO) _dataGridView.FilterParametersVO).filter_create_time_min;
+            var EndDate = ((MissionRecordVO) _dataGridView.FilterParametersVO).filter_create_time_max;
+            var MissionName = _dataGridView.FilterParametersVO.mission_name;
+            var Ids = _dataGridView.FilterParametersVO.ids;
+            var IsChallengeMission = _dataGridView.FilterParametersVO.is_challenge_mission;
+
+            if (!string.IsNullOrEmpty(ProductBarCode)) {
+                req.ProductBarCode = ProductBarCode;
+            }
+            if (!string.IsNullOrEmpty(PartsBarCode)) {
+                req.PartsBarCode = PartsBarCode;
+            }
+            if (StartDate != null) {
+                req.Date = StartDate;
+            }
+            if (!string.IsNullOrEmpty(MissionName)) {
+                req.MissionName = MissionName;
+            }
+            if (Ids != null && Ids.Count > 0) {
+                req.Ids = Ids.Where(id => id.HasValue).Select(id => id.Value).ToList();
+            }
+            if (IsChallengeMission.HasValue) {
+                req.IsChallengeMission = IsChallengeMission;
+            }
 
             QueryMissionRecordListRsp rsp = apis.QueryMissionRecordList(req);
             _dataDTOList = rsp.MissionRecordDTOs;
+            _totalCount = rsp.TotalCount;
             List<MissionRecordVO> vos = new();
             CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(_dataDTOList, vos);
 

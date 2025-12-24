@@ -480,6 +480,73 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         }
 
         /// <summary>
+        /// Executes a custom SQL query with pagination support (simplified parameters).
+        /// This method is more convenient for service layers that need to join multiple tables.
+        /// </summary>
+        /// <param name="baseSql">The base SQL query (can include JOINs, without pagination clauses).</param>
+        /// <param name="params">Optional parameters for the query.</param>
+        /// <param name="pageNumber">Page number (1-based).</param>
+        /// <param name="pageSize">Number of records per page.</param>
+        /// <param name="orderBy">Order by clause (e.g., "id DESC" or just "id").</param>
+        /// <returns>A paged result containing the data and pagination metadata.</returns>
+        public PagedResult<T> FindWithPaginationBySql(string baseSql, Dictionary<string, object>? @params, int pageNumber, int pageSize, string? orderBy = null) {
+            // Parse and validate the orderBy clause (e.g., "id DESC" -> orderBy="id", descending=true)
+            string validatedOrderBy;
+            bool descending;
+
+            if (string.IsNullOrWhiteSpace(orderBy)) {
+                validatedOrderBy = "id";
+                descending = false;
+            } else {
+                string[] parts = orderBy.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                string fieldName = parts[0];
+                string direction = parts.Length > 1 ? parts[1].ToUpper() : "ASC";
+
+                // Validate the field name
+                validatedOrderBy = ValidateOrderByField(fieldName);
+                descending = direction == "DESC";
+            }
+
+            var pagination = new PaginationParams {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                OrderBy = validatedOrderBy,
+                Descending = descending
+            };
+
+            return FindWithPaginationBySql(baseSql, @params, pagination);
+        }
+
+        /// <summary>
+        /// Validates and sanitizes an ORDER BY field name to prevent SQL injection.
+        /// </summary>
+        /// <param name="fieldName">The field name to validate.</param>
+        /// <returns>A validated field name.</returns>
+        protected string ValidateOrderByField(string fieldName) {
+            if (string.IsNullOrWhiteSpace(fieldName)) {
+                return "id";
+            }
+
+            // 【强化安全检查】防止SQL注入
+            // 只允许字母、数字、下划线，不允许其他特殊字符
+            string sanitized = fieldName.Trim();
+
+            // 字段白名单验证 - 确保orderBy字段是实体类的有效属性
+            if (!AllowedOrderByFields.Contains(sanitized)) {
+                logger.Warn($"Invalid ORDER BY column: {fieldName}. Allowed columns: {string.Join(", ", AllowedOrderByFields)}. Using default 'id'.");
+                return "id";
+            }
+
+            // 严格正则验证 - 只允许字母、数字、下划线作为字段名
+            if (!Regex.IsMatch(sanitized, @"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.IgnoreCase)) {
+                logger.Warn($"Invalid ORDER BY clause format: {fieldName}. Only letters, numbers and underscore are allowed. Using default 'id'.");
+                return "id";
+            }
+
+            return sanitized;
+        }
+
+        /// <summary>
         /// Builds pagination SQL based on the current database type.
         /// </summary>
         /// <param name="orderBy">The ORDER BY clause (e.g., "id ASC").</param>
