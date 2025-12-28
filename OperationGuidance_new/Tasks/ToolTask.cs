@@ -204,43 +204,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-        /// <summary>
-        /// Performs deep connection validation using Socket.Poll.
-        /// This provides more accurate connection status than Socket.Connected property alone.
-        /// </summary>
-        /// <returns>true if connection is valid and active, false otherwise</returns>
-        private bool ValidateConnection() {
-            try {
-                if (socketClient == null || !socketClient.Connected || CloseConnectionManually) {
-                    return false;
-                }
-
-                // Use Socket.Poll for quick connection check
-                // Poll with SelectRead: returns true if connection is closed, reset, terminated,
-                // or pending data is available. If Available is 0 after Poll returns true,
-                // it means the connection has been closed/reset.
-                if (socketClient.Poll(100000, SelectMode.SelectRead)) {
-                    // Check if there's data available to read
-                    if (socketClient.Available == 0) {
-                        // No data available but Poll returned true - connection is closed
-                        logger.Warn($"ValidateConnection: Connection to TOOL[{_device_name} - {_ip}: {_port}] appears to be closed");
-                        return false;
-                    }
-                    // There's data available - connection is still valid
-                }
-
-                return true;
-            } catch (SocketException se) {
-                logger.Warn($"ValidateConnection: SocketException while validating connection to TOOL[{_device_name} - {_ip}: {_port}], error code: {se.ErrorCode}");
-                return false;
-            } catch (ObjectDisposedException) {
-                logger.Warn($"ValidateConnection: Socket already disposed for TOOL[{_device_name} - {_ip}: {_port}]");
-                return false;
-            } catch (Exception e) {
-                logger.Warn($"ValidateConnection: Unexpected error while validating connection to TOOL[{_device_name} - {_ip}: {_port}], e: {e.Message}");
-                return false;
-            }
-        }
 
         private async Task<bool> ConnectToServer() {
             try {
@@ -361,9 +324,6 @@ namespace OperationGuidance_new.Tasks {
                 return true;
             }
 
-            if (!ValidateConnection())
-                return false;
-
             // 1. 获取锁（进入临界区）
             await _commandLock.WaitAsync();
             try {
@@ -380,16 +340,18 @@ namespace OperationGuidance_new.Tasks {
                     return true;
 
                 logger.Info($"Sending PSet {pSetNumber}: {command}");
-                SendRawCommand(command);
+                if (SendRawCommand(command)) {
+                    // 等待应答（5秒超时）
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    bool success = await WaitForPSetResponse(cts.Token);
 
-                // 等待应答（5秒超时）
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                bool success = await WaitForPSetResponse(cts.Token);
+                    if (success)
+                        CurrentPSet = pSetNumber;
 
-                if (success)
-                    CurrentPSet = pSetNumber;
+                    return success;
+                }
 
-                return success;
+                return false;
             } finally {
                 // 4. 退出临界区
                 _commandLock.Release();
@@ -397,14 +359,29 @@ namespace OperationGuidance_new.Tasks {
         }
 
         // 新增：纯发送（不入队、不重试）
-        private void SendRawCommand(string command) {
-            if (!Connected) return;
+        private bool SendRawCommand(string command) {
+            if (!Connected) {
+                logger.Info($"PSet command sending fails as is disconnected: {command}");
+                return false;
+            }
 
-            byte[] data = _toolType is ToolSudongX7
-                ? MainUtils.ToBytes(command)
-                : Encoding.ASCII.GetBytes(command);
+            try {
+                byte[] data = _toolType is ToolSudongX7
+                                        ? MainUtils.ToBytes(command)
+                                        : Encoding.ASCII.GetBytes(command);
 
-            socketClient?.Send(data);
+                logger.Info($"PSet command sending to controller: {command}");
+                int? num = socketClient?.Send(data);
+                if (num.HasValue && num.Value > 0) {
+                    return true;
+                }
+
+                logger.Warn($"PSet command sending fails: {command}, sending num = {num}");
+            } catch (Exception ex) {
+                logger.Error($"PSet command sending error: {command}", ex);
+            }
+
+            return false;
         }
 
         // 替换原来的 PSetOk 字段（移除 volatile bool? PSetOk）
@@ -428,12 +405,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void ForceSendLock(bool ignoreLocalLockState = true) {
-            if (!ValidateConnection()) {
-                _locked = true;
-                logger.Warn("ForceSendLock: Connection invalid, set _locked=true (safe state)");
-                return;
-            }
-
             if (!ignoreLocalLockState && _locked) {
                 logger.Info("Already locked, skipping");
                 return;
@@ -453,12 +424,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void ForceSendUnlock(bool ignoreLocalLockState = true) {
-            if (!ValidateConnection()) {
-                _locked = true;
-                logger.Warn("ForceSendUnlock: Connection invalid, set _locked=true (safe state)");
-                return;
-            }
-
             if (!ignoreLocalLockState && !_locked) {
                 logger.Info("Already unlocked, skipping");
                 return;
@@ -478,12 +443,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void SendLock() {
-            if (!ValidateConnection()) {
-                _locked = true;
-                logger.Info("Locking skipped - not connected");
-                return;
-            }
-
             if (LockCounter >= LockMaxTimes) {
                 logger.Info("Lock max retry reached, skip");
                 return;
@@ -506,12 +465,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void SendUnlock() {
-            if (!ValidateConnection()) {
-                _locked = true;
-                logger.Info("Unlocking skipped - not connected");
-                return;
-            }
-
             if (UnLockCounter >= UnLockMaxTimes) {
                 logger.Info("Unlock max retry reached, skip");
                 return;

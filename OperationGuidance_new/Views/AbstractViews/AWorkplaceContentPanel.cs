@@ -2033,7 +2033,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Send pset to controller
         protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
-            logger.Info("SendPSet start ......");
+            logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} start ......");
 
             try {
                 // 直接在UI线程启动异步操作，避免Task.Run包装
@@ -2137,14 +2137,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     });
                 }
             } catch (OperationCanceledException) {
-                logger.Info("SendPSet operation was cancelled");
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset}  operation was cancelled");
             } catch (Exception ex) {
-                logger.Error($"SendPSet发生未预期异常: {ex.Message}", ex);
+                logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
                 BeginInvoke(() => {
                     _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
                 });
             } finally {
-                logger.Info("SendPSet end ......");
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} end ......");
             }
         }
 
@@ -2831,7 +2831,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
-            if (vos == null) return;
+            if (vos == null)
+                return;
             var snapshot = vos.OrderBy(vo => vo.modify_time).ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
