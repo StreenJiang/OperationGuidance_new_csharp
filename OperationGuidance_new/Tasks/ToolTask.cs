@@ -21,8 +21,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private object _pSetLock = new object();
-        private volatile int _currentPSet = -1;
+        private readonly object _pSetLock = new object();
+        private int _currentPSet = -1;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -148,7 +148,7 @@ namespace OperationGuidance_new.Tasks {
                                         currentTcs.TrySetResult(pSetSendingOk.Value);
                                         logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
                                     } catch (InvalidOperationException) {
-                                        // TCS可能已经被设置，忽略
+                                        logger.Debug($"PSet response already set to {CurrentPSet}, skipping: {pSetSendingOk.Value}");
                                     }
                                 }
                             }
@@ -171,7 +171,7 @@ namespace OperationGuidance_new.Tasks {
                                         currentTcs.TrySetResult(pSetSendingOk.Value);
                                         logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
                                     } catch (InvalidOperationException) {
-                                        // TCS可能已经被设置，忽略
+                                        logger.Debug($"PSet response already set to {CurrentPSet}, skipping: {pSetSendingOk.Value}");
                                     }
                                 }
                             }
