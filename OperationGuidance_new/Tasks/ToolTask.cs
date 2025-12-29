@@ -21,7 +21,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private volatile int CurrentPSet = -1;
+        private object _pSetLock = new object();
+        private volatile int _currentPSet = -1;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -31,8 +32,7 @@ namespace OperationGuidance_new.Tasks {
         private int UnLockCounter;
         private int LockWaitTimeCounter;
         private readonly SemaphoreSlim _commandLock = new(1, 1);
-        private TaskCompletionSource<bool> _pSetResponseTcs;
-        private CancellationTokenSource? _pSetCts;
+        private TaskCompletionSource<bool>? _pSetResponseTcs;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
         #endregion
@@ -47,6 +47,10 @@ namespace OperationGuidance_new.Tasks {
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
+        public int CurrentPSet {
+            get { lock (_pSetLock) return _currentPSet; }
+            set { lock (_pSetLock) _currentPSet = value; }
+        }
         #endregion
 
         #region Constructors
@@ -78,12 +82,14 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check any message is waiting for receving 
                         try {
+                            byte[] msgBytes = new byte[1024 * 1024];
+                            int msgLen = 0;
                             lock (SyncObject) {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen > 0) {
-                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
-                                }
+                                msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            }
+
+                            if (msgLen > 0) {
+                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
@@ -136,23 +142,38 @@ namespace OperationGuidance_new.Tasks {
                             }
                             // 在非 UI 线程中直接操作 TCS（无需 Task.Run）
                             if (pSetSendingOk.HasValue) {
-                                // 设置 PSet 应答结果
-                                _pSetResponseTcs.TrySetResult(pSetSendingOk.Value);
+                                var currentTcs = Interlocked.Exchange(ref _pSetResponseTcs, null);
+                                if (currentTcs != null && !currentTcs.Task.IsCompleted) {
+                                    try {
+                                        currentTcs.TrySetResult(pSetSendingOk.Value);
+                                        logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
+                                    } catch (InvalidOperationException) {
+                                        // TCS可能已经被设置，忽略
+                                    }
+                                }
                             }
                             if (locked != null) {
                                 _locked = locked.Value;
                             }
                             if (dataReceived != null && dataReceived.Value) { }
                             if (curveReceived != null && curveReceived.Value) {
-                                socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                                string message = toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage();
+                                SendRawCommand(message);
                             }
                         }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         toolX7.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
                             // 在非 UI 线程中直接操作 TCS（无需 Task.Run）
                             if (pSetSendingOk.HasValue) {
-                                // 设置 PSet 应答结果
-                                _pSetResponseTcs.TrySetResult(pSetSendingOk.Value);
+                                var currentTcs = Interlocked.Exchange(ref _pSetResponseTcs, null);
+                                if (currentTcs != null && !currentTcs.Task.IsCompleted) {
+                                    try {
+                                        currentTcs.TrySetResult(pSetSendingOk.Value);
+                                        logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
+                                    } catch (InvalidOperationException) {
+                                        // TCS可能已经被设置，忽略
+                                    }
+                                }
                             }
                             if (locked != null) {
                                 _locked = locked.Value;
@@ -301,7 +322,7 @@ namespace OperationGuidance_new.Tasks {
                     HeartBeatCounter = 0;
                     // Send command to controller
                     logger.Info($"Sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
-                    socketClient.Send(Encoding.ASCII.GetBytes(command));
+                    SendRawCommand(command);
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
@@ -324,11 +345,25 @@ namespace OperationGuidance_new.Tasks {
                 return true;
             }
 
-            // 1. 获取锁（进入临界区）
+            // 获取锁（进入临界区）
             await _commandLock.WaitAsync();
+
+            // 在try块外定义tcs，以便finally块访问
+            TaskCompletionSource<bool>? newTcs = null;
+
             try {
-                // 2. 创建新的 TCS（关键！）
-                _pSetResponseTcs = new();
+                // 1. 创建新的 TCS
+                newTcs = new TaskCompletionSource<bool>();
+                logger.Debug($"Created new TCS for PSet {pSetNumber}");
+
+                // 2. 原子性替换（确保 AnalyzeData 看到的是最新 TCS）
+                var oldTcs = Interlocked.Exchange(ref _pSetResponseTcs, newTcs);
+
+                // 3. 取消旧的 TCS
+                if (oldTcs != null) {
+                    logger.Debug($"Canceling old TCS");
+                    oldTcs.TrySetCanceled();
+                }
 
                 string command = _toolType switch {
                     ToolPFSeries pf => pf.GetPSetCommand(pSetNumber),
@@ -336,25 +371,49 @@ namespace OperationGuidance_new.Tasks {
                     _ => throw new NotSupportedException($"Unsupported tool: {_toolType}")
                 };
 
-                if (string.IsNullOrEmpty(command))
-                    return true;
-
                 logger.Info($"Sending PSet {pSetNumber}: {command}");
-                if (SendRawCommand(command)) {
-                    // 等待应答（5秒超时）
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    bool success = await WaitForPSetResponse(cts.Token);
 
-                    if (success)
-                        CurrentPSet = pSetNumber;
-
-                    return success;
+                // 4. 发送命令
+                if (!SendRawCommand(command)) {
+                    return false;
                 }
 
-                return false;
+                try {
+                    // 5. 等待响应（5秒超时），兼容所有 .NET 版本
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+                    var completedTask = await Task.WhenAny(newTcs.Task, timeoutTask);
+
+                    if (completedTask == timeoutTask) {
+                        throw new TimeoutException("PSet response timeout");
+                    }
+
+                    bool success = await newTcs.Task;
+                    if (success) {
+                        CurrentPSet = pSetNumber;
+                        logger.Info($"PSet updated to: {pSetNumber}");
+                    }
+
+                    return success;
+                } catch (Exception ex) when (ex is TimeoutException || ex is TaskCanceledException || ex is OperationCanceledException) {
+                    logger.Warn($"PSet {pSetNumber} response timeout", ex);
+                    return false;
+                } catch (Exception ex) {
+                    logger.Error($"Unexpected error waiting for PSet {pSetNumber} response: {ex.Message}");
+                    return false;
+                }
             } finally {
-                // 4. 退出临界区
+                // 6. 清理：将TCS置为null
+                if (newTcs != null && Interlocked.CompareExchange(ref _pSetResponseTcs, null, newTcs) == newTcs) {
+                    // 如果TCS还没有完成，设置取消状态
+                    if (!newTcs.Task.IsCompleted) {
+                        logger.Debug($"Cleaning up uncompleted TCS");
+                        newTcs.TrySetCanceled();
+                    }
+                }
+
+                // 7. 退出临界区
                 _commandLock.Release();
+                logger.Debug($"Released command lock");
             }
         }
 
@@ -371,7 +430,10 @@ namespace OperationGuidance_new.Tasks {
                                         : Encoding.ASCII.GetBytes(command);
 
                 logger.Info($"PSet command sending to controller: {command}");
-                int? num = socketClient?.Send(data);
+                int? num;
+                lock (SyncObject) {
+                    num = socketClient?.Send(data);
+                }
                 if (num.HasValue && num.Value > 0) {
                     return true;
                 }
@@ -382,26 +444,6 @@ namespace OperationGuidance_new.Tasks {
             }
 
             return false;
-        }
-
-        // 替换原来的 PSetOk 字段（移除 volatile bool? PSetOk）
-        // 改为在 AnalyzeData 回调中设置 TCS
-        private async Task<bool> WaitForPSetResponse(CancellationToken cancellationToken) {
-            _pSetCts?.Cancel();
-            _pSetCts?.Dispose();
-            _pSetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-            using var _ = _pSetCts.Token.Register(() => _pSetResponseTcs.TrySetCanceled());
-
-            try {
-                logger.Debug("Waiting for PSet response...");
-                bool result = await _pSetResponseTcs.Task;
-                logger.Debug($"PSet response received: {result}");
-                return result;
-            } catch (OperationCanceledException) {
-                logger.Warn("PSet response timeout");
-                return false;
-            }
         }
 
         public void ForceSendLock(bool ignoreLocalLockState = true) {
