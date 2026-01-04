@@ -66,6 +66,7 @@ namespace OperationGuidance_new.Views {
 
         // 其他自定义组件
         private CustomComboBoxGroup<string> _batchDropDownBox;
+        private volatile bool _missionNGAdminConfirmed = true;
 
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
@@ -93,6 +94,39 @@ namespace OperationGuidance_new.Views {
 
             _checkRedo = true;
             _toolControlNeedAdminPasswor = true;
+        }
+
+        protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
+            SerialPortTask serialPortTask = pair.Value;
+            serialPortTask.ActionAfterDataReceived = async msg => {
+                await Task.Run(() => {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            // Check for mission ng admin confirmation
+                            if (!_missionNGAdminConfirmed) {
+                                return;
+                            }
+
+                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                            // 如果有空的数据进来，则跳过
+                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                logger.Warn("Message is null from serial port device, please check.");
+                                return;
+                            }
+                            if (dto.invalid_char != null) {
+                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                            }
+
+                            // 交给弹窗处理
+                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                OpenBarCodePopUpForm(msg);
+                            } else {
+                                _barCodePopUpForm.ValidateBarCode(msg);
+                            }
+                        }
+                    });
+                });
+            };
         }
 
         protected override void ActionAfterAllInitialized() {
@@ -407,8 +441,12 @@ namespace OperationGuidance_new.Views {
 
             if (_mission.id > 0) {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
-                sum = missionRecordDTOs.Count;
-                okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
+                IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
+                            .DistinctBy(dto => dto.product_bar_code);
+                sum = distinctData.Count();
+                okSum = distinctData
+                            .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
+                            .Count();
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
                 }
@@ -987,7 +1025,12 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
+        protected void MissionNGConfirmPopUp(string msg) {
+            _missionNGAdminConfirmed = false;
+            while (!_missionNGAdminConfirmed) {
+                _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
+            }
+        }
 
         protected override async Task ActionAfterActivatingMission() {
             await base.ActionAfterActivatingMission();

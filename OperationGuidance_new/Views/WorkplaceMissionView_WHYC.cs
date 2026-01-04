@@ -576,8 +576,8 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
-            base.StoreTighteningData(operationDataDTO);
+        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
+            await base.StoreTighteningData(operationDataDTO);
             UploadDataToMES(operationDataDTO);
         }
 

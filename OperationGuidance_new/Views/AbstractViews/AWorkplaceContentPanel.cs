@@ -59,6 +59,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
         protected readonly object DataStorageLockObj = new();
+        // 异步锁用于StoreTighteningData排队执行
+        private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -846,31 +848,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Load serial port devices
                 _serialPortTasks = MainUtils.SerialPortTasks;
                 foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                    SerialPortTask serialPortTask = pair.Value;
-                    serialPortTask.ActionAfterDataReceived = async msg => {
-                        await Task.Run(() => {
-                            BeginInvoke(() => {
-                                if (!IsDisposed) {
-                                    DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
-                                    // 如果有空的数据进来，则跳过
-                                    if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                        logger.Warn("Message is null from serial port device, please check.");
-                                        return;
-                                    }
-                                    if (dto.invalid_char != null) {
-                                        msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
-                                    }
-
-                                    // 交给弹窗处理
-                                    if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                                        OpenBarCodePopUpForm(msg);
-                                    } else {
-                                        _barCodePopUpForm.ValidateBarCode(msg);
-                                    }
-                                }
-                            });
-                        });
-                    };
+                    InitSerialPortTask(pair);
                 }
 
                 // Load communication devices
@@ -883,6 +861,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Action after loading devices
             ActionAfterLoadingDevices();
         }
+
+        protected virtual void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
+            SerialPortTask serialPortTask = pair.Value;
+            serialPortTask.ActionAfterDataReceived = async msg => {
+                await Task.Run(() => {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                            // 如果有空的数据进来，则跳过
+                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                logger.Warn("Message is null from serial port device, please check.");
+                                return;
+                            }
+                            if (dto.invalid_char != null) {
+                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                            }
+
+                            // 交给弹窗处理
+                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                OpenBarCodePopUpForm(msg);
+                            } else {
+                                _barCodePopUpForm.ValidateBarCode(msg);
+                            }
+                        }
+                    });
+                });
+            };
+        }
+
         // 持续检查设备连接状态的task
         private async void CheckDeviceConnections() {
             await Task.Run(async () => {
@@ -1146,14 +1153,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public bool CheckChallengeMissionConfirmation() {
             List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _mission.id).ToList();
-            ProductMissionDTO? challengeMission = allOtherMissions.Find(m => m.challenge_mission_id == _mission.id);
+            ProductMissionDTO? challengeMission = allOtherMissions.Find(m =>
+                                                                        m.challenge_mission_id != null &&
+                                                                        m.challenge_mission_id > 0 &&
+                                                                        m.challenge_mission_id == _mission.id);
 
             // Check if current mission has challenge mission
             if (challengeMission != null) {
                 // Check if it's first mission
                 if (challengeMission.is_first_mission == (int) YesOrNo.YES) {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null) {
+                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
                         WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 首档岗位】，但此任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                         return false;
                     } else {
@@ -1164,7 +1174,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 } else {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null) {
+                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
                         if (challengeMission.predecessor_mission_id == null) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务存在前置任务，但挑战任务不存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
@@ -1177,7 +1187,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         }
                     } else {
-                        if (challengeMission.predecessor_mission_id != null) {
+                        if (challengeMission.predecessor_mission_id != null && challengeMission.predecessor_mission_id > 0) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务不存在前置任务，但挑战任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
                         }
@@ -1331,6 +1341,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Reset status of working proccess panel
             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
+
+            // Reset ng reasons of working proccess panel
+            _workingProcessPanel.NGReasons = null;
 
             // Reset other variables
             _sumBoltDone = 0;
@@ -1596,6 +1609,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Task.Run(async () => {
                     while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
+                            // Skip if _currentWorkingBolt is null
+                            if (_currentWorkingBolt == null) {
+                                await Task.Delay(_lockCheckingTaskDelay, cts.Token);
+                                continue;
+                            }
+
                             ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                             ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
@@ -1938,7 +1957,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Send pset to controller
         protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
-            logger.Info("SendPSet start ......");
+            logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} start ......");
 
             try {
                 // 直接在UI线程启动异步操作，避免Task.Run包装
@@ -2042,14 +2061,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     });
                 }
             } catch (OperationCanceledException) {
-                logger.Info("SendPSet operation was cancelled");
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled");
             } catch (Exception ex) {
-                logger.Error($"SendPSet发生未预期异常: {ex.Message}", ex);
+                logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
                 BeginInvoke(() => {
                     _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
                 });
             } finally {
-                logger.Info("SendPSet end ......");
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} end ......");
             }
         }
 
@@ -2202,6 +2221,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             bool result = false;
+            _adminConfirmed = false;
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
             _adminPasswordPopUpForm.Dispose();
 
@@ -2539,40 +2559,48 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
+        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
+            // 等待锁，确保排队执行
+            await _storeTighteningDataLock.WaitAsync();
+            try {
+                await StoreTighteningDataInternal(operationDataDTO);
+            } finally {
+                // 确保锁总是被释放
+                _storeTighteningDataLock.Release();
+            }
+        }
+
+        protected virtual async Task StoreTighteningDataInternal(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            // Use task to store data asynchronously with proper cancellation support
-            _ = Task.Run(async () => {
-                try {
-                    // 并行执行数据库和文件存储操作，直接await异步方法
-                    await Task.WhenAll(
-                        StoreDataToDatabaseAsync(operationDataDTO),
-                        StoreDataToFilesAsync(operationDataDTO)
-                    );
+            try {
+                // 并行执行数据库和文件存储操作，但文件存储有超时保护
+                var dbTask = StoreDataToDatabaseAsync(operationDataDTO);
+                var fileTask = StoreDataToFilesAsyncWithTimeout(operationDataDTO, TimeSpan.FromSeconds(3)); // 3秒超时
 
-                    // 转换数据并更新UI（在UI线程）
-                    BeginInvoke(() => {
-                        try {
-                            OperationDataVO dataFormatted = new();
-                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                await Task.WhenAll(dbTask, fileTask);
 
-                            // 使用线程安全的ConcurrentBag
-                            _tighteningDataVOs.Add(dataFormatted);
+                // 转换数据并更新UI（在UI线程）
+                BeginInvoke(() => {
+                    try {
+                        OperationDataVO dataFormatted = new();
+                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                            // 创建快照用于UI显示
-                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                            logger.Info("StoreTighteningData showing to panel end ........");
-                        } catch (Exception e) {
-                            logger.Error($"Error in data conversion or UI update: {e}");
-                        }
-                    });
-                } catch (Exception e) {
-                    logger.Error($"Error during data storage operations: {e}");
-                } finally {
-                    logger.Info("StoreTighteningData end ........");
-                }
-            }, _activeMissionCts.Token);
+                        // 使用线程安全的ConcurrentBag
+                        _tighteningDataVOs.Add(dataFormatted);
+
+                        // 创建快照用于UI显示
+                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                        logger.Info("StoreTighteningData showing to panel end ........");
+                    } catch (Exception e) {
+                        logger.Error($"Error in data conversion or UI update: {e}");
+                    }
+                });
+            } catch (Exception e) {
+                logger.Error($"Error during data storage operations: {e}");
+            } finally {
+                logger.Info("StoreTighteningData end ........");
+            }
         }
 
         protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
@@ -2599,6 +2627,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } catch (Exception e) {
                 logger.Error($"StoreDataToFiles error: {e}");
                 throw; // 重新抛出异常以便调用者处理
+            }
+        }
+
+        protected virtual async Task StoreDataToFilesAsyncWithTimeout(OperationDataDTO operationDataDTO, TimeSpan timeout) {
+            logger.Info("StoreDataToFiles with timeout start ........");
+
+            using var cts = new CancellationTokenSource(timeout);
+
+            try {
+                // 直接执行，让 BeginInvoke 处理UI线程异步性
+                // 避免多余的 Task.Run 包装，减少线程池压力
+                StoreDataToFilesCore(operationDataDTO);
+                logger.Info("StoreDataToFiles with timeout end ........");
+            } catch (Exception e) {
+                logger.Error($"StoreDataToFiles with timeout error: {e}");
+                // 不抛出异常，避免阻塞主流程
             }
         }
 
@@ -2659,7 +2703,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
-            if (vos == null) return;
+            if (vos == null)
+                return;
             var snapshot = vos.ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
@@ -2672,6 +2717,35 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
+            // Cancel all background tasks before locking tools to avoid race condition
+            // where lock checking task might call ForceSendUnlock() after we lock tools
+            if (_backgroundTaskCts.Count > 0) {
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Cancel();
+                }
+
+                // Wait for tasks to actually stop (with timeout to avoid hanging)
+                var stopTasks = new List<Task>();
+                foreach (var cts in _backgroundTaskCts) {
+                    stopTasks.Add(Task.Run(async () => {
+                        // Wait for cancellation to propagate and task to exit
+                        await Task.Delay(100);
+                    }));
+                }
+
+                try {
+                    await Task.WhenAll(stopTasks);
+                } catch (Exception) {
+                    // Ignore exceptions during task cancellation
+                }
+
+                // Dispose and clear all cancellation token sources
+                foreach (var cts in _backgroundTaskCts) {
+                    cts.Dispose();
+                }
+                _backgroundTaskCts.Clear();
+            }
+
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();

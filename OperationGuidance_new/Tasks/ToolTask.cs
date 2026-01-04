@@ -21,8 +21,11 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private int? CurrentPSet = null;
-        private bool? PSetOk = false;
+        private readonly object _pSetLock = new object();
+        private volatile int _sendingPSet = -1;
+        private volatile int _currentPSet = -1;
+        private volatile PSetStatus _pSetStatus = PSetStatus.NONE;
+        private readonly SemaphoreSlim _pSetSem = new(1, 1);
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -31,7 +34,6 @@ namespace OperationGuidance_new.Tasks {
         private int LockCounter;
         private int UnLockCounter;
         private int LockWaitTimeCounter;
-        private Queue<string> _commands = new();
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
         #endregion
@@ -44,9 +46,12 @@ namespace OperationGuidance_new.Tasks {
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
-        public Queue<string> Commands { get => _commands; set => _commands = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
+        public int CurrentPSet {
+            get { lock (_pSetLock) return _currentPSet; }
+            set { lock (_pSetLock) _currentPSet = value; }
+        }
         #endregion
 
         #region Constructors
@@ -78,12 +83,13 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check any message is waiting for receving 
                         try {
+                            byte[] msgBytes = new byte[1024 * 1024];
+                            int msgLen = 0;
                             lock (SyncObject) {
-                                byte[] msgBytes = new byte[1024 * 1024];
-                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                                if (msgLen > 0) {
-                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
-                                }
+                                msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                            }
+                            if (msgLen > 0) {
+                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
@@ -126,8 +132,8 @@ namespace OperationGuidance_new.Tasks {
 
                     // Analyse result
                     if (_toolType is ToolPFSeries toolPF2) {
-                        toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run(() => {
+                        toolPF2.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run((Action) (() => {
                                 if (heartIsBeating != null) {
                                     if (!heartIsBeating.Value) {
                                         throw new Exception("Heart is not beating...");
@@ -135,8 +141,14 @@ namespace OperationGuidance_new.Tasks {
                                         logger.Info("Heart beating....");
                                     }
                                 }
-                                if (pSetSendingOk != null) {
-                                    PSetOk = pSetSendingOk.Value;
+                                if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                                    if (_pSetStatus == PSetStatus.NONE) {
+                                        if (pSetSendingOk.Value) {
+                                            _pSetStatus = PSetStatus.OK;
+                                        } else {
+                                            _pSetStatus = PSetStatus.NOK;
+                                        }
+                                    }
                                 }
                                 if (locked != null) {
                                     _locked = locked.Value;
@@ -145,21 +157,27 @@ namespace OperationGuidance_new.Tasks {
                                 if (curveReceived != null && curveReceived.Value) {
                                     socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
                                 }
-                            });
-                        }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                            }));
+                        }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run(() => {
-                                if (pSetSendingOk != null) {
-                                    PSetOk = pSetSendingOk.Value;
+                        toolX7.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run((Action) (() => {
+                                if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                                    if (_pSetStatus == PSetStatus.NONE) {
+                                        if (pSetSendingOk.Value) {
+                                            _pSetStatus = PSetStatus.OK;
+                                        } else {
+                                            _pSetStatus = PSetStatus.NOK;
+                                        }
+                                    }
                                 }
                                 if (locked != null) {
                                     _locked = locked.Value;
                                 }
                                 if (dataReceived != null && dataReceived.Value) { }
                                 if (curveReceived != null && curveReceived.Value) { }
-                            });
-                        }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                            }));
+                        }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     }
                 } catch (Exception e) {
                     logger.Warn($"Error while analyzing msgBytes, e = [{e}]");
@@ -282,24 +300,32 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
-        private void SendCommand(string command) {
-            if (!_commands.Contains(command)) {
-                // Enqueue to avoid duplicated calls
-                _commands.Enqueue(command);
+        private bool SendCommand(string command) {
+            if (!Connected) {
+                logger.Info($"Command sending fails as is disconnected: {command}");
+                return false;
+            }
 
-                // Reset heart beat counter
-                HeartBeatCounter = 0;
+            try {
+                byte[] data = _toolType is ToolSudongX7
+                                        ? MainUtils.ToBytes(command)
+                                        : Encoding.ASCII.GetBytes(command);
 
-                // Send command
-                if (_toolType is ToolPFSeries toolPF2) {
-                    socketClient.Send(Encoding.ASCII.GetBytes(command));
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    socketClient.Send(MainUtils.ToBytes(command));
+                logger.Info($"Command sending to controller: {command}");
+                int? num;
+                lock (SyncObject) {
+                    num = socketClient?.Send(data);
+                }
+                if (num.HasValue && num.Value > 0) {
+                    return true;
                 }
 
-                // Dequeue to allow new command to enqueue
-                _commands.Dequeue();
+                logger.Warn($"Command sending fails: {command}, sending num = {num}");
+            } catch (Exception ex) {
+                logger.Error($"Command sending error: {command}", ex);
             }
+
+            return false;
         }
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
             SendMessageRecevingCount++;
@@ -331,9 +357,16 @@ namespace OperationGuidance_new.Tasks {
                 return true;
             }
 
-            PSetOk = null;
-            if (Connected) {
-                return await Task.Run(async () => {
+            if (!Connected) {
+                logger.Warn("Not connected, cannot send pset command");
+                return false;
+            }
+
+            // 进入锁区域，保证永远只有一个 pset 正在下发
+            await _pSetSem.WaitAsync();
+
+            try {
+                if (Connected) {
                     try {
                         logger.Info($"Setting pset to [{pSetNumber}]...");
                         string command = "";
@@ -348,11 +381,16 @@ namespace OperationGuidance_new.Tasks {
 
                         // Send pset
                         if (string.IsNullOrEmpty(command)) {
-                            return true;
+                            logger.Warn($"No command generated for pset [{pSetNumber}] with tool type {_toolType?.GetType().Name}");
+                            return false;
                         }
                         int waitTimesMax = 15;
                         int waitTimes = 0;
-                        while (PSetOk == null && waitTimes < waitTimesMax) {
+
+                        // 重置参数（在锁中重置，保证发送前最近的时刻重置）
+                        _pSetStatus = PSetStatus.NONE;
+
+                        while (_pSetStatus == PSetStatus.NONE && waitTimes < waitTimesMax) {
                             try {
                                 SendCommand(command);
                                 waitTimes++;
@@ -364,18 +402,30 @@ namespace OperationGuidance_new.Tasks {
                             await Task.Delay(PSetWaitTime);
                         }
 
-                        if (PSetOk != null && PSetOk.Value) {
+                        bool isSuccess;
+                        if (_pSetStatus == PSetStatus.NONE) {
+                            isSuccess = false;
+                            _pSetStatus = PSetStatus.NOK;
+                        } else {
+                            isSuccess = _pSetStatus == PSetStatus.OK;
+                        }
+
+                        if (isSuccess) {
                             CurrentPSet = pSetNumber;
                         }
 
-                        logger.Info($"Setting pset to [{pSetNumber}] [{PSetOk != null && PSetOk.Value}]!");
+                        logger.Info($"Setting pset to [{pSetNumber}] [{_pSetStatus}]!");
+                        return isSuccess;
                     } catch (Exception e) {
                         logger.Error($"Error while setting pset to {pSetNumber}...", e);
+                        return false;
                     }
-                    return PSetOk != null && PSetOk.Value;
-                });
+                }
+            } finally {
+                _pSetSem.Release();
             }
-            return PSetOk != null && PSetOk.Value;
+
+            return false;
         }
 
         private void SendLock() {
@@ -463,5 +513,11 @@ namespace OperationGuidance_new.Tasks {
             }
         }
         #endregion
+
+        private enum PSetStatus {
+            NONE,
+            OK,
+            NOK,
+        }
     }
 }
