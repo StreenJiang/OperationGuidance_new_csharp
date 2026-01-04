@@ -485,15 +485,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TextBox serialNumBox = SerialNumBox.GetTextBox(0).Box;
             SerialNumBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 if (!SerialNumBox.HasError)
-                    if (!string.IsNullOrEmpty(serialNumBox.Text)) ModifiedBoltDTO.serial_num = int.Parse(serialNumBox.Text);
-                    else ModifiedBoltDTO.serial_num = 0;
+                    if (!string.IsNullOrEmpty(serialNumBox.Text))
+                        ModifiedBoltDTO.serial_num = int.Parse(serialNumBox.Text);
+                    else
+                        ModifiedBoltDTO.serial_num = 0;
             };
             // 点位名称
             TextBox nameBox = NameBox.GetTextBox(0).Box;
             NameBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 if (!NameBox.HasError)
-                    if (!string.IsNullOrEmpty(nameBox.Text)) ModifiedBoltDTO.name = nameBox.Text;
-                    else ModifiedBoltDTO.name = null;
+                    if (!string.IsNullOrEmpty(nameBox.Text))
+                        ModifiedBoltDTO.name = nameBox.Text;
+                    else
+                        ModifiedBoltDTO.name = null;
             };
             // 站点选择
             Workstation.ItemSelected += () => {
@@ -536,7 +540,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(parametersBox.Text) && int.Parse(parametersBox.Text) > 0) {
                             ModifiedBoltDTO.parameters_set = int.Parse(parametersBox.Text);
-                        } else ModifiedBoltDTO.parameters_set = null;
+                        } else
+                            ModifiedBoltDTO.parameters_set = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -557,7 +562,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(specificationBox.Text) && int.Parse(specificationBox.Text) > 0) {
                             ModifiedBoltDTO.specification = float.Parse(specificationBox.Text);
-                        } else ModifiedBoltDTO.specification = null;
+                        } else
+                            ModifiedBoltDTO.specification = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -577,7 +583,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(specificationBox2.Text) && int.Parse(specificationBox2.Text) > 0) {
                             ModifiedBoltDTO.specification2 = float.Parse(specificationBox2.Text);
-                        } else ModifiedBoltDTO.specification2 = null;
+                        } else
+                            ModifiedBoltDTO.specification2 = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -598,7 +605,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(bitSpecificationBox.Text) && int.Parse(bitSpecificationBox.Text) > 0) {
                             ModifiedBoltDTO.bit_specification = float.Parse(bitSpecificationBox.Text);
-                        } else ModifiedBoltDTO.bit_specification = null;
+                        } else
+                            ModifiedBoltDTO.bit_specification = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -609,9 +617,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TorqueBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 if (!TorqueBox.HasError) {
                     try {
-                        if (!string.IsNullOrEmpty(torqueMinBox.Text) && int.Parse(torqueMinBox.Text) > 0) {
+                        if (!string.IsNullOrEmpty(torqueMinBox.Text) && double.Parse(torqueMinBox.Text) > 0) {
                             ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
-                        } else ModifiedBoltDTO.torque_min = null;
+                        } else
+                            ModifiedBoltDTO.torque_min = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -621,9 +630,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TorqueBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
                 if (!TorqueBox.HasError) {
                     try {
-                        if (!string.IsNullOrEmpty(torqueMaxBox.Text) && int.Parse(torqueMaxBox.Text) > 0) {
+                        if (!string.IsNullOrEmpty(torqueMaxBox.Text) && double.Parse(torqueMaxBox.Text) > 0) {
                             ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
-                        } else ModifiedBoltDTO.torque_max = null;
+                        } else
+                            ModifiedBoltDTO.torque_max = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -636,7 +646,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(angleMinBox.Text) && int.Parse(angleMinBox.Text) > 0) {
                             ModifiedBoltDTO.angle_min = float.Parse(angleMinBox.Text);
-                        } else ModifiedBoltDTO.angle_min = null;
+                        } else
+                            ModifiedBoltDTO.angle_min = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
@@ -648,7 +659,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     try {
                         if (!string.IsNullOrEmpty(angleMaxBox.Text) && int.Parse(angleMaxBox.Text) > 0) {
                             ModifiedBoltDTO.angle_max = float.Parse(angleMaxBox.Text);
-                        } else ModifiedBoltDTO.angle_max = null;
+                        } else
+                            ModifiedBoltDTO.angle_max = null;
                     } catch {
                         WidgetUtils.ShowWarningPopUp("请输入格式正确的数字");
                     }
