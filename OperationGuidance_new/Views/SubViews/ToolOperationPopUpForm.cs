@@ -183,7 +183,8 @@ namespace OperationGuidance_new.Views.SubViews {
                                     $"已自动重试 {_maxRetryTimes} 次，可能原因：\n" +
                                     $"1. 未给当前工具型号配置命令\n" +
                                     $"2. 控制器未配置【程序{parameterSet}】\n" +
-                                    $"3. 【控制器-虚拟站-任务】未配置为【source tightening】");
+                                    $"3. 工具锁定\n" +
+                                    $"4. 【控制器-虚拟站-任务】未配置为【source tightening】");
                             });
                         }
                     } finally {

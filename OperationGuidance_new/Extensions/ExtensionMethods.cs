@@ -59,29 +59,12 @@ namespace OperationGuidance_new.Extensions {
                     }
                     sheet1.Cell(rowCount + 1, 1).InsertData(data);
 
-                    // 添加重试次数限制和超时机制
-                    int maxRetries = 5;
-                    int retryCount = 0;
-                    bool success = false;
-
-                    while (!success && retryCount < maxRetries) {
-                        try {
-                            Write(xLWorkbook, filePath);
-                            success = true;
+                    while (true) {
+                        if (Write(xLWorkbook, filePath)) {
                             break;
-                        } catch (Exception e) {
-                            retryCount++;
-                            logger.Debug($"Excel write attempt {retryCount} failed: {e.Message}");
-
-                            if (retryCount >= maxRetries) {
-                                logger.Warn($"Excel write failed after {maxRetries} attempts, giving up");
-                                break;
-                            }
-
-                            await Task.Delay(200); // 延迟200ms后重试
                         }
+                        await Task.Delay(200);
                     }
-
                     xLWorkbook.Dispose();
                 } catch (Exception e) {
                     logger.Debug($"Store data to excel failed, e: {e}");

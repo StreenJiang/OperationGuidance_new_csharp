@@ -20,10 +20,7 @@ namespace OperationGuidance_new.Views.SubViews {
         private List<SignalLabel> _inBtns;
 
         private System.Windows.Forms.Timer updateTimer;
-        private int?[] _lastOutPos;
-        private int?[] _lastInPos;
-        private bool _isUpdating;
-        private bool _isSending;
+        private readonly CancellationTokenSource _cts = new();
 
         public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
         public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
@@ -71,58 +68,23 @@ namespace OperationGuidance_new.Views.SubViews {
             updateTimer.Start();
         }
 
-        private bool IsEqual(int?[]? arr1, int?[]? arr2) {
-            if (arr1 == null && arr2 == null)
-                return true;
-            if (arr1 == null || arr2 == null)
-                return false;
-            if (arr1.Length != arr2.Length)
-                return false;
-
-            for (int i = 0; i < arr1.Length; i++) {
-                if (arr1[i] != arr2[i])
-                    return false;
-            }
-            return true;
-        }
-
         private void UpdateTimerTick(object? sender, EventArgs e) {
-            if (_isUpdating)
-                return;
-
-            _isUpdating = true;
             try {
-                var result = ioBoxTask.ArrangerType!.ReadCurrent();
-                var outPos = result.Item1;
-                var inPos = result.Item2;
+                var (outPos, inPos) = ioBoxTask.ArrangerType!.ReadCurrent();
 
-                bool outChanged = !IsEqual(outPos, _lastOutPos);
-                bool inChanged = !IsEqual(inPos, _lastInPos);
-
-                if (outChanged || inChanged) {
-                    var capturedOutPos = outPos;
-                    var capturedInPos = inPos;
-
-                    BeginInvoke(() => {
-                        UpdateButtonStates(_outBtns, capturedOutPos);
-                        UpdateLabelStates(_inBtns, capturedInPos);
-                        _lastOutPos = capturedOutPos;
-                        _lastInPos = capturedInPos;
-                    });
-                }
+                BeginInvoke(() => {
+                    UpdateButtonStates(_outBtns, outPos);
+                    UpdateLabelStates(_inBtns, inPos);
+                });
             } catch (OperationCanceledException) {
                 log.Info("Cancel looping...");
                 updateTimer.Stop();
             } catch (Exception ex) {
                 log.Warn("Failed to read IO status", ex);
-            } finally {
-                _isUpdating = false;
             }
         }
 
         private void UpdateButtonStates(List<SignalButton> buttons, int?[] values) {
-            if (values == null)
-                return;
             for (int i = 0; i < Math.Min(buttons.Count, values.Length); i++) {
                 buttons[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
                 buttons[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
@@ -130,8 +92,6 @@ namespace OperationGuidance_new.Views.SubViews {
         }
 
         private void UpdateLabelStates(List<SignalLabel> labels, int?[] values) {
-            if (values == null)
-                return;
             for (int i = 0; i < Math.Min(labels.Count, values.Length); i++) {
                 labels[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
                 labels[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
@@ -139,31 +99,31 @@ namespace OperationGuidance_new.Views.SubViews {
         }
 
         private async void OutClick(object? sender, EventArgs eventArgs) {
-            SignalButton btn = (SignalButton)sender!;
+            SignalButton btn = (SignalButton) sender!;
 
-            // 防止重复点击
-            if (_isSending) return;
-            _isSending = true;
+            // 立即禁用按钮防止重复点击
+            btn.Enabled = false;
 
             try {
                 int?[] sendPos = { null, null, null, null, null, null, null, null };
                 sendPos[btn.Index] = 1;
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                await ioBoxTask.ArrangerType!.SendPulseAsync(sendPos, 200, cts.Token);
+                // 直接await，不要再用Task.Run包装
+                await ioBoxTask.ArrangerType!.SendPulseAsync(sendPos);
 
-            } catch (OperationCanceledException) {
-                log.Info("Send pulse operation timed out.");
             } catch (Exception ex) {
                 log.Warn("Error while sending pulse...", ex);
             } finally {
-                _isSending = false;
+                // 重新启用按钮
+                btn.Enabled = true;
             }
         }
 
         // 确保窗体关闭时释放资源
         protected override void OnFormClosed(FormClosedEventArgs e) {
             base.OnFormClosed(e);
+            _cts.Cancel();
+            _cts.Dispose();
             updateTimer.Stop();
         }
 

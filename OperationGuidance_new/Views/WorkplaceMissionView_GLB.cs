@@ -43,8 +43,8 @@ namespace OperationGuidance_new.Views {
             _operationDatasCached = new();
         }
 
-        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            await base.StoreTighteningData(operationDataDTO);
+        protected override void StoreTighteningData(OperationDataDTO operationDataDTO) {
+            base.StoreTighteningData(operationDataDTO);
             _operationDatasCached.Add(operationDataDTO);
         }
 

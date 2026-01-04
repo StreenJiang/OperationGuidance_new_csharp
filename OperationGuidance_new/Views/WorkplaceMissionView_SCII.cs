@@ -66,7 +66,6 @@ namespace OperationGuidance_new.Views {
 
         // 其他自定义组件
         private CustomComboBoxGroup<string> _batchDropDownBox;
-        private volatile bool _missionNGAdminConfirmed = true;
 
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
@@ -94,39 +93,6 @@ namespace OperationGuidance_new.Views {
 
             _checkRedo = true;
             _toolControlNeedAdminPasswor = true;
-        }
-
-        protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
-            SerialPortTask serialPortTask = pair.Value;
-            serialPortTask.ActionAfterDataReceived = async msg => {
-                await Task.Run(() => {
-                    BeginInvoke(() => {
-                        if (!IsDisposed) {
-                            // Check for mission ng admin confirmation
-                            if (!_missionNGAdminConfirmed) {
-                                return;
-                            }
-
-                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
-                            // 如果有空的数据进来，则跳过
-                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                logger.Warn("Message is null from serial port device, please check.");
-                                return;
-                            }
-                            if (dto.invalid_char != null) {
-                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
-                            }
-
-                            // 交给弹窗处理
-                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                                OpenBarCodePopUpForm(msg);
-                            } else {
-                                _barCodePopUpForm.ValidateBarCode(msg);
-                            }
-                        }
-                    });
-                });
-            };
         }
 
         protected override void ActionAfterAllInitialized() {
@@ -441,12 +407,8 @@ namespace OperationGuidance_new.Views {
 
             if (_mission.id > 0) {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
-                IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
-                            .DistinctBy(dto => dto.product_bar_code);
-                sum = distinctData.Count();
-                okSum = distinctData
-                            .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
-                            .Count();
+                sum = missionRecordDTOs.Count;
+                okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
                 }
@@ -1025,12 +987,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected void MissionNGConfirmPopUp(string msg) {
-            _missionNGAdminConfirmed = false;
-            while (!_missionNGAdminConfirmed) {
-                _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
-            }
-        }
+        protected void MissionNGConfirmPopUp(string msg) => OpenAdminPasswordPopUpForm(msg, true);
 
         protected override async Task ActionAfterActivatingMission() {
             await base.ActionAfterActivatingMission();
@@ -1090,19 +1047,15 @@ namespace OperationGuidance_new.Views {
                 BeginInvoke(() => {
                     // Nonactivated or finished will not handle any received data
                     if (!_activated) {
-                        logger.Info($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
                         return;
                     }
 
                     try {
-                        logger.Info($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
-                                    $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
-
                         ToolTask toolTask = _toolTasks[deviceId];
                         // Lock first
                         toolTask.ForceSendLock();
                         if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
-                            logger.Info($"[SCII][MISSION:{_mission?.id}] 开始处理拧紧数据");
+                            logger.Info($"Action running after received tightening data...");
 
                             int workstationId = toolTask.WorkstationId.Value;
 
@@ -1121,12 +1074,6 @@ namespace OperationGuidance_new.Views {
                             // Get current bolt
                             BoltButton currentBolt = _currentWorkingBolt;
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-
-                            // 参数集对比日志
-                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
-                                        $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
-                                        $"tighteningData_parameter_set={data.parameter_set_number}");
-
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
                             // Set pset manualy if tool type is sudong x7
@@ -1150,17 +1097,8 @@ namespace OperationGuidance_new.Views {
                                 dataDTO.arm_position = _realTimeArmCoordinates.ToString();
                             }
 
-                            // 数据转换完成日志
-                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}|WORKSTATION:{workstationDTO.name}] " +
-                                        $"数据转换完成 - product_bar_code={_missionRecord.product_bar_code}, " +
-                                        $"parts_bar_code={_missionRecord.parts_bar_code}, product_batch={_missionRecord.product_batch}, " +
-                                        $"tool={toolDTO.name}({toolDTO.ip})");
-
                             // If result type is tightening
                             if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
-                                logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 开始拧紧结果验证 - torque={data.torque}, angle={data.angle}, " +
-                                            $"tightening_status={data.tightening_status}, torque_status={data.torque_status}, angle_status={data.angle_status}");
-
                                 bool tighteningOK = true;
                                 string errorMsg = "";
                                 // Initialize color to ok
@@ -1210,8 +1148,6 @@ namespace OperationGuidance_new.Views {
 
                                 // Switch to next bolt
                                 if (tighteningOK) {
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 拧紧验证结果 - OK, actual_torque={data.torque}, torque_range=[{boltDTO.torque_min}, {boltDTO.torque_max}], actual_angle={data.angle}, angle_range=[{boltDTO.angle_min}, {boltDTO.angle_max}]");
-
                                     // Reset tightening type to tightening in case somewhere did some changes
                                     _needLoosening = false;
                                     RemoveInformationMsg(_workingProcessPanel.NGReasons);
@@ -1219,7 +1155,6 @@ namespace OperationGuidance_new.Views {
 
                                     currentBolt.BoltStatus = BoltStatus.DONE;
                                     currentBolt.Label = data.torque.ToString("0.00");
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧成功，状态更新为 DONE，扭矩标签更新为 {data.torque:F2}");
 
                                     // Check next index
                                     List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
@@ -1236,33 +1171,22 @@ namespace OperationGuidance_new.Views {
                                     if (nextIndex < currentSideBolts.Count) {
                                         _currentWorkingBolt = SwitchBolt(nextIndex);
                                         ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 切换到下一个螺栓 (index={nextIndex})");
                                     } else {
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}] 当前产品面所有螺栓完成，准备检查是否所有面完成");
-
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|RECORD_ID:{_missionRecord.id}] 任务完成 - mission_result=OK, " +
-                                                    $"product_bar_code={_missionRecord.product_bar_code}, product_batch={_missionRecord.product_batch}");
-
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}] 添加挑战任务完成记录");
                                             AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
                                         }
 
                                         // 重置任务信息
                                         ResetMissionDetails();
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}] 重置任务信息");
 
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
-                                    logger.Warn($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧失败 - " +
-                                                $"ng_times={currentBolt.NgTimes}, tightening_status=NG, error_msg={errorMsg}");
-
                                     // Change bolt status
                                     currentBolt.BoltStatus = BoltStatus.ERROR;
 
@@ -1275,8 +1199,6 @@ namespace OperationGuidance_new.Views {
 
                                     // Mission failed
                                     if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
-                                        logger.Warn($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] NG次数达到上限 ({_mission.max_ng_num})，任务失败");
-
                                         // 重置任务信息
                                         ResetMissionDetails();
 
@@ -1289,10 +1211,7 @@ namespace OperationGuidance_new.Views {
                                         // 先记录数据再弹出提示
                                         // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                         MissionNGConfirmPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败。请输入管理员密码");
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 弹出管理员密码确认弹窗");
                                     } else {
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 当前NG次数: {currentBolt.NgTimes}, 需要反松");
-
                                         _needLoosening = true;
                                         _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
 
@@ -1301,22 +1220,17 @@ namespace OperationGuidance_new.Views {
 
                                         // 需要管理员密码弹窗
                                         if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] NG次数达到密码确认阈值 ({_mission.password_need_time})，需要管理员密码");
                                             AddLockMsg(WorkingProcessPanel.AdminConfirmation);
                                             _adminConfirmed = false;
 
                                             // 先记录数据再打开弹窗
                                             BoltNGConfirmPopUp();
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 弹出管理员密码确认弹窗");
                                         }
                                     }
 
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;
                                 }
                             } else {
-                                logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 处理反松结果 - result_type=LOOSENING, " +
-                                            $"torque={data.torque}, angle={data.angle}");
-
                                 _needLoosening = false;
 
                                 // 反松结束后把扭矩角度改回黑色
@@ -1330,15 +1244,11 @@ namespace OperationGuidance_new.Views {
                                 if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
                                     StoreTighteningData(dataDTO);
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据已存储");
-                                } else {
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据未存储 (配置禁用)");
                                 }
                             }
                         }
                     } catch (Exception e) {
-                        logger.Error($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
-                                    $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
+                        logger.Error($"Error occurred while handling tightening data, e: {e}");
                     }
                 });
             });

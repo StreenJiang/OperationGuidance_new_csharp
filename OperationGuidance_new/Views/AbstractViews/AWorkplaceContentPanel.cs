@@ -59,8 +59,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
         protected readonly object DataStorageLockObj = new();
-        // 异步锁用于StoreTighteningData排队执行
-        private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -848,7 +846,31 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Load serial port devices
                 _serialPortTasks = MainUtils.SerialPortTasks;
                 foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                    InitSerialPortTask(pair);
+                    SerialPortTask serialPortTask = pair.Value;
+                    serialPortTask.ActionAfterDataReceived = async msg => {
+                        await Task.Run(() => {
+                            BeginInvoke(() => {
+                                if (!IsDisposed) {
+                                    DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
+                                    // 如果有空的数据进来，则跳过
+                                    if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
+                                        logger.Warn("Message is null from serial port device, please check.");
+                                        return;
+                                    }
+                                    if (dto.invalid_char != null) {
+                                        msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                                    }
+
+                                    // 交给弹窗处理
+                                    if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                        OpenBarCodePopUpForm(msg);
+                                    } else {
+                                        _barCodePopUpForm.ValidateBarCode(msg);
+                                    }
+                                }
+                            });
+                        });
+                    };
                 }
 
                 // Load communication devices
@@ -861,35 +883,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Action after loading devices
             ActionAfterLoadingDevices();
         }
-
-        protected virtual void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
-            SerialPortTask serialPortTask = pair.Value;
-            serialPortTask.ActionAfterDataReceived = async msg => {
-                await Task.Run(() => {
-                    BeginInvoke(() => {
-                        if (!IsDisposed) {
-                            DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
-                            // 如果有空的数据进来，则跳过
-                            if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                logger.Warn("Message is null from serial port device, please check.");
-                                return;
-                            }
-                            if (dto.invalid_char != null) {
-                                msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
-                            }
-
-                            // 交给弹窗处理
-                            if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
-                                OpenBarCodePopUpForm(msg);
-                            } else {
-                                _barCodePopUpForm.ValidateBarCode(msg);
-                            }
-                        }
-                    });
-                });
-            };
-        }
-
         // 持续检查设备连接状态的task
         private async void CheckDeviceConnections() {
             await Task.Run(async () => {
@@ -1153,18 +1146,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public bool CheckChallengeMissionConfirmation() {
             List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _mission.id).ToList();
-            ProductMissionDTO? challengeMission = allOtherMissions.Find(m =>
-                                                                        m.challenge_mission_id != null &&
-                                                                        m.challenge_mission_id > 0 &&
-                                                                        m.challenge_mission_id == _mission.id
-                                                                    );
+            ProductMissionDTO? challengeMission = allOtherMissions.Find(m => m.challenge_mission_id == _mission.id);
 
             // Check if current mission has challenge mission
             if (challengeMission != null) {
                 // Check if it's first mission
                 if (challengeMission.is_first_mission == (int) YesOrNo.YES) {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
+                    if (_mission.predecessor_mission_id != null) {
                         WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 首档岗位】，但此任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                         return false;
                     } else {
@@ -1175,8 +1164,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 } else {
                     // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
-                        if (challengeMission.predecessor_mission_id == null && challengeMission.predecessor_mission_id > 0) {
+                    if (_mission.predecessor_mission_id != null) {
+                        if (challengeMission.predecessor_mission_id == null) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务存在前置任务，但挑战任务不存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
                         } else {
@@ -1188,7 +1177,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         }
                     } else {
-                        if (challengeMission.predecessor_mission_id != null && challengeMission.predecessor_mission_id > 0) {
+                        if (challengeMission.predecessor_mission_id != null) {
                             WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务不存在前置任务，但挑战任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
                             return false;
                         }
@@ -1342,9 +1331,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Reset status of working proccess panel
             _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
-
-            // Reset ng reasons of working proccess panel
-            _workingProcessPanel.NGReasons = null;
 
             // Reset other variables
             _sumBoltDone = 0;
@@ -1610,129 +1596,48 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Task.Run(async () => {
                     while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
-                            // Check if is multi-device independence mode
-                            bool isMultiDeviceMode = CheckIfIsMultiDeviceIndependenceMode();
+                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
-                            if (isMultiDeviceMode) {
-                                // Multi-device mode: process all bolts in _currentWorkingBoltIndependence dictionary
-                                foreach (var kvp in _currentWorkingBoltIndependence) {
-                                    int workstationId = kvp.Key;
-                                    BoltButton boltButton = kvp.Value;
+                            CheckCurrentPSetForLockMsg();
+                            CheckAdminConfirmationForLockMsg();
 
-                                    try {
-                                        // Skip if boltButton is null
-                                        if (boltButton == null) {
-                                            continue;
-                                        }
+                            string statusDesc = string.Empty;
+                            if (lockMsgs.Count > 0) {
+                                statusDesc = string.Join("\r\n", lockMsgs);
+                                statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
+                                // Set status to working proccess panel
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
 
-                                        ProductBoltDTO boltDTO = boltButton.BoltDTO;
-                                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
-
-                                        // Clear messages for this bolt
-                                        ClearLockMsgs();
-                                        ClearInformationMsgs();
-
-                                        CheckCurrentPSetForLockMsg();
-                                        CheckAdminConfirmationForLockMsg();
-
-                                        string statusDesc = string.Empty;
-                                        if (lockMsgs.Count > 0) {
-                                            statusDesc = string.Join("\r\n", lockMsgs);
-                                            statusDesc = string.Format(statusDesc, boltDTO.serial_num);
-                                            // Set status to working proccess panel
-                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
-
-                                            // Lock tools
-                                            toolTask.ForceSendLock();
-                                        } else {
-                                            if (_needLoosening) {
-                                                statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, boltDTO.serial_num);
-                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-                                            } else {
-                                                statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, boltDTO.serial_num);
-                                                _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
-                                            }
-                                            // Set status to working proccess panel
-                                            _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-
-                                            // Unlock tools
-                                            toolTask.ForceSendUnlock();
-                                        }
-
-                                        // Add information
-                                        if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
-                                            statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
-                                        }
-
-                                        // Set description to working proccess panel
-                                        _workingProcessPanel.StatusDesc = statusDesc;
-                                    } catch (OperationCanceledException) {
-                                        // 任务被取消，退出循环
-                                        throw;
-                                    } catch (Exception e) {
-                                        // Log error for this specific bolt but continue processing others
-                                        logger.Error($"StartLockCheckingTask [Multi-Device Mode, WorkstationId={workstationId}]: e = {e}");
-                                    }
-                                }
+                                // Lock tools
+                                toolTask.ForceSendLock();
                             } else {
-                                // Normal mode: process single _currentWorkingBolt
-                                try {
-                                    // Skip if _currentWorkingBolt is null
-                                    if (_currentWorkingBolt == null) {
-                                        await Task.Delay(_lockCheckingTaskDelay, cts.Token);
-                                        continue;
-                                    }
-
-                                    ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                                    ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
-
-                                    CheckCurrentPSetForLockMsg();
-                                    CheckAdminConfirmationForLockMsg();
-
-                                    string statusDesc = string.Empty;
-                                    if (lockMsgs.Count > 0) {
-                                        statusDesc = string.Join("\r\n", lockMsgs);
-                                        statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
-                                        // Set status to working proccess panel
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
-
-                                        // Lock tools
-                                        toolTask.ForceSendLock();
-                                    } else {
-                                        if (_needLoosening) {
-                                            statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
-                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
-                                        } else {
-                                            statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _currentWorkingBolt.BoltDTO.serial_num);
-                                            _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
-                                        }
-                                        // Set status to working proccess panel
-                                        _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
-
-                                        // Unlock tools
-                                        toolTask.ForceSendUnlock();
-                                    }
-
-                                    // Add information
-                                    if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
-                                        statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
-                                    }
-
-                                    // Set description to working proccess panel
-                                    _workingProcessPanel.StatusDesc = statusDesc;
-                                } catch (OperationCanceledException) {
-                                    // 任务被取消，退出循环
-                                    throw;
-                                } catch (Exception e) {
-                                    // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
-                                    logger.Error($"StartLockCheckingTask [Normal Mode]: e = {e}");
+                                if (_needLoosening) {
+                                    statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
+                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                } else {
+                                    statusDesc = string.Format(WorkingProcessPanel.TighteningDesc, _workingProcessPanel.BoltSerialNum);
+                                    _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.TIGHTENING;
                                 }
+                                // Set status to working proccess panel
+                                _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
+
+                                // Unlock tools
+                                toolTask.ForceSendUnlock();
                             }
+
+                            // Add information
+                            if (informationMsgs.Count > 0 && statusDesc.Length > 0) {
+                                statusDesc += "\r\n" + string.Join("\r\n", informationMsgs);
+                            }
+
+                            // Set description to working proccess panel
+                            _workingProcessPanel.StatusDesc = statusDesc;
                         } catch (OperationCanceledException) {
                             // 任务被取消，退出循环
                             break;
                         } catch (Exception e) {
-                            // Catch any outer exceptions
+                            // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
                             logger.Error($"StartLockCheckingTask: e = {e}");
                         } finally {
                             // Delay a little bit and check again
@@ -2033,7 +1938,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         // Send pset to controller
         protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
-            logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} start ......");
+            logger.Info("SendPSet start ......");
 
             try {
                 // 直接在UI线程启动异步操作，避免Task.Run包装
@@ -2137,14 +2042,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     });
                 }
             } catch (OperationCanceledException) {
-                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset}  operation was cancelled");
+                logger.Info("SendPSet operation was cancelled");
             } catch (Exception ex) {
-                logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
+                logger.Error($"SendPSet发生未预期异常: {ex.Message}", ex);
                 BeginInvoke(() => {
                     _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
                 });
             } finally {
-                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} end ......");
+                logger.Info("SendPSet end ......");
             }
         }
 
@@ -2297,7 +2202,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             bool result = false;
-            _adminConfirmed = false;
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
             _adminPasswordPopUpForm.Dispose();
 
@@ -2333,15 +2237,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             BeginInvoke(() => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
-                    logger.Info($"[MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
                     return;
                 }
 
                 try {
-                    // 方法入口日志 - 详细记录接收到的数据
-                    logger.Info($"[MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
-                                $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
-
                     ToolTask toolTask = _toolTasks[deviceId];
                     // Lock first
                     if (MainUtils.IsArmLocatingEnabled()) {
@@ -2375,12 +2274,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                         }
 
-                        // 参数集对比日志
-                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-                        logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
-                                    $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
-                                    $"tighteningData_parameter_set={data.parameter_set_number}");
-
                         // Check if current showing side is equal to side of working bolt, if no then switch to the right side
                         if (currentBolt.BoltDTO.side_id != _sides[_currentSideIndex].id) {
                             ProductSideDTO? sideTemp = _sides.Find(s => s.id == currentBolt.BoltDTO.side_id);
@@ -2390,9 +2283,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             }
                         }
 
+                        ProductBoltDTO boltDTO = currentBolt.BoltDTO;
                         OperationDataDTO dataDTO = new();
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
-
                         // Set pset manualy if tool type is sudong x7
                         if (toolTask.ToolType is ToolSudongX7 toolX7) {
                             dataDTO.parameter_set_number = currentBolt.CurrentParameterSet;
@@ -2419,17 +2312,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         // TZYX
                         _rundownTime = data.rundown_time;
 
-                        // 数据转换完成日志 - 记录关键 mission details
-                        logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}|WORKSTATION:{workstationDTO.name}] " +
-                                    $"数据转换完成 - product_bar_code={missionRecord.product_bar_code}, " +
-                                    $"parts_bar_code={missionRecord.parts_bar_code}, product_batch={missionRecord.product_batch}, " +
-                                    $"tool={toolDTO.name}({toolDTO.ip}), rundown_time={data.rundown_time}");
-
                         // If result type is tightening
                         if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
-                            logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 开始拧紧结果验证 - torque={data.torque}, angle={data.angle}, " +
-                                        $"tightening_status={data.tightening_status}, torque_status={data.torque_status}, angle_status={data.angle_status}");
-
                             bool tighteningOK = true;
                             string errorMsg = "";
                             // Initialize color to ok
@@ -2508,12 +2392,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 errorMsg += "角度与配置范围不符";
                             }
 
-                            // 拧紧验证结果日志 - 包含详细的配置范围信息
-                            logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 拧紧验证结果 - " +
-                                        $"OK={tighteningOK}, actual_torque={data.torque}, torque_range=[{boltDTO.torque_min}, {boltDTO.torque_max}], " +
-                                        $"actual_angle={data.angle}, angle_range=[{boltDTO.angle_min}, {boltDTO.angle_max}], " +
-                                        $"error_status={data.tightening_error_status}, error_msg={errorMsg}");
-
                             // Switch to next bolt
                             if (tighteningOK) {
                                 _errorMsg = null;
@@ -2524,8 +2402,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.NGReasons = null;
 
                                 currentBolt.BoltStatus = BoltStatus.DONE;
-
-                                logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧成功，状态更新为 DONE");
 
                                 // Check next index
                                 List<BoltButton> currentSideBolts;
@@ -2544,17 +2420,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
                                 StoreTighteningData(dataDTO);
 
-                                logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 拧紧数据已存储，tightening_status=OK");
-
                                 if (nextIndex < currentSideBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
                                         _currentWorkingBoltIndependence[workstationId] = SwitchBolt(workstationId, nextIndex);
                                         ChangeBoltStatusToWorking(_currentWorkingBoltIndependence[workstationId]);
-                                        logger.Info($"[MISSION:{_mission?.id}|WORKSTATION:{workstationId}] 切换到下一个螺栓 (index={nextIndex})");
                                     } else {
                                         _currentWorkingBolt = SwitchBolt(nextIndex);
                                         ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                        logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 切换到下一个螺栓 (index={nextIndex})");
                                     }
                                 } else {
                                     bool allDone = true;
@@ -2575,7 +2447,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                             ChangeBoltStatusToWorking(_currentWorkingBolt);
                                             ChangeSideAndInvalidate();
                                             allDone = false;
-                                            logger.Info($"[MISSION:{_mission?.id}] 当前产品面完成，切换到下一个产品面 (index={_currentSideIndex})");
                                         }
                                     }
 
@@ -2584,13 +2455,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
-                                        logger.Info($"[MISSION:{_mission?.id}|RECORD_ID:{_missionRecord.id}] 任务完成 - mission_result=OK, " +
-                                                    $"product_bar_code={_missionRecord.product_bar_code}, product_batch={_missionRecord.product_batch}, " +
-                                                    $"is_redo={_missionRecord.is_redo}, rundown_time={_rundownTime}");
-
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                            logger.Info($"[MISSION:{_mission?.id}] 添加挑战任务完成记录");
                                             AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
                                         }
 
@@ -2618,21 +2484,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 // 记录数据
                                 StoreTighteningData(dataDTO);
 
-                                // NG处理日志 - 详细记录错误信息和NG次数
-                                logger.Warn($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧失败 - " +
-                                            $"ng_times={currentBolt.NgTimes}, tightening_status=NG, error_msg={errorMsg}");
-
                                 // Should not lock in the first place when it has error
                                 if (MainUtils.IsArmLocatingEnabled()) {
                                     toolTask.ForceSendUnlock();
-                                    logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 工具已解锁 (力臂定位模式)");
                                 }
                             }
                         } else {
-                            // 反松流程处理
-                            logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 处理反松结果 - result_type=LOOSENING, " +
-                                        $"torque={data.torque}, angle={data.angle}");
-
                             _needLoosening = false;
 
                             // 反松结束后把扭矩角度改回黑色
@@ -2646,16 +2503,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (MainUtils.GetStoreLooseningData()) {
                                 // 记录数据
                                 StoreTighteningData(dataDTO);
-                                logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据已存储");
-                            } else {
-                                logger.Info($"[MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据未存储 (配置禁用)");
                             }
                         }
                     }
                 } catch (Exception e) {
-                    // 异常处理日志 - 记录完整的错误信息
-                    logger.Error($"[MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
-                                $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
+                    logger.Error($"Error occurred while handling tightening data, e: {e}");
                 }
             });
         }
@@ -2687,48 +2539,40 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
 
-        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            // 等待锁，确保排队执行
-            await _storeTighteningDataLock.WaitAsync();
-            try {
-                await StoreTighteningDataInternal(operationDataDTO);
-            } finally {
-                // 确保锁总是被释放
-                _storeTighteningDataLock.Release();
-            }
-        }
-
-        protected virtual async Task StoreTighteningDataInternal(OperationDataDTO operationDataDTO) {
+        protected virtual void StoreTighteningData(OperationDataDTO operationDataDTO) {
             logger.Info("StoreTighteningData start ........");
 
-            try {
-                // 并行执行数据库和文件存储操作，但文件存储有超时保护
-                var dbTask = StoreDataToDatabaseAsync(operationDataDTO);
-                var fileTask = StoreDataToFilesAsyncWithTimeout(operationDataDTO, TimeSpan.FromSeconds(3)); // 3秒超时
+            // Use task to store data asynchronously with proper cancellation support
+            _ = Task.Run(async () => {
+                try {
+                    // 并行执行数据库和文件存储操作，直接await异步方法
+                    await Task.WhenAll(
+                        StoreDataToDatabaseAsync(operationDataDTO),
+                        StoreDataToFilesAsync(operationDataDTO)
+                    );
 
-                await Task.WhenAll(dbTask, fileTask);
+                    // 转换数据并更新UI（在UI线程）
+                    BeginInvoke(() => {
+                        try {
+                            OperationDataVO dataFormatted = new();
+                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                // 转换数据并更新UI（在UI线程）
-                BeginInvoke(() => {
-                    try {
-                        OperationDataVO dataFormatted = new();
-                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                            // 使用线程安全的ConcurrentBag
+                            _tighteningDataVOs.Add(dataFormatted);
 
-                        // 使用线程安全的ConcurrentBag
-                        _tighteningDataVOs.Add(dataFormatted);
-
-                        // 创建快照用于UI显示
-                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                        logger.Info("StoreTighteningData showing to panel end ........");
-                    } catch (Exception e) {
-                        logger.Error($"Error in data conversion or UI update: {e}");
-                    }
-                });
-            } catch (Exception e) {
-                logger.Error($"Error during data storage operations: {e}");
-            } finally {
-                logger.Info("StoreTighteningData end ........");
-            }
+                            // 创建快照用于UI显示
+                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                            logger.Info("StoreTighteningData showing to panel end ........");
+                        } catch (Exception e) {
+                            logger.Error($"Error in data conversion or UI update: {e}");
+                        }
+                    });
+                } catch (Exception e) {
+                    logger.Error($"Error during data storage operations: {e}");
+                } finally {
+                    logger.Info("StoreTighteningData end ........");
+                }
+            }, _activeMissionCts.Token);
         }
 
         protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
@@ -2755,22 +2599,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } catch (Exception e) {
                 logger.Error($"StoreDataToFiles error: {e}");
                 throw; // 重新抛出异常以便调用者处理
-            }
-        }
-
-        protected virtual async Task StoreDataToFilesAsyncWithTimeout(OperationDataDTO operationDataDTO, TimeSpan timeout) {
-            logger.Info("StoreDataToFiles with timeout start ........");
-
-            using var cts = new CancellationTokenSource(timeout);
-
-            try {
-                // 直接执行，让 BeginInvoke 处理UI线程异步性
-                // 避免多余的 Task.Run 包装，减少线程池压力
-                StoreDataToFilesCore(operationDataDTO);
-                logger.Info("StoreDataToFiles with timeout end ........");
-            } catch (Exception e) {
-                logger.Error($"StoreDataToFiles with timeout error: {e}");
-                // 不抛出异常，避免阻塞主流程
             }
         }
 
@@ -2831,9 +2659,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
-            if (vos == null)
-                return;
-            var snapshot = vos.OrderBy(vo => vo.modify_time).ToList();
+            if (vos == null) return;
+            var snapshot = vos.ToList();
             _tighteningDataPanel.DataSource = snapshot;
         }
 
@@ -2845,35 +2672,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
 
         public virtual async Task TerminateMission(WorkplaceProcessStatus status) {
-            // Cancel all background tasks before locking tools to avoid race condition
-            // where lock checking task might call ForceSendUnlock() after we lock tools
-            if (_backgroundTaskCts.Count > 0) {
-                foreach (var cts in _backgroundTaskCts) {
-                    cts.Cancel();
-                }
-
-                // Wait for tasks to actually stop (with timeout to avoid hanging)
-                var stopTasks = new List<Task>();
-                foreach (var cts in _backgroundTaskCts) {
-                    stopTasks.Add(Task.Run(async () => {
-                        // Wait for cancellation to propagate and task to exit
-                        await Task.Delay(100);
-                    }));
-                }
-
-                try {
-                    await Task.WhenAll(stopTasks);
-                } catch (Exception) {
-                    // Ignore exceptions during task cancellation
-                }
-
-                // Dispose and clear all cancellation token sources
-                foreach (var cts in _backgroundTaskCts) {
-                    cts.Dispose();
-                }
-                _backgroundTaskCts.Clear();
-            }
-
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
                 LockAllTools();

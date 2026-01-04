@@ -609,7 +609,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TorqueBox.GetTextBox(0).TextChanged += (sender, eventArgs) => {
                 if (!TorqueBox.HasError) {
                     try {
-                        if (!string.IsNullOrEmpty(torqueMinBox.Text) && double.Parse(torqueMinBox.Text) > 0) {
+                        if (!string.IsNullOrEmpty(torqueMinBox.Text) && int.Parse(torqueMinBox.Text) > 0) {
                             ModifiedBoltDTO.torque_min = float.Parse(torqueMinBox.Text);
                         } else ModifiedBoltDTO.torque_min = null;
                     } catch {
@@ -621,7 +621,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             TorqueBox.GetTextBox(1).TextChanged += (sender, eventArgs) => {
                 if (!TorqueBox.HasError) {
                     try {
-                        if (!string.IsNullOrEmpty(torqueMaxBox.Text) && double.Parse(torqueMaxBox.Text) > 0) {
+                        if (!string.IsNullOrEmpty(torqueMaxBox.Text) && int.Parse(torqueMaxBox.Text) > 0) {
                             ModifiedBoltDTO.torque_max = float.Parse(torqueMaxBox.Text);
                         } else ModifiedBoltDTO.torque_max = null;
                     } catch {

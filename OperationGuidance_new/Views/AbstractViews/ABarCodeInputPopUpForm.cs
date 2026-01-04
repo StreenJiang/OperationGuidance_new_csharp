@@ -215,6 +215,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (!_workplace.CheckErrorPromptForArmEnabled()) {
                 return;
             }
+            if (!_workplace.CheckChallengeMissionConfirmation()) {
+                return;
+            }
 
             string barCode = _productBarCodeBox.GetTextBox(0).Box.Text;
             if (string.IsNullOrEmpty(barCode)) {
@@ -283,15 +286,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _productBarCodeBox.GetTextBox(0).IsError = true;
                 }
             }
-
-            // 挑战任务校验挪到这里，需要先保证任务与条码的匹配是否成功才能进行挑战任务的校验
-            if (checkPassed) {
-                // 匹配到任务后需要再次检查挑战任务
-                if (!_workplace.CheckChallengeMissionConfirmation()) {
-                    return;
-                }
-            }
-
             // 条码校验通过，再检查下是否需要返工
             if (checkPassed) {
                 mission = CommonUtils.CannotBeNull(mission);

@@ -21,8 +21,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockWaitTime = 500;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private readonly object _pSetLock = new object();
-        private int _currentPSet = -1;
+        private int? CurrentPSet = null;
+        private bool? PSetOk = false;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -31,8 +31,7 @@ namespace OperationGuidance_new.Tasks {
         private int LockCounter;
         private int UnLockCounter;
         private int LockWaitTimeCounter;
-        private readonly SemaphoreSlim _commandLock = new(1, 1);
-        private TaskCompletionSource<bool>? _pSetResponseTcs;
+        private Queue<string> _commands = new();
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
         #endregion
@@ -45,12 +44,9 @@ namespace OperationGuidance_new.Tasks {
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
+        public Queue<string> Commands { get => _commands; set => _commands = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
-        public int CurrentPSet {
-            get { lock (_pSetLock) return _currentPSet; }
-            set { lock (_pSetLock) _currentPSet = value; }
-        }
         #endregion
 
         #region Constructors
@@ -73,7 +69,7 @@ namespace OperationGuidance_new.Tasks {
                             // Only check hart beat interval if heart beat command is not null
                             if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
                                 // Send heart beat command to controller
-                                SendRawCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
+                                SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
                                 logger.Info($"Sending heart beating command to TOOL[{_device_name} - {_ip}: {_port}]...");
                             }
                             // Reset heart beat counter even no command has been sent
@@ -82,14 +78,12 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check any message is waiting for receving 
                         try {
-                            byte[] msgBytes = new byte[1024 * 1024];
-                            int msgLen = 0;
                             lock (SyncObject) {
-                                msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                            }
-
-                            if (msgLen > 0) {
-                                AnalyzeData(msgBytes.Take(msgLen).ToArray());
+                                byte[] msgBytes = new byte[1024 * 1024];
+                                int msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                                if (msgLen > 0) {
+                                    AnalyzeData(msgBytes.Take(msgLen).ToArray());
+                                }
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
@@ -132,54 +126,39 @@ namespace OperationGuidance_new.Tasks {
 
                     // Analyse result
                     if (_toolType is ToolPFSeries toolPF2) {
-                        toolPF2.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            if (heartIsBeating != null) {
-                                if (!heartIsBeating.Value) {
-                                    throw new Exception("Heart is not beating...");
-                                } else {
-                                    logger.Info("Heart beating....");
-                                }
-                            }
-                            // 在非 UI 线程中直接操作 TCS（无需 Task.Run）
-                            if (pSetSendingOk.HasValue) {
-                                var currentTcs = Interlocked.Exchange(ref _pSetResponseTcs, null);
-                                if (currentTcs != null && !currentTcs.Task.IsCompleted) {
-                                    try {
-                                        currentTcs.TrySetResult(pSetSendingOk.Value);
-                                        logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
-                                    } catch (InvalidOperationException) {
-                                        logger.Debug($"PSet response already set to {CurrentPSet}, skipping: {pSetSendingOk.Value}");
+                        toolPF2.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run(() => {
+                                if (heartIsBeating != null) {
+                                    if (!heartIsBeating.Value) {
+                                        throw new Exception("Heart is not beating...");
+                                    } else {
+                                        logger.Info("Heart beating....");
                                     }
                                 }
-                            }
-                            if (locked != null) {
-                                _locked = locked.Value;
-                            }
-                            if (dataReceived != null && dataReceived.Value) { }
-                            if (curveReceived != null && curveReceived.Value) {
-                                string message = toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage();
-                                SendRawCommand(message);
-                            }
+                                if (pSetSendingOk != null) {
+                                    PSetOk = pSetSendingOk.Value;
+                                }
+                                if (locked != null) {
+                                    _locked = locked.Value;
+                                }
+                                if (dataReceived != null && dataReceived.Value) { }
+                                if (curveReceived != null && curveReceived.Value) {
+                                    socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                                }
+                            });
                         }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        toolX7.AnalyzeData(msgBytes, (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            // 在非 UI 线程中直接操作 TCS（无需 Task.Run）
-                            if (pSetSendingOk.HasValue) {
-                                var currentTcs = Interlocked.Exchange(ref _pSetResponseTcs, null);
-                                if (currentTcs != null && !currentTcs.Task.IsCompleted) {
-                                    try {
-                                        currentTcs.TrySetResult(pSetSendingOk.Value);
-                                        logger.Debug($"PSet response set to: {pSetSendingOk.Value}");
-                                    } catch (InvalidOperationException) {
-                                        logger.Debug($"PSet response already set to {CurrentPSet}, skipping: {pSetSendingOk.Value}");
-                                    }
+                        toolX7.AnalyzeData(msgBytes, async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            await Task.Run(() => {
+                                if (pSetSendingOk != null) {
+                                    PSetOk = pSetSendingOk.Value;
                                 }
-                            }
-                            if (locked != null) {
-                                _locked = locked.Value;
-                            }
-                            if (dataReceived != null && dataReceived.Value) { }
-                            if (curveReceived != null && curveReceived.Value) { }
+                                if (locked != null) {
+                                    _locked = locked.Value;
+                                }
+                                if (dataReceived != null && dataReceived.Value) { }
+                                if (curveReceived != null && curveReceived.Value) { }
+                            });
                         }, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     }
                 } catch (Exception e) {
@@ -201,7 +180,7 @@ namespace OperationGuidance_new.Tasks {
                             RunTask();
                             Status = CONNECTED;
 
-                            InitVariablesAfterConnected();
+                            ForceSendUnlock();
                             break;
                         }
                         await Task.Delay(AutoReconnectingTrialDelay);
@@ -225,7 +204,6 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         #region Methods
-
         private async Task<bool> ConnectToServer() {
             try {
                 if (Connected) {
@@ -297,7 +275,6 @@ namespace OperationGuidance_new.Tasks {
                         socketClient = null;
                     }
                 }
-
                 return isConnected;
             } catch (Exception e) {
                 logger.Warn($"Failed to connect to TOOL[{_device_name} - {_ip}: {_port}], e = {e}");
@@ -305,15 +282,25 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
+        private void SendCommand(string command) {
+            if (!_commands.Contains(command)) {
+                // Enqueue to avoid duplicated calls
+                _commands.Enqueue(command);
 
-        private void InitVariablesAfterConnected() {
-            // 初始化当前 pset
-            CurrentPSet = -1;
+                // Reset heart beat counter
+                HeartBeatCounter = 0;
 
-            // 初始状态保持枪是解锁的
-            ForceSendUnlock();
+                // Send command
+                if (_toolType is ToolPFSeries toolPF2) {
+                    socketClient.Send(Encoding.ASCII.GetBytes(command));
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    socketClient.Send(MainUtils.ToBytes(command));
+                }
+
+                // Dequeue to allow new command to enqueue
+                _commands.Dequeue();
+            }
         }
-
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
             SendMessageRecevingCount++;
             if (Connected && SendMessageRecevingCount < SendMessageRecevingTimes) {
@@ -322,7 +309,7 @@ namespace OperationGuidance_new.Tasks {
                     HeartBeatCounter = 0;
                     // Send command to controller
                     logger.Info($"Sending command[{command}] to Tool[{_device_name} - {_ip}: {_port}]");
-                    SendRawCommand(command);
+                    socketClient.Send(Encoding.ASCII.GetBytes(command));
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
@@ -338,194 +325,142 @@ namespace OperationGuidance_new.Tasks {
             }
             return null;
         }
-
         public async Task<bool> SendPSetAsync(int pSetNumber) {
             if (pSetNumber == CurrentPSet) {
-                logger.Info($"PSet unchanged: {pSetNumber}");
+                logger.Info($"Current pset is [{CurrentPSet}], same as sending one [{pSetNumber}], no need to send any command...");
                 return true;
             }
 
-            // 获取锁（进入临界区）
-            await _commandLock.WaitAsync();
+            PSetOk = null;
+            if (Connected) {
+                return await Task.Run(async () => {
+                    try {
+                        logger.Info($"Setting pset to [{pSetNumber}]...");
+                        string command = "";
+                        if (_toolType is ToolPFSeries toolPF) {
+                            command = toolPF.GetPSetCommand(pSetNumber);
+                            logger.Info($"Sending command to {toolPF.Name}: {command}");
+                        } else if (_toolType is ToolSudongX7 toolX7) {
+                            command = toolX7.GetPSetCommand(pSetNumber);
+                            logger.Info($"Sending command to {toolX7.Name}: {command}");
+                        } else {
+                        }
 
-            // 在try块外定义tcs，以便finally块访问
-            TaskCompletionSource<bool>? newTcs = null;
+                        // Send pset
+                        if (string.IsNullOrEmpty(command)) {
+                            return true;
+                        }
+                        int waitTimesMax = 15;
+                        int waitTimes = 0;
+                        while (PSetOk == null && waitTimes < waitTimesMax) {
+                            try {
+                                SendCommand(command);
+                                waitTimes++;
+                            } catch (Exception e) {
+                                logger.Error($"Error while sending command [{command}] (Setting pset to {pSetNumber})... Will retry for this...", e);
+                            }
 
-            try {
-                // 1. 创建新的 TCS
-                newTcs = new TaskCompletionSource<bool>();
-                logger.Debug($"Created new TCS for PSet {pSetNumber}");
+                            logger.Info("Waiting for pset ok .......");
+                            await Task.Delay(PSetWaitTime);
+                        }
 
-                // 2. 原子性替换（确保 AnalyzeData 看到的是最新 TCS）
-                var oldTcs = Interlocked.Exchange(ref _pSetResponseTcs, newTcs);
+                        if (PSetOk != null && PSetOk.Value) {
+                            CurrentPSet = pSetNumber;
+                        }
 
-                // 3. 取消旧的 TCS
-                if (oldTcs != null) {
-                    logger.Debug($"Canceling old TCS");
-                    oldTcs.TrySetCanceled();
-                }
-
-                string command = _toolType switch {
-                    ToolPFSeries pf => pf.GetPSetCommand(pSetNumber),
-                    ToolSudongX7 x7 => x7.GetPSetCommand(pSetNumber),
-                    _ => throw new NotSupportedException($"Unsupported tool: {_toolType}")
-                };
-
-                logger.Info($"Sending PSet {pSetNumber}: {command}");
-
-                // 4. 发送命令
-                if (!SendRawCommand(command)) {
-                    return false;
-                }
-
-                try {
-                    // 5. 等待响应（5秒超时），兼容所有 .NET 版本
-                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
-                    var completedTask = await Task.WhenAny(newTcs.Task, timeoutTask);
-
-                    if (completedTask == timeoutTask) {
-                        throw new TimeoutException("PSet response timeout");
+                        logger.Info($"Setting pset to [{pSetNumber}] [{PSetOk != null && PSetOk.Value}]!");
+                    } catch (Exception e) {
+                        logger.Error($"Error while setting pset to {pSetNumber}...", e);
                     }
-
-                    bool success = await newTcs.Task;
-                    if (success) {
-                        CurrentPSet = pSetNumber;
-                        logger.Info($"PSet updated to: {pSetNumber}");
-                    }
-
-                    return success;
-                } catch (Exception ex) when (ex is TimeoutException || ex is TaskCanceledException || ex is OperationCanceledException) {
-                    logger.Warn($"PSet {pSetNumber} response timeout", ex);
-                    return false;
-                } catch (Exception ex) {
-                    logger.Error($"Unexpected error waiting for PSet {pSetNumber} response: {ex.Message}");
-                    return false;
-                }
-            } finally {
-                // 6. 清理：将TCS置为null
-                if (newTcs != null && Interlocked.CompareExchange(ref _pSetResponseTcs, null, newTcs) == newTcs) {
-                    // 如果TCS还没有完成，设置取消状态
-                    if (!newTcs.Task.IsCompleted) {
-                        logger.Debug($"Cleaning up uncompleted TCS");
-                        newTcs.TrySetCanceled();
-                    }
-                }
-
-                // 7. 退出临界区
-                _commandLock.Release();
-                logger.Debug($"Released command lock");
+                    return PSetOk != null && PSetOk.Value;
+                });
             }
-        }
-
-        // 新增：纯发送（不入队、不重试）
-        private bool SendRawCommand(string command) {
-            if (!Connected) {
-                logger.Info($"PSet command sending fails as is disconnected: {command}");
-                return false;
-            }
-
-            try {
-                byte[] data = _toolType is ToolSudongX7
-                                        ? MainUtils.ToBytes(command)
-                                        : Encoding.ASCII.GetBytes(command);
-
-                logger.Info($"PSet command sending to controller: {command}");
-                int? num;
-                lock (SyncObject) {
-                    num = socketClient?.Send(data);
-                }
-                if (num.HasValue && num.Value > 0) {
-                    return true;
-                }
-
-                logger.Warn($"PSet command sending fails: {command}, sending num = {num}");
-            } catch (Exception ex) {
-                logger.Error($"PSet command sending error: {command}", ex);
-            }
-
-            return false;
-        }
-
-        public void ForceSendLock(bool ignoreLocalLockState = true) {
-            if (!ignoreLocalLockState && _locked) {
-                logger.Info("Already locked, skipping");
-                return;
-            }
-
-            logger.Info($"ForceSendLock... (ignoreLocalLockState={ignoreLocalLockState})");
-
-            if (_toolType is ToolPFSeries pf) {
-                SendRawCommand(pf.COMMAND_LOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 x7) {
-                SendRawCommand(x7.COMMAND_LOCK_ASCII.GetMessage());
-                Thread.Sleep(500);
-                SendRawCommand(x7.COMMAND_LOCK_ASCII.GetMessage());
-            } else {
-                logger.Warn($"ForceSendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}]");
-            }
-        }
-
-        public void ForceSendUnlock(bool ignoreLocalLockState = true) {
-            if (!ignoreLocalLockState && !_locked) {
-                logger.Info("Already unlocked, skipping");
-                return;
-            }
-
-            logger.Info($"ForceSendUnlock... (ignoreLocalLockState={ignoreLocalLockState})");
-
-            if (_toolType is ToolPFSeries pf) {
-                SendRawCommand(pf.COMMAND_UNLOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 x7) {
-                SendRawCommand(x7.COMMAND_UNLOCK_ASCII.GetMessage());
-                Thread.Sleep(500);
-                SendRawCommand(x7.COMMAND_UNLOCK_ASCII.GetMessage());
-            } else {
-                logger.Warn($"ForceSendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}]");
-            }
+            return PSetOk != null && PSetOk.Value;
         }
 
         private void SendLock() {
-            if (LockCounter >= LockMaxTimes) {
-                logger.Info("Lock max retry reached, skip");
-                return;
-            }
+            if (Connected) {
+                if (LockCounter < LockMaxTimes) {
+                    logger.Info($"Locking tool...");
+                    if (_toolType is ToolPFSeries toolPF) {
+                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        if (!_locked) {
+                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            Thread.Sleep(500);
+                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            _locked = true;
+                        }
+                    } else {
+                    }
 
-            logger.Info("Locking tool...");
-            if (_toolType is ToolPFSeries toolPF) {
-                SendRawCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 toolX7) {
-                if (!_locked) {
-                    SendRawCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    Thread.Sleep(500);
-                    SendRawCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                    LockCounter++;
                 }
             } else {
-                logger.Warn($"SendLock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}]");
+                _locked = false;
+                logger.Info($"Locking failure, it's not connected...");
             }
-
-            LockCounter++;
         }
-
-        private void SendUnlock() {
-            if (UnLockCounter >= UnLockMaxTimes) {
-                logger.Info("Unlock max retry reached, skip");
-                return;
-            }
-
-            logger.Info("Unlocking tool...");
-            if (_toolType is ToolPFSeries toolPF) {
-                SendRawCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 toolX7) {
-                if (_locked) {
-                    SendRawCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+        public void ForceSendLock() {
+            if (Connected) {
+                logger.Info($"Force locking tool...");
+                if (_toolType is ToolPFSeries toolPF) {
+                    if (!_locked) {
+                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                    }
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
                     Thread.Sleep(500);
-                    SendRawCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                    _locked = true;
+                } else {
                 }
             } else {
-                logger.Warn($"SendUnlock: Unsupported tool type [{_toolType?.GetType().Name ?? "Unknown"}]");
+                _locked = false;
+                logger.Info($"Force locking failure, it's not connected...");
             }
+        }
+        private void SendUnlock() {
+            if (Connected) {
+                if (UnLockCounter < UnLockMaxTimes) {
+                    logger.Info($"Unlocking tool...");
+                    if (_toolType is ToolPFSeries toolPF) {
+                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        if (_locked) {
+                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            Thread.Sleep(500);
+                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            _locked = false;
+                        }
+                    } else {
+                    }
 
-            UnLockCounter++;
+                    UnLockCounter++;
+                }
+            } else {
+                _locked = true;
+                logger.Info($"Unlocking failure, it's not connected...");
+            }
+        }
+        public void ForceSendUnlock() {
+            if (Connected) {
+                logger.Info($"Force unlocking tool...");
+                if (_toolType is ToolPFSeries toolPF) {
+                    if (_locked) {
+                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                    }
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    Thread.Sleep(500);
+                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                    _locked = false;
+                } else {
+                }
+            } else {
+                _locked = true;
+                logger.Info($"Force unlocking failure, it's not connected...");
+            }
         }
         #endregion
     }
