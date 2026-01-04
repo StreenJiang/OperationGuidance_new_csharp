@@ -756,7 +756,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_AEEFF15BFA4E45B7BD8505676EF81C44"
             {
-            "SourcePath" = "8:"
+            "SourcePath" = "8:..\\OperationGuidance_new\\obj\\Release\\net6.0-windows\\win-x86\\apphost.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_70EA39892B6845EF8862BD6DD4A49942"

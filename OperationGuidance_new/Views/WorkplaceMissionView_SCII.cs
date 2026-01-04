@@ -97,6 +97,8 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
+            logger.Debug($"[SCII:InitSerialPortTask] Initializing serial port task for device ID: {pair.Key}");
+
             SerialPortTask serialPortTask = pair.Value;
             serialPortTask.ActionAfterDataReceived = async msg => {
                 await Task.Run(() => {
@@ -104,51 +106,71 @@ namespace OperationGuidance_new.Views {
                         if (!IsDisposed) {
                             // Check for mission ng admin confirmation
                             if (!_missionNGAdminConfirmed) {
+                                logger.Debug($"[SCII:InitSerialPortTask] Mission NG admin not confirmed, skipping message");
                                 return;
                             }
 
                             DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
                             // 如果有空的数据进来，则跳过
                             if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
-                                logger.Warn("Message is null from serial port device, please check.");
+                                logger.Warn($"[SCII:InitSerialPortTask] Message is null from serial port device ID {pair.Key}, please check.");
                                 return;
                             }
                             if (dto.invalid_char != null) {
                                 msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
+                                logger.Debug($"[SCII:InitSerialPortTask] Removed invalid characters from message for device ID {pair.Key}");
                             }
 
                             // 交给弹窗处理
                             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                logger.Info($"[SCII:InitSerialPortTask] Opening barcode popup form with message for device ID {pair.Key}");
                                 OpenBarCodePopUpForm(msg);
                             } else {
+                                logger.Debug($"[SCII:InitSerialPortTask] Validating barcode message for device ID {pair.Key}");
                                 _barCodePopUpForm.ValidateBarCode(msg);
                             }
                         }
                     });
                 });
             };
+            logger.Debug($"[SCII:InitSerialPortTask] Serial port task initialized for device ID: {pair.Key}");
         }
 
         protected override void ActionAfterAllInitialized() {
+            logger.Debug($"[SCII:ActionAfterAllInitialized] Adding interrupt button and setting up event handlers");
+
             CommonButton terminateMissionBtn = _missionSelectedName.AddButton<CommonButton>("中断");
             terminateMissionBtn.Enabled = true;
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
+                    logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active, requesting admin password");
                     if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false)) {
+                        logger.Info($"[SCII:ActionAfterAllInitialized] Admin password confirmed, terminating mission with NG status");
                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                    } else {
+                        logger.Debug($"[SCII:ActionAfterAllInitialized] Admin password confirmation failed or cancelled");
                     }
                 } else {
+                    logger.Warn($"[SCII:ActionAfterAllInitialized] Interrupt button clicked but mission is not activated");
                     WidgetUtils.ShowNoticePopUp("任务未激活");
                 }
             };
+            logger.Debug($"[SCII:ActionAfterAllInitialized] Interrupt button event handler configured");
         }
 
         protected override async void ActivateMissionAutomatically() {
+            logger.Debug($"[SCII:ActivateMissionAutomatically] Checking if USB scanner is enabled");
+
             if (MainUtils.IsUSBScannerEnabled()) {
+                logger.Info($"[SCII:ActivateMissionAutomatically] USB scanner is enabled, waiting for barcode-related initialization to complete");
+
                 while (!_barcodeRelatedDone) {
                     await Task.Delay(50);
                 }
+                logger.Info($"[SCII:ActivateMissionAutomatically] Barcode-related initialization completed, opening barcode popup form");
                 OpenBarCodePopUpForm();
+            } else {
+                logger.Debug($"[SCII:ActivateMissionAutomatically] USB scanner is not enabled, skipping automatic activation");
             }
         }
 
@@ -254,9 +276,14 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void OpenBarCodePopUpForm(string? barCode = null) {
+            logger.Debug($"[SCII:OpenBarCodePopUpForm] Opening barcode popup form, activated: {_activated}, barcode: {barCode ?? "null"}");
+
             if (!_activated) {
                 string batchNum = _productBatch.GetTextBox(0).Box.Text;
+                logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission not activated, checking product batch: {batchNum}");
+
                 if (string.IsNullOrEmpty(batchNum)) {
+                    logger.Warn($"[SCII:OpenBarCodePopUpForm] Product batch is empty, showing error and focusing batch field");
                     WidgetUtils.ShowErrorPopUp("产品批次还没有填写");
                     if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                         _barCodePopUpForm.Hide();
@@ -265,10 +292,13 @@ namespace OperationGuidance_new.Views {
                     _productBatch.GetTextBox(0).Box.Focus();
                     return;
                 } else {
+                    logger.Debug($"[SCII:OpenBarCodePopUpForm] Product batch provided: {batchNum}, checking SCII batch configuration");
                     SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
                     if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                        logger.Debug($"[SCII:OpenBarCodePopUpForm] SCII batch configuration is enabled");
                         string? shiftTemp = _batchDropDownBox.Value;
                         if (string.IsNullOrEmpty(shiftTemp)) {
+                            logger.Warn($"[SCII:OpenBarCodePopUpForm] Shift selection is empty, showing error");
                             WidgetUtils.ShowErrorPopUp("请选择班次");
                             if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                                 _barCodePopUpForm.Hide();
@@ -276,8 +306,10 @@ namespace OperationGuidance_new.Views {
                             _batchDropDownBox.SetError(true);
                             return;
                         } else {
+                            logger.Debug($"[SCII:OpenBarCodePopUpForm] Shift selected: {shiftTemp}");
                             string[] shifts = shiftTemp.Split(",");
                             if (string.IsNullOrEmpty(shifts[0]) || shifts[0] != batchNum) {
+                                logger.Warn($"[SCII:OpenBarCodePopUpForm] Product batch does not match shift, batch: {batchNum}, shift batch: {shifts[0]}");
                                 WidgetUtils.ShowErrorPopUp("产品批次与班次不匹配");
                                 if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                                     _barCodePopUpForm.Hide();
@@ -286,32 +318,46 @@ namespace OperationGuidance_new.Views {
                                 _batchDropDownBox.SetError(true);
                                 return;
                             } else {
+                                logger.Debug($"[SCII:OpenBarCodePopUpForm] Product batch matches shift, checking completion count limit");
                                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
                                 int okSum = missionRecordDTOs.Where(dto => dto.mission_result == (int) TighteningStatus.OK).Count();
+                                logger.Debug($"[SCII:OpenBarCodePopUpForm] Current OK count: {okSum}, limit: {shifts[1]}");
                                 if (okSum >= int.Parse(shifts[1])) {
+                                    logger.Warn($"[SCII:OpenBarCodePopUpForm] Batch completion count has reached limit, requesting admin confirmation");
                                     bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
                                     if (!confirmed) {
+                                        logger.Debug($"[SCII:OpenBarCodePopUpForm] Admin confirmation failed or cancelled, batch limit reached");
                                         if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
                                             _barCodePopUpForm.Hide();
                                         }
                                         _productBatch.GetTextBox(0).IsError = true;
                                         _batchDropDownBox.SetError(true);
                                         return;
+                                    } else {
+                                        logger.Info($"[SCII:OpenBarCodePopUpForm] Admin confirmed to exceed batch limit");
                                     }
                                 }
                             }
                         }
+                    } else {
+                        logger.Debug($"[SCII:OpenBarCodePopUpForm] SCII batch configuration is disabled");
                     }
                 }
 
                 _batchDropDownBox?.SetError(false);
+            } else {
+                logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission is already activated");
             }
 
             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                logger.Info($"[SCII:OpenBarCodePopUpForm] Creating new barcode popup form");
+
                 if (_activated && _currentWorkingBolt != null) {
                     _rulesExcluded = GetCurrentExcludedRules(_currentWorkingBolt.BoltDTO);
+                    logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission activated, getting excluded rules for current bolt");
                 } else {
                     _rulesExcluded = GetCurrentExcludedRules();
+                    logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission not activated, getting general excluded rules");
                 }
 
                 _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
@@ -320,9 +366,11 @@ namespace OperationGuidance_new.Views {
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
                 if (!_activated) {
+                    logger.Debug($"[SCII:OpenBarCodePopUpForm] Adding 'Activate Mission' button");
                     _barCodePopUpForm.AddButton("激活任务").Click += (sender, eventArgs) => {
                         if (!_activated) {
                             if (!_barCodePopUpForm.CheckCanActivateMission()) {
+                                logger.Debug($"[SCII:OpenBarCodePopUpForm] Cannot activate mission yet, barcode validation failed");
                                 CustomTextBox customTextBox = _barCodePopUpForm.ProductBarCodeBox.GetTextBox(0);
                                 if (string.IsNullOrEmpty(_barCodeObj.ProductBarCode)) {
                                     customTextBox.IsError = true;
@@ -334,10 +382,12 @@ namespace OperationGuidance_new.Views {
                                 }
                                 WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
                             } else {
+                                logger.Info($"[SCII:OpenBarCodePopUpForm] Activating mission");
                                 ActivateMission();
                                 _barCodePopUpForm.Dispose();
                             }
                         } else {
+                            logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission already activated, closing popup");
                             _barCodePopUpForm.Dispose();
                         }
                     };
@@ -345,7 +395,11 @@ namespace OperationGuidance_new.Views {
                 _barCodePopUpForm.AddButton("关闭").Click += (sender, eventArgs) => _barCodePopUpForm.Dispose();
                 _barCodePopUpForm.PretendToShowToCreateHandlesForChildren();
                 _barCodePopUpForm.ResizeSelf();
+                logger.Debug($"[SCII:OpenBarCodePopUpForm] Barcode popup form created and initialized");
+            } else {
+                logger.Debug($"[SCII:OpenBarCodePopUpForm] Using existing barcode popup form");
             }
+            logger.Info($"[SCII:OpenBarCodePopUpForm] Showing barcode popup form");
             _barCodePopUpForm.Show();
         }
 
@@ -431,16 +485,22 @@ namespace OperationGuidance_new.Views {
         }
 
         private void ResetMissionDetails() {
+            logger.Debug($"[SCII:ResetMissionDetails] Resetting mission details");
+
             SetTodayData();
             SetPset();
         }
         private void SetTodayData() {
+            logger.Debug($"[SCII:SetTodayData] Setting today's data");
+
             int sum = 0;
             int okSum = 0;
             double ngRate = 0;
 
             if (_mission.id > 0) {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
+                logger.Debug($"[SCII:SetTodayData] Retrieved {missionRecordDTOs.Count} mission records");
+
                 IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
                             .DistinctBy(dto => dto.product_bar_code);
                 sum = distinctData.Count();
@@ -450,13 +510,19 @@ namespace OperationGuidance_new.Views {
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
                 }
+                logger.Debug($"[SCII:SetTodayData] Calculated statistics - Total: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
+            } else {
+                logger.Debug($"[SCII:SetTodayData] Mission ID is 0, skipping data retrieval");
             }
 
             _productSumPerDay.SetValue(0, sum + "");
             _okSumPerDay.SetValue(0, okSum + "");
             _ngRatePerDay.SetValue(0, $"{ngRate.ToString("F2")}%");
+            logger.Debug($"[SCII:SetTodayData] UI updated - Sum: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
         }
         private List<MissionRecordDTO> GetRecoreds() {
+            logger.Debug($"[SCII:GetRecoreds] Getting mission records for mission ID: {_mission.id}");
+
             QueryMissionRecordListReq req = new() {
                 MissionId = _mission.id,
             };
@@ -464,18 +530,25 @@ namespace OperationGuidance_new.Views {
             // 如果打开了《班次配置》，则根据班次计算
             SciiBatchConfig sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             if (sciiBatchConfig.enabled == (int) YesOrNo.YES) {
+                logger.Debug($"[SCII:GetRecoreds] SCII batch configuration is enabled, filtering by shift");
+
                 string? shiftTemp = _batchDropDownBox?.Value;
                 if (!string.IsNullOrEmpty(shiftTemp)) {
                     string[] shifts = shiftTemp.Split(",");
                     req.ProductBatch = shifts[0];
+                    logger.Debug($"[SCII:GetRecoreds] Using product batch from shift: {req.ProductBatch}");
                 } else {
+                    logger.Warn($"[SCII:GetRecoreds] Shift selection is empty, returning empty list");
                     return new();
                 }
             } else {
                 req.Date = DateTime.Now;
+                logger.Debug($"[SCII:GetRecoreds] Using current date: {req.Date}");
             }
 
-            return _apis.QueryMissionRecordList(req).MissionRecordDTOs;
+            List<MissionRecordDTO> result = _apis.QueryMissionRecordList(req).MissionRecordDTOs;
+            logger.Debug($"[SCII:GetRecoreds] Retrieved {result.Count} mission records");
+            return result;
         }
         private void SetPset() => SetPset(null);
         private void SetPset(string? customMsg) {
@@ -485,10 +558,14 @@ namespace OperationGuidance_new.Views {
             }
             if (!string.IsNullOrEmpty(customMsg)) {
                 _pset.SetValue(0, customMsg);
+                logger.Debug($"[SCII:SetPset] Set pset to custom message: {customMsg}");
             } else if (_currentWorkingBolt != null) {
-                _pset.SetValue(0, _currentWorkingBolt.CurrentParameterSet?.ToString() ?? "未配置程序号");
+                string psetValue = _currentWorkingBolt.CurrentParameterSet?.ToString() ?? "未配置程序号";
+                _pset.SetValue(0, psetValue);
+                logger.Debug($"[SCII:SetPset] Set pset to current bolt parameter set: {psetValue}");
             } else {
                 _pset.SetValue(0, null);
+                logger.Debug($"[SCII:SetPset] Cleared pset value");
             }
         }
         protected override void RefreshImageDisplayPanel() => ResizeTopLeftBottom();
@@ -536,102 +613,93 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async void SetMissionDetails() {
-            _missionSelectedName.SetValue(0, _mission.name);
-            ResetMissionDetails();
+            logger.Debug($"[SCII:SetMissionDetails] Setting mission details for mission: {_mission.name}");
 
-            // Don't need this anymore
-            // await Task.Run(async () => {
-            //     while (!IsHandleCreated) {
-            //         await Task.Delay(200);
-            //     }
-            //     BeginInvoke(() => {
-            //         MissionRecordDTO? missionRecordDTO = _apis.QueryLatestMissionRecord(new(SystemUtils.LoggedUserId)).MissionRecordDTO;
-            //         // 存在可以回填的数据
-            //         if (missionRecordDTO != null) {
-            //             // 刚登录
-            //             if (MainUtils.LoginFlag) {
-            //                 // 需要回填确认
-            //                 if (MainUtils.IsProductBatchNoticeEnabled()) {
-            //                     // 弹出提示确认是否回填
-            //                     if (WidgetUtils.ShowConfirmPopUp($"是否继续批次【{missionRecordDTO.product_batch}】？")) {
-            //                         MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-            //                     } else {
-            //                         MainUtils.LastProductBatch = null;
-            //                     }
-            //                 }
-            //                 // 不需要提示则直接回填
-            //                 else {
-            //                     MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-            //                 }
-            //             }
-            //             // 最新查到的批次信息与缓存的不一致，则换掉
-            //             else if (MainUtils.LastProductBatch != missionRecordDTO.product_batch) {
-            //                 MainUtils.LastProductBatch = missionRecordDTO.product_batch;
-            //             }
-            //             // 不管是否回填，登录标识都要改
-            //             MainUtils.LoginFlag = false;
-            //             // 不为空就回填
-            //             if (!string.IsNullOrEmpty(MainUtils.LastProductBatch)) {
-            //                 _productBatch.SetValue(0, MainUtils.LastProductBatch);
-            //             }
-            //         }
-            //     });
-            // });
+            _missionSelectedName.SetValue(0, _mission.name);
+            logger.Debug($"[SCII:SetMissionDetails] Mission name set to: {_mission.name}");
+
+            ResetMissionDetails();
         }
 
         protected override void ActionAfterArmDataReceived(int maxValue, Coordinates3D armCoordinates) {
+            logger.Debug($"[SCII:ActionAfterArmDataReceived] Received arm data, maxValue: {maxValue}, coordinates: {armCoordinates}");
+
             Task.Run(() => {
                 BeginInvoke(() => {
                     if (_activated && _currentWorkingBolt != null) {
+                        logger.Debug($"[SCII:ActionAfterArmDataReceived] Mission activated and current bolt exists");
+
                         ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
                         int? toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id;
                         if (toolId != null) {
+                            logger.Debug($"[SCII:ActionAfterArmDataReceived] Tool ID found: {toolId}");
+
                             ToolTask toolTask = _toolTasks[toolId.Value];
                             Coordinates3D boltCoordinates = Coordinates3D.FromString(boltDTO.position);
                             _realTimeArmCoordinates = armCoordinates;
 
+                            logger.Debug($"[SCII:ActionAfterArmDataReceived] Bolt coordinates: {boltCoordinates}, real-time arm coordinates: {_realTimeArmCoordinates}");
+
                             // Can't lock/unlock tools manually while arm is running (Only for SCII)
                             RemoveLockMsg(WorkingProcessPanel.UnlockedManually);
                             RemoveLockMsg(WorkingProcessPanel.LockedManually);
+                            logger.Debug($"[SCII:ActionAfterArmDataReceived] Removed manual lock/unlock messages");
+
                             if (CheckArmPosition(maxValue, armCoordinates, boltCoordinates)) {
                                 // Location ok, so remove locked reason of position
                                 RemoveLockMsg(WorkingProcessPanel.LockedArmPosition);
+                                logger.Debug($"[SCII:ActionAfterArmDataReceived] Arm position is OK, removed position lock message");
                             } else {
                                 // Location because of position
                                 AddLockMsg(WorkingProcessPanel.LockedArmPosition);
+                                logger.Warn($"[SCII:ActionAfterArmDataReceived] Arm position is not OK, added position lock message");
                             }
 
                             // 需要管理员输入密码并确认
                             if (_adminConfirmed != null) {
+                                logger.Debug($"[SCII:ActionAfterArmDataReceived] Admin confirmation status: {_adminConfirmed}");
+
                                 // 管理员已确认
                                 if (_adminConfirmed.Value) {
                                     RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
                                     _adminConfirmed = null;
+                                    logger.Info($"[SCII:ActionAfterArmDataReceived] Admin confirmed, removed admin confirmation lock");
                                 }
                                 // 管理员未确认
                                 else {
                                     AddLockMsg(WorkingProcessPanel.AdminConfirmation);
+                                    logger.Warn($"[SCII:ActionAfterArmDataReceived] Admin not confirmed, added admin confirmation lock");
                                     if (_adminPasswordPopUpForm == null || _adminPasswordPopUpForm.IsDisposed) {
                                         _adminConfirmed = false;
+                                        logger.Info($"[SCII:ActionAfterArmDataReceived] Opening bolt NG confirmation popup");
                                         BoltNGConfirmPopUp();
                                     }
                                 }
                             } else {
                                 RemoveLockMsg(WorkingProcessPanel.AdminConfirmation);
+                                logger.Debug($"[SCII:ActionAfterArmDataRemoved] No admin confirmation needed, removed admin confirmation lock");
                             }
 
                             // 当前点位没有设置程序号
                             if (_currentWorkingBolt.CurrentParameterSet == null) {
+                                logger.Warn($"[SCII:ActionAfterArmDataReceived] Current parameter set is null");
                                 // 如果是没有配置就显示对应错误信息，否则可能是下发失败
                                 if (_currentWorkingBolt.BoltDTO.parameters_set == null) {
                                     AddLockMsg(WorkingProcessPanel.LockedPsetNull);
+                                    logger.Warn($"[SCII:ActionAfterArmDataReceived] Parameter set not configured, added pset null lock");
                                 } else {
                                     RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+                                    logger.Debug($"[SCII:ActionAfterArmDataReceived] Parameter set exists but not current, removed pset null lock");
                                 }
                             } else {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+                                logger.Debug($"[SCII:ActionAfterArmDataReceived] Parameter set is configured: {_currentWorkingBolt.CurrentParameterSet}");
                             }
+                        } else {
+                            logger.Warn($"[SCII:ActionAfterArmDataReceived] No tool ID found for workstation");
                         }
+                    } else {
+                        logger.Debug($"[SCII:ActionAfterArmDataReceived] Mission not activated or no current bolt");
                     }
                 });
             });
@@ -1026,51 +1094,86 @@ namespace OperationGuidance_new.Views {
         }
 
         protected void MissionNGConfirmPopUp(string msg) {
+            logger.Info($"[SCII:MissionNGConfirmPopUp] Opening mission NG confirmation popup, message: {msg}");
+
             _missionNGAdminConfirmed = false;
+            logger.Debug($"[SCII:MissionNGConfirmPopUp] Set admin confirmation flag to false");
+
             while (!_missionNGAdminConfirmed) {
+                logger.Debug($"[SCII:MissionNGConfirmPopUp] Waiting for admin confirmation...");
                 _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
+                if (_missionNGAdminConfirmed) {
+                    logger.Info($"[SCII:MissionNGConfirmPopUp] Admin confirmation received");
+                } else {
+                    logger.Warn($"[SCII:MissionNGConfirmPopUp] Admin confirmation failed or cancelled, retrying...");
+                }
             }
+            logger.Debug($"[SCII:MissionNGConfirmPopUp] Admin confirmation loop completed");
         }
 
         protected override async Task ActionAfterActivatingMission() {
+            logger.Debug($"[SCII:ActionAfterActivatingMission] Action after activating mission started");
+
             await base.ActionAfterActivatingMission();
 
             // Clear data grid view
             _tighteningDataVOs.Clear();
             RefreshTighteningDataPanel(_tighteningDataVOs);
+            logger.Debug($"[SCII:ActionAfterActivatingMission] Data grid view cleared");
 
             // Set product batch
             _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
+            logger.Debug($"[SCII:ActionAfterActivatingMission] Product batch set: {_missionRecord.product_batch}");
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+            logger.Info($"[SCII:ActionAfterActivatingMission] Mission record updated with product batch");
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
+            logger.Debug($"[SCII:ValidationBeforeActivatingMission] Validating before activating mission");
+
             if (await base.ValidationBeforeActivatingMission()) {
+                logger.Debug($"[SCII:ValidationBeforeActivatingMission] Base validation passed");
+
                 // Count screw bit used time
                 ScrewBitCounterDTO screwBitCounter;
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
+                    logger.Warn($"[SCII:ValidationBeforeActivatingMission] Screw bit usage limit exceeded for position {screwBitCounter.bit_position}, current: {screwBitCounter.current_counts}, max: {screwBitCounter.max_num}");
+
                     bool confirmed = OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
                     if (confirmed) {
+                        logger.Info($"[SCII:ValidationBeforeActivatingMission] Admin confirmed screw bit replacement, resetting counter");
                         screwBitCounter.current_counts = 0;
                         _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
+                        logger.Debug($"[SCII:ValidationBeforeActivatingMission] Screw bit counter reset for position {screwBitCounter.bit_position}");
 
                         // Check again to ensure no more screw bit needs to be replaced
+                        logger.Debug($"[SCII:ValidationBeforeActivatingMission] Recursively validating after screw bit replacement");
                         return await ValidationBeforeActivatingMission();
+                    } else {
+                        logger.Warn($"[SCII:ValidationBeforeActivatingMission] Admin did not confirm screw bit replacement");
+                        return false;
                     }
-                    return false;
                 }
+                logger.Info($"[SCII:ValidationBeforeActivatingMission] All validations passed");
                 return true;
             }
+            logger.Warn($"[SCII:ValidationBeforeActivatingMission] Base validation failed");
             return false;
         }
 
         private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {
+            logger.Debug($"[SCII:CountScrewBitUsedTime] Counting screw bit usage time for mission ID: {_mission.id}");
+
             List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            logger.Debug($"[SCII:CountScrewBitUsedTime] Found {screwBitCounterDTOs.Count} screw bit counter entries");
 
             // Check first
             foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
+                logger.Debug($"[SCII:CountScrewBitUsedTime] Checking screw bit at position {sbc.bit_position}, current: {sbc.current_counts}, increment: {sbc.count_each_time}, max: {sbc.max_num}");
+
                 if (sbc.current_counts + sbc.count_each_time > sbc.max_num) {
                     screwBitCounter = sbc;
+                    logger.Warn($"[SCII:CountScrewBitUsedTime] Screw bit at position {sbc.bit_position} will exceed usage limit");
                     return false;
                 }
             }
@@ -1079,30 +1182,31 @@ namespace OperationGuidance_new.Views {
             foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOs) {
                 sbc.current_counts += sbc.count_each_time;
                 _apis.AddOrUpdateScrewBitCounter(new(sbc));
+                logger.Debug($"[SCII:CountScrewBitUsedTime] Updated screw bit at position {sbc.bit_position}, new count: {sbc.current_counts}");
             }
 
             screwBitCounter = new();
+            logger.Info($"[SCII:CountScrewBitUsedTime] All screw bits within usage limits");
             return true;
         }
 
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
+            logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Received tightening data, device ID: {deviceId}, torque: {data.torque}, angle: {data.angle}, status: {data.tightening_status}");
+
             await Task.Run(() => {
                 BeginInvoke(() => {
                     // Nonactivated or finished will not handle any received data
                     if (!_activated) {
-                        logger.Info($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
+                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Mission not activated, skipping data");
                         return;
                     }
 
                     try {
-                        logger.Info($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
-                                    $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
-
                         ToolTask toolTask = _toolTasks[deviceId];
                         // Lock first
                         toolTask.ForceSendLock();
                         if (toolTask.WorkstationId != null && _currentWorkingBolt != null) {
-                            logger.Info($"[SCII][MISSION:{_mission?.id}] 开始处理拧紧数据");
+                            logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Action running after received tightening data...");
 
                             int workstationId = toolTask.WorkstationId.Value;
 
@@ -1117,21 +1221,19 @@ namespace OperationGuidance_new.Views {
                             // Main display
                             _torque.Text = data.torque + "";
                             _angle.Text = data.angle + "";
+                            logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Updated display - torque: {_torque.Text}, angle: {_angle.Text}");
 
                             // Get current bolt
                             BoltButton currentBolt = _currentWorkingBolt;
                             ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-
-                            // 参数集对比日志
-                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
-                                        $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
-                                        $"tighteningData_parameter_set={data.parameter_set_number}");
-
                             OperationDataDTO dataDTO = new();
                             CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
+                            logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Converted data to OperationDataDTO");
+
                             // Set pset manualy if tool type is sudong x7
                             if (toolTask.ToolType is ToolSudongX7 toolX7) {
                                 dataDTO.parameter_set_number = currentBolt.CurrentParameterSet;
+                                logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Set pset manually for Sudong X7 tool: {dataDTO.parameter_set_number}");
                             }
 
                             WorkstationDTO workstationDTO = _workstationsDTOs.Single(dto => dto.id == workstationId);
@@ -1149,17 +1251,11 @@ namespace OperationGuidance_new.Views {
                             if (_realTimeArmCoordinates != null) {
                                 dataDTO.arm_position = _realTimeArmCoordinates.ToString();
                             }
-
-                            // 数据转换完成日志
-                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}|WORKSTATION:{workstationDTO.name}] " +
-                                        $"数据转换完成 - product_bar_code={_missionRecord.product_bar_code}, " +
-                                        $"parts_bar_code={_missionRecord.parts_bar_code}, product_batch={_missionRecord.product_batch}, " +
-                                        $"tool={toolDTO.name}({toolDTO.ip})");
+                            logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Populated OperationDataDTO with workstation and tool info");
 
                             // If result type is tightening
                             if (data.result_type == (int) TightenOrLoosen.TIGHTENING) {
-                                logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 开始拧紧结果验证 - torque={data.torque}, angle={data.angle}, " +
-                                            $"tightening_status={data.tightening_status}, torque_status={data.torque_status}, angle_status={data.angle_status}");
+                                logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Processing tightening result");
 
                                 bool tighteningOK = true;
                                 string errorMsg = "";
@@ -1170,6 +1266,7 @@ namespace OperationGuidance_new.Views {
                                 // Check tightening status
                                 if (data.tightening_status != (int) TighteningStatus.OK) {
                                     tighteningOK = false;
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Tightening status not OK: {data.tightening_status}");
                                 }
                                 if (data.torque_status != (int) TighteningCommonStatus.OK) {
                                     tighteningOK = false;
@@ -1178,6 +1275,7 @@ namespace OperationGuidance_new.Views {
                                         errorMsg += "\r\n";
                                     }
                                     errorMsg += $"扭矩未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.torque_status)}";
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Torque status not OK: {data.torque_status}");
                                 }
                                 if (data.angle_status != (int) TighteningCommonStatus.OK) {
                                     tighteningOK = false;
@@ -1186,6 +1284,7 @@ namespace OperationGuidance_new.Views {
                                         errorMsg += "\r\n";
                                     }
                                     errorMsg += $"角度未达标：{Enum.GetName(typeof(TighteningCommonStatus), data.angle_status)}";
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Angle status not OK: {data.angle_status}");
                                 }
 
                                 // Check torque
@@ -1196,6 +1295,7 @@ namespace OperationGuidance_new.Views {
                                         errorMsg += "\r\n";
                                     }
                                     errorMsg += "扭矩与配置范围不符";
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Torque out of range: {data.torque}, min: {boltDTO.torque_min}, max: {boltDTO.torque_max}");
                                 }
 
                                 // Check angle
@@ -1206,11 +1306,12 @@ namespace OperationGuidance_new.Views {
                                         errorMsg += "\r\n";
                                     }
                                     errorMsg += "角度与配置范围不符";
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Angle out of range: {data.angle}, min: {boltDTO.angle_min}, max: {boltDTO.angle_max}");
                                 }
 
                                 // Switch to next bolt
                                 if (tighteningOK) {
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 拧紧验证结果 - OK, actual_torque={data.torque}, torque_range=[{boltDTO.torque_min}, {boltDTO.torque_max}], actual_angle={data.angle}, angle_range=[{boltDTO.angle_min}, {boltDTO.angle_max}]");
+                                    logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Tightening OK, switching to next bolt");
 
                                     // Reset tightening type to tightening in case somewhere did some changes
                                     _needLoosening = false;
@@ -1219,7 +1320,7 @@ namespace OperationGuidance_new.Views {
 
                                     currentBolt.BoltStatus = BoltStatus.DONE;
                                     currentBolt.Label = data.torque.ToString("0.00");
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧成功，状态更新为 DONE，扭矩标签更新为 {data.torque:F2}");
+                                    logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Current bolt status set to DONE with torque label: {currentBolt.Label}");
 
                                     // Check next index
                                     List<BoltButton> currentSideBolts = _allBolts[_sides[_currentSideIndex].id];
@@ -1232,42 +1333,40 @@ namespace OperationGuidance_new.Views {
                                     // Store data
                                     dataDTO.tightening_status = (int) TighteningStatus.OK;
                                     StoreTighteningData(dataDTO);
+                                    logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Stored tightening data with OK status");
 
                                     if (nextIndex < currentSideBolts.Count) {
+                                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Switching to next bolt at index: {nextIndex}");
                                         _currentWorkingBolt = SwitchBolt(nextIndex);
                                         ChangeBoltStatusToWorking(_currentWorkingBolt);
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 切换到下一个螺栓 (index={nextIndex})");
                                     } else {
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}] 当前产品面所有螺栓完成，准备检查是否所有面完成");
+                                        logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] All bolts completed, mission finished successfully");
 
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|RECORD_ID:{_missionRecord.id}] 任务完成 - mission_result=OK, " +
-                                                    $"product_bar_code={_missionRecord.product_bar_code}, product_batch={_missionRecord.product_batch}");
+                                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Mission record updated with OK result");
 
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}] 添加挑战任务完成记录");
                                             AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
+                                            logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Challenge mission result added");
                                         }
 
                                         // 重置任务信息
                                         ResetMissionDetails();
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}] 重置任务信息");
 
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
-                                    logger.Warn($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 螺栓拧紧失败 - " +
-                                                $"ng_times={currentBolt.NgTimes}, tightening_status=NG, error_msg={errorMsg}");
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Tightening NG, error: {errorMsg}");
 
                                     // Change bolt status
                                     currentBolt.BoltStatus = BoltStatus.ERROR;
 
                                     // Count ng times
                                     currentBolt.NgTimes++;
+                                    logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] Bolt NG times: {currentBolt.NgTimes}, max allowed: {_mission.max_ng_num}");
 
                                     // Set custom error message
                                     _workingProcessPanel.NGReasons = errorMsg;
@@ -1275,7 +1374,7 @@ namespace OperationGuidance_new.Views {
 
                                     // Mission failed
                                     if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
-                                        logger.Warn($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] NG次数达到上限 ({_mission.max_ng_num})，任务失败");
+                                        logger.Error($"[SCII:DoAfterRecevingTighteningDataAsync] Max NG count reached, terminating mission");
 
                                         // 重置任务信息
                                         ResetMissionDetails();
@@ -1289,33 +1388,29 @@ namespace OperationGuidance_new.Views {
                                         // 先记录数据再弹出提示
                                         // WidgetUtils.ShowErrorPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败");
                                         MissionNGConfirmPopUp($"同一点位NG次数已达到{_mission.max_ng_num}次，任务失败。请输入管理员密码");
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 弹出管理员密码确认弹窗");
                                     } else {
-                                        logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 当前NG次数: {currentBolt.NgTimes}, 需要反松");
-
                                         _needLoosening = true;
                                         _workingProcessPanel.TightenOrLoosen = TightenOrLoosen.LOOSENING;
+                                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Setting mode to LOOSENING for retry");
 
                                         // 记录数据
                                         StoreTighteningData(dataDTO);
 
                                         // 需要管理员密码弹窗
                                         if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] NG次数达到密码确认阈值 ({_mission.password_need_time})，需要管理员密码");
                                             AddLockMsg(WorkingProcessPanel.AdminConfirmation);
                                             _adminConfirmed = false;
+                                            logger.Warn($"[SCII:DoAfterRecevingTighteningDataAsync] NG count reached password threshold, requesting admin confirmation");
 
                                             // 先记录数据再打开弹窗
                                             BoltNGConfirmPopUp();
-                                            logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 弹出管理员密码确认弹窗");
                                         }
                                     }
 
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;
                                 }
                             } else {
-                                logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 处理反松结果 - result_type=LOOSENING, " +
-                                            $"torque={data.torque}, angle={data.angle}");
+                                logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Processing loosening result");
 
                                 _needLoosening = false;
 
@@ -1330,22 +1425,25 @@ namespace OperationGuidance_new.Views {
                                 if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
                                     StoreTighteningData(dataDTO);
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据已存储");
+                                    logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Stored loosening data");
                                 } else {
-                                    logger.Info($"[SCII][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 反松数据未存储 (配置禁用)");
+                                    logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Skipping loosening data storage based on configuration");
                                 }
                             }
                         }
                     } catch (Exception e) {
-                        logger.Error($"[SCII][MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
-                                    $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
+                        logger.Error($"[SCII:DoAfterRecevingTighteningDataAsync] Error occurred while handling tightening data, e: {e}");
                     }
                 });
             });
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
+
             await base.TerminateMission(status);
+
+            logger.Debug($"[SCII:TerminateMission] Base termination completed");
 
             // // If it's challenge mission, then switch mission automatically
             // if (_mission.is_challenge_mission == (int) YesOrNo.YES
@@ -1353,6 +1451,7 @@ namespace OperationGuidance_new.Views {
             //         && _missionRecord.mission_result == (int) TighteningStatus.OK) {
             //     _view.OpenWorkplaceView(_mission.challenge_mission_id);
             // }
+            logger.Debug($"[SCII:TerminateMission] Mission termination completed");
         }
 
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
