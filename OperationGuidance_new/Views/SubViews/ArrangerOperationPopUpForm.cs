@@ -70,7 +70,6 @@ namespace OperationGuidance_new.Views.SubViews {
             updateTimer.Tick += UpdateTimerTick;
             updateTimer.Start();
         }
-
         private bool IsEqual(int?[]? arr1, int?[]? arr2) {
             if (arr1 == null && arr2 == null)
                 return true;
@@ -142,7 +141,8 @@ namespace OperationGuidance_new.Views.SubViews {
             SignalButton btn = (SignalButton)sender!;
 
             // 防止重复点击
-            if (_isSending) return;
+            if (_isSending)
+                return;
             _isSending = true;
 
             try {

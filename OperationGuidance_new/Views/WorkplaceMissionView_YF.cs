@@ -851,14 +851,10 @@ namespace OperationGuidance_new.Views {
             BeginInvoke(async () => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
-                    logger.Info($"[YF][MISSION:{_mission?.id}|DEVICE:{deviceId}] 任务未激活，跳过拧紧数据处理 - torque={data.torque}, angle={data.angle}");
                     return;
                 }
 
                 try {
-                    logger.Info($"[YF][MISSION:{_mission?.id}|DEVICE:{deviceId}] 开始处理拧紧数据 - torque={data.torque}, angle={data.angle}, " +
-                                $"status={data.tightening_status}, result_type={data.result_type}, rundown_time={data.rundown_time}");
-
                     ToolTask toolTask = _toolTasks[deviceId];
                     // Lock first
                     toolTask.ForceSendLock();
@@ -890,12 +886,7 @@ namespace OperationGuidance_new.Views {
                             currentBolt = CommonUtils.CannotBeNull(_currentWorkingBolt);
                         }
 
-                        // 参数集对比日志
                         ProductBoltDTO boltDTO = currentBolt.BoltDTO;
-                        logger.Info($"[YF][MISSION:{_mission?.id}|BOLT:{boltDTO.serial_num}] 参数集对比 - " +
-                                    $"currentBolt_parameter_set={currentBolt.CurrentParameterSet}, " +
-                                    $"tighteningData_parameter_set={data.parameter_set_number}");
-
                         OperationDataDTO dataDTO = new();
                         CommonUtils.ObjectConverter<TighteningData, OperationDataDTO>(data, dataDTO);
 
@@ -1108,8 +1099,7 @@ namespace OperationGuidance_new.Views {
                         }
                     }
                 } catch (Exception e) {
-                    logger.Error($"[YF][MISSION:{_mission?.id}|DEVICE:{deviceId}] 处理拧紧数据时发生错误 - " +
-                                $"torque={data.torque}, angle={data.angle}, error={e.Message}, stack_trace={e.StackTrace}", e);
+                    logger.Error($"Error occurred while handling tightening data, e: {e}");
                 }
             });
         }

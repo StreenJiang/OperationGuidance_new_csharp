@@ -8,7 +8,6 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using S7.Net;
-using System.Text;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_GLB: AWorkplaceMissionView<WorkplaceContentPanel_GLB, WorkplaceTopBar> {
