@@ -350,6 +350,18 @@ namespace OperationGuidance_new.Constants {
             COMMAND_PSET_ASCII = new("55AA070205{0}");
         }
 
+        public string GetLockCommand() {
+            string cmd = COMMAND_LOCK_ASCII.GetMessage();
+            String CrcStr = MainUtils.Crc16ToString(MainUtils.ToBytes(cmd));
+            return cmd + CrcStr + "0D0A";
+        }
+
+        public string GetUnlockCommand() {
+            string cmd = COMMAND_UNLOCK_ASCII.GetMessage();
+            String CrcStr = MainUtils.Crc16ToString(MainUtils.ToBytes(cmd));
+            return cmd + CrcStr + "0D0A";
+        }
+
         public override string GetPSetCommand(int pSetNumber) {
             string psetCommand = COMMAND_PSET_ASCII.GetMessage($"{pSetNumber:0000}");
             String CrcStr = MainUtils.Crc16ToString(MainUtils.ToBytes(psetCommand));
