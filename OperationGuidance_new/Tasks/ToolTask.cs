@@ -562,10 +562,11 @@ namespace OperationGuidance_new.Tasks {
                         SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         if (!_locked) {
+                            string cmd = toolX7.GetLockCommand();
                             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending lock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             Thread.Sleep(500);
-                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             _locked = true;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 locked, _locked flag set to true");
                         } else {
@@ -594,10 +595,11 @@ namespace OperationGuidance_new.Tasks {
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     if (!_locked) {
+                        string cmd = toolX7.GetLockCommand();
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolSudongX7");
-                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                        SendCommand(cmd);
                         Thread.Sleep(500);
-                        SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                        SendCommand(cmd);
                         _locked = true;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force locked, _locked flag set to true");
                     } else {
@@ -621,10 +623,11 @@ namespace OperationGuidance_new.Tasks {
                         SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         if (_locked) {
+                            string cmd = toolX7.GetUnlockCommand();
                             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending unlock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             Thread.Sleep(500);
-                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             _locked = false;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 unlocked, _locked flag set to false");
                         } else {
@@ -653,10 +656,11 @@ namespace OperationGuidance_new.Tasks {
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
                     if (_locked) {
+                        string cmd = toolX7.GetUnlockCommand();
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolSudongX7");
-                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                        SendCommand(cmd);
                         Thread.Sleep(500);
-                        SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                        SendCommand(cmd);
                         _locked = false;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force unlocked, _locked flag set to false");
                     } else {
