@@ -2202,7 +2202,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             confirmButton.Click += (s, e) => Confirm();
             CommonButton closeButton = _adminPasswordPopUpForm.AddButton("取消");
             closeButton.Click += (s, e) => {
-                _adminPasswordPopUpForm.Dispose();
+                _adminPasswordPopUpForm.DialogResult = DialogResult.Cancel;
             };
             _adminPasswordPopUpForm.PretendToShowToCreateHandlesForChildren();
 
@@ -2223,26 +2223,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
             bool result = false;
             _adminConfirmed = false;
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
-            _adminPasswordPopUpForm.Dispose();
-
             return DialogResult.OK == dialogResult && result;
 
             void Confirm() {
                 string password = _adminPasswordBox.GetTextBox(0).Box.Text;
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
                     WidgetUtils.ShowNoticePopUp("验证成功");
-                    if (actionAfterTrue != null) {
-                        actionAfterTrue(true);
-                    }
 
+                    // Set values immediately
                     _adminConfirmed = true;
                     result = true;
                     _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
+
+                    try {
+                        actionAfterTrue?.Invoke(true);
+                    } catch (Exception ex) {
+                        logger.Error("Admin password success callback failed", ex);
+                    }
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;
 
-                    _adminPasswordPopUpForm.DialogResult = DialogResult.No;
+                    return;
                 }
             }
         }
