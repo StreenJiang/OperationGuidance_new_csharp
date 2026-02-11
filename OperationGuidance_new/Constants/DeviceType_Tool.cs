@@ -330,8 +330,8 @@ namespace OperationGuidance_new.Constants {
         public string PSET_OK = "55AA058205B9760D0A";
 
         public ToolSudongX7() : base(3, "SudongX7") {
-            COMMAND_LOCK_ASCII = new("55AA070100020000000D0A");
-            COMMAND_UNLOCK_ASCII = new("55AA070100000000000D0A");
+            COMMAND_LOCK_ASCII = new("55AA0701000200");
+            COMMAND_UNLOCK_ASCII = new("55AA0701000000");
             COMMAND_PSET_ASCII = new("55AA070205{0}");
         }
 
