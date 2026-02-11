@@ -562,10 +562,11 @@ namespace OperationGuidance_new.Tasks {
                         SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         if (!_locked) {
+                            string cmd = toolX7.GetLockCommand();
                             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending lock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             Thread.Sleep(500);
-                            SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             _locked = true;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 locked, _locked flag set to true");
                         } else {
@@ -590,19 +591,20 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    if (!_locked) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolPFSeries (current locked={_locked})");
-                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-                    } else {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolPFSeries already locked, skipping force lock");
-                    }
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolPFSeries (current locked={_locked})");
+                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolSudongX7");
-                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    Thread.Sleep(500);
-                    SendCommand(toolX7.COMMAND_LOCK_ASCII.GetMessage());
-                    _locked = true;
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force locked, _locked flag set to true");
+                    if (!_locked) {
+                        string cmd = toolX7.GetLockCommand();
+                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolSudongX7");
+                        SendCommand(cmd);
+                        Thread.Sleep(500);
+                        SendCommand(cmd);
+                        _locked = true;
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force locked, _locked flag set to true");
+                    } else {
+                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already locked, skipping lock commands");
+                    }
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for force lock operation: {_toolType.GetType().Name}");
                 }
@@ -621,10 +623,11 @@ namespace OperationGuidance_new.Tasks {
                         SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         if (_locked) {
+                            string cmd = toolX7.GetUnlockCommand();
                             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending unlock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             Thread.Sleep(500);
-                            SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
+                            SendCommand(cmd);
                             _locked = false;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 unlocked, _locked flag set to false");
                         } else {
@@ -649,19 +652,20 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking tool...");
                 if (_toolType is ToolPFSeries toolPF) {
-                    if (_locked) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolPFSeries (current locked={_locked})");
-                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-                    } else {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolPFSeries already unlocked, skipping force unlock");
-                    }
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolPFSeries (current locked={_locked})");
+                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolSudongX7");
-                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    Thread.Sleep(500);
-                    SendCommand(toolX7.COMMAND_UNLOCK_ASCII.GetMessage());
-                    _locked = false;
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force unlocked, _locked flag set to false");
+                    if (_locked) {
+                        string cmd = toolX7.GetUnlockCommand();
+                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolSudongX7");
+                        SendCommand(cmd);
+                        Thread.Sleep(500);
+                        SendCommand(cmd);
+                        _locked = false;
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force unlocked, _locked flag set to false");
+                    } else {
+                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already unlocked, skipping unlock commands");
+                    }
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for force unlock operation: {_toolType.GetType().Name}");
                 }

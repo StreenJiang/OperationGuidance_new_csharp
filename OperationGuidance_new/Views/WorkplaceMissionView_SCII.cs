@@ -1213,6 +1213,8 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
+            logger.Debug($"[SCII:ValidationBeforeActivatingMission] Validating before activating mission");
+
             if (await base.ValidationBeforeActivatingMission()) {
                 if (await CheckScrewBitCount()) {
                     // 更新批头计数器 boxes
@@ -1257,6 +1259,7 @@ namespace OperationGuidance_new.Views {
             foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOsCached) {
                 if (sbc.current_counts + sbc.count_each_time > sbc.max_num) {
                     screwBitCounter = sbc;
+                    logger.Warn($"[SCII:CountScrewBitUsedTime] Screw bit at position {sbc.bit_position} will exceed usage limit");
                     return false;
                 }
             }
@@ -1265,9 +1268,11 @@ namespace OperationGuidance_new.Views {
             foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOsCached) {
                 sbc.current_counts += sbc.count_each_time;
                 _apis.AddOrUpdateScrewBitCounter(new(sbc));
+                logger.Debug($"[SCII:CountScrewBitUsedTime] Updated screw bit at position {sbc.bit_position}, new count: {sbc.current_counts}");
             }
 
             screwBitCounter = new();
+            logger.Info($"[SCII:CountScrewBitUsedTime] All screw bits within usage limits");
             return true;
         }
 
