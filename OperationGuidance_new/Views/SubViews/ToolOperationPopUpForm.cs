@@ -5,6 +5,7 @@ using CustomLibrary.Forms;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
+using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
@@ -135,7 +136,7 @@ namespace OperationGuidance_new.Views.SubViews {
                     try {
                         // === 快速检查设备连接状态 ===
                         if (!toolTask.Connected) {
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
                                     $"设备未连接，无法执行操作");
                             });
@@ -157,7 +158,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
                         // === 根据结果处理 ===
                         if (success) {
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！");
 
                                 // 更新螺栓状态
@@ -182,7 +183,7 @@ namespace OperationGuidance_new.Views.SubViews {
                             });
                         } else {
                             // === 失败后显示错误提示（保持原有错误提示） ===
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
                                     $"已自动重试 {_maxRetryTimes} 次，可能原因：\n" +
                                     $"1. 未给当前工具型号配置命令\n" +
@@ -192,7 +193,7 @@ namespace OperationGuidance_new.Views.SubViews {
                         }
                     } finally {
                         // 恢复按钮状态
-                        BeginInvoke(() => {
+                        this.SafeInvoke(() => {
                             _btnPSet.Enabled = true;
                         });
                     }
