@@ -709,8 +709,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _vScrollBar.Maximum = _gridView.RowCount;
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
-                if (AutoDown) {
-                    _gridView.FirstDisplayedScrollingRowIndex = _gridView.RowCount - _gridView.DisplayedRowCount(true) + 1;
+                if (AutoDown && _gridView.RowCount > 0) {
+                    // 直接滚动到最后一行（最安全的方式）
+                    int lastVisibleRow = _gridView.RowCount - 1;
+                    logger.Debug($"RowCount={_gridView.RowCount}, Displayed={_gridView.DisplayedRowCount(true)}, lastVisibleRow={lastVisibleRow}");
+                    if (lastVisibleRow >= 0 && lastVisibleRow < _gridView.RowCount) {
+                        _gridView.FirstDisplayedScrollingRowIndex = lastVisibleRow;
+                    }
                 }
             } else {
                 _vScrollBar?.Hide();
