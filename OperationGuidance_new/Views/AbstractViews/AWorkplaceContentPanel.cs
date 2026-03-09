@@ -36,7 +36,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public Image _defaultImage;
         protected readonly int _lockCheckingTaskDelay = 50;
         protected readonly int _checkDevicesConnectionDelay = 2000;
-        protected readonly int _resendPsetMaxTimes = 5;
+        protected readonly int _resendPsetMaxTimes = 3;
         protected readonly int _resendSignalToArrangerMaxTimes = 5;
         protected readonly int _resendSignalToSetterSelectorMaxTimes = 5;
         protected readonly int _checkIoBoxSignalDelay = 100;

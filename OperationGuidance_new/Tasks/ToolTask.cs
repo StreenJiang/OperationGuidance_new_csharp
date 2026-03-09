@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
-        private readonly int PSetWaitTime = 300;
+        private readonly int PSetWaitTime = 200;
         private readonly int LockMaxTimes = 2;
         private readonly int UnLockMaxTimes = 2;
         private readonly int LockWaitTime = 500;
@@ -463,16 +463,20 @@ namespace OperationGuidance_new.Tasks {
 
             // 互斥锁，保证一次只能发送一个 pset 命令
             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Acquiring PSet semaphore lock");
-            await _pSetSem.WaitAsync();
+            bool isOk = await _pSetSem.WaitAsync(5000); // 最多等待 5 秒
+            if (!isOk) {
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Acquiring PSet semaphore lock time out");
+                return false;
+            }
             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock acquired");
 
-            // 获取信号量之后检查，避免 current pset 没有设置好就进行检查，导致过多的请求继续往下执行
-            if (pSetNumber == CurrentPSet) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={CurrentPSet} equals requested pSetNumber={pSetNumber}");
-                return true;
-            }
-
             try {
+                // 获取信号量之后检查，避免 current pset 没有设置好就进行检查，导致过多的请求继续往下执行
+                if (pSetNumber == CurrentPSet) {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={CurrentPSet} equals requested pSetNumber={pSetNumber}");
+                    return true;
+                }
+
                 if (Connected) {
                     try {
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Starting PSet operation - CurrentPSet={CurrentPSet}, TargetPSet={pSetNumber}");
@@ -495,7 +499,7 @@ namespace OperationGuidance_new.Tasks {
                             logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - No command generated for pset {pSetNumber} with tool type {_toolType?.GetType().Name}");
                             return false;
                         }
-                        int waitTimesMax = 5;
+                        int waitTimesMax = 3;
                         int waitTimes = 0;
 
                         // 设置等待状态，确保前面没有残留的状态
@@ -547,6 +551,7 @@ namespace OperationGuidance_new.Tasks {
                         return isSuccess;
                     } catch (Exception e) {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Unexpected error during PSet operation to {pSetNumber}", e);
+                        _pSetStatus = PSetStatus.NOK; // 报错时设置为 NOK
                         return false;
                     }
                 } else {
