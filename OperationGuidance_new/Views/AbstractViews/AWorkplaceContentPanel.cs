@@ -1983,7 +1983,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 // === 使用新的通用重试策略 ===
-                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 1000);
+                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 200);
 
                 bool success = false;
                 try {
@@ -1994,6 +1994,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                 AddLockMsg(WorkingProcessPanel.LockedPsetSending);
                                 _pset.SetValue(0, $"程序号下发中... ({pset})");
+                                logger.Info($"【工作台】程序号[{pset}]下发中...");
                             });
 
                             // 执行发送
@@ -2006,6 +2007,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
                                     boltButton.CurrentParameterSet = pset;
                                     _pset.SetValue(0, $"程序号 {pset} (发送成功)");
+                                    logger.Info($"【工作台】程序号[{pset}]发送成功");
                                 });
                                 return true;
                             }
@@ -2017,6 +2019,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
                                     boltButton.CurrentParameterSet = pset;
                                     _pset.SetValue(0, $"程序号 {pset} (已存在)");
+                                    logger.Info($"【工作台】程序号[{pset}]已存在");
                                 });
                                 return true;
                             }
@@ -2026,7 +2029,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         (currentAttempt, maxAttempts) => {
                             // === 实时显示重试进度 ===
                             BeginInvoke(() => {
-                                _pset.SetValue(0, $"程序号下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                _pset.SetValue(0, $"程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                logger.Info($"【工作台】程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
                             });
                         },
                         () => {
@@ -2034,7 +2038,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             BeginInvoke(() => {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
                                 AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                _pset.SetValue(0, "程序号下发失败，正在重试...");
+                                _pset.SetValue(0, $"程序号[{pset}]下发失败，正在重试...");
+                                logger.Info($"【工作台】程序号[{pset}]下发失败，正在重试...");
                             });
                         },
                         null,

@@ -24,7 +24,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
-        private volatile PSetStatus _pSetStatus = PSetStatus.NONE;
+        private volatile PSetStatus _pSetStatus = PSetStatus.WAITING;
         private readonly SemaphoreSlim _pSetSem = new(1, 1);
         private Socket? socketClient = null;
         private string _ip;
@@ -145,73 +145,71 @@ namespace OperationGuidance_new.Tasks {
                     if (_toolType is ToolPFSeries toolPF2) {
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Processing data with ToolPFSeries analyzer");
                         toolPF2.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run((Action) (() => {
-                                if (heartIsBeating != null) {
-                                    if (!heartIsBeating.Value) {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation failed - heartbeat is not detected");
-                                        throw new Exception("Heart is not beating...");
+                            if (heartIsBeating != null) {
+                                if (!heartIsBeating.Value) {
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation failed - heartbeat is not detected");
+                                    throw new Exception("Heart is not beating...");
+                                } else {
+                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation successful");
+                                }
+                            }
+                            if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                                // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
+                                if (_pSetStatus == PSetStatus.WAITING) {
+                                    if (pSetSendingOk.Value) {
+                                        _pSetStatus = PSetStatus.OK;
+                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.OK}");
                                     } else {
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation successful");
+                                        _pSetStatus = PSetStatus.NOK;
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.NOK}");
                                     }
+                                } else {
+                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
                                 }
-                                if (pSetSendingOk != null && pSetSendingOk.HasValue) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
-                                    if (_pSetStatus == PSetStatus.NONE) {
-                                        if (pSetSendingOk.Value) {
-                                            _pSetStatus = PSetStatus.OK;
-                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: NONE -> OK");
-                                        } else {
-                                            _pSetStatus = PSetStatus.NOK;
-                                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: NONE -> NOK");
-                                        }
-                                    } else {
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
-                                    }
-                                }
-                                if (locked != null) {
-                                    bool oldLocked = _locked;
-                                    _locked = locked.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
-                                }
-                                if (dataReceived != null && dataReceived.Value) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
-                                }
-                                if (curveReceived != null && curveReceived.Value) {
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received, sending ACK");
-                                    socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
-                                }
-                            }));
+                            }
+                            if (locked != null) {
+                                bool oldLocked = _locked;
+                                _locked = locked.Value;
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
+                            }
+                            if (dataReceived != null && dataReceived.Value) {
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
+                            }
+                            if (curveReceived != null && curveReceived.Value) {
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received, sending ACK");
+                                socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
+                            }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Processing data with ToolSudongX7 analyzer");
                         toolX7.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            await Task.Run((Action) (() => {
-                                if (pSetSendingOk != null && pSetSendingOk.HasValue) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
-                                    if (_pSetStatus == PSetStatus.NONE) {
-                                        if (pSetSendingOk.Value) {
-                                            _pSetStatus = PSetStatus.OK;
-                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: NONE -> OK");
-                                        } else {
-                                            _pSetStatus = PSetStatus.NOK;
-                                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: NONE -> NOK");
-                                        }
+                            if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                                // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
+                                if (_pSetStatus == PSetStatus.WAITING) {
+                                    if (pSetSendingOk.Value) {
+                                        _pSetStatus = PSetStatus.OK;
+                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.OK}");
                                     } else {
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
+                                        _pSetStatus = PSetStatus.NOK;
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.NOK}");
                                     }
+                                } else {
+                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
                                 }
-                                if (locked != null) {
-                                    bool oldLocked = _locked;
-                                    _locked = locked.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
-                                }
-                                if (dataReceived != null && dataReceived.Value) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
-                                }
-                                if (curveReceived != null && curveReceived.Value) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received flag set");
-                                }
-                            }));
+                            }
+                            if (locked != null) {
+                                bool oldLocked = _locked;
+                                _locked = locked.Value;
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
+                            }
+                            if (dataReceived != null && dataReceived.Value) {
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
+                            }
+                            if (curveReceived != null && curveReceived.Value) {
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received flag set");
+                            }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else {
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type: {_toolType.GetType().Name}");
@@ -457,10 +455,6 @@ namespace OperationGuidance_new.Tasks {
         }
         public async Task<bool> SendPSetAsync(int pSetNumber) {
             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendPSetAsync() called with pSetNumber={pSetNumber}");
-            if (pSetNumber == CurrentPSet) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={CurrentPSet} equals requested pSetNumber={pSetNumber}");
-                return true;
-            }
 
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - not connected");
@@ -471,6 +465,12 @@ namespace OperationGuidance_new.Tasks {
             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Acquiring PSet semaphore lock");
             await _pSetSem.WaitAsync();
             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock acquired");
+
+            // 获取信号量之后检查，避免 current pset 没有设置好就进行检查，导致过多的请求继续往下执行
+            if (pSetNumber == CurrentPSet) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={CurrentPSet} equals requested pSetNumber={pSetNumber}");
+                return true;
+            }
 
             try {
                 if (Connected) {
@@ -495,44 +495,52 @@ namespace OperationGuidance_new.Tasks {
                             logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - No command generated for pset {pSetNumber} with tool type {_toolType?.GetType().Name}");
                             return false;
                         }
-                        int waitTimesMax = 15;
+                        int waitTimesMax = 5;
                         int waitTimes = 0;
 
                         // 设置等待状态，确保前面没有残留的状态
-                        _pSetStatus = PSetStatus.NONE;
+                        _pSetStatus = PSetStatus.WAITING;
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status reset to NONE, starting wait loop (max attempts={waitTimesMax}, wait interval={PSetWaitTime}ms)");
 
-                        while (_pSetStatus == PSetStatus.NONE && waitTimes < waitTimesMax) {
-                            try {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet attempt #{waitTimes + 1}/{waitTimesMax} - Sending command: {command}");
-                                bool sendResult = SendCommand(command);
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet command send result: {sendResult}");
-                                waitTimes++;
-                            } catch (Exception e) {
-                                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Error while sending PSet command [{command}] (attempt #{waitTimes + 1})", e);
-                            }
-
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Waiting {PSetWaitTime}ms for PSet response (attempt #{waitTimes}/{waitTimesMax})");
-                            await Task.Delay(PSetWaitTime);
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Wait complete, PSet status: {_pSetStatus}");
+                        _sendingPSet = pSetNumber; // 设置当前正在发送的 pset，用于日志记录（因为返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset）
+                        bool sendResult = false;
+                        try {
+                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet set to {pSetNumber}: Sending command: {command}");
+                            sendResult = SendCommand(command);
+                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet command send result: {sendResult}");
+                        } catch (Exception e) {
+                            logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Error while sending PSet command [{command}]", e);
                         }
 
                         bool isSuccess;
-                        if (_pSetStatus == PSetStatus.NONE) {
-                            isSuccess = false;
-                            _pSetStatus = PSetStatus.NOK;
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation timed out - no response after {waitTimesMax} attempts");
-                        } else {
-                            isSuccess = _pSetStatus == PSetStatus.OK;
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status final result: {_pSetStatus}");
-                        }
+                        if (sendResult) {
+                            while (_pSetStatus == PSetStatus.WAITING && waitTimes < waitTimesMax) {
+                                waitTimes++;
 
-                        if (isSuccess) {
-                            int oldPSet = CurrentPSet;
-                            CurrentPSet = pSetNumber;
-                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation successful - CurrentPSet updated: {oldPSet} -> {pSetNumber}");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Waiting {PSetWaitTime}ms for PSet response (attempt #{waitTimes}/{waitTimesMax})");
+                                await Task.Delay(PSetWaitTime);
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Wait complete, PSet status: {_pSetStatus} (attempt #{waitTimes}/{waitTimesMax})");
+                            }
+
+                            if (_pSetStatus == PSetStatus.WAITING) {
+                                isSuccess = false;
+                                _pSetStatus = PSetStatus.NOK;
+                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation timed out - no response after {waitTimesMax} attempts");
+                            } else {
+                                isSuccess = _pSetStatus == PSetStatus.OK;
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status final result: {_pSetStatus}");
+                            }
+
+                            if (isSuccess) {
+                                int oldPSet = CurrentPSet;
+                                CurrentPSet = pSetNumber;
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation successful - CurrentPSet updated: {oldPSet} -> {pSetNumber}");
+                            } else {
+                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - Status: {_pSetStatus}");
+                            }
                         } else {
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - Status: {_pSetStatus}");
+                            isSuccess = false;
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed as sending failed...");
                         }
 
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation completed - Target={pSetNumber}, FinalStatus={_pSetStatus}, Success={isSuccess}");
@@ -545,8 +553,9 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation aborted - disconnected during operation");
                 }
             } finally {
+                _sendingPSet = -1;  // 新增：清理追踪状态，避免污染下一次请求
                 _pSetSem.Release();
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock released");
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock released, _sendingPSet cleared");
             }
 
             return false;
@@ -677,7 +686,7 @@ namespace OperationGuidance_new.Tasks {
         #endregion
 
         private enum PSetStatus {
-            NONE,
+            WAITING,
             OK,
             NOK,
         }
