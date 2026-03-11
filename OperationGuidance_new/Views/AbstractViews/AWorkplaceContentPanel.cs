@@ -1988,61 +1988,33 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 bool success = false;
                 try {
                     success = await retryStrategy.ExecuteAsync(
-                        async () => {
-                            // 每次尝试前更新UI状态
-                            BeginInvoke(() => {
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                AddLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                _pset.SetValue(0, $"程序号下发中... ({pset})");
-                                logger.Info($"【工作台】程序号[{pset}]下发中...");
-                            });
-
-                            // 执行发送
-                            bool result = await task.SendPSetAsync(pset.Value);
-
-                            if (result) {
-                                BeginInvoke(() => {
-                                    // === 成功时保持原有逻辑 ===
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                    boltButton.CurrentParameterSet = pset;
-                                    _pset.SetValue(0, $"程序号 {pset} (发送成功)");
-                                    logger.Info($"【工作台】程序号[{pset}]发送成功");
-                                });
-                                return true;
-                            }
-
-                            // 检查是否已通过其他方式设置成功（保持原有逻辑）
-                            if (boltButton.CurrentParameterSet != null) {
-                                BeginInvoke(() => {
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                    boltButton.CurrentParameterSet = pset;
-                                    _pset.SetValue(0, $"程序号 {pset} (已存在)");
-                                    logger.Info($"【工作台】程序号[{pset}]已存在");
-                                });
-                                return true;
-                            }
-
-                            return false;
-                        },
+                        async () => await task.SendPSetAsync(pset.Value),
                         (currentAttempt, maxAttempts) => {
                             // === 实时显示重试进度 ===
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 _pset.SetValue(0, $"程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
                                 logger.Info($"【工作台】程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
                             });
                         },
                         () => {
+                            this.SafeInvoke(() => {
+                                // === 下发成功 ===
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                boltButton.CurrentParameterSet = pset;
+                                _pset.SetValue(0, $"程序号 {pset} (发送成功)");
+                                logger.Info($"【工作台】程序号[{pset}]发送成功");
+                            });
+                        },
+                        () => {
                             // === 每次失败时更新UI（但不阻塞） ===
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
                                 AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
                                 _pset.SetValue(0, $"程序号[{pset}]下发失败，正在重试...");
                                 logger.Info($"【工作台】程序号[{pset}]下发失败，正在重试...");
                             });
                         },
-                        null,
                         _activeMissionCts.Token);
                 } catch (RetryException ex) {
                     // 处理重试异常
@@ -2227,28 +2199,40 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             bool result = false;
             _adminConfirmed = false;
+
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
-            return DialogResult.OK == dialogResult && result;
+            if (DialogResult.OK == dialogResult && result) {
+                logger.Debug("[OpenAdminPasswordPopUpForm] - DialogResult set to OK, about to invoke callback");
+
+                try {
+                    actionAfterTrue?.Invoke(true);
+                } catch (Exception ex) {
+                    logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
+                }
+                return true;
+            }
+
+            return false;
 
             void Confirm() {
+                logger.Debug("[OpenAdminPasswordPopUpForm] - Confirm() entered");
+
                 string password = _adminPasswordBox.GetTextBox(0).Box.Text;
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
-                    WidgetUtils.ShowNoticePopUp("验证成功");
-
                     // Set values immediately
                     _adminConfirmed = true;
                     result = true;
                     _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
 
-                    try {
-                        actionAfterTrue?.Invoke(true);
-                    } catch (Exception ex) {
-                        logger.Error("Admin password success callback failed", ex);
-                    }
+                    // Show message after setting DialogResult to avoid unexpected issues
+                    WidgetUtils.ShowNoticePopUp("验证成功");
+
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - Setting DialogResult = OK");
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;
 
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - Password incorrect...");
                     return;
                 }
             }

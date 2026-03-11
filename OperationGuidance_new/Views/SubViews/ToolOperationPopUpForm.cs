@@ -152,45 +152,43 @@ namespace OperationGuidance_new.Views.SubViews {
                                 return await toolTask.SendPSetAsync(pset);
                             },
                             null,
-                            null,
-                            null,
-                            CancellationToken.None);
+                            () => {
+                                this.SafeInvoke(() => {
+                                    // === 下发成功 ===
+                                    WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！");
 
-                        // === 根据结果处理 ===
-                        if (success) {
-                            this.SafeInvoke(() => {
-                                WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！");
-
-                                // 更新螺栓状态
-                                BoltButton? boltButton = null;
-                                int workstationId = _stationComboBox.Value;
-                                if (_isMultiDeviceIndependenceMode && _currentWorkingBoltIndependence.ContainsKey(workstationId)) {
-                                    boltButton = _currentWorkingBoltIndependence[workstationId];
-                                } else {
-                                    boltButton = _currentWorkingBolt;
-                                }
-
-                                if (boltButton != null) {
-                                    boltButton.CurrentParameterSet = pset;
-                                    _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                    _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
-                                    if (_setPset != null) {
-                                        _setPset();
+                                    // 更新螺栓状态
+                                    BoltButton? boltButton = null;
+                                    int workstationId = _stationComboBox.Value;
+                                    if (_isMultiDeviceIndependenceMode && _currentWorkingBoltIndependence.ContainsKey(workstationId)) {
+                                        boltButton = _currentWorkingBoltIndependence[workstationId];
+                                    } else {
+                                        boltButton = _currentWorkingBolt;
                                     }
-                                    // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
-                                    Dispose();
-                                }
-                            });
-                        } else {
-                            // === 失败后显示错误提示（保持原有错误提示） ===
-                            this.SafeInvoke(() => {
-                                WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
-                                    $"已自动重试 {_maxRetryTimes} 次，可能原因：\n" +
-                                    $"1. 未给当前工具型号配置命令\n" +
-                                    $"2. 控制器未配置【程序{parameterSet}】\n" +
-                                    $"3. 【控制器-虚拟站-任务】未配置为【source tightening】");
-                            });
-                        }
+
+                                    if (boltButton != null) {
+                                        boltButton.CurrentParameterSet = pset;
+                                        _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                        _workplace.RemoveLockMsg(WorkingProcessPanel.LockedPsetNull);
+                                        if (_setPset != null) {
+                                            _setPset();
+                                        }
+                                        // 如果当前没有点位，则代表任务未激活，因此不关闭弹窗
+                                        Dispose();
+                                    }
+                                });
+                            },
+                            () => {
+                                // === 失败后显示错误提示（保持原有错误提示） ===
+                                this.SafeInvoke(() => {
+                                    WidgetUtils.ShowErrorPopUp($"程序号 {pset} 下发失败！\n\n" +
+                                        $"已自动重试 {_maxRetryTimes} 次，可能原因：\n" +
+                                        $"1. 未给当前工具型号配置命令\n" +
+                                        $"2. 控制器未配置【程序{parameterSet}】\n" +
+                                        $"3. 【控制器-虚拟站-任务】未配置为【source tightening】");
+                                });
+                            },
+                            CancellationToken.None);
                     } finally {
                         // 恢复按钮状态
                         this.SafeInvoke(() => {

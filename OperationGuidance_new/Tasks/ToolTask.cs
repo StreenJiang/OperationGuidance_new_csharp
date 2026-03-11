@@ -24,8 +24,6 @@ namespace OperationGuidance_new.Tasks {
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
-        private volatile PSetStatus _pSetStatus = PSetStatus.WAITING;
-        private readonly SemaphoreSlim _pSetSem = new(1, 1);
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
@@ -48,10 +46,6 @@ namespace OperationGuidance_new.Tasks {
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
         public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
-        public int CurrentPSet {
-            get { lock (_pSetLock) return _currentPSet; }
-            set { lock (_pSetLock) _currentPSet = value; }
-        }
         #endregion
 
         #region Constructors
@@ -153,19 +147,11 @@ namespace OperationGuidance_new.Tasks {
                                     logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation successful");
                                 }
                             }
-                            if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                            if (pSetSendingOk != null && _sendingPSet != -1) {
                                 // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
-                                if (_pSetStatus == PSetStatus.WAITING) {
-                                    if (pSetSendingOk.Value) {
-                                        _pSetStatus = PSetStatus.OK;
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.OK}");
-                                    } else {
-                                        _pSetStatus = PSetStatus.NOK;
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.NOK}");
-                                    }
-                                } else {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, current pset={_currentPSet}, result={pSetSendingOk.Value}");
+                                if (pSetSendingOk.Value) {
+                                    _currentPSet = _sendingPSet;
                                 }
                             }
                             if (locked != null) {
@@ -184,19 +170,11 @@ namespace OperationGuidance_new.Tasks {
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Processing data with ToolSudongX7 analyzer");
                         toolX7.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            if (pSetSendingOk != null && pSetSendingOk.HasValue) {
+                            if (pSetSendingOk != null && _sendingPSet != -1) {
                                 // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, CurrentStatus={_pSetStatus}, NewValue={pSetSendingOk.Value}");
-                                if (_pSetStatus == PSetStatus.WAITING) {
-                                    if (pSetSendingOk.Value) {
-                                        _pSetStatus = PSetStatus.OK;
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.OK}");
-                                    } else {
-                                        _pSetStatus = PSetStatus.NOK;
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status changed: {PSetStatus.WAITING} -> {PSetStatus.NOK}");
-                                    }
-                                } else {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status unchanged (current={_pSetStatus})");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, current pset={_currentPSet}, result={pSetSendingOk.Value}");
+                                if (pSetSendingOk.Value) {
+                                    _currentPSet = _sendingPSet;
                                 }
                             }
                             if (locked != null) {
@@ -461,25 +439,23 @@ namespace OperationGuidance_new.Tasks {
                 return false;
             }
 
-            // 互斥锁，保证一次只能发送一个 pset 命令
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Acquiring PSet semaphore lock");
-            bool isOk = await _pSetSem.WaitAsync(5000); // 最多等待 5 秒
-            if (!isOk) {
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Acquiring PSet semaphore lock time out");
+            if (_sendingPSet != -1) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - Still working on sending={_sendingPSet}");
                 return false;
             }
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock acquired");
+
+            int oldPSet = _currentPSet;
+            _sendingPSet = pSetNumber; // 检查完立即设置当前正在发送的 pset 避免多线程竞争
 
             try {
-                // 获取信号量之后检查，避免 current pset 没有设置好就进行检查，导致过多的请求继续往下执行
-                if (pSetNumber == CurrentPSet) {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={CurrentPSet} equals requested pSetNumber={pSetNumber}");
+                if (_currentPSet == pSetNumber) {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={_currentPSet} equals requested pSetNumber={pSetNumber}");
                     return true;
                 }
 
                 if (Connected) {
                     try {
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Starting PSet operation - CurrentPSet={CurrentPSet}, TargetPSet={pSetNumber}");
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Starting PSet operation - CurrentPSet={_currentPSet}, TargetPSet={pSetNumber}");
                         string command = "";
                         string toolName = "";
                         if (_toolType is ToolPFSeries toolPF) {
@@ -501,12 +477,8 @@ namespace OperationGuidance_new.Tasks {
                         }
                         int waitTimesMax = 3;
                         int waitTimes = 0;
-
-                        // 设置等待状态，确保前面没有残留的状态
-                        _pSetStatus = PSetStatus.WAITING;
                         logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status reset to NONE, starting wait loop (max attempts={waitTimesMax}, wait interval={PSetWaitTime}ms)");
 
-                        _sendingPSet = pSetNumber; // 设置当前正在发送的 pset，用于日志记录（因为返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset）
                         bool sendResult = false;
                         try {
                             logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet set to {pSetNumber}: Sending command: {command}");
@@ -518,48 +490,43 @@ namespace OperationGuidance_new.Tasks {
 
                         bool isSuccess;
                         if (sendResult) {
-                            while (_pSetStatus == PSetStatus.WAITING && waitTimes < waitTimesMax) {
+                            while (_sendingPSet != _currentPSet && waitTimes < waitTimesMax) {
                                 waitTimes++;
 
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Waiting {PSetWaitTime}ms for PSet response (attempt #{waitTimes}/{waitTimesMax})");
                                 await Task.Delay(PSetWaitTime);
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Wait complete, PSet status: {_pSetStatus} (attempt #{waitTimes}/{waitTimesMax})");
                             }
 
-                            if (_pSetStatus == PSetStatus.WAITING) {
+                            if (_sendingPSet != _currentPSet) {
                                 isSuccess = false;
-                                _pSetStatus = PSetStatus.NOK;
                                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation timed out - no response after {waitTimesMax} attempts");
                             } else {
-                                isSuccess = _pSetStatus == PSetStatus.OK;
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status final result: {_pSetStatus}");
+                                isSuccess = true;
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status final result: {_currentPSet}");
                             }
 
                             if (isSuccess) {
-                                int oldPSet = CurrentPSet;
-                                CurrentPSet = pSetNumber;
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation successful - CurrentPSet updated: {oldPSet} -> {pSetNumber}");
                             } else {
-                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - Status: {_pSetStatus}");
+                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - CurrentPSet: {_currentPSet}");
                             }
                         } else {
                             isSuccess = false;
                             logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed as sending failed...");
                         }
 
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation completed - Target={pSetNumber}, FinalStatus={_pSetStatus}, Success={isSuccess}");
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation completed - Target={pSetNumber}, CurrentPSet: {_currentPSet}, Success={isSuccess}");
                         return isSuccess;
                     } catch (Exception e) {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Unexpected error during PSet operation to {pSetNumber}", e);
-                        _pSetStatus = PSetStatus.NOK; // 报错时设置为 NOK
+                        _sendingPSet = -1;  // 清理追踪状态，避免污染下一次请求
                         return false;
                     }
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation aborted - disconnected during operation");
                 }
             } finally {
-                _sendingPSet = -1;  // 新增：清理追踪状态，避免污染下一次请求
-                _pSetSem.Release();
+                _sendingPSet = -1;  // 清理追踪状态，避免污染下一次请求
                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock released, _sendingPSet cleared");
             }
 
@@ -689,11 +656,5 @@ namespace OperationGuidance_new.Tasks {
             }
         }
         #endregion
-
-        private enum PSetStatus {
-            WAITING,
-            OK,
-            NOK,
-        }
     }
 }
