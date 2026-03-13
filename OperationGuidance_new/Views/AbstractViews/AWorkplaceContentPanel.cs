@@ -2041,7 +2041,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled");
             } catch (Exception ex) {
                 logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
-                BeginInvoke(() => {
+                this.SafeInvoke(() => {
                     _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
                 });
             } finally {

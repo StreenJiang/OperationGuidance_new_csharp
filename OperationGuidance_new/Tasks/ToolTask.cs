@@ -16,21 +16,19 @@ namespace OperationGuidance_new.Tasks {
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
-        private readonly int LockMaxTimes = 2;
-        private readonly int UnLockMaxTimes = 2;
-        private readonly int LockWaitTime = 500;
+        private readonly int PSetWaitTimesMax = 5;
+        private readonly int LockWaitTime = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
+        private volatile bool _psetSentOk = false;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
         private DeviceTypeTool _toolType;
         private int HeartBeatCounter;
-        private int LockCounter;
-        private int UnLockCounter;
         private int LockWaitTimeCounter;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
@@ -61,20 +59,16 @@ namespace OperationGuidance_new.Tasks {
         #region Override methods
         protected override void RunTask() {
             Task.Run(async () => {
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread started");
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread started");
                 try {
                     while (Connected) {
                         // Check if it's time to send heart beating command
                         if (HeartBeatCounter >= HeartBeatDelay) {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat timer reached threshold (counter={HeartBeatCounter}ms, threshold={HeartBeatDelay}ms)");
                             // Only check hart beat interval if heart beat command is not null
                             if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
                                 // Send heart beat command to controller
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command (ToolType={_toolType.GetType().Name})");
-                                bool sendResult = SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat command send result: {sendResult}");
-                            } else {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] No heartbeat command configured for tool type {_toolType.GetType().Name}");
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
+                                SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
                             }
                             // Reset heart beat counter even no command has been sent
                             HeartBeatCounter = 0;
@@ -88,13 +82,12 @@ namespace OperationGuidance_new.Tasks {
                                 msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                             }
                             if (msgLen > 0) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Received data, length={msgLen} bytes");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received, length={msgLen} bytes");
                                 AnalyzeData(msgBytes.Take(msgLen).ToArray());
                             }
                         } catch (SocketException se) {
                             if (se.ErrorCode == (int) SocketError.TimedOut) {
                                 HeartBeatCounter += ReceiveTimeout;
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket receive timeout (ErrorCode={se.ErrorCode}), incrementing heartbeat counter by {ReceiveTimeout}ms");
                             } else {
                                 logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Socket exception during receive", se);
                                 throw;
@@ -103,10 +96,7 @@ namespace OperationGuidance_new.Tasks {
 
                         // Check for lock wait time
                         if (LockWaitTimeCounter >= LockWaitTime) {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Lock wait time reached threshold (counter={LockWaitTimeCounter}ms, threshold={LockWaitTime}ms), resetting counters");
                             LockWaitTimeCounter = 0;
-                            LockCounter = 0;
-                            UnLockCounter = 0;
                         }
 
                         // Looping interval
@@ -114,79 +104,69 @@ namespace OperationGuidance_new.Tasks {
                         HeartBeatCounter += LoopingInterval;
                         LockWaitTimeCounter += LoopingInterval;
                     }
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Main loop exited, connection status: Connected={Connected}");
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Main loop exited, Connected={Connected}");
                 } catch (Exception e) {
                     logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Fatal error in task loop", e);
                 } finally {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread terminating, cleaning up resources");
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread terminating");
                     if (socketClient != null) {
                         socketClient.Close();
                         socketClient = null;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket closed and set to null");
                     }
                     if (CloseConnectionManually) {
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection closed manually, will not attempt reconnection");
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection closed manually");
                     }
                 }
             });
 
             void AnalyzeData(byte[] msgBytes) {
                 try {
-                    string dataPreview = msgBytes.Length > 100 ? $"{string.Join(", ", msgBytes.Take(100))}...(truncated)" : string.Join(", ", msgBytes);
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Analyzing received data (length={msgBytes.Length} bytes): [{dataPreview}]");
-
                     // Analyse result
                     if (_toolType is ToolPFSeries toolPF2) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Processing data with ToolPFSeries analyzer");
                         toolPF2.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
                             if (heartIsBeating != null) {
                                 if (!heartIsBeating.Value) {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation failed - heartbeat is not detected");
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation failed");
                                     throw new Exception("Heart is not beating...");
-                                } else {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation successful");
                                 }
                             }
                             if (pSetSendingOk != null && _sendingPSet != -1) {
-                                // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, current pset={_currentPSet}, result={pSetSendingOk.Value}");
-                                if (pSetSendingOk.Value) {
-                                    _currentPSet = _sendingPSet;
+                                if (pSetSendingOk.HasValue) {
+                                    _psetSentOk = pSetSendingOk.Value;
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
                                 }
                             }
                             if (locked != null) {
                                 bool oldLocked = _locked;
                                 _locked = locked.Value;
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
                             }
                             if (dataReceived != null && dataReceived.Value) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
                             }
                             if (curveReceived != null && curveReceived.Value) {
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received, sending ACK");
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received");
                                 socketClient.Send(Encoding.ASCII.GetBytes(toolPF2.COMMAND_CURVE_ACK_ASCII.GetMessage()));
                             }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Processing data with ToolSudongX7 analyzer");
                         toolX7.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
                             if (pSetSendingOk != null && _sendingPSet != -1) {
-                                // 返回报文里不管成功与否都不包含请求报文具体设置的是哪个 pset
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status update: Sending pset={_sendingPSet}, current pset={_currentPSet}, result={pSetSendingOk.Value}");
-                                if (pSetSendingOk.Value) {
-                                    _currentPSet = _sendingPSet;
+                                if (pSetSendingOk.HasValue) {
+                                    _psetSentOk = pSetSendingOk.Value;
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
                                 }
                             }
                             if (locked != null) {
                                 bool oldLocked = _locked;
                                 _locked = locked.Value;
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state changed: {oldLocked} -> {_locked}");
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
                             }
                             if (dataReceived != null && dataReceived.Value) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received flag set");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
                             }
                             if (curveReceived != null && curveReceived.Value) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received flag set");
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received");
                             }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else {
@@ -201,7 +181,7 @@ namespace OperationGuidance_new.Tasks {
         public override void Connect() {
             lock (SyncObject) {
                 Task.Run(async () => {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Initiating connection process");
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Initiating connection");
                     HeartBeatCounter = 0;
                     CloseConnectionManually = false;
 
@@ -209,45 +189,37 @@ namespace OperationGuidance_new.Tasks {
                     while (!Connected) {
                         retryCount++;
                         Status = CONNECTING;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Connection attempt #{retryCount}, Status={Status}");
 
                         if (await ConnectToServer()) {
-                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection established successfully");
+                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection established");
                             RunTask();
                             Status = CONNECTED;
-                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Status changed to CONNECTED");
+                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Status: CONNECTED");
 
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending initial unlock command");
                             ForceSendUnlock();
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Initial unlock sent, breaking connection loop");
                             break;
                         }
-                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection attempt #{retryCount} failed, retrying in {AutoReconnectingTrialDelay}ms");
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed, retrying ({retryCount})");
                         await Task.Delay(AutoReconnectingTrialDelay);
                     }
                     if (Connected) {
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection process completed successfully after {retryCount} attempt(s)");
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection completed after {retryCount} attempt(s)");
                     } else {
-                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Connection process failed after {retryCount} attempt(s)");
+                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed after {retryCount} attempt(s)");
                     }
                 });
             }
         }
         public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Close connection requested (manual close)");
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection (manual)");
 
             if (Connected) {
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket is connected, closing now...");
                 socketClient.Close();
                 socketClient = null;
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket closed and set to null");
-            } else {
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket is already disconnected");
             }
 
             CloseConnectionManually = true;
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Manual close flag set to true");
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;
@@ -255,121 +227,97 @@ namespace OperationGuidance_new.Tasks {
 
         #region Methods
         private async Task<bool> ConnectToServer() {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ConnectToServer() called");
             try {
                 if (Connected) {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Already connected, aborting new connection attempt");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Already connected");
                     return false;
                 }
 
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Starting connection sequence (IP={_ip}, Port={_port}, ToolType={_toolType.GetType().Name})");
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connecting to {_ip}:{_port}");
                 bool pingSuccess = false;
                 bool connectSuccess = false;
                 bool sendConnectMsgSuceess = false;
                 bool dataEnableMsgSuccess = false;
 
                 // 1. check ping
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 1: Pinging host {_ip}");
                 pingSuccess = MainUtils.PingHost(_ip);
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Ping result: {pingSuccess}");
                 if (pingSuccess) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 2: Creating TCP socket");
                     // 2. check socket
                     try {
                         socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         socketClient.ReceiveTimeout = ReceiveTimeout;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Connecting to {_ip}:{_port} (ReceiveTimeout={ReceiveTimeout}ms)");
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connection established successfully");
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connected");
 
                         // 3. send connecting message
                         if (connectSuccess && _toolType is ToolPFSeries toolPF) {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 3: Sending connection message (ToolPFSeries detected)");
                             if (toolPF.COMMAND_CONNECT_ASCII != null) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 3a: Sending connect command, SendMessageRecevingCount reset to 0");
                                 SendMessageRecevingCount = 0;
                                 string? result1 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
                                 if (result1 != null) {
                                     string mid1 = toolPF.GetMid(result1);
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect command response - MID: {mid1}, Full Response: {result1}");
                                     sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Connect command success: {sendConnectMsgSuceess} (accepted MIDs: 0002, 0005)");
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect response: {mid1}");
                                 } else {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect command - no response received");
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No connect response");
                                     sendConnectMsgSuceess = false;
                                 }
 
                                 // 4. send data receving enable message
                                 if (sendConnectMsgSuceess) {
-                                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 4: Sending data enable message");
                                     SendMessageRecevingCount = 0;
                                     string? result2 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_DATA_ASCII.GetMessage());
                                     if (result2 != null) {
                                         string mid2 = toolPF.GetMid(result2);
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable command response - MID: {mid2}, Full Response: {result2}");
                                         dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable command success: {dataEnableMsgSuccess} (accepted MIDs: 0002, 0005)");
+                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable response: {mid2}");
                                     } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable command - no response received");
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No data enable response");
                                         dataEnableMsgSuccess = false;
                                     }
 
                                     // 5. send curve data receving enable message
                                     if (dataEnableMsgSuccess) {
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step 5: Sending curve data enable message (optional)");
-                                        // Don't need to check result, because if PF6000 doesn't have any license for curve data, then it will return 0004 which means it failed, it can not retrieve any curve data
                                         SendMessageRecevingCount = 0;
-                                        var curveResult = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
-                                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data enable sent, response: {curveResult ?? "null"}");
-                                    } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Skipping curve data enable due to previous failure");
+                                        await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
                                     }
-                                } else {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Skipping data enable message due to connect command failure");
                                 }
                             } else {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] No connect command configured, skipping connection message sequence");
                                 sendConnectMsgSuceess = true;
                                 dataEnableMsgSuccess = true;
                             }
                         } else {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Tool type is not ToolPFSeries, skipping connection message sequence");
                             sendConnectMsgSuceess = true;
                             dataEnableMsgSuccess = true;
                         }
                     } catch (Exception e) {
-                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connection or initialization error", e);
+                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connection error", e);
                     }
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Ping failed to host {_ip}");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Ping failed");
                 }
                 bool isConnected = pingSuccess && connectSuccess && sendConnectMsgSuceess && dataEnableMsgSuccess;
 
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection sequence completed - Overall success: {isConnected}");
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Step results - Ping: {pingSuccess}, Socket: {connectSuccess}, ConnectMsg: {sendConnectMsgSuceess}, DataEnable: {dataEnableMsgSuccess}");
-
                 if (isConnected) {
-                    MainUtils.Info(logger, $"[TOOL:{_device_name}-{_ip}:{_port}] Successfully connected to tool");
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection successful");
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed, cleaning up resources");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed");
                     if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
                         socketClient.Close();
                         socketClient = null;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Failed socket connection closed and cleaned up");
                     }
                 }
                 return isConnected;
             } catch (Exception e) {
-                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Unexpected error during connection", e);
+                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Connection error", e);
             }
 
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ConnectToServer() returning false");
             return false;
         }
         private bool SendCommand(string command) {
             if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command not sent - not connected: {command}");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command not sent - not connected");
                 return false;
             }
 
@@ -378,281 +326,211 @@ namespace OperationGuidance_new.Tasks {
                                         ? MainUtils.ToBytes(command)
                                         : Encoding.ASCII.GetBytes(command);
 
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending command (length={data.Length} bytes): {command}");
                 int? num;
                 lock (SyncObject) {
                     num = socketClient?.Send(data);
                 }
                 if (num.HasValue && num.Value > 0) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Command sent successfully, bytes sent: {num.Value}");
                     return true;
                 }
 
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command sending failed: {command}, bytes sent = {num}");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command sending failed");
             } catch (Exception ex) {
-                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Command sending error: {command}", ex);
+                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Command sending error", ex);
             }
 
             return false;
         }
         private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
             SendMessageRecevingCount++;
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendAndReceive attempt #{SendMessageRecevingCount}/{SendMessageRecevingTimes} for command: {command}");
 
             if (Connected && SendMessageRecevingCount < SendMessageRecevingTimes) {
                 try {
                     // Reset heart beat counter to prevent multiple response
                     HeartBeatCounter = 0;
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat counter reset to 0 to prevent interference");
 
                     // Send command to controller
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending command: {command}");
                     socketClient.Send(Encoding.ASCII.GetBytes(command));
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Command sent, waiting for response...");
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Waiting for response (timeout={ReceiveTimeout}ms)...");
                     int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Received response (length={msgLen} bytes): {result}");
                     return result;
                 } catch (Exception e) {
-                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Error during send/receive for command: {command}", e);
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Retrying send/receive (attempt #{SendMessageRecevingCount + 1})...");
+                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Send/receive error", e);
                     return await SendAndReceiveOnlyForPreparingAsync(command);
                 }
             } else {
                 if (!Connected) {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] SendAndReceive aborted - not connected");
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] SendAndReceive aborted - max retries reached ({SendMessageRecevingCount}/{SendMessageRecevingTimes})");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] SendAndReceive aborted - max retries reached");
                 }
             }
             return null;
         }
         public async Task<bool> SendPSetAsync(int pSetNumber) {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendPSetAsync() called with pSetNumber={pSetNumber}");
-
+            if (pSetNumber == -1) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - pset can not set to -1");
+                return false;
+            }
             if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - not connected");
                 return false;
             }
-
             if (_sendingPSet != -1) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - Still working on sending={_sendingPSet}");
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet skipped - busy (sending={_sendingPSet})");
                 return false;
             }
-
-            int oldPSet = _currentPSet;
-            _sendingPSet = pSetNumber; // 检查完立即设置当前正在发送的 pset 避免多线程竞争
+            if (_currentPSet == pSetNumber) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet skipped - already set to {pSetNumber}");
+                return true;
+            }
 
             try {
-                if (_currentPSet == pSetNumber) {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation skipped - CurrentPSet={_currentPSet} equals requested pSetNumber={pSetNumber}");
-                    return true;
-                }
+                _sendingPSet = pSetNumber;
+                _psetSentOk = false;
 
                 if (Connected) {
-                    try {
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Starting PSet operation - CurrentPSet={_currentPSet}, TargetPSet={pSetNumber}");
-                        string command = "";
-                        string toolName = "";
-                        if (_toolType is ToolPFSeries toolPF) {
-                            command = toolPF.GetPSetCommand(pSetNumber);
-                            toolName = toolPF.Name;
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Generated PSet command for ToolPFSeries: {command}");
-                        } else if (_toolType is ToolSudongX7 toolX7) {
-                            command = toolX7.GetPSetCommand(pSetNumber);
-                            toolName = toolX7.Name;
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Generated PSet command for ToolSudongX7: {command}");
-                        } else {
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type: {_toolType?.GetType().Name}");
-                        }
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending PSet {pSetNumber}");
 
-                        // Send pset
-                        if (string.IsNullOrEmpty(command)) {
-                            logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - No command generated for pset {pSetNumber} with tool type {_toolType?.GetType().Name}");
-                            return false;
-                        }
-                        int waitTimesMax = 3;
-                        int waitTimes = 0;
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status reset to NONE, starting wait loop (max attempts={waitTimesMax}, wait interval={PSetWaitTime}ms)");
+                    string command = "";
+                    if (_toolType is ToolPFSeries toolPF) {
+                        command = toolPF.GetPSetCommand(pSetNumber);
+                    } else if (_toolType is ToolSudongX7 toolX7) {
+                        command = toolX7.GetPSetCommand(pSetNumber);
+                    } else {
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+                    }
 
-                        bool sendResult = false;
-                        try {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet set to {pSetNumber}: Sending command: {command}");
-                            sendResult = SendCommand(command);
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet command send result: {sendResult}");
-                        } catch (Exception e) {
-                            logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Error while sending PSet command [{command}]", e);
-                        }
-
-                        bool isSuccess;
-                        if (sendResult) {
-                            while (_sendingPSet != _currentPSet && waitTimes < waitTimesMax) {
-                                waitTimes++;
-
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Waiting {PSetWaitTime}ms for PSet response (attempt #{waitTimes}/{waitTimesMax})");
-                                await Task.Delay(PSetWaitTime);
-                            }
-
-                            if (_sendingPSet != _currentPSet) {
-                                isSuccess = false;
-                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation timed out - no response after {waitTimesMax} attempts");
-                            } else {
-                                isSuccess = true;
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet status final result: {_currentPSet}");
-                            }
-
-                            if (isSuccess) {
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation successful - CurrentPSet updated: {oldPSet} -> {pSetNumber}");
-                            } else {
-                                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed - CurrentPSet: {_currentPSet}");
-                            }
-                        } else {
-                            isSuccess = false;
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation failed as sending failed...");
-                        }
-
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation completed - Target={pSetNumber}, CurrentPSet: {_currentPSet}, Success={isSuccess}");
-                        return isSuccess;
-                    } catch (Exception e) {
-                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Unexpected error during PSet operation to {pSetNumber}", e);
-                        _sendingPSet = -1;  // 清理追踪状态，避免污染下一次请求
+                    if (string.IsNullOrEmpty(command)) {
+                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - no command generated");
                         return false;
                     }
+
+                    bool sendResult = false;
+                    try {
+                        sendResult = SendCommand(command);
+                    } catch (Exception e) {
+                        logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send error", e);
+                    }
+
+                    bool isSuccess;
+                    if (sendResult) {
+                        int waitTimes = 0;
+                        while (!_psetSentOk && waitTimes < PSetWaitTimesMax) {
+                            waitTimes++;
+                            await Task.Delay(PSetWaitTime);
+                        }
+
+                        if (!_psetSentOk) {
+                            isSuccess = false;
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending timeout");
+                        } else {
+                            isSuccess = true;
+                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet success: {_currentPSet} -> {pSetNumber}");
+
+                            _currentPSet = _sendingPSet;
+                        }
+                    } else {
+                        isSuccess = false;
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send failed");
+                    }
+
+                    return isSuccess;
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet operation aborted - disconnected during operation");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet aborted - disconnected");
                 }
+            } catch (Exception e) {
+                logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet error", e);
             } finally {
-                _sendingPSet = -1;  // 清理追踪状态，避免污染下一次请求
-                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] PSet semaphore lock released, _sendingPSet cleared");
+                _sendingPSet = -1;
             }
 
             return false;
         }
 
         private void SendLock() {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendLock() called");
             if (Connected) {
-                if (LockCounter < LockMaxTimes) {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking tool (attempt #{LockCounter + 1}/{LockMaxTimes})...");
+                if (!_locked && LockWaitTimeCounter <= LockWaitTime) {
                     if (_toolType is ToolPFSeries toolPF) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending lock command to ToolPFSeries");
                         SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        if (!_locked) {
-                            string cmd = toolX7.GetLockCommand();
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending lock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(cmd);
-                            Thread.Sleep(500);
-                            SendCommand(cmd);
-                            _locked = true;
-                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 locked, _locked flag set to true");
-                        } else {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already locked, skipping lock commands");
-                        }
+                        string cmd = toolX7.GetLockCommand();
+                        SendCommand(cmd);
+                        Thread.Sleep(200);
+                        SendCommand(cmd);
+                        _locked = true;
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
                     } else {
-                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for lock operation: {_toolType.GetType().Name}");
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                     }
-
-                    LockCounter++;
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Lock counter incremented: {LockCounter}");
-                } else {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Max lock attempts reached ({LockCounter}/{LockMaxTimes}), skipping lock");
                 }
             } else {
                 _locked = false;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock operation failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
             }
         }
         public void ForceSendLock() {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ForceSendLock() called");
             if (Connected) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking tool...");
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
                 if (_toolType is ToolPFSeries toolPF) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolPFSeries (current locked={_locked})");
                     SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    if (!_locked) {
-                        string cmd = toolX7.GetLockCommand();
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force lock command to ToolSudongX7");
-                        SendCommand(cmd);
-                        Thread.Sleep(500);
-                        SendCommand(cmd);
-                        _locked = true;
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force locked, _locked flag set to true");
-                    } else {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already locked, skipping force lock commands");
-                    }
+                    string cmd = toolX7.GetLockCommand();
+                    SendCommand(cmd);
+                    Thread.Sleep(200);
+                    SendCommand(cmd);
+                    _locked = true;
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for force lock operation: {_toolType.GetType().Name}");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 }
             } else {
                 _locked = false;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock operation failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock failed - not connected");
             }
         }
         private void SendUnlock() {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendUnlock() called");
             if (Connected) {
-                if (UnLockCounter < UnLockMaxTimes) {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking tool (attempt #{UnLockCounter + 1}/{UnLockMaxTimes})...");
+                if (_locked && LockWaitTimeCounter <= LockWaitTime) {
                     if (_toolType is ToolPFSeries toolPF) {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending unlock command to ToolPFSeries");
                         SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        if (_locked) {
-                            string cmd = toolX7.GetUnlockCommand();
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending unlock command to ToolSudongX7 (current locked={_locked})");
-                            SendCommand(cmd);
-                            Thread.Sleep(500);
-                            SendCommand(cmd);
-                            _locked = false;
-                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 unlocked, _locked flag set to false");
-                        } else {
-                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already unlocked, skipping unlock commands");
-                        }
+                        string cmd = toolX7.GetUnlockCommand();
+                        SendCommand(cmd);
+                        Thread.Sleep(200);
+                        SendCommand(cmd);
+                        _locked = false;
+                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
                     } else {
-                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for unlock operation: {_toolType.GetType().Name}");
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                     }
-
-                    UnLockCounter++;
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock counter incremented: {UnLockCounter}");
-                } else {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Max unlock attempts reached ({UnLockCounter}/{UnLockMaxTimes}), skipping unlock");
                 }
             } else {
                 _locked = true;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock operation failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
             }
         }
         public void ForceSendUnlock() {
-            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ForceSendUnlock() called");
             if (Connected) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking tool...");
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
                 if (_toolType is ToolPFSeries toolPF) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolPFSeries (current locked={_locked})");
                     SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                 } else if (_toolType is ToolSudongX7 toolX7) {
-                    if (_locked) {
-                        string cmd = toolX7.GetUnlockCommand();
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Sending force unlock command to ToolSudongX7");
-                        SendCommand(cmd);
-                        Thread.Sleep(500);
-                        SendCommand(cmd);
-                        _locked = false;
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 force unlocked, _locked flag set to false");
-                    } else {
-                        logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] ToolSudongX7 already unlocked, skipping force unlock commands");
-                    }
+                    string cmd = toolX7.GetUnlockCommand();
+                    SendCommand(cmd);
+                    Thread.Sleep(200);
+                    SendCommand(cmd);
+                    _locked = false;
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
                 } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type for force unlock operation: {_toolType.GetType().Name}");
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 }
             } else {
                 _locked = true;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock operation failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
             }
         }
         #endregion
