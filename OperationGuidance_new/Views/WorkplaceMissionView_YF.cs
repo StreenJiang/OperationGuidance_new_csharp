@@ -1008,7 +1008,7 @@ namespace OperationGuidance_new.Views {
                                     if (allDone) {
                                         // Lock all tools
                                         if (MainUtils.IsArmLocatingEnabled()) {
-                                            LockAllTools();
+                                            ForceLockAllTools();
                                         }
 
                                         // All ok

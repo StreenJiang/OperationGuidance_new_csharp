@@ -94,15 +94,14 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }
 
-                        // Check for lock wait time
-                        if (LockWaitTimeCounter >= LockWaitTime) {
-                            LockWaitTimeCounter = 0;
-                        }
-
                         // Looping interval
                         await Task.Delay(LoopingInterval);
                         HeartBeatCounter += LoopingInterval;
                         LockWaitTimeCounter += LoopingInterval;
+
+                        if (LockWaitTimeCounter >= LockWaitTime) {
+                            LockWaitTimeCounter = LockWaitTime;
+                        }
                     }
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Main loop exited, Connected={Connected}");
                 } catch (Exception e) {
@@ -139,6 +138,7 @@ namespace OperationGuidance_new.Tasks {
                             if (locked != null) {
                                 bool oldLocked = _locked;
                                 _locked = locked.Value;
+                                LockWaitTimeCounter = 0;
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
                             }
                             if (dataReceived != null && dataReceived.Value) {
@@ -160,6 +160,7 @@ namespace OperationGuidance_new.Tasks {
                             if (locked != null) {
                                 bool oldLocked = _locked;
                                 _locked = locked.Value;
+                                LockWaitTimeCounter = 0;
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
                             }
                             if (dataReceived != null && dataReceived.Value) {
@@ -451,9 +452,9 @@ namespace OperationGuidance_new.Tasks {
             return false;
         }
 
-        private void SendLock() {
+        public void SendLock() {
             if (Connected) {
-                if (!_locked && LockWaitTimeCounter <= LockWaitTime) {
+                if (!_locked && LockWaitTimeCounter >= LockWaitTime) {
                     if (_toolType is ToolPFSeries toolPF) {
                         SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
@@ -462,13 +463,15 @@ namespace OperationGuidance_new.Tasks {
                         Thread.Sleep(200);
                         SendCommand(cmd);
                         _locked = true;
+                        LockWaitTimeCounter = 0;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
                     } else {
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                     }
+                } else {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skiped - _locked={_locked}, LockWaitTimeCounter={LockWaitTimeCounter}");
                 }
             } else {
-                _locked = false;
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
             }
         }
@@ -483,18 +486,18 @@ namespace OperationGuidance_new.Tasks {
                     Thread.Sleep(200);
                     SendCommand(cmd);
                     _locked = true;
+                    LockWaitTimeCounter = 0;
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 }
             } else {
-                _locked = false;
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock failed - not connected");
             }
         }
-        private void SendUnlock() {
+        public void SendUnlock() {
             if (Connected) {
-                if (_locked && LockWaitTimeCounter <= LockWaitTime) {
+                if (_locked && LockWaitTimeCounter >= LockWaitTime) {
                     if (_toolType is ToolPFSeries toolPF) {
                         SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
                     } else if (_toolType is ToolSudongX7 toolX7) {
@@ -503,13 +506,15 @@ namespace OperationGuidance_new.Tasks {
                         Thread.Sleep(200);
                         SendCommand(cmd);
                         _locked = false;
+                        LockWaitTimeCounter = 0;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
                     } else {
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                     }
+                } else {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skiped - _locked={_locked}, LockWaitTimeCounter={LockWaitTimeCounter}");
                 }
             } else {
-                _locked = true;
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
             }
         }
@@ -524,12 +529,12 @@ namespace OperationGuidance_new.Tasks {
                     Thread.Sleep(200);
                     SendCommand(cmd);
                     _locked = false;
+                    LockWaitTimeCounter = 0;
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 }
             } else {
-                _locked = true;
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
             }
         }

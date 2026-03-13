@@ -1629,7 +1629,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
 
                                 // Lock tools
-                                toolTask.ForceSendLock();
+                                toolTask.SendLock();
                             } else {
                                 if (_needLoosening) {
                                     statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
@@ -1642,7 +1642,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
 
                                 // Unlock tools
-                                toolTask.ForceSendUnlock();
+                                toolTask.SendUnlock();
                             }
 
                             // Add information
@@ -2828,7 +2828,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
-                LockAllTools();
+                ForceLockAllTools();
             }
 
             // Reset IoBox
@@ -2878,7 +2878,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        protected async void LockAllTools() {
+        protected async void ForceLockAllTools() {
             await Task.Run(() => {
                 // Lock multiple times to ensure lock correctly
                 int lockTimesSum = 3;
