@@ -328,6 +328,8 @@ namespace OperationGuidance_new.Constants {
 
     public class ToolSudongX7: DeviceTypeTool {
         public string PSET_OK = "55AA058205B9760D0A";
+        public string IS_TIGHTENING = "55AA0585007B450D0A"; // INFO: 暂时不用
+        public string ERROR_RSP = "55AA05CFFC4C640D0A";
 
         public ToolSudongX7() : base(3, "SudongX7") {
             COMMAND_LOCK_ASCII = new("55AA0701000200");
@@ -358,7 +360,10 @@ namespace OperationGuidance_new.Constants {
             string head = GetHead(dataMessage);
             logger.Info($"dataMessage = {dataMessage}");
 
-            if (dataMessage == PSET_OK) {
+            if (dataMessage == ERROR_RSP) {
+                // TODO: 后续补充逻辑
+                logger.Error($"Error response from controller, please check command...");
+            } else if (dataMessage == PSET_OK) {
                 toolAction(null, true, null, null, null);
             } else if (head == "55AA2781") {
                 toolAction(null, null, null, true, null);

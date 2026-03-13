@@ -17,7 +17,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
-        private readonly int LockWaitTime = 5000;
+        private readonly int CooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
         private readonly object _pSetLock = new object();
@@ -29,7 +29,8 @@ namespace OperationGuidance_new.Tasks {
         private int _port;
         private DeviceTypeTool _toolType;
         private int HeartBeatCounter;
-        private int LockWaitTimeCounter;
+        private long _lastLockTimestamp = 0;
+        private long _lastUnlockTimestamp = 0;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
         #endregion
@@ -97,11 +98,6 @@ namespace OperationGuidance_new.Tasks {
                         // Looping interval
                         await Task.Delay(LoopingInterval);
                         HeartBeatCounter += LoopingInterval;
-                        LockWaitTimeCounter += LoopingInterval;
-
-                        if (LockWaitTimeCounter >= LockWaitTime) {
-                            LockWaitTimeCounter = LockWaitTime;
-                        }
                     }
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Main loop exited, Connected={Connected}");
                 } catch (Exception e) {
@@ -136,10 +132,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                             if (locked != null) {
-                                bool oldLocked = _locked;
-                                _locked = locked.Value;
-                                LockWaitTimeCounter = 0;
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
+                                UpdateInternalLockState(locked.Value);
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -158,10 +151,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                             if (locked != null) {
-                                bool oldLocked = _locked;
-                                _locked = locked.Value;
-                                LockWaitTimeCounter = 0;
-                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
+                                UpdateInternalLockState(locked.Value);
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -453,90 +443,135 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void SendLock() {
-            if (Connected) {
-                if (!_locked && LockWaitTimeCounter >= LockWaitTime) {
-                    if (_toolType is ToolPFSeries toolPF) {
-                        SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-                    } else if (_toolType is ToolSudongX7 toolX7) {
-                        string cmd = toolX7.GetLockCommand();
-                        SendCommand(cmd);
-                        Thread.Sleep(200);
-                        SendCommand(cmd);
-                        _locked = true;
-                        LockWaitTimeCounter = 0;
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
-                    } else {
-                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                    }
-                } else {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skiped - _locked={_locked}, LockWaitTimeCounter={LockWaitTimeCounter}");
-                }
-            } else {
+            if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
+                return;
             }
+
+            // 检查是否在lock冷却期内
+            if (IsInCooldown(_lastLockTimestamp)) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock skipped - in cooldown period (last lock: {DateTimeOffset.FromUnixTimeMilliseconds(Volatile.Read(ref _lastLockTimestamp))})");
+                return;
+            }
+
+            // 检查当前状态是否允许lock操作
+            if (_locked) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock skipped - already locked");
+                return;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
+            PerformLock();
         }
+
         public void ForceSendLock() {
-            if (Connected) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
-                if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    string cmd = toolX7.GetLockCommand();
-                    SendCommand(cmd);
-                    Thread.Sleep(200);
-                    SendCommand(cmd);
-                    _locked = true;
-                    LockWaitTimeCounter = 0;
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locked");
-                } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                }
-            } else {
+            if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock failed - not connected");
+                return;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
+            PerformLock();
+        }
+
+        private void PerformLock() {
+            if (_toolType is ToolPFSeries toolPF) {
+                SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+            } else if (_toolType is ToolSudongX7 toolX7) {
+                string cmd = toolX7.GetLockCommand();
+                bool sentOk = SendCommand(cmd);
+                Thread.Sleep(200);
+                sentOk = SendCommand(cmd);
+
+                if (sentOk) {
+                    // 速动没有 解/锁枪 反馈，因此发完就自己设置
+                    UpdateInternalLockState(true);
+                }
+            } else {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+                return;
             }
         }
+
         public void SendUnlock() {
-            if (Connected) {
-                if (_locked && LockWaitTimeCounter >= LockWaitTime) {
-                    if (_toolType is ToolPFSeries toolPF) {
-                        SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-                    } else if (_toolType is ToolSudongX7 toolX7) {
-                        string cmd = toolX7.GetUnlockCommand();
-                        SendCommand(cmd);
-                        Thread.Sleep(200);
-                        SendCommand(cmd);
-                        _locked = false;
-                        LockWaitTimeCounter = 0;
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
-                    } else {
-                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                    }
-                } else {
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skiped - _locked={_locked}, LockWaitTimeCounter={LockWaitTimeCounter}");
+            if (!Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
+                return;
+            }
+
+            // 检查是否在unlock冷却期内
+            if (IsInCooldown(_lastUnlockTimestamp)) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skipped - in cooldown period (last unlock: {DateTimeOffset.FromUnixTimeMilliseconds(Volatile.Read(ref _lastUnlockTimestamp))})");
+                return;
+            }
+
+            // 检查当前状态是否允许unlock操作
+            if (!_locked) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skipped - already unlocked");
+                return;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
+            PerformUnlock();
+        }
+
+        public void ForceSendUnlock() {
+            if (!Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
+                return;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
+            PerformUnlock();
+        }
+
+        private void PerformUnlock() {
+            if (_toolType is ToolPFSeries toolPF) {
+                SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+            } else if (_toolType is ToolSudongX7 toolX7) {
+                string cmd = toolX7.GetUnlockCommand();
+                bool sentOk = SendCommand(cmd);
+                Thread.Sleep(200);
+                sentOk = SendCommand(cmd);
+
+                if (sentOk) {
+                    // 速动没有 解/锁枪 反馈，因此发完就自己设置
+                    UpdateInternalLockState(false);
                 }
             } else {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+                return;
             }
         }
-        public void ForceSendUnlock() {
-            if (Connected) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
-                if (_toolType is ToolPFSeries toolPF) {
-                    SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-                } else if (_toolType is ToolSudongX7 toolX7) {
-                    string cmd = toolX7.GetUnlockCommand();
-                    SendCommand(cmd);
-                    Thread.Sleep(200);
-                    SendCommand(cmd);
-                    _locked = false;
-                    LockWaitTimeCounter = 0;
-                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocked");
-                } else {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                }
-            } else {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
+
+        /// <summary>
+        /// 检查指定时间戳是否在冷却期内
+        /// </summary>
+        /// <param name="timestamp">操作时间戳（毫秒）</param>
+        /// <returns>如果在冷却期内返回true，否则返回false</returns>
+        private bool IsInCooldown(long timestamp) {
+            long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+            return (currentTime - timestamp) < CooldownPeriod;
+        }
+
+        /// <summary>
+        /// 当设备状态改变时，更新内部锁定状态
+        /// </summary>
+        /// <param name="newLockedState">新的锁定状态</param>
+        private void UpdateInternalLockState(bool newLockedState) {
+            bool oldLocked = _locked;
+            _locked = newLockedState;
+
+            // 重置相应的冷却时间戳
+            if (newLockedState) // 如果现在是锁定状态
+            {
+                Volatile.Write(ref _lastLockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
+            } else // 如果现在是解锁状态
+            {
+                Volatile.Write(ref _lastUnlockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
             }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
         }
         #endregion
     }
