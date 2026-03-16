@@ -17,7 +17,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
-        private readonly int CooldownPeriod = 5000;
+        private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
         private readonly object _pSetLock = new object();
@@ -550,8 +550,13 @@ namespace OperationGuidance_new.Tasks {
         /// <param name="timestamp">操作时间戳（毫秒）</param>
         /// <returns>如果在冷却期内返回true，否则返回false</returns>
         private bool IsInCooldown(long timestamp) {
+            // 等于 0 直接表示可以继续操作，跳过计算流程，提高性能
+            if (timestamp == 0) {
+                return false;
+            }
+
             long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            return (currentTime - timestamp) < CooldownPeriod;
+            return (currentTime - timestamp) < LockingCooldownPeriod;
         }
 
         /// <summary>
@@ -566,9 +571,11 @@ namespace OperationGuidance_new.Tasks {
             if (newLockedState) // 如果现在是锁定状态
             {
                 Volatile.Write(ref _lastLockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
+                Volatile.Write(ref _lastUnlockTimestamp, 0); // 立刻重置 unlock 计时为 0 以保证锁定后可以随时解锁
             } else // 如果现在是解锁状态
             {
                 Volatile.Write(ref _lastUnlockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
+                Volatile.Write(ref _lastLockTimestamp, 0); // 立刻重置 lock 计时为 0 以保证解锁后可以随时锁定
             }
 
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
