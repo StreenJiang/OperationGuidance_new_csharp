@@ -2209,18 +2209,26 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 AdminPopUpExtraActions();
             }
 
-            bool result = false;
             _adminConfirmed = false;
-
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
-            if (DialogResult.OK == dialogResult && result) {
-                logger.Debug("[OpenAdminPasswordPopUpForm] - DialogResult set to OK, about to invoke callback");
+            if (DialogResult.OK == dialogResult) {
+                Task.Run(() => {
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - DialogResult set to OK, about to invoke callback");
 
-                try {
-                    actionAfterTrue?.Invoke(true);
-                } catch (Exception ex) {
-                    logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
-                }
+                    _adminPasswordPopUpForm?.Dispose();
+                    _adminPasswordPopUpForm = null;
+
+                    // Show message after setting DialogResult to avoid unexpected issues
+                    this.SafeInvoke(() => {
+                        WidgetUtils.ShowNoticePopUp("验证成功");
+
+                        try {
+                            actionAfterTrue?.Invoke(true);
+                        } catch (Exception ex) {
+                            logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
+                        }
+                    });
+                });
                 return true;
             }
 
@@ -2233,11 +2241,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
                     // Set values immediately
                     _adminConfirmed = true;
-                    result = true;
                     _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
-
-                    // Show message after setting DialogResult to avoid unexpected issues
-                    WidgetUtils.ShowNoticePopUp("验证成功");
 
                     logger.Debug("[OpenAdminPasswordPopUpForm] - Setting DialogResult = OK");
                 } else {
