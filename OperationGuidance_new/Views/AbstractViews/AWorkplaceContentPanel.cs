@@ -7,6 +7,7 @@ using CustomLibrary.Utils;
 using log4net;
 using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
@@ -1652,8 +1653,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                             // Set description to working proccess panel
                             _workingProcessPanel.StatusDesc = statusDesc;
-                        } catch (OperationCanceledException) {
+                        } catch (OperationCanceledException ex) {
                             // 任务被取消，退出循环
+                            logger.Info("Locking task has been cancelled...", ex);
                             break;
                         } catch (Exception e) {
                             // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
@@ -1699,53 +1701,58 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _resendSignalToArrangerTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _arrangerNeeded && !cts.Token.IsCancellationRequested) {
-                    if (_arrangerPositionOk != null) {
-                        ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                    try {
+                        if (_arrangerPositionOk != null) {
+                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
 
-                        if (_arrangerPositionOk.Values.ToList().Count(ok => !ok) > 0) {
-                            if (!_arrangerPositionTimedOut) {
-                                AddLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                                AddLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                            if (_arrangerPositionOk.Values.ToList().Count(ok => !ok) > 0) {
+                                if (!_arrangerPositionTimedOut) {
+                                    AddLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                } else {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                    AddLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
 
-                                // Retry confirmation
-                                if (_resendSignalToArrangerMaxTimes > 0) {
-                                    if (_resendSignalToArrangerTimes < _resendSignalToArrangerMaxTimes) {
-                                        // Confirm if retry needed
-                                        if (WidgetUtils.ShowConfirmPopUp($"送钉时间已达到[{_currentWorkingBolt.Arranger_time_out / 1000}]秒，送钉失败，是否重试？")) {
-                                            _arrangerPositionTimedOut = false;
-                                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                                    // Retry confirmation
+                                    if (_resendSignalToArrangerMaxTimes > 0) {
+                                        if (_resendSignalToArrangerTimes < _resendSignalToArrangerMaxTimes) {
+                                            // Confirm if retry needed
+                                            if (WidgetUtils.ShowConfirmPopUp($"送钉时间已达到[{_currentWorkingBolt.Arranger_time_out / 1000}]秒，送钉失败，是否重试？")) {
+                                                _arrangerPositionTimedOut = false;
+                                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
 
-                                            // Counter plus 1
-                                            _resendSignalToArrangerTimes++;
+                                                // Counter plus 1
+                                                _resendSignalToArrangerTimes++;
 
-                                            // Resend signal
-                                            SendSignalToArrager(_currentWorkingBolt);
+                                                // Resend signal
+                                                SendSignalToArrager(_currentWorkingBolt);
+                                            } else {
+                                                _arrangerPositionOk = null;
+                                            }
                                         } else {
-                                            _arrangerPositionOk = null;
+                                            // Retry times reaches max, stop the mission
+                                            TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+
+                                            // Show notice
+                                            WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                         }
                                     } else {
-                                        // Retry times reaches max, stop the mission
+                                        // Do not have any retry chance then terminate mission
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
-                                        // Show notice
-                                        WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                     }
-                                } else {
-                                    // Do not have any retry chance then terminate mission
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                 }
+                            } else {
+                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
+                                RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
+                                _arrangerPositionOk = null;
                             }
-                        } else {
-                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerNotDone);
-                            RemoveLockMsg(WorkingProcessPanel.LockedArrangerTimedOut);
-                            _arrangerPositionOk = null;
                         }
-                    }
 
-                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                        await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    } catch (OperationCanceledException ex) {
+                        logger.Info("Arranger task has been cancelled...", ex);
+                        break;
+                    }
                 }
             });
         }
@@ -1757,52 +1764,57 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _resendSignalToSetterSelectorTimes = 0;
             BeginInvoke(async () => {
                 while (!IsDisposed && _activated && _setterSelectorNeeded && !cts.Token.IsCancellationRequested) {
-                    if (_bitPositionOk != null) {
-                        ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
-                        ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
-                        if (!_bitPositionOk.Value) {
-                            if (!_bitPositionTimedOut) {
-                                AddLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                            } else {
-                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                                AddLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                    try {
+                        if (_bitPositionOk != null) {
+                            ProductBoltDTO boltDTO = _currentWorkingBolt.BoltDTO;
+                            ToolTask toolTask = _toolTasks[_workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value];
+                            if (!_bitPositionOk.Value) {
+                                if (!_bitPositionTimedOut) {
+                                    AddLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                } else {
+                                    RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                    AddLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
 
-                                // Retry confirmation
-                                if (_resendSignalToSetterSelectorMaxTimes > 0) {
-                                    if (_resendSignalToSetterSelectorTimes < _resendSignalToSetterSelectorMaxTimes) {
-                                        // Confirm if retry needed
-                                        if (WidgetUtils.ShowConfirmPopUp($"套筒选择时间已达到[{_currentWorkingBolt.Setter_selector_time_out / 1000}]秒，是否重试？")) {
-                                            _bitPositionTimedOut = false;
-                                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                                    // Retry confirmation
+                                    if (_resendSignalToSetterSelectorMaxTimes > 0) {
+                                        if (_resendSignalToSetterSelectorTimes < _resendSignalToSetterSelectorMaxTimes) {
+                                            // Confirm if retry needed
+                                            if (WidgetUtils.ShowConfirmPopUp($"套筒选择时间已达到[{_currentWorkingBolt.Setter_selector_time_out / 1000}]秒，是否重试？")) {
+                                                _bitPositionTimedOut = false;
+                                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
 
-                                            // Counter plus 1
-                                            _resendSignalToSetterSelectorTimes++;
+                                                // Counter plus 1
+                                                _resendSignalToSetterSelectorTimes++;
 
-                                            // Resend signal
-                                            SendSignalToSetterSelector(_currentWorkingBolt);
+                                                // Resend signal
+                                                SendSignalToSetterSelector(_currentWorkingBolt);
+                                            } else {
+                                                _bitPositionOk = null;
+                                            }
                                         } else {
-                                            _bitPositionOk = null;
+                                            // Retry times reaches max, stop the mission
+                                            TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+
+                                            // Show notice
+                                            WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToSetterSelectorMaxTimes}次，请检查任务及设备状态是否正常");
                                         }
                                     } else {
-                                        // Retry times reaches max, stop the mission
+                                        // Do not have any retry chance then terminate mission
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
-
-                                        // Show notice
-                                        WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToSetterSelectorMaxTimes}次，请检查任务及设备状态是否正常");
                                     }
-                                } else {
-                                    // Do not have any retry chance then terminate mission
-                                    TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                 }
+                            } else {
+                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
+                                RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
+                                _bitPositionOk = null;
                             }
-                        } else {
-                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorTimedOut);
-                            RemoveLockMsg(WorkingProcessPanel.LockedSetterSelectorNotMatched);
-                            _bitPositionOk = null;
                         }
-                    }
 
-                    await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                        await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
+                    } catch (OperationCanceledException ex) {
+                        logger.Info("IoBox task has been cancelled...", ex);
+                        break;
+                    }
                 }
             });
         }
@@ -2037,8 +2049,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
                     });
                 }
-            } catch (OperationCanceledException) {
-                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled");
+            } catch (OperationCanceledException ex) {
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);
             } catch (Exception ex) {
                 logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
                 this.SafeInvoke(() => {
@@ -2633,17 +2645,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 转换数据并更新UI（在UI线程）
                 BeginInvoke(() => {
                     try {
-                        logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
-                        OperationDataVO dataFormatted = new();
-                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                        Settings settings = ConfigUtils.LoadConfig<Settings>();
+                        if (settings.hide_loosening_data_in_workplace.ToYesOrNoBool() && operationDataDTO.result_type != (int) TightenOrLoosen.TIGHTENING) {
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Skip current data because do not want to show loosening data(id={operationDataDTO.id})...");
+                        } else {
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
+                            OperationDataVO dataFormatted = new();
+                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                        // 使用线程安全的ConcurrentBag
-                        _tighteningDataVOs.Add(dataFormatted);
-                        logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
+                            // 使用线程安全的ConcurrentBag
+                            _tighteningDataVOs.Add(dataFormatted);
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
 
-                        // 创建快照用于UI显示
-                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                        logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
+                            // 创建快照用于UI显示
+                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                            logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
+                        }
                     } catch (Exception e) {
                         logger.Error($"[Workplace:{taskName}] StoreTighteningDataInternal - Error in data conversion or UI update: {e}");
                     }

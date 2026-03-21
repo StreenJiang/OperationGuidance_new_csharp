@@ -31,6 +31,7 @@ namespace OperationGuidance_new.Configs.DTOs {
         public string auto_login_info { get; set; }
 
         public int reverse_arranger { get; set; }
+        public int hide_loosening_data_in_workplace { get; set; }
 
         public Settings() {
             resolution = "";
@@ -61,6 +62,7 @@ namespace OperationGuidance_new.Configs.DTOs {
             auto_login_info = "";
 
             reverse_arranger = YesOrNo.YES.ToInt();
+            hide_loosening_data_in_workplace = YesOrNo.NO.ToInt();
         }
 
         public string GetResolutionBySize(Size size) => $"{size.Width}, {size.Height}";

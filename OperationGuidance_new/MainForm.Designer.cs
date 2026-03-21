@@ -207,6 +207,7 @@ namespace OperationGuidance_new {
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
 
             // Init settings files
+            ConfigUtils.LoadConfig<Settings>();
             MainUtils.PlcConfig_GLB.Init();
             ConfigUtils.LoadConfig<SciiBatchConfig>();
 
