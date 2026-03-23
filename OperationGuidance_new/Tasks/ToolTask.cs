@@ -20,6 +20,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
+        private volatile bool _lockStatusSending = false;
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
@@ -131,8 +132,10 @@ namespace OperationGuidance_new.Tasks {
                                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
                                 }
                             }
-                            if (locked != null) {
-                                UpdateInternalLockState(locked.Value);
+                            if (locked != null && locked.HasValue) {
+                                if (locked.Value) {
+                                    UpdateInternalLockState(_lockStatusSending);
+                                }
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -149,9 +152,6 @@ namespace OperationGuidance_new.Tasks {
                                     _psetSentOk = pSetSendingOk.Value;
                                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
                                 }
-                            }
-                            if (locked != null) {
-                                UpdateInternalLockState(locked.Value);
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -475,6 +475,8 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformLock() {
+            _lockStatusSending = true; // About to lock
+
             if (_toolType is ToolPFSeries toolPF) {
                 SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
@@ -526,6 +528,8 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformUnlock() {
+            _lockStatusSending = false; // About to unlock
+
             if (_toolType is ToolPFSeries toolPF) {
                 SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
