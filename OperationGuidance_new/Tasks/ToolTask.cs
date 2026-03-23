@@ -63,16 +63,24 @@ namespace OperationGuidance_new.Tasks {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread started");
                 try {
                     while (Connected) {
-                        // Check if it's time to send heart beating command
-                        if (HeartBeatCounter >= HeartBeatDelay) {
-                            // Only check hart beat interval if heart beat command is not null
-                            if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
+                        // Only check hart beat interval if heart beat command is not null
+                        if (_toolType is ToolPFSeries toolPF && toolPF.COMMAND_HEART_ASCII != null) {
+                            // Check if it's time to send heart beating command
+                            if (HeartBeatCounter >= HeartBeatDelay) {
                                 // Send heart beat command to controller
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
                                 SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
+                                // Reset heart beat counter even no command has been sent
+                                HeartBeatCounter = 0;
                             }
-                            // Reset heart beat counter even no command has been sent
-                            HeartBeatCounter = 0;
+                        } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                            if (HeartBeatCounter >= toolFitFTC6.HEART_BEAT_PERIOD) {
+                                // Send heart beat command to controller
+                                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
+                                SendCommand(toolFitFTC6.GetHeartBeatCommand());
+                                // Reset heart beat counter even no command has been sent
+                                HeartBeatCounter = 0;
+                            }
                         }
 
                         // Check any message is waiting for receving
@@ -158,6 +166,29 @@ namespace OperationGuidance_new.Tasks {
                             }
                             if (curveReceived != null && curveReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received");
+                            }
+                        }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                    } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                        toolFitFTC6.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
+                            if (heartIsBeating != null) {
+                                if (!heartIsBeating.Value) {
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Heartbeat validation failed");
+                                    throw new Exception("Heart is not beating...");
+                                }
+                            }
+                            if (pSetSendingOk != null && _sendingPSet != -1) {
+                                if (pSetSendingOk.HasValue) {
+                                    _psetSentOk = pSetSendingOk.Value;
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
+                                }
+                            }
+                            if (locked != null && locked.HasValue) {
+                                if (locked.Value) {
+                                    UpdateInternalLockState(locked.Value);
+                                }
+                            }
+                            if (dataReceived != null && dataReceived.Value) {
+                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
                             }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else {
@@ -278,6 +309,13 @@ namespace OperationGuidance_new.Tasks {
                                 sendConnectMsgSuceess = true;
                                 dataEnableMsgSuccess = true;
                             }
+                        } else if (connectSuccess && _toolType is ToolFITFTC6 toolFitFTC6) {
+                            sendConnectMsgSuceess = true;
+
+                            SendMessageRecevingCount = 0;
+                            string? result = await SendAndReceiveOnlyForPreparingAsync(toolFitFTC6.COMMAND_DATA_SUBSCRIBE.GetMessage());
+                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data subscribe msg sent, result: {result}");
+                            dataEnableMsgSuccess = true;
                         } else {
                             sendConnectMsgSuceess = true;
                             dataEnableMsgSuccess = true;
@@ -313,9 +351,14 @@ namespace OperationGuidance_new.Tasks {
             }
 
             try {
-                byte[] data = _toolType is ToolSudongX7
-                                        ? MainUtils.ToBytes(command)
-                                        : Encoding.ASCII.GetBytes(command);
+                byte[] data;
+                if (_toolType is ToolPFSeries) {
+                    data = Encoding.ASCII.GetBytes(command);
+                } else if (_toolType is ToolSudongX7 || _toolType is ToolFITFTC6) {
+                    data = MainUtils.ToBytes(command);
+                } else {
+                    data = new byte[0];
+                }
 
                 int? num;
                 lock (SyncObject) {
@@ -340,13 +383,29 @@ namespace OperationGuidance_new.Tasks {
                     // Reset heart beat counter to prevent multiple response
                     HeartBeatCounter = 0;
 
+                    byte[] data;
+                    if (_toolType is ToolPFSeries) {
+                        data = Encoding.ASCII.GetBytes(command);
+                    } else if (_toolType is ToolSudongX7 || _toolType is ToolFITFTC6) {
+                        data = MainUtils.ToBytes(command);
+                    } else {
+                        data = new byte[0];
+                    }
+
                     // Send command to controller
-                    socketClient.Send(Encoding.ASCII.GetBytes(command));
+                    socketClient.Send(data);
 
                     // Receive data
                     byte[] msgBytes = new byte[1024 * 1024];
                     int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                    if (_toolType is ToolPFSeries) {
+                        result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                    } else if (_toolType is ToolFITFTC6) {
+                        result = Encoding.GetEncoding("GBK").GetString(msgBytes.Take(msgLen).ToArray());
+                    } else {
+                        result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+                    }
                     return result;
                 } catch (Exception e) {
                     logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Send/receive error", e);
@@ -391,6 +450,8 @@ namespace OperationGuidance_new.Tasks {
                         command = toolPF.GetPSetCommand(pSetNumber);
                     } else if (_toolType is ToolSudongX7 toolX7) {
                         command = toolX7.GetPSetCommand(pSetNumber);
+                    } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                        command = toolFitFTC6.GetPSetCommand(pSetNumber);
                     } else {
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                     }
@@ -487,6 +548,8 @@ namespace OperationGuidance_new.Tasks {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(true);
                 }
+            } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 return;
@@ -538,6 +601,8 @@ namespace OperationGuidance_new.Tasks {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(false);
                 }
+            } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
                 return;

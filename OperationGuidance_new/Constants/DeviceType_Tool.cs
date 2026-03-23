@@ -1,5 +1,7 @@
 using OperationGuidance_new.Utils;
+using System.Buffers.Binary;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
@@ -16,6 +18,7 @@ namespace OperationGuidance_new.Constants {
         public static ToolPF4000 PF4000 { get; } = AddNew<ToolPF4000>();
         public static ToolPF6000OP PF6000_OP { get; } = AddNew<ToolPF6000OP>();
         public static ToolSudongX7 SudongX7 { get; } = AddNew<ToolSudongX7>();
+        public static ToolFITFTC6 FIT_FTC6 { get; } = AddNew<ToolFITFTC6>();
 
         public static DeviceTypeTool GetById(int id) {
             foreach (DeviceTypeTool type in Elements) {
@@ -499,5 +502,170 @@ namespace OperationGuidance_new.Constants {
             }
             return head;
         }
+    }
+
+    public abstract class ToolFIT: DeviceTypeTool {
+        public readonly int HEART_BEAT_PERIOD = 20000;
+        public Command COMMAND_DATA_SUBSCRIBE = new("AA550501001D55AA");
+        public Command COMMAND_HEART_BEAT = new("AA55070400{0}55AA");
+
+        public ToolFIT(int id, string name) : base(id, name) {
+            logger = MainUtils.GetLogger(GetType());
+            COMMAND_LOCK_ASCII = new("AA550201000055AA");
+            COMMAND_UNLOCK_ASCII = new("AA550201000155AA");
+            COMMAND_PSET_ASCII = new("AA55010100{0}55AA");
+        }
+
+        public override string GetPSetCommand(int pSetNumber) {
+            string hexPSet = MainUtils.ToHexString1(pSetNumber);
+            return COMMAND_PSET_ASCII.GetMessage(hexPSet);
+        }
+
+        public string GetHeartBeatCommand() {
+            byte[] bytes = TimestampHelper.ToBytes(DateTime.Now);
+            string hexTimestamp = BitConverter.ToString(bytes).Replace("-", "");
+            logger.Info($"Generating heart beat command:{bytes}, hex:{hexTimestamp}, time:{TimestampHelper.ToDateTime(bytes)}");
+            return COMMAND_HEART_BEAT.GetMessage(hexTimestamp);
+        }
+
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+            string dataMessage;
+            if (!_checkHeadOk(msgBytes)) {
+                dataMessage = Encoding.GetEncoding("GBK").GetString(msgBytes);
+            } else {
+                dataMessage = MainUtils.ToHexString(msgBytes);
+            }
+            logger.Info($"dataMessage = {dataMessage}");
+
+            NewToolCmd cmd = (NewToolCmd) msgBytes[2];
+            logger.Info($"Command type:{cmd}");
+
+            switch (cmd) {
+                case NewToolCmd.HEART_BEAT_RSP:
+                    // 请求时间戳（第6-9字节）
+                    byte[] requestBytes = new byte[4];
+                    Array.Copy(msgBytes, 5, requestBytes, 0, 4);
+                    DateTime reqTime = TimestampHelper.ToDateTime(requestBytes);
+
+                    // 控制器时间戳（第10-13字节）
+                    byte[] controllerBytes = new byte[4];
+                    Array.Copy(msgBytes, 9, controllerBytes, 0, 4);
+                    DateTime rspTime = TimestampHelper.ToDateTime(controllerBytes);
+
+                    logger.Info($"Heart beating for {this.Name} at {reqTime}(reqTime) and {rspTime}(rspTime)");
+                    toolAction(true, null, null, null, null);
+                    break;
+                case NewToolCmd.FINAL_DATA:
+                    toolAction(null, null, null, true, null);
+                    if (actionAfterAnalysis != null) {
+                        if (deviceId == null) {
+                            string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
+                            logger.Error(errorMsg);
+                            throw new NullReferenceException(errorMsg);
+                        }
+
+                        int offset = 5; // 帧头(2) + 命令字(1) + 长度(2)
+
+                        var tighteningData = new TighteningData();
+
+                        // 1. 数据长度（2字节，小端）- 用于验证
+                        ushort dataLength = (ushort) (msgBytes[offset] | (msgBytes[offset + 1] << 8));
+                        offset += 2;
+
+                        // 2. 拧紧ID (4字节，小端)
+                        // tighteningData.TighteningId = (uint) (data[offset] |
+                        //                              (data[offset + 1] << 8) |
+                        //                              (data[offset + 2] << 16) |
+                        //                              (data[offset + 3] << 24));
+                        offset += 4;
+
+                        // 3. 状态 (1字节)
+                        if (msgBytes[offset] == 1) {
+                            tighteningData.result_type = (int) TighteningStatus.OK;
+                        } else {
+                            tighteningData.result_type = (int) TighteningStatus.NG;
+                        }
+                        offset += 1;
+
+                        // 4. 程序号 (1字节)
+                        tighteningData.parameter_set_number = msgBytes[offset];
+                        offset += 1;
+
+                        // 5. 条码长度 (1字节)
+                        byte barcodeLength = msgBytes[offset];
+                        offset += 1;
+
+                        // 6. 条码内容 (N字节，GBK编码)
+                        tighteningData.vin_number = Encoding.GetEncoding("GBK").GetString(msgBytes, offset, barcodeLength);
+                        offset += barcodeLength;
+
+                        // 7. 扭矩 (4字节，IEEE 754 Float，小端)
+                        byte[] torqueBytes = new byte[4];
+                        Array.Copy(msgBytes, offset, torqueBytes, 0, 4);
+                        tighteningData.torque = BitConverter.ToSingle(torqueBytes, 0);
+                        offset += 4;
+
+                        // 8. 角度 (4字节，IEEE 754 Float，小端)
+                        byte[] angleBytes = new byte[4];
+                        Array.Copy(msgBytes, offset, angleBytes, 0, 4);
+                        tighteningData.angle = (int) BitConverter.ToSingle(angleBytes, 0);
+                        offset += 4;
+
+                        // 9. 时间戳 (7字节，BCD码)
+                        tighteningData.timestamp = ParseBcdTimestamp(msgBytes, offset).ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+                        offset += 7;
+
+                        // 验证帧尾
+                        // if (data[offset] != 0x55 || data[offset + 1] != 0xAA) {
+                        //     throw new ArgumentException("Invalid frame tail");
+                        // }
+
+                        actionAfterAnalysis(tighteningData, deviceId.Value);
+                    }
+                    break;
+                default:
+                    string pattern = @"^\[PSET (\d+)\] Succeeded to send file , ret = 0$";
+                    if (dataMessage.Contains("Signal 1, ret = 0") || dataMessage.Contains("Signal 0, ret = 0")) {
+                        logger.Info($"Lock ok for {this.Name}...");
+                        toolAction(null, null, true, null, null);
+                    } else if (Regex.IsMatch(dataMessage, pattern)) {
+                        logger.Info($"Pset sending ok for {this.Name}...");
+                        toolAction(null, true, null, null, null);
+                    }
+                    break;
+            }
+
+            bool _checkHeadOk(byte[] data) {
+                if (data.Length >= 2 && data[0] == 0xAA && data[1] == 0x55) {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 解析BCD时间戳
+        /// 格式：YY(高两位) YY(低两位) MM DD HH MM SS
+        /// </summary>
+        private static DateTime ParseBcdTimestamp(byte[] data, int offset) {
+            // BCD码转十进制辅助函数
+            byte BcdToByte(byte bcd) => (byte) ((bcd >> 4) * 10 + (bcd & 0x0F));
+
+            byte yearHigh = BcdToByte(data[offset]);     // YY高两位
+            byte yearLow = BcdToByte(data[offset + 1]);  // YY低两位
+            byte month = BcdToByte(data[offset + 2]);    // MM
+            byte day = BcdToByte(data[offset + 3]);      // DD
+            byte hour = BcdToByte(data[offset + 4]);     // HH
+            byte minute = BcdToByte(data[offset + 5]);   // MM
+            byte second = BcdToByte(data[offset + 6]);   // SS
+
+            int year = yearHigh * 100 + yearLow;
+
+            return new DateTime(year, month, day, hour, minute, second);
+        }
+    }
+
+    public class ToolFITFTC6: ToolFIT {
+        public ToolFITFTC6() : base(4, "FIT_FTC6") { }
     }
 }
