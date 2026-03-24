@@ -1932,6 +1932,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value;
+            _toolTasks[toolId].ResetCachedPSet(); // Clear cached pset after new mission activated
             boltButton.CurrentParameterSet = null;
 
             // Tell working proccess panel what serial number is currently
@@ -2048,6 +2049,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         // 显示一次性警告（不阻塞）
                         WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
                     });
+
+                    task.ResetCachedPSet(); // Clear cached pset every time when sending pset failed
                 }
             } catch (OperationCanceledException ex) {
                 logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);

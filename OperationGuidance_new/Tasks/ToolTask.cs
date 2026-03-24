@@ -442,6 +442,11 @@ namespace OperationGuidance_new.Tasks {
             return false;
         }
 
+        public void ResetCachedPSet() {
+            logger.Debug($"[TOOL:{_device_name}] Resetting cached PSet from {_currentPSet} to -1");
+            _currentPSet = -1;
+        }
+
         public void SendLock() {
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
