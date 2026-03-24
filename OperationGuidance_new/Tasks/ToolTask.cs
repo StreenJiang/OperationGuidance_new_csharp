@@ -33,7 +33,7 @@ namespace OperationGuidance_new.Tasks {
         private long _lastLockTimestamp = 0;
         private long _lastUnlockTimestamp = 0;
         private Action<TighteningData, int>? _actionAfterAnalysis;
-        private Action<CurveDataTemp, int>? _actionAfterCurveDataReceived;
+        private Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived;
         #endregion
 
         #region Properties
@@ -45,7 +45,7 @@ namespace OperationGuidance_new.Tasks {
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
         public Action<TighteningData, int>? ActionAfterAnalysis { get => _actionAfterAnalysis; set => _actionAfterAnalysis = value; }
-        public Action<CurveDataTemp, int>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
+        public Func<CurveDataTemp, int, Task>? ActionAfterCurveDataReceived { get => _actionAfterCurveDataReceived; set => _actionAfterCurveDataReceived = value; }
         #endregion
 
         #region Constructors

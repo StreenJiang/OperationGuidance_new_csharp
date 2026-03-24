@@ -834,7 +834,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     ToolTask toolTask = pair.Value;
                     // 绑定数据处理代理
                     toolTask.ActionAfterAnalysis = DoAfterRecevingTighteningDataAsync;
-                    if (toolTask.ToolType is ToolPFSeries) {
+                    if (toolTask.ToolType is ToolPFSeries || toolTask.ToolType is ToolFIT) {
                         toolTask.ActionAfterCurveDataReceived = DoAfterRecevingCurveDataAsync;
                     }
                     if (MainUtils.IsAutoLockToolEnabled()) {
@@ -2582,7 +2582,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             });
         }
-        protected virtual async void DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
+        protected virtual async Task DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, time_stamp={data.time_stamp}, result_data_identifier={data.result_data_identifier}, data_type={data.data_type}");
 
@@ -2593,7 +2593,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         int count = 0;
                         logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
                         while (currentOperationData == null && count < max) {
-                            await Task.Delay(100);
+                            await Task.Delay(200);
                             count++;
                         }
                         logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
@@ -2889,9 +2889,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _barCodeObj.Reset();
             _ruleIdsCheckedCached = null;
             _isRedo = (int) YesOrNo.NO;
-
-            // Reset current operation data
-            currentOperationData = null;
 
             // If it's not challenge mission, then check auto activation logic
             if (_mission.is_challenge_mission != (int) YesOrNo.YES
