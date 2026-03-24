@@ -184,7 +184,7 @@ namespace OperationGuidance_new.Tasks {
                             }
                             if (locked != null && locked.HasValue) {
                                 if (locked.Value) {
-                                    UpdateInternalLockState(locked.Value);
+                                    UpdateInternalLockState(_lockStatusSending);
                                 }
                             }
                             if (dataReceived != null && dataReceived.Value) {
