@@ -12,6 +12,7 @@ namespace OperationGuidance_new.Tasks {
 
         #region Fields
         private static readonly object SyncObject = new();
+        private static readonly object LockSyncObject = new();
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
@@ -499,33 +500,37 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void SendLock() {
-            if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
-                return;
-            }
+            lock (LockSyncObject) {
+                if (!Connected) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
+                    return;
+                }
 
-            // 检查是否在lock冷却期内
-            if (IsInCooldown(Volatile.Read(ref _lastLockTimestamp))) {
-                return;
-            }
+                // 检查是否在lock冷却期内
+                if (IsInCooldown(Volatile.Read(ref _lastLockTimestamp))) {
+                    return;
+                }
 
-            // 检查当前状态是否允许lock操作
-            if (_locked) {
-                return;
-            }
+                // 检查当前状态是否允许lock操作
+                if (_locked) {
+                    return;
+                }
 
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
-            PerformLock();
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
+                PerformLock();
+            }
         }
 
         public void ForceSendLock() {
-            if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock failed - not connected");
-                return;
-            }
+            lock (LockSyncObject) {
+                if (!Connected) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force lock failed - not connected");
+                    return;
+                }
 
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
-            PerformLock();
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
+                PerformLock();
+            }
         }
 
         private void PerformLock() {
@@ -550,33 +555,37 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public void SendUnlock() {
-            if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
-                return;
-            }
+            lock (LockSyncObject) {
+                if (!Connected) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
+                    return;
+                }
 
-            // 检查是否在unlock冷却期内
-            if (IsInCooldown(Volatile.Read(ref _lastUnlockTimestamp))) {
-                return;
-            }
+                // 检查是否在unlock冷却期内
+                if (IsInCooldown(Volatile.Read(ref _lastUnlockTimestamp))) {
+                    return;
+                }
 
-            // 检查当前状态是否允许unlock操作
-            if (!_locked) {
-                return;
-            }
+                // 检查当前状态是否允许unlock操作
+                if (!_locked) {
+                    return;
+                }
 
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
-            PerformUnlock();
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
+                PerformUnlock();
+            }
         }
 
         public void ForceSendUnlock() {
-            if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
-                return;
-            }
+            lock (LockSyncObject) {
+                if (!Connected) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlock failed - not connected");
+                    return;
+                }
 
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
-            PerformUnlock();
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
+                PerformUnlock();
+            }
         }
 
         private void PerformUnlock() {
