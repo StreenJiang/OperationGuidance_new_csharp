@@ -2587,36 +2587,34 @@ namespace OperationGuidance_new.Views.AbstractViews {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, time_stamp={data.time_stamp}, result_data_identifier={data.result_data_identifier}, data_type={data.data_type}");
 
-            await Task.Run(() => {
-                this.SafeInvoke(async () => {
-                    try {
-                        int max = 50;
-                        int count = 0;
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
-                        while (currentOperationData == null && count < max) {
-                            await Task.Delay(200);
-                            count++;
-                        }
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
-
-                        if (currentOperationData != null) {
-                            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Converting CurveDataTemp to CurveDataDTO");
-                            CurveDataDTO dataDTO = new();
-                            CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
-
-                            dataDTO.operation_data_id = currentOperationData.id;
-                            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Storing curve data, operation_data_id={currentOperationData.id}");
-                            _apis.AddOrUpdateCurveData(new(dataDTO));
-                            logger.Info($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Curve data stored successfully");
-                        } else {
-                            string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
-                            logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - {errorMsg}");
-                            throw new System.IO.InvalidDataException(errorMsg);
-                        }
-                    } catch (Exception e) {
-                        logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Error occurred while handling curve data, e: {e}");
+            await Task.Run(async () => {
+                try {
+                    int max = 50;
+                    int count = 0;
+                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
+                    while (currentOperationData == null && count < max) {
+                        await Task.Delay(200);
+                        count++;
                     }
-                });
+                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
+
+                    if (currentOperationData != null) {
+                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Converting CurveDataTemp to CurveDataDTO");
+                        CurveDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
+
+                        dataDTO.operation_data_id = currentOperationData.id;
+                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Storing curve data, operation_data_id={currentOperationData.id}");
+                        _apis.AddOrUpdateCurveData(new(dataDTO));
+                        logger.Info($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Curve data stored successfully");
+                    } else {
+                        string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
+                        logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - {errorMsg}");
+                        throw new System.IO.InvalidDataException(errorMsg);
+                    }
+                } catch (Exception e) {
+                    logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Error occurred while handling curve data, e: {e}");
+                }
             });
         }
 

@@ -1,12 +1,11 @@
-﻿using System.Drawing.Drawing2D;
-using System.Threading.Tasks;
-using CustomLibrary.Buttons;
+﻿using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
 using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using log4net;
+using System.Drawing.Drawing2D;
 
 namespace CustomLibrary.Forms {
 

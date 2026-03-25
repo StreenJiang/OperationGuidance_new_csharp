@@ -180,9 +180,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                             if (locked != null && locked.HasValue) {
-                                if (locked.Value) {
-                                    UpdateInternalLockState(_lockStatusSending);
-                                }
+                                UpdateInternalLockState(locked.Value);
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");

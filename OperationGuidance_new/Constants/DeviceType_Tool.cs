@@ -662,7 +662,10 @@ namespace OperationGuidance_new.Constants {
                             break;
                         default:
                             string pattern = @"^\[PSET (\d+)\] Succeeded to send file , ret = 0$";
-                            if (dataMessage.Contains("Signal 1, ret = 0") || dataMessage.Contains("Signal 0, ret = 0")) {
+                            if (dataMessage.Contains("Signal 1, ret = 0")) {
+                                logger.Info($"Unlock ok for {this.Name}...");
+                                toolAction(null, null, false, null, null);
+                            } else if (dataMessage.Contains("Signal 0, ret = 0")) {
                                 logger.Info($"Lock ok for {this.Name}...");
                                 toolAction(null, null, true, null, null);
                             } else if (Regex.IsMatch(dataMessage, pattern)) {
