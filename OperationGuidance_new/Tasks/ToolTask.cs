@@ -20,7 +20,6 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
-        private volatile bool _lockStatusSending = false;
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
@@ -133,9 +132,7 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                             if (locked != null && locked.HasValue) {
-                                if (locked.Value) {
-                                    UpdateInternalLockState(_lockStatusSending);
-                                }
+                                UpdateInternalLockState(locked.Value);
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -442,11 +439,6 @@ namespace OperationGuidance_new.Tasks {
             return false;
         }
 
-        public void ResetCachedPSet() {
-            logger.Debug($"[TOOL:{_device_name}] Resetting cached PSet from {_currentPSet} to -1");
-            _currentPSet = -1;
-        }
-
         public void SendLock() {
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
@@ -454,14 +446,12 @@ namespace OperationGuidance_new.Tasks {
             }
 
             // 检查是否在lock冷却期内
-            if (IsInCooldown(_lastLockTimestamp)) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock skipped - in cooldown period (last lock: {DateTimeOffset.FromUnixTimeMilliseconds(Volatile.Read(ref _lastLockTimestamp))})");
+            if (IsInCooldown(Volatile.Read(ref _lastLockTimestamp))) {
                 return;
             }
 
             // 检查当前状态是否允许lock操作
             if (_locked) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock skipped - already locked");
                 return;
             }
 
@@ -480,8 +470,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformLock() {
-            _lockStatusSending = true; // About to lock
-
             if (_toolType is ToolPFSeries toolPF) {
                 SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
@@ -507,14 +495,12 @@ namespace OperationGuidance_new.Tasks {
             }
 
             // 检查是否在unlock冷却期内
-            if (IsInCooldown(_lastUnlockTimestamp)) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skipped - in cooldown period (last unlock: {DateTimeOffset.FromUnixTimeMilliseconds(Volatile.Read(ref _lastUnlockTimestamp))})");
+            if (IsInCooldown(Volatile.Read(ref _lastUnlockTimestamp))) {
                 return;
             }
 
             // 检查当前状态是否允许unlock操作
             if (!_locked) {
-                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skipped - already unlocked");
                 return;
             }
 
@@ -533,8 +519,6 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformUnlock() {
-            _lockStatusSending = false; // About to unlock
-
             if (_toolType is ToolPFSeries toolPF) {
                 SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
