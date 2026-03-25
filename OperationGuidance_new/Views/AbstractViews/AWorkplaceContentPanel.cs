@@ -1932,20 +1932,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value;
-            _toolTasks[toolId].ResetCachedPSet(); // Clear cached pset after new mission activated
-            boltButton.CurrentParameterSet = null;
 
             // Tell working proccess panel what serial number is currently
             _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
 
-            // Send pset of current working bolt to controller
-            _ = Task.Run(async () => {
-                try {
-                    await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
-                } catch (Exception ex) {
-                    logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
-                }
-            });
+            if (boltDTO.parameters_set != boltButton.CurrentParameterSet) {
+                boltButton.CurrentParameterSet = null;
+
+                // Send pset of current working bolt to controller
+                _ = Task.Run(async () => {
+                    try {
+                        await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+                    } catch (Exception ex) {
+                        logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
+                    }
+                });
+            } else {
+                logger.Info($"Same pset as previous={boltButton.CurrentParameterSet}, so skip for this bolt...");
+            }
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
@@ -1972,9 +1976,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
             logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} start ......");
 
+            string lockFailedMsg = string.Format(WorkingProcessPanel.LockedPsetFailed, pset);
+
             try {
                 // 直接在UI线程启动异步操作，避免Task.Run包装
-                BeginInvoke(() => {
+                this.SafeInvoke(() => {
                     _pset.SetValue(0, null);
                 });
 
@@ -1991,7 +1997,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // === 保持原有null检查逻辑 ===
                 if (pset == null) {
-                    BeginInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
+                    this.SafeInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
                     return;
                 }
 
@@ -2012,7 +2018,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         () => {
                             this.SafeInvoke(() => {
                                 // === 下发成功 ===
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
+                                RemoveLockMsg(lockFailedMsg);
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
                                 boltButton.CurrentParameterSet = pset;
                                 _pset.SetValue(0, $"程序号 {pset} (发送成功)");
@@ -2023,9 +2029,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             // === 每次失败时更新UI（但不阻塞） ===
                             this.SafeInvoke(() => {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                _pset.SetValue(0, $"程序号[{pset}]下发失败，正在重试...");
-                                logger.Info($"【工作台】程序号[{pset}]下发失败，正在重试...");
+                                AddLockMsg(lockFailedMsg);
+                                _pset.SetValue(0, $"程序号[{pset}]下发失败...");
+                                logger.Info($"【工作台】程序号[{pset}]下发失败...");
                             });
                         },
                         _activeMissionCts.Token);
@@ -2037,20 +2043,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // === 失败后处理（无对话框，改为状态提示） ===
                 if (!success && boltButton.CurrentParameterSet == null) {
-                    BeginInvoke(() => {
-                        // 移除失败锁定状态
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                    AddLockMsg(lockFailedMsg);
 
-                        // 添加失败状态提示（但不阻塞）
-                        AddLockMsg(string.Format(WorkingProcessPanel.LockedPsetFailed, pset));
+                    logger.Info($"程序号 {pset} 下发失败，添加阻塞失败提示");
+
+                    this.SafeInvoke(() => {
                         _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
-
-                        // 显示一次性警告（不阻塞）
                         WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
                     });
-
-                    task.ResetCachedPSet(); // Clear cached pset every time when sending pset failed
                 }
             } catch (OperationCanceledException ex) {
                 logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);
