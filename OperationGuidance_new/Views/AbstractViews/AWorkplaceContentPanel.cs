@@ -2587,7 +2587,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, time_stamp={data.time_stamp}, result_data_identifier={data.result_data_identifier}, data_type={data.data_type}");
 
             await Task.Run(() => {
-                BeginInvoke(async () => {
+                this.SafeInvoke(async () => {
                     try {
                         int max = 50;
                         int count = 0;

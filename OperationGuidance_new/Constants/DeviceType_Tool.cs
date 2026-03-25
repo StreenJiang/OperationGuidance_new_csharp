@@ -657,7 +657,7 @@ namespace OperationGuidance_new.Constants {
                                 _ = _onCompleteCurveReceived(completeCurve);
                             } else {
                                 // 还在接收中
-                                logger.Debug("接收中...")
+                                logger.Debug("接收中...");
                             }
                             break;
                         default:
@@ -715,37 +715,30 @@ namespace OperationGuidance_new.Constants {
             while (i < data.Length) {
                 // 检测是否是 AA55 开头的协议数据
                 if (i + 1 < data.Length && data[i] == 0xAA && data[i + 1] == 0x55) {
-                    // 寻找 55AA 结尾
-                    int endIndex = -1;
-                    for (int j = i + 2; j < data.Length - 1; j++) {
-                        if (data[j] == 0x55 && data[j + 1] == 0xAA) {
-                            endIndex = j + 2; // 包含 55AA
-                            break;
+                    // 需要至少 5 字节：AA55(2) + cmd(1) + len(2)
+                    if (i + 5 <= data.Length) {
+                        byte cmd = data[i + 2];
+                        int length = data[i + 3] | (data[i + 4] << 8); // 小端序
+                        int contentStart = i + 5;
+                        int totalLen = 5 + length + 2; // AA55 + cmd + len + content + 55AA
+
+                        // 检查内容区域和结尾 55AA 是否完整
+                        if (contentStart + length + 2 <= data.Length &&
+                            data[contentStart + length] == 0x55 &&
+                            data[contentStart + length + 1] == 0xAA) {
+                            // 完整包
+                            byte[] packet = new byte[totalLen];
+                            Array.Copy(data, i, packet, 0, totalLen);
+                            result.Add(packet);
+                            i += totalLen;
+                            continue;
                         }
                     }
 
-                    if (endIndex != -1) {
-                        // 找到完整包
-                        int packetLength = endIndex - i;
-                        byte[] packet = new byte[packetLength];
-                        Array.Copy(data, i, packet, 0, packetLength);
-                        result.Add(packet);
-                        i = endIndex;
-                    } else {
-                        // 未找到结尾，剩余数据可能是未完成的包或字符串
-                        // 将剩余所有数据作为一个字符串数据包
-                        if (i < data.Length) {
-                            byte[] remaining = new byte[data.Length - i];
-                            Array.Copy(data, i, remaining, 0, remaining.Length);
-                            result.Add(remaining);
-                        }
-                        break;
-                    }
-                } else {
-                    // 非 AA55 开头，作为字符串数据处理
-                    // 寻找下一个 AA55 或到数据末尾
+                    // 解析失败：将当前 AA55 视为普通数据的一部分，按字符串数据包处理
+                    // 寻找下一个 AA55 作为分割点
                     int nextProtocolIndex = -1;
-                    for (int j = i; j < data.Length - 1; j++) {
+                    for (int j = i + 2; j < data.Length - 1; j++) {
                         if (data[j] == 0xAA && data[j + 1] == 0x55) {
                             nextProtocolIndex = j;
                             break;
@@ -753,7 +746,7 @@ namespace OperationGuidance_new.Constants {
                     }
 
                     if (nextProtocolIndex != -1) {
-                        // 提取字符串数据
+                        // 提取从 i 到下一个 AA55 之间的数据作为字符串包
                         int stringLength = nextProtocolIndex - i;
                         if (stringLength > 0) {
                             byte[] stringData = new byte[stringLength];
@@ -763,6 +756,32 @@ namespace OperationGuidance_new.Constants {
                         i = nextProtocolIndex;
                     } else {
                         // 剩余全是字符串数据
+                        if (i < data.Length) {
+                            byte[] stringData = new byte[data.Length - i];
+                            Array.Copy(data, i, stringData, 0, stringData.Length);
+                            result.Add(stringData);
+                        }
+                        break;
+                    }
+                } else {
+                    // 非 AA55 开头，作为字符串数据处理
+                    int nextProtocolIndex = -1;
+                    for (int j = i; j < data.Length - 1; j++) {
+                        if (data[j] == 0xAA && data[j + 1] == 0x55) {
+                            nextProtocolIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (nextProtocolIndex != -1) {
+                        int stringLength = nextProtocolIndex - i;
+                        if (stringLength > 0) {
+                            byte[] stringData = new byte[stringLength];
+                            Array.Copy(data, i, stringData, 0, stringLength);
+                            result.Add(stringData);
+                        }
+                        i = nextProtocolIndex;
+                    } else {
                         if (i < data.Length) {
                             byte[] stringData = new byte[data.Length - i];
                             Array.Copy(data, i, stringData, 0, stringData.Length);
