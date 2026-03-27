@@ -547,11 +547,11 @@ namespace OperationGuidance_new.Constants {
                     }
                     logger.Info($"Handling dataMessage = {dataMessage}");
 
-                    NewToolCmd cmd = (NewToolCmd) data[2];
+                    FitCommandType cmd = (FitCommandType) data[2];
                     logger.Info($"Command type: {cmd}");
 
                     switch (cmd) {
-                        case NewToolCmd.HEART_BEAT_RSP:
+                        case FitCommandType.HEART_BEAT_RSP:
                             // 请求时间戳（第6-9字节）
                             byte[] requestBytes = new byte[4];
                             Array.Copy(data, 5, requestBytes, 0, 4);
@@ -565,7 +565,7 @@ namespace OperationGuidance_new.Constants {
                             logger.Info($"Heart beating for {this.Name} at {reqTime}(reqTime) and {rspTime}(rspTime)");
                             toolAction(true, null, null, null, null);
                             break;
-                        case NewToolCmd.FINAL_DATA:
+                        case FitCommandType.FINAL_DATA:
                             toolAction(null, null, null, true, null);
                             if (actionAfterAnalysis != null) {
                                 if (deviceId == null) {
@@ -649,7 +649,7 @@ namespace OperationGuidance_new.Constants {
                                 actionAfterAnalysis(tighteningData, deviceId.Value);
                             }
                             break;
-                        case NewToolCmd.CURVE_DATA:
+                        case FitCommandType.CURVE_DATA:
                             var completeCurve = _reassembler.ProcessReceivedData(data);
 
                             if (completeCurve != null) {
@@ -660,18 +660,18 @@ namespace OperationGuidance_new.Constants {
                                 logger.Debug("接收中...");
                             }
                             break;
+                        case FitCommandType.LOCK:
+                            byte result_lock = data[5];
+                            logger.Debug($"Locking result={result_lock == 0}");
+                            toolAction(null, null, result_lock == 0, null, null);
+                            break;
+                        case FitCommandType.PESET:
+                            byte result_pset = data[5];
+                            logger.Debug($"PSet result={result_pset == 0}");
+                            toolAction(null, true, null, null, null);
+                            break;
                         default:
-                            string pattern = @"^\[PSET (\d+)\] Succeeded to send file , ret = 0$";
-                            if (dataMessage.Contains("Signal 1, ret = 0")) {
-                                logger.Info($"Unlock ok for {this.Name}...");
-                                toolAction(null, null, false, null, null);
-                            } else if (dataMessage.Contains("Signal 0, ret = 0")) {
-                                logger.Info($"Lock ok for {this.Name}...");
-                                toolAction(null, null, true, null, null);
-                            } else if (Regex.IsMatch(dataMessage, pattern)) {
-                                logger.Info($"Pset sending ok for {this.Name}...");
-                                toolAction(null, true, null, null, null);
-                            }
+                            logger.Info($"Current command[{cmd}] is not handled...");
                             break;
                     }
                 } catch (Exception ex) {

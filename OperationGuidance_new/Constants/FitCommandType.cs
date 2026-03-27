@@ -1,5 +1,5 @@
 namespace OperationGuidance_new.Constants {
-    public enum NewToolCmd {
+    public enum FitCommandType {
         PESET = 0x01,
         LOCK = 0x02,
         START = 0x03,

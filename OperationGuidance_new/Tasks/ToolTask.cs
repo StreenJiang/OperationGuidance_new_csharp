@@ -21,6 +21,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
         private volatile bool _locked = false;
+        private volatile bool _lockStatusSending = false;
         private readonly object _pSetLock = new object();
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
@@ -181,7 +182,9 @@ namespace OperationGuidance_new.Tasks {
                                 }
                             }
                             if (locked != null && locked.HasValue) {
-                                UpdateInternalLockState(locked.Value);
+                                if (locked.Value) {
+                                    UpdateInternalLockState(_lockStatusSending);
+                                }
                             }
                             if (dataReceived != null && dataReceived.Value) {
                                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
@@ -547,6 +550,7 @@ namespace OperationGuidance_new.Tasks {
                     UpdateInternalLockState(true);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                _lockStatusSending = true;
                 SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
@@ -602,6 +606,7 @@ namespace OperationGuidance_new.Tasks {
                     UpdateInternalLockState(false);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                _lockStatusSending = false;
                 SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
