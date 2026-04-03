@@ -210,6 +210,10 @@ namespace OperationGuidance_new.Tasks {
 
             CloseConnectionManually = true;
         }
+        public void CloseToTriggerReconnection() {
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection to trigger reconnection...");
+            socketClient?.Close();
+        }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;
         #endregion
@@ -425,6 +429,8 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         isSuccess = false;
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send failed");
+
+                        CloseToTriggerReconnection();
                     }
 
                     return isSuccess;

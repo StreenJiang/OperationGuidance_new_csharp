@@ -202,26 +202,6 @@ namespace OperationGuidance_new.Views {
                         Modified = true;
                     }
                 };
-                // // PN码输入框
-                // _missionPnCode = new("PN码") {
-                //     Parent = _top,
-                //     BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                //     ForeColor = ColorConfigs.COLOR_TEXT_BOX_FOREGROUND,
-                //     BoxBackColor = ColorConfigs.COLOR_TEXT_BOX_BACKGROUND,
-                //     BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-                //     NameAlignment = HorizontalAlignment.Left,
-                //     NumberOnly = true,
-                //     Visible = false,
-                // };
-                // CustomTextBox missionPnCodeBox = _missionPnCode.GetTextBox(0);
-                // missionPnCodeBox.Text = _missionDTO.pn_code;
-                // missionPnCodeBox.SizeChanged += (sender, eventArgs) => missionPnCodeBox.Box.SelectionStart = 0;
-                // missionPnCodeBox.TextChanged += (sender, eventArgs) => {
-                //     if (!_missionPnCode.HasError) {
-                //         _missionDTO.pn_code = missionPnCodeBox.Text;
-                //         Modified = true;
-                //     }
-                // };
 
                 _buttonsOuter = new() {
                     Parent = _top,
@@ -250,11 +230,35 @@ namespace OperationGuidance_new.Views {
                             warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
                         }
 
+                        string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
+                        if (string.IsNullOrEmpty(maxNGNum)) {
+                            check = false;
+                            _detialPopUpForm.MaxNGNum.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 最大NG数不能为空\r\n";
+                        }
+
+                        string passwordNeedTime = _detialPopUpForm.PasswordNeedTime.GetTextBox(0).Box.Text;
+                        if (string.IsNullOrEmpty(passwordNeedTime)) {
+                            check = false;
+                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 第几次起需密码不能为空\r\n";
+                        }
+
+                        int int_maxNGNum = int.Parse(maxNGNum);
+                        int int_passwordNeedTime = int.Parse(passwordNeedTime);
+                        if (int_maxNGNum > 0 && int_passwordNeedTime >= int_maxNGNum) {
+                            check = false;
+                            _detialPopUpForm.PasswordNeedTime.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
+                        }
+
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                         } else {
                             _missionName.SetValue(0, missionName);
                             _missionDTO.name = missionName;
+                            _missionDTO.max_ng_num = int.Parse(maxNGNum);
+                            _missionDTO.password_need_time = int.Parse(passwordNeedTime);
                             if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
                                 _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
                             } else {
@@ -1360,6 +1364,8 @@ namespace OperationGuidance_new.Views {
             private CustomComboBoxGroup<int> _predecessorMission;
             private CustomTextBoxGroup _productsBarCodeNum;
             private CustomTextBoxGroup _partsBarCodeNum;
+            private CustomTextBoxGroup _maxNGNum;
+            private CustomTextBoxGroup _passwordNeedTime;
 
             public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
@@ -1367,6 +1373,8 @@ namespace OperationGuidance_new.Views {
             public CustomComboBoxGroup<int> PredecessorMission { get => _predecessorMission; set => _predecessorMission = value; }
             public CustomTextBoxGroup ProductsBarCodeNum { get => _productsBarCodeNum; set => _productsBarCodeNum = value; }
             public CustomTextBoxGroup PartsBarCodeNum { get => _partsBarCodeNum; set => _partsBarCodeNum = value; }
+            public CustomTextBoxGroup MaxNGNum { get => _maxNGNum; set => _maxNGNum = value; }
+            public CustomTextBoxGroup PasswordNeedTime { get => _passwordNeedTime; set => _passwordNeedTime = value; }
 
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO,
                     List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs) {
@@ -1401,6 +1409,18 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
                 };
+                _maxNGNum = new("最大NG数") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    PositiveIntOnly = true,
+                };
+                _passwordNeedTime = new("第几次起需密码") {
+                    Parent = _tablePanel,
+                    Ratio = 6.75,
+                    NameAlignment = HorizontalAlignment.Right,
+                    PositiveIntOnly = true,
+                };
 
                 // 数据回填
                 _missionName.SetValue(0, missionDTO.name);
@@ -1418,6 +1438,8 @@ namespace OperationGuidance_new.Views {
                 }
                 _productsBarCodeNum.SetValue(0, productsBarCodeNum > 0 ? "已配置" : "未配置");
                 _partsBarCodeNum.SetValue(0, partsBarCodeNum > 0 ? $"已配置{partsBarCodeNum}个" : "未配置");
+                _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
+                _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");
             }
 
             public void ResizeSelf() {
