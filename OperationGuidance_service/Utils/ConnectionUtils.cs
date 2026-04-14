@@ -17,8 +17,10 @@ namespace OperationGuidance_service.Utils {
             return ConnectionStatus.CONNECTED;
         }
 
-        public static bool CheckTableExists(DbConnection conn, string tableName) {
-            string database = SystemUtils.GetDataBase();
+        public static bool CheckTableExists(DbConnection conn, string tableName)
+            => CheckTableExists(conn, SystemUtils.GetDataBase(), tableName);
+
+        public static bool CheckTableExists(DbConnection conn, string database, string tableName) {
             if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(database)) {
                 log.Warn($"Invalid table name or database name: {tableName}, {database}");
                 return false;

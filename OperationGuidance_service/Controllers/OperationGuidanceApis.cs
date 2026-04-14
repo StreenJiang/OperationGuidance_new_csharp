@@ -14,6 +14,7 @@ using OperationGuidance_service.Services.AbstractClasses;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Wrapper.AbstractClasses;
 using Newtonsoft.Json;
+using OperationGuidance_service.Configurations;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -1313,8 +1314,12 @@ namespace OperationGuidance_service.Controllers {
 
                 DbConnection? conn = DbConnector.GetOuterConnection(configDto);
                 if (conn != null) {
+                    string database = "aneng";
                     string tableName = $"tightening_data_glb_{configDto.workstation_name}";
-                    if (!ConnectionUtils.CheckTableExists(conn, tableName)) {
+                    if (configDto.database_type == (int) DBTypes.SQLSERVER) {
+                        database = "dbo";
+                    }
+                    if (!ConnectionUtils.CheckTableExists(conn, database, tableName)) {
                         logger.Info($"Outer database[{tableName}] does not exsit, trying to create one...");
 
                         string fieldSql = "";
