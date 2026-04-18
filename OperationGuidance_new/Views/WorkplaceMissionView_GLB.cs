@@ -59,7 +59,8 @@ namespace OperationGuidance_new.Views {
                 && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
                 PlcServer_GLB plcServer = (PlcServer_GLB) _communicationTask.PlcServer;
                 bool result = _missionRecord.mission_result == (int) TighteningStatus.OK;
-                plcServer.SendJobFinished(result);
+                plcServer.SendJobFinished(true);
+                plcServer.SendJobResult(result);
             }
 
             await base.TerminateMission(status);

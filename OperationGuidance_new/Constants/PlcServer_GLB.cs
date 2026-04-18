@@ -46,6 +46,9 @@ namespace OperationGuidance_new.Constants {
         // 4. 发送任务完成信号
         public void SendJobFinished(bool val) => WriteBool(PlcConfig.JobFinishedConfig(), val);
 
+        // 5. 发送任务结果信号
+        public void SendJobResult(bool val) => WriteBool(PlcConfig.JobResultConfig(), val);
+
         private byte[] ReadBytes(PlcTagConfig_GLB config) {
             if (Plc == null || !Plc.IsConnected)
                 throw new InvalidOperationException("PLC is not connected.");
