@@ -28,6 +28,8 @@ namespace OperationGuidance_new.Constants {
 
         // 2. 发送条码读取成功信号
         public void SendBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig(), true);
+        // 2.1 重置条码读取成功信号
+        public void ResetBarCodeReadDone() => WriteBool(PlcConfig.BarCodeDoneConfig(), false);
 
         // 3. 读取开始任务信号
         public bool ReadStartSignal() {
@@ -44,6 +46,9 @@ namespace OperationGuidance_new.Constants {
         // 4. 发送任务完成信号
         public void SendJobFinished(bool val) => WriteBool(PlcConfig.JobFinishedConfig(), val);
 
+        // 5. 发送任务结果信号
+        public void SendJobResult(bool val) => WriteBool(PlcConfig.JobResultConfig(), val);
+
         private byte[] ReadBytes(PlcTagConfig_GLB config) {
             if (Plc == null || !Plc.IsConnected)
                 throw new InvalidOperationException("PLC is not connected.");
@@ -57,9 +62,10 @@ namespace OperationGuidance_new.Constants {
 
                     if (bytes?.Length == config.Length) {
                         string hex = BitConverter.ToString(bytes).Replace("-", " ");
+                        string binary = MainUtils.ToBinaryString(bytes);
                         log.Info($"Read from PLC Target: {config.DataType} {config.BlockNumber}, " +
-                                 $"Byte={config.ByteOffset}, Bit={config.BitOffset}, " +
-                                 $"Length={bytes.Length}, value = [{hex}]");
+                                 $"ByteOffset={config.ByteOffset}, BitOffset={config.BitOffset}, " +
+                                 $"Length={bytes.Length}, value = [hex='{hex}', binary='{binary}']");
                         return bytes;
                     }
                 } catch (Exception) when (attempt < MaxRetries) {

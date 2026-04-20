@@ -7,6 +7,7 @@ using CustomLibrary.Utils;
 using log4net;
 using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Tasks;
@@ -36,7 +37,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public Image _defaultImage;
         protected readonly int _lockCheckingTaskDelay = 50;
         protected readonly int _checkDevicesConnectionDelay = 2000;
-        protected readonly int _resendPsetMaxTimes = 5;
+        protected readonly int _resendPsetMaxTimes = 3;
         protected readonly int _resendSignalToArrangerMaxTimes = 5;
         protected readonly int _resendSignalToSetterSelectorMaxTimes = 5;
         protected readonly int _checkIoBoxSignalDelay = 100;
@@ -837,7 +838,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     ToolTask toolTask = pair.Value;
                     // 绑定数据处理代理
                     toolTask.ActionAfterAnalysis = DoAfterRecevingTighteningDataAsync;
-                    if (toolTask.ToolType is ToolPFSeries) {
+                    if (toolTask.ToolType is ToolPFSeries || toolTask.ToolType is ToolFIT) {
                         toolTask.ActionAfterCurveDataReceived = DoAfterRecevingCurveDataAsync;
                     }
                     if (MainUtils.IsAutoLockToolEnabled()) {
@@ -1632,7 +1633,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_DISABLE;
 
                                 // Lock tools
-                                toolTask.ForceSendLock();
+                                toolTask.SendLock();
                             } else {
                                 if (_needLoosening) {
                                     statusDesc = string.Format(WorkingProcessPanel.LooseningDesc, _workingProcessPanel.BoltSerialNum);
@@ -1645,7 +1646,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _workingProcessPanel.WorkplaceProcessStatus = WorkplaceProcessStatus.OPERATION_ENABLE;
 
                                 // Unlock tools
-                                toolTask.ForceSendUnlock();
+                                toolTask.SendUnlock();
                             }
 
                             // Add information
@@ -1655,8 +1656,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                             // Set description to working proccess panel
                             _workingProcessPanel.StatusDesc = statusDesc;
-                        } catch (OperationCanceledException) {
+                        } catch (OperationCanceledException ex) {
                             // 任务被取消，退出循环
+                            logger.Info("Locking task has been cancelled...", ex);
                             break;
                         } catch (Exception e) {
                             // Sometimes will throw 'System.InvalidOperationException: cross-thread operation not valid' but don't know why
@@ -1737,14 +1739,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                             }
                                         } else {
                                             // Retry times reaches max, stop the mission
-                                            _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                                            TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
 
                                             // Show notice
                                             WidgetUtils.ShowWarningPopUp($"重试次数已达到{_resendSignalToArrangerMaxTimes}次，请检查任务及设备状态是否正常");
                                         }
                                     } else {
                                         // Do not have any retry chance then terminate mission
-                                        _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
+                                        TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                                     }
                                 }
                             } else {
@@ -1753,18 +1755,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _arrangerPositionOk = null;
                             }
                         }
-                    } catch (OperationCanceledException) {
-                        // 任务被取消，退出循环
-                        break;
-                    } catch (Exception ex) {
-                        // 记录异常但不崩溃
-                        logger.Error($"StartArrangerTask: ex = {ex}");
-                    }
 
-                    try {
                         await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
-                    } catch (OperationCanceledException) {
-                        // 延迟被取消，正常退出
+                    } catch (OperationCanceledException ex) {
+                        logger.Info("Arranger task has been cancelled...", ex);
                         break;
                     }
                 }
@@ -1823,18 +1817,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 _bitPositionOk = null;
                             }
                         }
-                    } catch (OperationCanceledException) {
-                        // 任务被取消，退出循环
-                        break;
-                    } catch (Exception ex) {
-                        // 记录异常但不崩溃
-                        logger.Error($"StartSetterSelectorTask: ex = {ex}");
-                    }
 
-                    try {
                         await Task.Delay(_checkIoBoxSignalDelay, cts.Token);
-                    } catch (OperationCanceledException) {
-                        // 延迟被取消，正常退出
+                    } catch (OperationCanceledException ex) {
+                        logger.Info("IoBox task has been cancelled...", ex);
                         break;
                     }
                 }
@@ -1954,19 +1940,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             ProductBoltDTO boltDTO = boltButton.BoltDTO;
             int toolId = _workstationsDTOs.Single(dto => dto.id == boltDTO.workstation_id).tool_id.Value;
-            boltButton.CurrentParameterSet = null;
 
             // Tell working proccess panel what serial number is currently
             _workingProcessPanel.BoltSerialNum = boltButton.BoltDTO.serial_num;
 
-            // Send pset of current working bolt to controller
-            _ = Task.Run(async () => {
-                try {
-                    await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
-                } catch (Exception ex) {
-                    logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
-                }
-            });
+            if (boltDTO.parameters_set != boltButton.CurrentParameterSet) {
+                boltButton.CurrentParameterSet = null;
+
+                // Send pset of current working bolt to controller
+                _ = Task.Run(async () => {
+                    try {
+                        await SendPSet(boltButton, _toolTasks[toolId], boltDTO.parameters_set);
+                    } catch (Exception ex) {
+                        logger.Error($"SendPSet fire-and-forget failed: {ex.Message}", ex);
+                    }
+                });
+            } else {
+                logger.Info($"Same pset as previous={boltButton.CurrentParameterSet}, so skip for this bolt...");
+            }
 
             // Change status of current working bolt
             boltButton.BoltStatus = BoltStatus.WORKING;
@@ -1993,9 +1984,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual async Task SendPSet(BoltButton boltButton, ToolTask task, int? pset) {
             logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} start ......");
 
+            string lockFailedMsg = string.Format(WorkingProcessPanel.LockedPsetFailed, pset);
+
             try {
                 // 直接在UI线程启动异步操作，避免Task.Run包装
-                BeginInvoke(() => {
+                this.SafeInvoke(() => {
                     _pset.SetValue(0, null);
                 });
 
@@ -2012,66 +2005,43 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // === 保持原有null检查逻辑 ===
                 if (pset == null) {
-                    BeginInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
+                    this.SafeInvoke(() => AddLockMsg(WorkingProcessPanel.LockedPsetNull));
                     return;
                 }
 
                 // === 使用新的通用重试策略 ===
-                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 1000);
+                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 200);
 
                 bool success = false;
                 try {
                     success = await retryStrategy.ExecuteAsync(
-                        async () => {
-                            // 每次尝试前更新UI状态
-                            BeginInvoke(() => {
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                AddLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                _pset.SetValue(0, $"程序号下发中... ({pset})");
-                            });
-
-                            // 执行发送
-                            bool result = await task.SendPSetAsync(pset.Value);
-
-                            if (result) {
-                                BeginInvoke(() => {
-                                    // === 成功时保持原有逻辑 ===
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                    boltButton.CurrentParameterSet = pset;
-                                    _pset.SetValue(0, $"程序号 {pset} (发送成功)");
-                                });
-                                return true;
-                            }
-
-                            // 检查是否已通过其他方式设置成功（保持原有逻辑）
-                            if (boltButton.CurrentParameterSet != null) {
-                                BeginInvoke(() => {
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                    boltButton.CurrentParameterSet = pset;
-                                    _pset.SetValue(0, $"程序号 {pset} (已存在)");
-                                });
-                                return true;
-                            }
-
-                            return false;
-                        },
+                        async () => await task.SendPSetAsync(pset.Value),
                         (currentAttempt, maxAttempts) => {
                             // === 实时显示重试进度 ===
-                            BeginInvoke(() => {
-                                _pset.SetValue(0, $"程序号下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                            this.SafeInvoke(() => {
+                                _pset.SetValue(0, $"程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                logger.Info($"【工作台】程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                            });
+                        },
+                        () => {
+                            this.SafeInvoke(() => {
+                                // === 下发成功 ===
+                                RemoveLockMsg(lockFailedMsg);
+                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                                boltButton.CurrentParameterSet = pset;
+                                _pset.SetValue(0, $"程序号 {pset} (发送成功)");
+                                logger.Info($"【工作台】程序号[{pset}]发送成功");
                             });
                         },
                         () => {
                             // === 每次失败时更新UI（但不阻塞） ===
-                            BeginInvoke(() => {
+                            this.SafeInvoke(() => {
                                 RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                AddLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                                _pset.SetValue(0, "程序号下发失败，正在重试...");
+                                AddLockMsg(lockFailedMsg);
+                                _pset.SetValue(0, $"程序号[{pset}]下发失败...");
+                                logger.Info($"【工作台】程序号[{pset}]下发失败...");
                             });
                         },
-                        null,
                         _activeMissionCts.Token);
                 } catch (RetryException ex) {
                     // 处理重试异常
@@ -2081,24 +2051,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 // === 失败后处理（无对话框，改为状态提示） ===
                 if (!success && boltButton.CurrentParameterSet == null) {
-                    BeginInvoke(() => {
-                        // 移除失败锁定状态
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetFailed);
-                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                    AddLockMsg(lockFailedMsg);
 
-                        // 添加失败状态提示（但不阻塞）
-                        AddLockMsg(string.Format(WorkingProcessPanel.LockedPsetFailed, pset));
+                    logger.Info($"程序号 {pset} 下发失败，添加阻塞失败提示");
+
+                    this.SafeInvoke(() => {
                         _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
-
-                        // 显示一次性警告（不阻塞）
                         WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
                     });
                 }
-            } catch (OperationCanceledException) {
-                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled");
+            } catch (OperationCanceledException ex) {
+                logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);
             } catch (Exception ex) {
                 logger.Error($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} 发生未预期异常: {ex.Message}", ex);
-                BeginInvoke(() => {
+                this.SafeInvoke(() => {
                     _pset.SetValue(0, $"程序号下发异常: {ex.Message}");
                 });
             } finally {
@@ -2262,30 +2229,46 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 AdminPopUpExtraActions();
             }
 
-            bool result = false;
             _adminConfirmed = false;
             DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
-            return DialogResult.OK == dialogResult && result;
+            if (DialogResult.OK == dialogResult) {
+                Task.Run(() => {
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - DialogResult set to OK, about to invoke callback");
+
+                    _adminPasswordPopUpForm?.Dispose();
+                    _adminPasswordPopUpForm = null;
+
+                    // Show message after setting DialogResult to avoid unexpected issues
+                    this.SafeInvoke(() => {
+                        WidgetUtils.ShowNoticePopUp("验证成功");
+
+                        try {
+                            actionAfterTrue?.Invoke(true);
+                        } catch (Exception ex) {
+                            logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
+                        }
+                    });
+                });
+                return true;
+            }
+
+            return false;
 
             void Confirm() {
+                logger.Debug("[OpenAdminPasswordPopUpForm] - Confirm() entered");
+
                 string password = _adminPasswordBox.GetTextBox(0).Box.Text;
                 if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
-                    WidgetUtils.ShowNoticePopUp("验证成功");
-
                     // Set values immediately
                     _adminConfirmed = true;
-                    result = true;
                     _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
 
-                    try {
-                        actionAfterTrue?.Invoke(true);
-                    } catch (Exception ex) {
-                        logger.Error("Admin password success callback failed", ex);
-                    }
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - Setting DialogResult = OK");
                 } else {
                     WidgetUtils.ShowErrorPopUp("密码错误");
                     _adminPasswordBox.GetTextBox(0).IsError = true;
 
+                    logger.Debug("[OpenAdminPasswordPopUpForm] - Password incorrect...");
                     return;
                 }
             }
@@ -2616,40 +2599,38 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
             });
         }
-        protected virtual async void DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
+        protected virtual async Task DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, time_stamp={data.time_stamp}, result_data_identifier={data.result_data_identifier}, data_type={data.data_type}");
 
-            await Task.Run(() => {
-                BeginInvoke(async () => {
-                    try {
-                        int max = 50;
-                        int count = 0;
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
-                        while (currentOperationData == null && count < max) {
-                            await Task.Delay(100);
-                            count++;
-                        }
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
-
-                        if (currentOperationData != null) {
-                            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Converting CurveDataTemp to CurveDataDTO");
-                            CurveDataDTO dataDTO = new();
-                            CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
-
-                            dataDTO.operation_data_id = currentOperationData.id;
-                            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Storing curve data, operation_data_id={currentOperationData.id}");
-                            _apis.AddOrUpdateCurveData(new(dataDTO));
-                            logger.Info($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Curve data stored successfully");
-                        } else {
-                            string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
-                            logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - {errorMsg}");
-                            throw new System.IO.InvalidDataException(errorMsg);
-                        }
-                    } catch (Exception e) {
-                        logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Error occurred while handling curve data, e: {e}");
+            await Task.Run(async () => {
+                try {
+                    int max = 50;
+                    int count = 0;
+                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
+                    while (currentOperationData == null && count < max) {
+                        await Task.Delay(200);
+                        count++;
                     }
-                });
+                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
+
+                    if (currentOperationData != null) {
+                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Converting CurveDataTemp to CurveDataDTO");
+                        CurveDataDTO dataDTO = new();
+                        CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
+
+                        dataDTO.operation_data_id = currentOperationData.id;
+                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Storing curve data, operation_data_id={currentOperationData.id}");
+                        _apis.AddOrUpdateCurveData(new(dataDTO));
+                        logger.Info($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Curve data stored successfully");
+                    } else {
+                        string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
+                        logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - {errorMsg}");
+                        throw new System.IO.InvalidDataException(errorMsg);
+                    }
+                } catch (Exception e) {
+                    logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Error occurred while handling curve data, e: {e}");
+                }
             });
         }
 
@@ -2686,17 +2667,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 转换数据并更新UI（在UI线程）
                 BeginInvoke(() => {
                     try {
-                        logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
-                        OperationDataVO dataFormatted = new();
-                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                        Settings settings = ConfigUtils.LoadConfig<Settings>();
+                        if (settings.hide_loosening_data_in_workplace.ToYesOrNoBool() && operationDataDTO.result_type != (int) TightenOrLoosen.TIGHTENING) {
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Skip current data because do not want to show loosening data(id={operationDataDTO.id})...");
+                        } else {
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
+                            OperationDataVO dataFormatted = new();
+                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                        // 使用线程安全的ConcurrentBag
-                        _tighteningDataVOs.Add(dataFormatted);
-                        logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
+                            // 使用线程安全的ConcurrentBag
+                            _tighteningDataVOs.Add(dataFormatted);
+                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
 
-                        // 创建快照用于UI显示
-                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                        logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
+                            // 创建快照用于UI显示
+                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                            logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
+                        }
                     } catch (Exception e) {
                         logger.Error($"[Workplace:{taskName}] StoreTighteningDataInternal - Error in data conversion or UI update: {e}");
                     }
@@ -2881,7 +2867,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Lock all tools
             if (MainUtils.IsAutoLockToolEnabled() && _activated) {
-                LockAllTools();
+                ForceLockAllTools();
             }
 
             // Reset IoBox
@@ -2919,9 +2905,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _ruleIdsCheckedCached = null;
             _isRedo = (int) YesOrNo.NO;
 
-            // Reset current operation data
-            currentOperationData = null;
-
             // If it's not challenge mission, then check auto activation logic
             if (_mission.is_challenge_mission != (int) YesOrNo.YES
                     && _missionRecord != null
@@ -2931,7 +2914,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        protected async void LockAllTools() {
+        protected async void ForceLockAllTools() {
             await Task.Run(() => {
                 // Lock multiple times to ensure lock correctly
                 int lockTimesSum = 3;

@@ -1151,6 +1151,13 @@ namespace OperationGuidance_new.Utils {
         }
 
         public static byte[] ToBytes(string hexString) {
+            if (string.IsNullOrEmpty(hexString)) {
+                return Array.Empty<byte>();
+            }
+
+            // 清理字符串（去除空格、横杠等）
+            hexString = hexString.Replace(" ", "").Replace("-", "").ToUpper();
+
             if (hexString.Length % 2 != 0) {
                 string errorMsg = $"Value[{hexString}] can not convert to bytes because its length is not an even number.";
                 logger.Error(errorMsg);
@@ -1198,11 +1205,11 @@ namespace OperationGuidance_new.Utils {
         public static string ToHexString1(int intValue) {
             int maxToTwoBytes = 16 * 16 - 1;
             if (intValue > maxToTwoBytes) {
-                string errorMsg = $"Value[{intValue}] too large for 2 bytes value, can not greater than {maxToTwoBytes}.";
+                string errorMsg = $"Value[{intValue}] too large for 1 bytes value, can not greater than {maxToTwoBytes}.";
                 logger.Error(errorMsg);
                 throw new InvalidCastException(errorMsg);
             }
-            return Convert.ToString(intValue, 16).PadLeft(2, '0');
+            return intValue.ToString("X2");
         }
         public static string ToHexString2(int intValue) {
             int maxToFourBytes = 16 * 16 * 16 * 16 - 1;

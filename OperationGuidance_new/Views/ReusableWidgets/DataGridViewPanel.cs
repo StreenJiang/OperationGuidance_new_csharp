@@ -41,6 +41,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _totalPages;
         private Action<DataGridView>? _initializeColumnHeader;
         private List<T> _dataSource;
+        private bool _isAdjustingScroll;
         #endregion
 
         #region Properties
@@ -696,21 +697,52 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _vScrollBar = new() {
                         Parent = _gridViewPanel,
                         Margin = new(0),
+                        Minimum = 0,
+                        Maximum = 0, // 初始化为0
                     };
                 }
                 _vScrollBar.Size = new(scrollBarThickness, _gridViewPanel.Height);
                 _vScrollBar.Location = new(_gridViewPanel.Width - scrollBarThickness, 0);
                 _vScrollBar.ValueChanged += (sender, eventArgs) => {
-                    if (_vScrollBar.Value >= 0) {
-                        _gridView.FirstDisplayedScrollingRowIndex = _vScrollBar.Value;
+                    if (_isAdjustingScroll) return;
+
+                    try {
+                        _isAdjustingScroll = true;
+
+                        // 防御1：空数据检查
+                        if (_gridView.RowCount <= 0) return;
+
+                        // 防御2：范围校验
+                        int rowIndex = _vScrollBar.Value;
+                        if (rowIndex < 0 || rowIndex >= _gridView.RowCount) {
+                            // 自动修正（不需要取消订阅）
+                            int corrected = Math.Clamp(rowIndex, 0, _gridView.RowCount - 1);
+                            _vScrollBar.Value = corrected;
+                            return;
+                        }
+
+                        // 正常滚动
+                        _gridView.FirstDisplayedScrollingRowIndex = rowIndex;
+                    } finally {
+                        _isAdjustingScroll = false;
                     }
                 };
                 _vScrollBar.Show();
-                _vScrollBar.Maximum = _gridView.RowCount;
+                _vScrollBar.Maximum = Math.Max(0, _gridView.RowCount - 1);
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
-                if (AutoDown) {
-                    _gridView.FirstDisplayedScrollingRowIndex = _gridView.RowCount - _gridView.DisplayedRowCount(true) + 1;
+                if (AutoDown && _gridView.RowCount > 0) {
+                    int targetIndex = _gridView.RowCount - _gridView.DisplayedRowCount(true);
+                    targetIndex = Math.Max(0, targetIndex); // 防止负数
+
+                    // 安全设置（避免递归）
+                    _isAdjustingScroll = true;
+                    try {
+                        _vScrollBar.Value = targetIndex;
+                        _gridView.FirstDisplayedScrollingRowIndex = targetIndex;
+                    } finally {
+                        _isAdjustingScroll = false;
+                    }
                 }
             } else {
                 _vScrollBar?.Hide();

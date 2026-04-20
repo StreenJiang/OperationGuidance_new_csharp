@@ -1,5 +1,8 @@
+using OperationGuidance_new.Constants.FIT;
 using OperationGuidance_new.Utils;
+using System.Buffers.Binary;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace OperationGuidance_new.Constants {
     public class DeviceType_Tool {
@@ -16,6 +19,7 @@ namespace OperationGuidance_new.Constants {
         public static ToolPF4000 PF4000 { get; } = AddNew<ToolPF4000>();
         public static ToolPF6000OP PF6000_OP { get; } = AddNew<ToolPF6000OP>();
         public static ToolSudongX7 SudongX7 { get; } = AddNew<ToolSudongX7>();
+        public static ToolFITFTC6 FIT_FTC6 { get; } = AddNew<ToolFITFTC6>();
 
         public static DeviceTypeTool GetById(int id) {
             foreach (DeviceTypeTool type in Elements) {
@@ -54,7 +58,7 @@ namespace OperationGuidance_new.Constants {
 
         public abstract string GetPSetCommand(int pSetNumber);
 
-        public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null);
+        public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null);
     }
 
     public abstract class ToolPFSeries: DeviceTypeTool {
@@ -98,7 +102,7 @@ namespace OperationGuidance_new.Constants {
             return tail;
         }
 
-        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
             string dataMessageTemp = Encoding.ASCII.GetString(msgBytes);
             logger.Info($"Analyzing data from {this.Name}: [{dataMessageTemp}]");
 
@@ -279,7 +283,7 @@ namespace OperationGuidance_new.Constants {
 
                         CurveDataTemp curveData = new(id, time, int.Parse(dataType), string.Join(",", values));
 
-                        _actionAfterCurveDataReceived(curveData, deviceId.Value);
+                        _ = _actionAfterCurveDataReceived(curveData, deviceId.Value);
                     }
                 }
             }
@@ -328,6 +332,8 @@ namespace OperationGuidance_new.Constants {
 
     public class ToolSudongX7: DeviceTypeTool {
         public string PSET_OK = "55AA058205B9760D0A";
+        public string IS_TIGHTENING = "55AA0585007B450D0A"; // INFO: 暂时不用
+        public string ERROR_RSP = "55AA05CFFC4C640D0A";
 
         public ToolSudongX7() : base(3, "SudongX7") {
             COMMAND_LOCK_ASCII = new("55AA0701000200");
@@ -353,12 +359,15 @@ namespace OperationGuidance_new.Constants {
             return psetCommand + CrcStr + "0D0A";
         }
 
-        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Action<CurveDataTemp, int>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
             string dataMessage = MainUtils.ToHexString(msgBytes);
             string head = GetHead(dataMessage);
             logger.Info($"dataMessage = {dataMessage}");
 
-            if (dataMessage == PSET_OK) {
+            if (dataMessage == ERROR_RSP) {
+                // TODO: 后续补充逻辑
+                logger.Error($"Error response from controller, please check command...");
+            } else if (dataMessage == PSET_OK) {
                 toolAction(null, true, null, null, null);
             } else if (head == "55AA2781") {
                 toolAction(null, null, null, true, null);
@@ -494,5 +503,324 @@ namespace OperationGuidance_new.Constants {
             }
             return head;
         }
+    }
+
+    public abstract class ToolFIT: DeviceTypeTool {
+        public readonly int HEART_BEAT_PERIOD = 20000;
+        public Command COMMAND_DATA_SUBSCRIBE = new("AA550501001D55AA");
+        public Command COMMAND_HEART_BEAT = new("AA55070400{0}55AA");
+
+        private readonly PacketReassembler _reassembler = new PacketReassembler();
+
+        public ToolFIT(int id, string name) : base(id, name) {
+            logger = MainUtils.GetLogger(GetType());
+            COMMAND_LOCK_ASCII = new("AA550201000055AA");
+            COMMAND_UNLOCK_ASCII = new("AA550201000155AA");
+            COMMAND_PSET_ASCII = new("AA55010100{0}55AA");
+        }
+
+        public override string GetPSetCommand(int pSetNumber) {
+            string hexPSet = MainUtils.ToHexString1(pSetNumber);
+            return COMMAND_PSET_ASCII.GetMessage(hexPSet);
+        }
+
+        public string GetHeartBeatCommand() {
+            byte[] bytes = TimestampHelper.ToBytes(DateTime.Now);
+            string hexTimestamp = BitConverter.ToString(bytes).Replace("-", "");
+            logger.Info($"Generating heart beat command:{bytes}, hex:{hexTimestamp}, time:{TimestampHelper.ToDateTime(bytes)}");
+            return COMMAND_HEART_BEAT.GetMessage(hexTimestamp);
+        }
+
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+            List<byte[]> dataList = UnpackData(msgBytes);
+            string originalMsg = MainUtils.ToHexString(msgBytes);
+            logger.Info($"OriginalMsg = {originalMsg}");
+
+            foreach (byte[] data in dataList) {
+                try {
+                    string dataMessage;
+                    bool headOk = _checkHeadOk(data);
+                    if (!headOk) {
+                        dataMessage = Encoding.GetEncoding("GBK").GetString(data);
+                    } else {
+                        dataMessage = MainUtils.ToHexString(data);
+                    }
+                    logger.Info($"Handling dataMessage = {dataMessage}");
+
+                    FitCommandType cmd = (FitCommandType) data[2];
+                    logger.Info($"Command type: {cmd}");
+
+                    switch (cmd) {
+                        case FitCommandType.HEART_BEAT_RSP:
+                            // 请求时间戳（第6-9字节）
+                            byte[] requestBytes = new byte[4];
+                            Array.Copy(data, 5, requestBytes, 0, 4);
+                            DateTime reqTime = TimestampHelper.ToDateTime(requestBytes);
+
+                            // 控制器时间戳（第10-13字节）
+                            byte[] controllerBytes = new byte[4];
+                            Array.Copy(data, 9, controllerBytes, 0, 4);
+                            DateTime rspTime = TimestampHelper.ToDateTime(controllerBytes);
+
+                            logger.Info($"Heart beating for {this.Name} at {reqTime}(reqTime) and {rspTime}(rspTime)");
+                            toolAction(true, null, null, null, null);
+                            break;
+                        case FitCommandType.FINAL_DATA:
+                            toolAction(null, null, null, true, null);
+                            if (actionAfterAnalysis != null) {
+                                if (deviceId == null) {
+                                    string errorMsg = $"[Device] id can not be null while [actionAfterAnalysis] is not null.";
+                                    logger.Error(errorMsg);
+                                    throw new NullReferenceException(errorMsg);
+                                }
+
+                                Span<byte> span = data.AsSpan();
+                                int offset = 3; // 帧头(2) + 命令字(1)
+
+                                var tighteningData = new TighteningData();
+
+                                // 1. 数据长度（2字节，小端）- 用于验证
+                                ushort dataLength = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(offset, 2));
+                                logger.Debug($"dataLength={dataLength}");
+                                offset += 2;
+
+                                // 2. 拧紧ID (4字节，小端)
+                                int tighteningId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(offset, 4));
+                                logger.Debug($"tighteningId={tighteningId}");
+                                offset += 4;
+
+                                // 3. 状态 (1字节)
+                                if (span[offset] == 1) {
+                                    tighteningData.tightening_status = (int) TighteningStatus.OK;
+                                    tighteningData.torque_status = (int) TighteningCommonStatus.OK;
+                                    tighteningData.angle_status = (int) TighteningCommonStatus.OK;
+                                } else {
+                                    tighteningData.tightening_status = (int) TighteningStatus.NG;
+                                    tighteningData.torque_status = (int) TighteningCommonStatus.NG;
+                                    tighteningData.angle_status = (int) TighteningCommonStatus.NG;
+                                }
+                                logger.Debug($"tightening_status={tighteningData.tightening_status}");
+                                offset += 1;
+
+                                // 4. 程序号 (1字节)
+                                tighteningData.parameter_set_number = span[offset];
+                                logger.Debug($"parameter_set_number={tighteningData.parameter_set_number}");
+                                offset += 1;
+
+                                // 5. 条码长度 (1字节)
+                                int barcodeLength = span[offset];
+                                logger.Debug($"barcodeLength={barcodeLength}");
+                                offset += 1;
+
+                                // 6. 条码内容 (N字节，GBK编码)
+                                if (barcodeLength == 0) {
+                                    offset += 1;
+                                } else {
+                                    tighteningData.vin_number = Encoding.GetEncoding("GBK").GetString(span.Slice(offset, barcodeLength));
+                                    logger.Debug($"vin_number={tighteningData.vin_number}");
+                                    offset += barcodeLength;
+                                }
+
+                                // 7. 扭矩 (4字节，IEEE 754 Float，小端)
+                                tighteningData.torque = BinaryPrimitives.ReadSingleLittleEndian(span.Slice(offset, 4));
+                                logger.Debug($"torque={tighteningData.torque}");
+                                offset += 4;
+
+                                // 8. 角度 (4字节，IEEE 754 Float，小端)
+                                tighteningData.angle = (int) BinaryPrimitives.ReadSingleLittleEndian(span.Slice(offset, 4));
+                                logger.Debug($"angle={tighteningData.angle}");
+                                offset += 4;
+                                if (tighteningData.angle >= 0) {
+                                    tighteningData.result_type = (int) TightenOrLoosen.TIGHTENING;
+                                } else {
+                                    tighteningData.result_type = (int) TightenOrLoosen.LOOSENING;
+                                }
+
+                                // 9. 时间戳 (7字节，BCD码)
+                                tighteningData.timestamp = ParseBcdTimestamp(data, offset).ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+                                logger.Debug($"timestamp={tighteningData.timestamp}");
+                                offset += 7;
+
+                                // 验证帧尾
+                                // if (data[offset] != 0x55 || data[offset + 1] != 0xAA) {
+                                //     throw new ArgumentException("Invalid frame tail");
+                                // }
+
+                                actionAfterAnalysis(tighteningData, deviceId.Value);
+                            }
+                            break;
+                        case FitCommandType.CURVE_DATA:
+                            var completeCurve = _reassembler.ProcessReceivedData(data);
+
+                            if (completeCurve != null) {
+                                // 接收完成，处理完整数据
+                                _ = _onCompleteCurveReceived(completeCurve);
+                            } else {
+                                // 还在接收中
+                                logger.Debug("接收中...");
+                            }
+                            break;
+                        case FitCommandType.LOCK:
+                            byte result_lock = data[5];
+                            logger.Debug($"Locking result={result_lock == 0}");
+                            toolAction(null, null, result_lock == 0, null, null);
+                            break;
+                        case FitCommandType.PESET:
+                            byte result_pset = data[5];
+                            logger.Debug($"PSet result={result_pset == 0}");
+                            toolAction(null, true, null, null, null);
+                            break;
+                        default:
+                            logger.Info($"Current command[{cmd}] is not handled...");
+                            break;
+                    }
+                } catch (Exception ex) {
+                    logger.Warn("解析数据过程中出错，但不继续抛出错误，以防粘包过程中其他包收影响...", ex);
+                }
+            }
+
+            bool _checkHeadOk(byte[] data) {
+                if (data.Length >= 2 && data[0] == 0xAA && data[1] == 0x55) {
+                    return true;
+                }
+                return false;
+            }
+
+            async Task _onCompleteCurveReceived(CompleteTighteningCurve curve) {
+                logger.Debug($"拧紧ID: {curve.TighteningId}");
+                logger.Debug($"总点数: {curve.AllPoints.Count}");
+                logger.Debug($"接收耗时: {(curve.LastUpdateTime - curve.ReceiveStartTime).TotalMilliseconds}ms");
+
+                if (_actionAfterCurveDataReceived != null && deviceId != null) {
+                    string id = curve.TighteningId.ToString();
+                    string timestamp = curve.ReceiveStartTime.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+
+                    float[] torques = curve.AllPoints.Select(p => p.Torque).ToArray();
+                    CurveDataTemp torqueData = new(id, timestamp, (int) CurveDataType.TORQUE, string.Join(",", torques));
+                    await _actionAfterCurveDataReceived(torqueData, deviceId.Value);
+
+                    float[] angles = curve.AllPoints.Select(p => p.Angle).ToArray();
+                    CurveDataTemp angleData = new(id, timestamp, (int) CurveDataType.ANGLE, string.Join(",", angles));
+                    await _actionAfterCurveDataReceived(angleData, deviceId.Value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 处理粘包问题，将数据流分割成独立的数据包
+        /// </summary>
+        /// <param name="data">原始字节数据</param>
+        /// <returns>分割后的数据包列表</returns>
+        private List<byte[]> UnpackData(byte[] data) {
+            var result = new List<byte[]>();
+            int i = 0;
+
+            while (i < data.Length) {
+                // 检测是否是 AA55 开头的协议数据
+                if (i + 1 < data.Length && data[i] == 0xAA && data[i + 1] == 0x55) {
+                    // 需要至少 5 字节：AA55(2) + cmd(1) + len(2)
+                    if (i + 5 <= data.Length) {
+                        byte cmd = data[i + 2];
+                        int length = data[i + 3] | (data[i + 4] << 8); // 小端序
+                        int contentStart = i + 5;
+                        int totalLen = 5 + length + 2; // AA55 + cmd + len + content + 55AA
+
+                        // 检查内容区域和结尾 55AA 是否完整
+                        if (contentStart + length + 2 <= data.Length &&
+                            data[contentStart + length] == 0x55 &&
+                            data[contentStart + length + 1] == 0xAA) {
+                            // 完整包
+                            byte[] packet = new byte[totalLen];
+                            Array.Copy(data, i, packet, 0, totalLen);
+                            result.Add(packet);
+                            i += totalLen;
+                            continue;
+                        }
+                    }
+
+                    // 解析失败：将当前 AA55 视为普通数据的一部分，按字符串数据包处理
+                    // 寻找下一个 AA55 作为分割点
+                    int nextProtocolIndex = -1;
+                    for (int j = i + 2; j < data.Length - 1; j++) {
+                        if (data[j] == 0xAA && data[j + 1] == 0x55) {
+                            nextProtocolIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (nextProtocolIndex != -1) {
+                        // 提取从 i 到下一个 AA55 之间的数据作为字符串包
+                        int stringLength = nextProtocolIndex - i;
+                        if (stringLength > 0) {
+                            byte[] stringData = new byte[stringLength];
+                            Array.Copy(data, i, stringData, 0, stringLength);
+                            result.Add(stringData);
+                        }
+                        i = nextProtocolIndex;
+                    } else {
+                        // 剩余全是字符串数据
+                        if (i < data.Length) {
+                            byte[] stringData = new byte[data.Length - i];
+                            Array.Copy(data, i, stringData, 0, stringData.Length);
+                            result.Add(stringData);
+                        }
+                        break;
+                    }
+                } else {
+                    // 非 AA55 开头，作为字符串数据处理
+                    int nextProtocolIndex = -1;
+                    for (int j = i; j < data.Length - 1; j++) {
+                        if (data[j] == 0xAA && data[j + 1] == 0x55) {
+                            nextProtocolIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (nextProtocolIndex != -1) {
+                        int stringLength = nextProtocolIndex - i;
+                        if (stringLength > 0) {
+                            byte[] stringData = new byte[stringLength];
+                            Array.Copy(data, i, stringData, 0, stringLength);
+                            result.Add(stringData);
+                        }
+                        i = nextProtocolIndex;
+                    } else {
+                        if (i < data.Length) {
+                            byte[] stringData = new byte[data.Length - i];
+                            Array.Copy(data, i, stringData, 0, stringData.Length);
+                            result.Add(stringData);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 解析BCD时间戳
+        /// 格式：YY(高两位) YY(低两位) MM DD HH MM SS
+        /// </summary>
+        private static DateTime ParseBcdTimestamp(byte[] data, int offset) {
+            // BCD码转十进制辅助函数
+            byte BcdToByte(byte bcd) => (byte) ((bcd >> 4) * 10 + (bcd & 0x0F));
+
+            byte yearHigh = BcdToByte(data[offset]);     // YY高两位
+            byte yearLow = BcdToByte(data[offset + 1]);  // YY低两位
+            byte month = BcdToByte(data[offset + 2]);    // MM
+            byte day = BcdToByte(data[offset + 3]);      // DD
+            byte hour = BcdToByte(data[offset + 4]);     // HH
+            byte minute = BcdToByte(data[offset + 5]);   // MM
+            byte second = BcdToByte(data[offset + 6]);   // SS
+
+            int year = yearHigh * 100 + yearLow;
+
+            return new DateTime(year, month, day, hour, minute, second);
+        }
+    }
+
+    public class ToolFITFTC6: ToolFIT {
+        public ToolFITFTC6() : base(4, "FIT_FTC6") { }
     }
 }

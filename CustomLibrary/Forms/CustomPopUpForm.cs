@@ -1,5 +1,3 @@
-using System.Drawing.Drawing2D;
-using System.Threading.Tasks;
 using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Events;
@@ -7,6 +5,7 @@ using CustomLibrary.Panels;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using log4net;
+using System.Drawing.Drawing2D;
 
 namespace CustomLibrary.Forms {
 
@@ -344,12 +343,14 @@ namespace CustomLibrary.Forms {
             if (WidgetUtils.MainForm == null || WidgetUtils.MainForm.IsDisposed || _popUpFormBackboard.IsDisposed) {
                 return;
             }
-            _popUpFormBackboard.Location = WidgetUtils.MainForm.PointToScreen(Point.Empty);
-            int x = _popUpFormBackboard.Location.X;
-            int y = _popUpFormBackboard.Location.Y;
-            int width = _popUpFormBackboard.Width;
-            int height = _popUpFormBackboard.Height;
-            Location = new(x + (width - Width) / 2, y + (height - Height) / 2);
+            BeginInvoke(() => {
+                _popUpFormBackboard.Location = WidgetUtils.MainForm.PointToScreen(Point.Empty);
+                int x = _popUpFormBackboard.Location.X;
+                int y = _popUpFormBackboard.Location.Y;
+                int width = _popUpFormBackboard.Width;
+                int height = _popUpFormBackboard.Height;
+                Location = new(x + (width - Width) / 2, y + (height - Height) / 2);
+            });
         }
 
         protected override void OnPaint(PaintEventArgs e) {

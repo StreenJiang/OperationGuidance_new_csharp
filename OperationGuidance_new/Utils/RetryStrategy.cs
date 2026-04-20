@@ -48,27 +48,24 @@ namespace OperationGuidance_new.Utils {
         public async Task<bool> ExecuteAsync(
             Func<Task<bool>> operation,
             Action<int, int>? onAttemptProgress = null,
+            Action? onAttemptSuccess = null,
             Action? onAttemptFailed = null,
-            Action<bool>? onAttemptSuccess = null,
             CancellationToken token = default) {
             int attempt = 0;
             Exception? lastException = null;
 
             while (attempt < _maxAttempts && !token.IsCancellationRequested) {
-                attempt++;
-
-                // 【优化】在每次尝试开始时报告进度，避免重复调用
-                if (onAttemptProgress != null) {
-                    onAttemptProgress.Invoke(attempt, _maxAttempts);
-                }
-
                 try {
+                    attempt++;
+
+                    // 在每次尝试开始时报告进度，避免重复调用
+                    onAttemptProgress?.Invoke(attempt, _maxAttempts);
+
                     // 执行操作
                     bool result = await operation();
-
                     if (result) {
                         // 成功回调
-                        onAttemptSuccess?.Invoke(result);
+                        onAttemptSuccess?.Invoke();
                         return true;
                     }
 
@@ -82,11 +79,7 @@ namespace OperationGuidance_new.Utils {
                     // 计算延迟时间
                     TimeSpan delay = CalculateDelay(attempt);
 
-                    try {
-                        await Task.Delay(delay, token);
-                    } catch (OperationCanceledException) {
-                        return false;
-                    }
+                    await Task.Delay(delay, token);
                 } catch (OperationCanceledException) {
                     return false;
                 } catch (Exception ex) {
@@ -199,7 +192,7 @@ namespace OperationGuidance_new.Utils {
     /// <summary>
     /// 重试异常类
     /// </summary>
-    public class RetryException : Exception {
+    public class RetryException: Exception {
         public RetryException(string message) : base(message) { }
 
         public RetryException(string message, Exception? innerException)

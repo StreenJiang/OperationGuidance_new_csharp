@@ -17,6 +17,7 @@ namespace OperationGuidance_new.Utils {
             string configStr_barCodeDone = Read(PlcConfigsKeys_GLB.ConfigString, PlcConfigsKeys_GLB.SectionName_BarCodeDone);
             string configStr_startSignal = Read(PlcConfigsKeys_GLB.ConfigString, PlcConfigsKeys_GLB.SectionName_StartSignal);
             string configStr_jobFinished = Read(PlcConfigsKeys_GLB.ConfigString, PlcConfigsKeys_GLB.SectionName_JobFinished);
+            string configStr_jobResult = Read(PlcConfigsKeys_GLB.ConfigString, PlcConfigsKeys_GLB.SectionName_JobResult);
 
             if (string.IsNullOrEmpty(cupType)) {
                 // 写注释
@@ -42,6 +43,9 @@ namespace OperationGuidance_new.Utils {
             if (string.IsNullOrEmpty(configStr_jobFinished)) {
                 Write(PlcConfigsKeys_GLB.ConfigString, "", PlcConfigsKeys_GLB.SectionName_JobFinished);
             }
+            if (string.IsNullOrEmpty(configStr_jobResult)) {
+                Write(PlcConfigsKeys_GLB.ConfigString, "", PlcConfigsKeys_GLB.SectionName_JobResult);
+            }
         }
 
         public CpuType GetCpuType() {
@@ -66,6 +70,7 @@ namespace OperationGuidance_new.Utils {
         public PlcTagConfig_GLB BarCodeDoneConfig() => BarCodeConfig(PlcConfigsKeys_GLB.SectionName_BarCodeDone, "条码读取成功");
         public PlcTagConfig_GLB StartSignalConfig() => BarCodeConfig(PlcConfigsKeys_GLB.SectionName_StartSignal, "启动信号");
         public PlcTagConfig_GLB JobFinishedConfig() => BarCodeConfig(PlcConfigsKeys_GLB.SectionName_JobFinished, "完成信号");
+        public PlcTagConfig_GLB JobResultConfig() => BarCodeConfig(PlcConfigsKeys_GLB.SectionName_JobResult, "结果信号");
 
         private PlcTagConfig_GLB BarCodeConfig(string sectionName, string description) {
             string configStr = Read(PlcConfigsKeys_GLB.ConfigString, sectionName);
