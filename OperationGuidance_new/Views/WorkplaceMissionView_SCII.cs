@@ -551,7 +551,9 @@ namespace OperationGuidance_new.Views {
 
             SetTodayData();
             SetPset();
-            HandleScrewBitCounter();
+            if (_topRightBottom != null) {
+                HandleScrewBitCounter();
+            }
             ResizeChildren();
         }
         private void SetTodayData() {
