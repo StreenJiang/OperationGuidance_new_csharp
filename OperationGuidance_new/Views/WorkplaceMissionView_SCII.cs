@@ -551,9 +551,7 @@ namespace OperationGuidance_new.Views {
 
             SetTodayData();
             SetPset();
-            if (_topRightBottom != null) {
-                HandleScrewBitCounter();
-            }
+            HandleScrewBitCounter();
             ResizeChildren();
         }
         private void SetTodayData() {
@@ -1231,7 +1229,9 @@ namespace OperationGuidance_new.Views {
                             var dto = screwBitCounterDTOsCached[i];
                             int bit_position = dto.bit_position;
                             _screwBitCounterBoxes[bit_position].GetTextBox(0).Box.Text = dto.current_counts > 0 ? dto.current_counts + "" : "0";
-                            _screwBitRemainingBoxes[bit_position].GetTextBox(0).Box.Text = (dto.max_num - dto.current_counts) + "";
+                            if (_screwBitRemainingBoxes != null) {
+                                _screwBitRemainingBoxes[bit_position].GetTextBox(0).Box.Text = (dto.max_num - dto.current_counts) + "";
+                            }
                         }
                     }
                     return true;

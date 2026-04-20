@@ -18,10 +18,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 string initStr, ProductMissionDTO mission, bool activated,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> partsBarCodeRules,
-                string? barCode, List<BarCodeMatchingRuleDTO> boltRules, bool isForBolt, string productBatch)
+                string? barCode, List<BarCodeMatchingRuleDTO> boltRules, bool isForBolt, string productBatch, bool inBoundStationOk)
             : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules, isForBolt) {
             _productBatch = productBatch;
-            inBoundStationOk = false;
+            this.inBoundStationOk = inBoundStationOk;
             bindAccessoryOk = false;
         }
 

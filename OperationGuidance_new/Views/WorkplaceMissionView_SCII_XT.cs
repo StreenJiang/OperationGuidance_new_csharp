@@ -53,6 +53,7 @@ namespace OperationGuidance_new.Views {
 
         private List<OperationDataDTO> _operationDataDTOs;
         private CancellationTokenSource? _plcLoopCts;
+        private bool _inBoundStationOk = false;
 
         public WorkplaceContentPanel_SCII_XT() { }
         public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
@@ -94,6 +95,7 @@ namespace OperationGuidance_new.Views {
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             await SendDataToMES(_operationDataDTOs);
+            _inBoundStationOk = false;
 
             if (await OutBound()) {
                 await base.TerminateMission(status);
@@ -122,6 +124,7 @@ namespace OperationGuidance_new.Views {
             } else {
                 logger.Info($"【{_mission.name}】进站成功。");
             }
+            _inBoundStationOk = dto.inOrOutSuccess;
             return dto.inOrOutSuccess;
         }
 
@@ -453,13 +456,23 @@ namespace OperationGuidance_new.Views {
         protected override Task<bool> CheckScrewBitCount() => Task.FromResult(true);
 
         protected override void HandleScrewBitCounter() {
+            if (_topRightBottom == null) {
+                return;
+            }
+
+            if (_screwBitCounterBoxes != null && _screwBitCounterBoxes.Count > 0) {
+                foreach (var pair in _screwBitCounterBoxes) {
+                    _topRightBottom.Controls.Remove(_screwBitCounterBoxes[pair.Key]);
+                }
+            }
+
             _screwBitCounterBoxes = new();
             _screwBitCounterDtos = new();
 
-            List<ScrewBitCounterDTO> screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
-            if (screwBitCounterDTOs.Count > 0) {
-                for (int i = 0; i < screwBitCounterDTOs.Count; i++) {
-                    ScrewBitCounterDTO dto = screwBitCounterDTOs[i];
+            screwBitCounterDTOsCached = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            if (screwBitCounterDTOsCached.Count > 0) {
+                for (int i = 0; i < screwBitCounterDTOsCached.Count; i++) {
+                    ScrewBitCounterDTO dto = screwBitCounterDTOsCached[i];
                     if (_screwBitCounterDtos.ContainsKey(dto.bit_position)) {
                         continue;
                     }
@@ -616,7 +629,8 @@ namespace OperationGuidance_new.Views {
                                                                       barCode,
                                                                       _rulesExcluded,
                                                                       CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode),
-                                                                      batchNum) {
+                                                                      batchNum,
+                                                                      _inBoundStationOk) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
