@@ -1,8 +1,10 @@
+using CustomLibrary.Configs;
+using CustomLibrary.Forms;
 using CustomLibrary.Utils;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
@@ -37,10 +39,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public override bool CheckCanActivateMission() {
-            if (base.CheckCanActivateMission() && inBoundStationOk) {
+            SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
 
+            if (base.CheckCanActivateMission() && inBoundStationOk) {
                 // 向 MES 发送绑定上盖请求
-                SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
                 // 只有一个工站会用这个，所以要加一个配置
                 if (config.send_upper_cover == (int) YesOrNo.YES) {
                     if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
@@ -66,12 +68,59 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
 
+                var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+                if (printerConfig.printer_name == null) {
+                    WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
+                    return false;
+                }
+
+                bool needSecondBarcode = config.need_second_barcode.ToYesOrNoBool();
+                if (needSecondBarcode) {
+                    if (printerConfig.second_printer_name == null) {
+                        WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
+                        return false;
+                    }
+
+                    CheckSecondBarCode();
+                }
+
                 logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
                 return true;
             }
 
             return false;
         }
+
+        private void CheckSecondBarCode() {
+            WorkplaceContentPanel_SCII_XT workplace = (WorkplaceContentPanel_SCII_XT) _workplace;
+
+            WaitDialog dialog = new("二维码信息") {
+                Title = "二维码信息录入",
+                BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
+                BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND,
+            };
+            dialog.PretendToShowToCreateHandlesForChildren();
+
+            workplace.BarcodeDialog = dialog;
+            workplace.CanReceiveBarcode = true;
+
+            dialog.TextBox.GetTextBox(0).Box.KeyDown += (s, e) => {
+                if (e.KeyCode == Keys.Enter) {
+                    workplace.ProcessSecondBarCode();
+                }
+            };
+
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .65);
+            Padding contentPadding = dialog.ContentPanel.Padding;
+            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxMargin = boxHeight / 5;
+            dialog.TextBox.Size = new(contentWidth - contentPadding.Size.Width - boxMargin * 2, boxHeight);
+            dialog.TextBox.Margin = new(boxMargin);
+            int contentHeight = boxHeight + boxMargin * 2 + contentPadding.Size.Height;
+            dialog.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
+            dialog.Show();
+        }
+
 
         protected override bool ProductBarCodeExtraCheck(string barCode) {
             // 向 MES 发出进站请求

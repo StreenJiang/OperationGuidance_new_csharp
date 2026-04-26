@@ -36,14 +36,15 @@ namespace OperationGuidance_new.Utils.IIPSC {
         public string sn_pos_y { get; set; }
 
         // 打印机名称
-        [ConfigIgnore]
         public string printer_name { get; set; }
+        public string second_printer_name { get; set; }
         // 打印机配置是否弃用
         public int enabled { get; set; }
 
         public SciiXtPrinterConfig() {
             enabled = (int) YesOrNo.NO;
             printer_name = "";
+            second_printer_name = "";
 
             part_code = "7161620072";
             vender_code = "777168";

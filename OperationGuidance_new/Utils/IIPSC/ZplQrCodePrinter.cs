@@ -74,6 +74,18 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return zpl.ToString();
         }
 
+        public string GenerateQrZpl(string qrContent, int moduleSize = 5) {
+            // 标签尺寸（点）：110mm × 50mm @ 203DPI
+            const int WIDTH = 880, HEIGHT = 400;
+
+            // 保守估算二维码尺寸并居中
+            int qrSize = 45 * moduleSize;
+            int x = (WIDTH - qrSize) / 2;
+            int y = (HEIGHT - qrSize) / 2;
+
+            return $"^XA^LH0,0^PW{WIDTH}^LL{HEIGHT}^FO{x},{y}^BQN,2,{moduleSize}^FDMA,{qrContent}^FS^XZ";
+        }
+
         /// <summary>
         /// 发送ZPL指令到打印机
         /// </summary>

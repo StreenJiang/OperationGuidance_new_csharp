@@ -21,6 +21,8 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Views.SubViews;
 using System.Reflection;
+using OperationGuidance_new.Extensions;
+using CustomLibrary.Forms;
 
 namespace OperationGuidance_new.Views {
     public class WorkplaceMissionView_SCII_XT: AWorkplaceMissionView<WorkplaceContentPanel_SCII_XT, WorkplaceTopBar_SCII> {
@@ -54,6 +56,12 @@ namespace OperationGuidance_new.Views {
         private List<OperationDataDTO> _operationDataDTOs;
         private CancellationTokenSource? _plcLoopCts;
         private bool _inBoundStationOk = false;
+
+        private WaitDialog? _barcodeDialog;
+        private volatile bool _canReceiveBarcode = false;
+
+        public WaitDialog? BarcodeDialog { get => _barcodeDialog; set => _barcodeDialog = value; }
+        public bool CanReceiveBarcode { get => _canReceiveBarcode; set => _canReceiveBarcode = value; }
 
         public WorkplaceContentPanel_SCII_XT() { }
         public WorkplaceContentPanel_SCII_XT(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
@@ -229,11 +237,31 @@ namespace OperationGuidance_new.Views {
                     using (ZplQrCodePrinter printer = new()) {
                         List<string> list = printer.GetAvailablePrinters();
                         if (list.Count > 0) {
-                            foreach (string printerName in list) {
-                                config.printer_name = printerName;
-                                if (!printer.QuickPrint(config)) {
-                                    WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
-                                }
+                            string? printerName = list.Find(p => p == config.printer_name);
+                            if (printerName == null) {
+                                WidgetUtils.ShowWarningPopUp("未找到指定配置的打印机，请检查配置或打印机。");
+                            } else if (!printer.QuickPrint(config)) {
+                                WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+                            }
+                        } else {
+                            WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
+                        }
+                    }
+                }
+            }));
+        }
+        public async Task SendQRCodeToPrinter(string qrContent) {
+            await Task.Run(() => BeginInvoke(() => {
+                var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+                if (config.enabled == (int) YesOrNo.YES) {
+                    using (ZplQrCodePrinter printer = new()) {
+                        List<string> list = printer.GetAvailablePrinters();
+                        if (list.Count > 0) {
+                            string? printerName = list.Find(p => p == config.second_printer_name);
+                            if (printerName == null) {
+                                WidgetUtils.ShowWarningPopUp("未找到指定配置的条码打印机（第二台），请检查配置或打印机。");
+                            } else if (!printer.PrintViaZpl(printerName, printer.GenerateQrZpl(qrContent))) {
+                                WidgetUtils.ShowWarningPopUp("发送指令至条码打印机（第二台）失败！请检查日志信息定位问题。");
                             }
                         } else {
                             WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
@@ -353,7 +381,7 @@ namespace OperationGuidance_new.Views {
             SerialPortTask serialPortTask = pair.Value;
             serialPortTask.ActionAfterDataReceived = async msg => {
                 await Task.Run(() => {
-                    BeginInvoke(async () => {
+                    this.SafeInvoke(async () => {
                         if (!IsDisposed) {
                             DeviceIoDTO? deviceIoDTO = _ioBoxes.SingleOrDefault(dto => dto.barcode == msg);
                             if (deviceIoDTO != null) {
@@ -382,8 +410,12 @@ namespace OperationGuidance_new.Views {
                                     msg = String.Concat(msg.Where(c => !dto.invalid_char.Contains(c)));
                                 }
 
+                                if (_barcodeDialog != null && !_barcodeDialog.IsDisposed) {
+                                    _barcodeDialog.TextBox.GetTextBox(0).Text = msg;
+                                    ProcessSecondBarCode();
+                                }
                                 // 交给弹窗处理
-                                if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
+                                else if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
                                     OpenBarCodePopUpForm(msg);
                                 } else {
                                     _barCodePopUpForm.ValidateBarCode(msg);
@@ -393,7 +425,17 @@ namespace OperationGuidance_new.Views {
                     });
                 });
             };
+        }
 
+        public void ProcessSecondBarCode() {
+            if (_barcodeDialog != null) {
+                _ = SendQRCodeToPrinter(_barcodeDialog.TextBox.GetTextBox(0).Text);
+                _barcodeDialog.SignalComplete();
+                _barcodeDialog.Dispose();
+
+                _barcodeDialog = null;
+                _canReceiveBarcode = false;
+            }
         }
 
         // Send bit position to setter selector
