@@ -10,7 +10,6 @@ namespace OperationGuidance_new.Configs {
         public string plc_is_ready_addr { get; set; }
         public string plc_register_addr { get; set; }
         public int send_upper_cover { get; set; } = (int) YesOrNo.NO;
-        public int need_second_barcode { get; set; } = (int) YesOrNo.NO;
 
         public SciiXtConfig() {
             http_host = "http://10.10.59.1:5400";

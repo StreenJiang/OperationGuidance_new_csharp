@@ -40,9 +40,12 @@ namespace OperationGuidance_new.Utils.IIPSC {
         public string second_printer_name { get; set; }
         // 打印机配置是否弃用
         public int enabled { get; set; }
+        public int enabled_second { get; set; }
 
         public SciiXtPrinterConfig() {
             enabled = (int) YesOrNo.NO;
+            enabled_second = (int) YesOrNo.NO;
+
             printer_name = "";
             second_printer_name = "";
 

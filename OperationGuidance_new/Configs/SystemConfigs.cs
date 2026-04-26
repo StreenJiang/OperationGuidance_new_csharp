@@ -126,7 +126,7 @@ namespace OperationGuidance_new.Configs {
                             {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
                             {AppVersion.WHYC, typeof(VariableSettingsView_WHYC)},
                             {AppVersion.TZYX, typeof(VariableSettingsView_TZYX)},
-                            {AppVersion.SCII_XT, typeof(VariableSettingsView_SCII)},
+                            {AppVersion.SCII_XT, typeof(VariableSettingsView_SCII_XT)},
                         },
                     },
                 },

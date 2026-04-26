@@ -39,10 +39,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public override bool CheckCanActivateMission() {
-            SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
-
             if (base.CheckCanActivateMission() && inBoundStationOk) {
                 // 向 MES 发送绑定上盖请求
+                SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+
                 // 只有一个工站会用这个，所以要加一个配置
                 if (config.send_upper_cover == (int) YesOrNo.YES) {
                     if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
@@ -69,13 +69,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
 
                 var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
-                if (printerConfig.printer_name == null) {
-                    WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
-                    return false;
-                }
-
-                bool needSecondBarcode = config.need_second_barcode.ToYesOrNoBool();
-                if (needSecondBarcode) {
+                if (printerConfig.enabled_second.ToYesOrNoBool()) {
                     if (printerConfig.second_printer_name == null) {
                         WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
                         return false;

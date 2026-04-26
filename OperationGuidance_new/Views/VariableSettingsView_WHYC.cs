@@ -1,5 +1,6 @@
 using CustomLibrary.Buttons;
 using CustomLibrary.TextBoxes;
+using CustomLibrary.Utils;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 
@@ -15,11 +16,11 @@ namespace OperationGuidance_new.Views {
         public CustomTextBoxButtonGroup UploadDataApiBox { get => _uploadDataApiBox; set => _uploadDataApiBox = value; }
         public string UploadDataApiOriginal { get => _uploadDataApiOriginal; set => _uploadDataApiOriginal = value; }
 
-        protected override bool CheckSavedFunc_detail() => base.CheckSavedFunc_detail()
-            && !(
-                CheckSvedFuncSeparately(GetMatCodeApiBox.GetTextBox(0).Box.Text != _getMatCodeApiOriginal + "", "获取MatCode接口RUL")
-                || CheckSvedFuncSeparately(UploadDataApiBox.GetTextBox(0).Box.Text != _uploadDataApiOriginal + "", "上传数据接口URL")
-            );
+        protected override bool CheckSavedFunc_detail() {
+            if (base.CheckSavedFunc_detail()) return true;
+            return GetMatCodeApiBox.GetTextBox(0).Box.Text != _getMatCodeApiOriginal + ""
+                || UploadDataApiBox.GetTextBox(0).Box.Text != _uploadDataApiOriginal + "";
+        }
 
         protected override void InitializeMissionSettings() {
             base.InitializeMissionSettings();
