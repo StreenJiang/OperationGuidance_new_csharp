@@ -433,7 +433,18 @@ namespace OperationGuidance_new.Views {
 
         public void ProcessSecondBarCode() {
             if (_barcodeDialog != null) {
-                _ = SendQRCodeToPrinter(_barcodeDialog.TextBox.GetTextBox(0).Text);
+                string barcode = _barcodeDialog.TextBox.GetTextBox(0).Text;
+                var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+
+                // Check barcode length if configured
+                if (config.enabled_second == (int) YesOrNo.YES && config.second_barcode_length > 0) {
+                    if (barcode.Length != config.second_barcode_length) {
+                        WidgetUtils.ShowWarningPopUp($"条码长度不匹配！当前长度为 {barcode.Length}，要求长度为 {config.second_barcode_length}。");
+                        return; // Do not close dialog or reset state
+                    }
+                }
+
+                _ = SendQRCodeToPrinter(barcode);
                 _barcodeDialog.SignalComplete();
                 _barcodeDialog.Dispose();
 

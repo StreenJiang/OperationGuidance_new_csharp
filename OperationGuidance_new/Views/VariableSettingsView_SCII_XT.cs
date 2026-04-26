@@ -2,6 +2,7 @@ using CustomLibrary.Buttons;
 using CustomLibrary.ComboBoxes;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
+using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
@@ -23,6 +24,8 @@ namespace OperationGuidance_new.Views {
         private string _printerNameOriginal;
         private CustomComboBoxButtonGroup<string> _secondPrinterName;
         private string _secondPrinterNameOriginal;
+        private CustomTextBoxGroup _secondBarcodeLength;
+        private int _secondBarcodeLengthOriginal;
 
         public VariableSettingsView_SCII_XT() {
             MissionSelfLoopingModeToggle.Hide();
@@ -82,12 +85,19 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
+            _secondBarcodeLength = new("第二条码长度") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+                PositiveIntOnly = true,
+            };
+
             // Bind toggle events to control combobox enable state
             _enablePrinter.CheckedChanged += (s, e) => {
                 _printerName.Enabled = _enablePrinter.Checked;
             };
             _enableSecondPrinter.CheckedChanged += (s, e) => {
                 _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
             };
         }
 
@@ -101,12 +111,14 @@ namespace OperationGuidance_new.Views {
             // Always save current value, if toggle is off, save empty string
             printerConfig.printer_name = _enablePrinter.Checked ? (_printerName.Value ?? "") : "";
             printerConfig.second_printer_name = _enableSecondPrinter.Checked ? (_secondPrinterName.Value ?? "") : "";
+            printerConfig.second_barcode_length = int.TryParse(_secondBarcodeLength?.GetTextBox(0)?.Box?.Text, out int length) ? length : 0;
             ConfigUtils.SaveConfig(printerConfig);
 
             _enablePrinterOriginal = printerConfig.enabled.ToYesOrNoBool();
             _enableSecondPrinterOriginal = printerConfig.enabled_second.ToYesOrNoBool();
             _printerNameOriginal = printerConfig.printer_name;
             _secondPrinterNameOriginal = printerConfig.second_printer_name;
+            _secondBarcodeLengthOriginal = printerConfig.second_barcode_length;
 
             // Reset unsaved changes check state
             WidgetUtils.CheckSaved = true;
@@ -146,8 +158,11 @@ namespace OperationGuidance_new.Views {
             _enableSecondPrinter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _secondPrinterName.Size = new(boxWidth, BoxNBtnHeight);
             _secondPrinterName.Margin = new(0, boxVMargin, 0, 0);
+            // Resize box - third row
+            _secondBarcodeLength.Size = new(boxWidth, BoxNBtnHeight);
+            _secondBarcodeLength.Margin = new(0, boxVMargin, 0, 0);
             // Resize Content with padding
-            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 2 + ContentVPadding * 2 + boxVMargin);
+            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 3 + ContentVPadding * 2 + boxVMargin * 2);
             _printerSettingsContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
             // Resize outer panel
             _printerSettingsPanel.Size = new(Width, _printerSettingsTitlePanel.Height + _printerSettingsContentPanel.Height);
@@ -178,6 +193,7 @@ namespace OperationGuidance_new.Views {
                     // Set combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                    _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 
                     // Select saved printer by name
                     int printerIndex = _printerName.Names.IndexOf(printerConfig.printer_name);
@@ -189,11 +205,17 @@ namespace OperationGuidance_new.Views {
                         _secondPrinterName.SetCurrent(secondPrinterIndex);
                     }
 
+                    // Load second barcode length
+                    _secondBarcodeLength.GetTextBox(0).Box.Text = printerConfig.second_barcode_length > 0
+                        ? printerConfig.second_barcode_length.ToString()
+                        : "";
+
                     // Initialize Original values for unsaved change detection
                     _enablePrinterOriginal = printerConfig.enabled.ToYesOrNoBool();
                     _enableSecondPrinterOriginal = printerConfig.enabled_second.ToYesOrNoBool();
                     _printerNameOriginal = printerConfig.printer_name;
                     _secondPrinterNameOriginal = printerConfig.second_printer_name;
+                    _secondBarcodeLengthOriginal = printerConfig.second_barcode_length;
                 });
             });
         }
@@ -210,6 +232,7 @@ namespace OperationGuidance_new.Views {
                     // Reset combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                    _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 
                     // Reset combobox selection (clear first, then select if valid value exists)
                     _printerName.Reset();
@@ -224,6 +247,9 @@ namespace OperationGuidance_new.Views {
                     if (secondPrinterIndex >= 0) {
                         _secondPrinterName.SetCurrent(secondPrinterIndex);
                     }
+
+                    // Reset second barcode length to 0
+                    _secondBarcodeLength.GetTextBox(0).Box.Text = "0";
                 });
             });
         }
@@ -236,6 +262,12 @@ namespace OperationGuidance_new.Views {
                 }
                 if (_enableSecondPrinter?.Checked == true && string.IsNullOrEmpty(_secondPrinterName?.Value)) {
                     return "请选择第二打印机名称";
+                }
+                if (_enableSecondPrinter?.Checked == true) {
+                    string? lengthText = _secondBarcodeLength?.GetTextBox(0)?.Box?.Text;
+                    if (string.IsNullOrEmpty(lengthText) || !int.TryParse(lengthText, out int length) || length <= 0) {
+                        return "请输入有效的第二条码长度（大于0的整数）";
+                    }
                 }
             }
             return base.CheckBeforeSave();

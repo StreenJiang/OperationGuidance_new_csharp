@@ -38,6 +38,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
         // 打印机名称
         public string printer_name { get; set; }
         public string second_printer_name { get; set; }
+        // 第二条码长度校验
+        public int second_barcode_length { get; set; }
         // 打印机配置是否弃用
         public int enabled { get; set; }
         public int enabled_second { get; set; }
@@ -48,6 +50,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
             printer_name = "";
             second_printer_name = "";
+            second_barcode_length = 0;
 
             part_code = "7161620072";
             vender_code = "777168";
