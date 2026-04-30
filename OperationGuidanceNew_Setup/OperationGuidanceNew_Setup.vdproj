@@ -220,15 +220,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OperationGuidanceNew"
-        "ProductCode" = "8:{EAAD817A-CD11-4807-9B17-FCC3DEE577EC}"
-        "PackageCode" = "8:{85240401-A25F-4CC2-9B21-C758A98726FF}"
+        "ProductCode" = "8:{BCAB0C5B-C04D-4E10-8B47-7C26FE293C21}"
+        "PackageCode" = "8:{B211D704-EE4E-40A0-9062-63A047D1B115}"
         "UpgradeCode" = "8:{6775DFE9-DDBA-4867-BA9F-4A884E02C860}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:2.0.24"
+        "ProductVersion" = "8:2.0.26"
         "Manufacturer" = "8:Aneng Automation"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -756,7 +756,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_AEEFF15BFA4E45B7BD8505676EF81C44"
             {
-            "SourcePath" = "8:..\\OperationGuidance_new\\obj\\Release\\net6.0-windows\\win-x86\\apphost.exe"
+            "SourcePath" = "8:"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_70EA39892B6845EF8862BD6DD4A49942"

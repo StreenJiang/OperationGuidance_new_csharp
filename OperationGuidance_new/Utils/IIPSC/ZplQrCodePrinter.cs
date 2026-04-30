@@ -1,5 +1,5 @@
-using System.Text;
 using log4net;
+using System.Text;
 
 namespace OperationGuidance_new.Utils.IIPSC {
     /// <summary>
@@ -74,16 +74,17 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return zpl.ToString();
         }
 
-        public string GenerateQrZpl(string qrContent, int moduleSize = 5) {
-            // 标签尺寸（点）：110mm × 50mm @ 203DPI
-            const int WIDTH = 880, HEIGHT = 400;
+        public string GenerateQrZpl(string qrContent) {
+            // 203 DPI
+            // 标签 15mm → 120 点
+            // 二维码 9mm → 72 点
+            const int LABEL_SIZE = 120;
+            const int QR_SIZE = 72;
 
-            // 保守估算二维码尺寸并居中
-            int qrSize = 45 * moduleSize;
-            int x = (WIDTH - qrSize) / 2;
-            int y = (HEIGHT - qrSize) / 2;
+            int x = (LABEL_SIZE - QR_SIZE) / 2;
+            int y = (LABEL_SIZE - QR_SIZE) / 2;
 
-            return $"^XA^LH0,0^PW{WIDTH}^LL{HEIGHT}^FO{x},{y}^BQN,2,{moduleSize}^FDMA,{qrContent}^FS^XZ";
+            return $"^XA^PW{LABEL_SIZE}^LL{LABEL_SIZE}^FO{x},{y}^BQN,2,1^FDMA,{qrContent}^FS^XZ";
         }
 
         /// <summary>
