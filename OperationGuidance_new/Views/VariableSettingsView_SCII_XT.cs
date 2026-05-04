@@ -11,6 +11,17 @@ using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView_SCII_XT: VariableSettingsView_SCII {
+        // HTTP server settings panel
+        private CustomContentPanel _httpServerSettingsPanel;
+        private TitlePanel _httpServerSettingsTitlePanel;
+        private CustomContentPanel _httpServerSettingsContentPanel;
+        private ToggleButtonGroup _enableHttpServer;
+        private bool _enableHttpServerOriginal;
+        private CustomTextBoxGroup _httpIpBox;
+        private string _httpIpOriginal;
+        private CustomTextBoxGroup _httpPortBox;
+        private string _httpPortOriginal;
+
         // Printer settings panel
         private CustomContentPanel _printerSettingsPanel;
         private TitlePanel _printerSettingsTitlePanel;
@@ -82,6 +93,7 @@ namespace OperationGuidance_new.Views {
         protected override void InitializeMissionSettings() {
             base.InitializeMissionSettings();
             InitializePrinterSettingsPanel();
+            InitializeHttpServerSettingsPanel();
             InitializeMesSettingsPanel();
         }
 
@@ -131,6 +143,41 @@ namespace OperationGuidance_new.Views {
             _plcRegisterAddrBox = new("PLC寄存器地址") {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
+            };
+        }
+
+        protected virtual void InitializeHttpServerSettingsPanel() {
+            _httpServerSettingsPanel = new() {
+                Parent = WorkPanel,
+                FlowDirection = FlowDirection.TopDown,
+            };
+            _httpServerSettingsTitlePanel = new("HTTP服务器配置") {
+                Parent = _httpServerSettingsPanel,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
+            };
+            _httpServerSettingsContentPanel = new() {
+                Parent = _httpServerSettingsPanel,
+            };
+
+            _enableHttpServer = new("启用HTTP服务器") {
+                Parent = _httpServerSettingsContentPanel,
+                Ratio = 6.95,
+            };
+
+            _httpIpBox = new("监听IP") {
+                Parent = _httpServerSettingsContentPanel,
+                Ratio = 6.95,
+            };
+
+            _httpPortBox = new("监听端口") {
+                Parent = _httpServerSettingsContentPanel,
+                Ratio = 6.95,
+                PositiveIntOnly = true,
+            };
+
+            _enableHttpServer.CheckedChanged += (s, e) => {
+                _httpIpBox.Enabled = _enableHttpServer.Checked;
+                _httpPortBox.Enabled = _enableHttpServer.Checked;
             };
         }
 
@@ -237,6 +284,7 @@ namespace OperationGuidance_new.Views {
 
             // Save MES settings
             SaveMesSettings();
+            SaveHttpServerSettings();
 
             // Reset unsaved changes check state
             WidgetUtils.CheckSaved = true;
@@ -261,6 +309,17 @@ namespace OperationGuidance_new.Views {
             _recipeCodeOriginal = mesConfig.recipe_code;
             _plcIsReadyAddrOriginal = mesConfig.plc_is_ready_addr;
             _plcRegisterAddrOriginal = mesConfig.plc_register_addr;
+        }
+
+        protected virtual void SaveHttpServerSettings() {
+            var httpConfig = MainUtils.HttpConfig;
+            httpConfig.Write(ConfigName_Http.IsHost, _enableHttpServer.Checked.ToYesOrNoInt().ToString());
+            httpConfig.Write(ConfigName_Http.HostIp, _httpIpBox.GetTextBox(0).Box.Text);
+            httpConfig.Write(ConfigName_Http.HostPort, _httpPortBox.GetTextBox(0).Box.Text);
+
+            _enableHttpServerOriginal = _enableHttpServer.Checked;
+            _httpIpOriginal = _httpIpBox.GetTextBox(0).Box.Text;
+            _httpPortOriginal = _httpPortBox.GetTextBox(0).Box.Text;
         }
 
         protected override void ResizeStoragePanel() {
@@ -316,6 +375,24 @@ namespace OperationGuidance_new.Views {
             // Resize outer panel
             _printerSettingsPanel.Size = new(Width, _printerSettingsTitlePanel.Height + _printerSettingsContentPanel.Height);
 
+            // HTTP server settings panel
+            _httpServerSettingsPanel.Location = new(0, _printerSettingsPanel.Location.Y + _printerSettingsPanel.Height + ContentVPadding);
+            _httpServerSettingsPanel.Size = new(Width, 0);
+            _httpServerSettingsTitlePanel.Size = new(Width, TitleHeight);
+
+            boxWidth = (Width - ContentHPadding * 3) / 2;
+            boxVMargin = BoxNBtnHeight / 2;
+            _enableHttpServer.Size = new(boxWidth, BoxNBtnHeight);
+            _enableHttpServer.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _httpIpBox.Size = new(boxWidth, BoxNBtnHeight);
+            _httpIpBox.Margin = new(0, boxVMargin, 0, 0);
+            // Row 2 - IP + Port
+            _httpPortBox.Size = new(boxWidth, BoxNBtnHeight);
+            _httpPortBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _httpServerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 2 + ContentVPadding * 2 + boxVMargin * 1);
+            _httpServerSettingsContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
+            _httpServerSettingsPanel.Size = new(Width, _httpServerSettingsTitlePanel.Height + _httpServerSettingsContentPanel.Height);
+
             // Resize WorkPanel to include printer settings (MES panel will be added in ResizeMesSettings)
             // Note: WorkPanel final size will be set in ResizeMesSettings
 
@@ -325,7 +402,7 @@ namespace OperationGuidance_new.Views {
 
         protected virtual void ResizeMesSettings() {
             // Position after printer settings panel
-            _mesSettingsPanel.Location = new(0, _printerSettingsPanel.Location.Y + _printerSettingsPanel.Height + ContentVPadding);
+            _mesSettingsPanel.Location = new(0, _httpServerSettingsPanel.Location.Y + _httpServerSettingsPanel.Height + ContentVPadding);
             _mesSettingsPanel.Size = new(Width, 0);
 
             // Title panel
@@ -365,7 +442,7 @@ namespace OperationGuidance_new.Views {
             _mesSettingsPanel.Size = new(Width, _mesSettingsTitlePanel.Height + _mesSettingsContentPanel.Height);
 
             // Update WorkPanel to include MES settings
-            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height + _printerSettingsPanel.Height + _mesSettingsPanel.Height + ContentVPadding * 2);
+            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height + _httpServerSettingsPanel.Height + _printerSettingsPanel.Height + _mesSettingsPanel.Height + ContentVPadding * 3);
         }
 
         protected override async void LoadSettings() {
@@ -428,6 +505,21 @@ namespace OperationGuidance_new.Views {
                     _softVersionOriginal = printerConfig.soft_version;
                     _hardVersionOriginal = printerConfig.hard_version;
 
+                    // Load HTTP server config
+                    var httpConfig = MainUtils.HttpConfig;
+                    int.TryParse(httpConfig.Read(ConfigName_Http.IsHost), out int isHost);
+                    _enableHttpServer.Checked = isHost.ToYesOrNoBool();
+                    _httpIpBox.GetTextBox(0).Box.Text = httpConfig.Read(ConfigName_Http.HostIp);
+                    _httpPortBox.GetTextBox(0).Box.Text = httpConfig.Read(ConfigName_Http.HostPort);
+
+                    // Initialize HTTP server original values
+                    _enableHttpServerOriginal = _enableHttpServer.Checked;
+                    _httpIpOriginal = _httpIpBox.GetTextBox(0).Box.Text;
+                    _httpPortOriginal = _httpPortBox.GetTextBox(0).Box.Text;
+
+                    _httpIpBox.Enabled = _enableHttpServer.Checked;
+                    _httpPortBox.Enabled = _enableHttpServer.Checked;
+
                     // Load MES config
                     var mesConfig = ConfigUtils.LoadConfig<SciiXtConfig>();
                     _httpHostBox.GetTextBox(0).Box.Text = mesConfig.http_host;
@@ -487,6 +579,14 @@ namespace OperationGuidance_new.Views {
                     _softVersionBox.GetTextBox(0).Box.Text = defaultConfig.soft_version;
                     _hardVersionBox.GetTextBox(0).Box.Text = defaultConfig.hard_version;
 
+                    // Reset HTTP server config to default (empty = use runtime fallback)
+                    int.TryParse(MainUtils.HttpConfig.Read(ConfigName_Http.IsHost), out int isHostDefault);
+                    _enableHttpServer.Checked = isHostDefault.ToYesOrNoBool();
+                    _httpIpBox.GetTextBox(0).Box.Text = MainUtils.HttpConfig.Read(ConfigName_Http.HostIp);
+                    _httpPortBox.GetTextBox(0).Box.Text = MainUtils.HttpConfig.Read(ConfigName_Http.HostPort);
+                    _httpIpBox.Enabled = _enableHttpServer.Checked;
+                    _httpPortBox.Enabled = _enableHttpServer.Checked;
+
                     // Reset MES config to default
                     var defaultMesConfig = ConfigUtils.GetDefault<SciiXtConfig>();
                     _httpHostBox.GetTextBox(0).Box.Text = defaultMesConfig.http_host;
@@ -516,22 +616,36 @@ namespace OperationGuidance_new.Views {
                     }
                 }
             }
+            if (_enableHttpServer?.Checked == true) {
+                string? portText = _httpPortBox?.GetTextBox(0)?.Box?.Text;
+                if (string.IsNullOrEmpty(portText) || !int.TryParse(portText, out int port) || port <= 0) {
+                    return "请输入有效的监听端口（大于0的整数）";
+                }
+            }
             return base.CheckBeforeSave();
         }
 
         protected override bool CheckSavedFunc_detail() {
-            if (base.CheckSavedFunc_detail()) return true;
-            return CheckSvedFuncSeparately(_partCodeBox.GetTextBox(0).Box.Text != _partCodeOriginal, "零部件编码")
-                || CheckSvedFuncSeparately(_venderCodeBox.GetTextBox(0).Box.Text != _venderCodeOriginal, "供应商编码")
-                || CheckSvedFuncSeparately(_softVersionBox.GetTextBox(0).Box.Text != _softVersionOriginal, "软件版本")
-                || CheckSvedFuncSeparately(_hardVersionBox.GetTextBox(0).Box.Text != _hardVersionOriginal, "硬件版本")
-                || CheckSvedFuncSeparately(_httpHostBox.GetTextBox(0).Box.Text != _httpHostOriginal, "HTTP地址")
-                || CheckSvedFuncSeparately(_procedureCodeBox.GetTextBox(0).Box.Text != _procedureCodeOriginal, "工序编码")
-                || CheckSvedFuncSeparately(_equipmentCodeBox.GetTextBox(0).Box.Text != _equipmentCodeOriginal, "设备编码")
-                || CheckSvedFuncSeparately(_batchNoBox.GetTextBox(0).Box.Text != _batchNoOriginal, "批次号")
-                || CheckSvedFuncSeparately(_recipeCodeBox.GetTextBox(0).Box.Text != _recipeCodeOriginal, "配方编码")
-                || CheckSvedFuncSeparately(_plcIsReadyAddrBox.GetTextBox(0).Box.Text != _plcIsReadyAddrOriginal, "PLC就绪地址")
-                || CheckSvedFuncSeparately(_plcRegisterAddrBox.GetTextBox(0).Box.Text != _plcRegisterAddrOriginal, "PLC寄存器地址");
+            return base.CheckSavedFunc_detail()
+                && !(CheckSvedFuncSeparately(_enablePrinter.Checked != _enablePrinterOriginal, "启用打印机")
+                    || CheckSvedFuncSeparately(_enableSecondPrinter.Checked != _enableSecondPrinterOriginal, "启用第二打印机")
+                    || CheckSvedFuncSeparately((_enablePrinter.Checked ? (_printerName.Value ?? "") : "") != _printerNameOriginal, "打印机名称")
+                    || CheckSvedFuncSeparately((_enableSecondPrinter.Checked ? (_secondPrinterName.Value ?? "") : "") != _secondPrinterNameOriginal, "第二打印机名称")
+                    || CheckSvedFuncSeparately((int.TryParse(_secondBarcodeLength?.GetTextBox(0)?.Box?.Text, out int bLen) ? bLen : 0) != _secondBarcodeLengthOriginal, "第二条码长度")
+                    || CheckSvedFuncSeparately(_partCodeBox.GetTextBox(0).Box.Text != _partCodeOriginal, "零部件编码")
+                    || CheckSvedFuncSeparately(_venderCodeBox.GetTextBox(0).Box.Text != _venderCodeOriginal, "供应商编码")
+                    || CheckSvedFuncSeparately(_softVersionBox.GetTextBox(0).Box.Text != _softVersionOriginal, "软件版本")
+                    || CheckSvedFuncSeparately(_hardVersionBox.GetTextBox(0).Box.Text != _hardVersionOriginal, "硬件版本")
+                    || CheckSvedFuncSeparately(_httpHostBox.GetTextBox(0).Box.Text != _httpHostOriginal, "HTTP地址")
+                    || CheckSvedFuncSeparately(_procedureCodeBox.GetTextBox(0).Box.Text != _procedureCodeOriginal, "工序编码")
+                    || CheckSvedFuncSeparately(_equipmentCodeBox.GetTextBox(0).Box.Text != _equipmentCodeOriginal, "设备编码")
+                    || CheckSvedFuncSeparately(_batchNoBox.GetTextBox(0).Box.Text != _batchNoOriginal, "批次号")
+                    || CheckSvedFuncSeparately(_recipeCodeBox.GetTextBox(0).Box.Text != _recipeCodeOriginal, "配方编码")
+                    || CheckSvedFuncSeparately(_plcIsReadyAddrBox.GetTextBox(0).Box.Text != _plcIsReadyAddrOriginal, "PLC就绪地址")
+                    || CheckSvedFuncSeparately(_plcRegisterAddrBox.GetTextBox(0).Box.Text != _plcRegisterAddrOriginal, "PLC寄存器地址")
+                    || CheckSvedFuncSeparately(_enableHttpServer.Checked != _enableHttpServerOriginal, "HTTP服务器启用")
+                    || CheckSvedFuncSeparately(_httpIpBox.GetTextBox(0).Box.Text != _httpIpOriginal, "监听IP")
+                    || CheckSvedFuncSeparately(_httpPortBox.GetTextBox(0).Box.Text != _httpPortOriginal, "监听端口"));
         }
     }
 }
