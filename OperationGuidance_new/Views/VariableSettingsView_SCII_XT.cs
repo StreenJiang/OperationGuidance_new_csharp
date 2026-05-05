@@ -128,11 +128,13 @@ namespace OperationGuidance_new.Views {
             _batchNoBox = new("批次号") {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
+                Enabled = false,
             };
 
             _recipeCodeBox = new("配方编码") {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
+                Enabled = false,
             };
 
             _plcIsReadyAddrBox = new("PLC就绪地址") {
@@ -140,7 +142,7 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
-            _plcRegisterAddrBox = new("PLC寄存器地址") {
+            _plcRegisterAddrBox = new("PLC结果地址") {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
             };
@@ -164,12 +166,12 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
-            _httpIpBox = new("监听IP") {
+            _httpIpBox = new("服务器IP") {
                 Parent = _httpServerSettingsContentPanel,
                 Ratio = 6.95,
             };
 
-            _httpPortBox = new("监听端口") {
+            _httpPortBox = new("服务器端口") {
                 Parent = _httpServerSettingsContentPanel,
                 Ratio = 6.95,
                 PositiveIntOnly = true,
@@ -204,22 +206,6 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
-            _enableSecondPrinter = new("启用第二打印机") {
-                Parent = _printerSettingsContentPanel,
-                Ratio = 6.95,
-            };
-
-            _secondPrinterName = new("第二打印机名称") {
-                Parent = _printerSettingsContentPanel,
-                Ratio = 6.95,
-            };
-
-            _secondBarcodeLength = new("第二条码长度") {
-                Parent = _printerSettingsContentPanel,
-                Ratio = 6.95,
-                PositiveIntOnly = true,
-            };
-
             _partCodeBox = new("零部件编码") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
@@ -240,9 +226,29 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
+            _enableSecondPrinter = new("启用第二打印机") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+            };
+
+            _secondPrinterName = new("第二打印机名称") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+            };
+
+            _secondBarcodeLength = new("第二条码长度") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+                PositiveIntOnly = true,
+            };
+
             // Bind toggle events to control combobox enable state
             _enablePrinter.CheckedChanged += (s, e) => {
                 _printerName.Enabled = _enablePrinter.Checked;
+                _partCodeBox.Enabled = _enablePrinter.Checked;
+                _venderCodeBox.Enabled = _enablePrinter.Checked;
+                _softVersionBox.Enabled = _enablePrinter.Checked;
+                _hardVersionBox.Enabled = _enablePrinter.Checked;
             };
             _enableSecondPrinter.CheckedChanged += (s, e) => {
                 _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
@@ -352,23 +358,23 @@ namespace OperationGuidance_new.Views {
             _printerName.Size = new(boxWidth, BoxNBtnHeight);
             _printerName.Margin = new(0, 0, 0, 0);
             // Resize box - second row
+            _partCodeBox.Size = new(boxWidth, BoxNBtnHeight);
+            _partCodeBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _venderCodeBox.Size = new(boxWidth, BoxNBtnHeight);
+            _venderCodeBox.Margin = new(0, boxVMargin, 0, 0);
+            // Resize box - third row
+            _softVersionBox.Size = new(boxWidth, BoxNBtnHeight);
+            _softVersionBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _hardVersionBox.Size = new(boxWidth, BoxNBtnHeight);
+            _hardVersionBox.Margin = new(0, boxVMargin, 0, 0);
+            // Resize box - fourth row
             _enableSecondPrinter.Size = new(boxWidth, BoxNBtnHeight);
             _enableSecondPrinter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _secondPrinterName.Size = new(boxWidth, BoxNBtnHeight);
             _secondPrinterName.Margin = new(0, boxVMargin, 0, 0);
-            // Resize box - third row
-            _secondBarcodeLength.Size = new(boxWidth, BoxNBtnHeight);
-            _secondBarcodeLength.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            _partCodeBox.Size = new(boxWidth, BoxNBtnHeight);
-            _partCodeBox.Margin = new(0, boxVMargin, 0, 0);
-            // Resize box - fourth row
-            _venderCodeBox.Size = new(boxWidth, BoxNBtnHeight);
-            _venderCodeBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            _softVersionBox.Size = new(boxWidth, BoxNBtnHeight);
-            _softVersionBox.Margin = new(0, boxVMargin, 0, 0);
             // Resize box - fifth row
-            _hardVersionBox.Size = new(boxWidth, BoxNBtnHeight);
-            _hardVersionBox.Margin = new(0, boxVMargin, 0, 0);
+            _secondBarcodeLength.Size = new(boxWidth, BoxNBtnHeight);
+            _secondBarcodeLength.Margin = new(0, boxVMargin, 0, 0);
             // Resize Content with padding (5 rows now)
             _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 5 + ContentVPadding * 2 + boxVMargin * 4);
             _printerSettingsContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
@@ -470,6 +476,10 @@ namespace OperationGuidance_new.Views {
 
                     // Set combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
+                    _partCodeBox.Enabled = _enablePrinter.Checked;
+                    _venderCodeBox.Enabled = _enablePrinter.Checked;
+                    _softVersionBox.Enabled = _enablePrinter.Checked;
+                    _hardVersionBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 
@@ -553,6 +563,10 @@ namespace OperationGuidance_new.Views {
 
                     // Reset combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
+                    _partCodeBox.Enabled = _enablePrinter.Checked;
+                    _venderCodeBox.Enabled = _enablePrinter.Checked;
+                    _softVersionBox.Enabled = _enablePrinter.Checked;
+                    _hardVersionBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 

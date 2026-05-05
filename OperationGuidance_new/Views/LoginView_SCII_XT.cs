@@ -1,4 +1,5 @@
 using CustomLibrary.Utils;
+using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
@@ -13,7 +14,12 @@ namespace OperationGuidance_new.Views {
             if (account == "admin") {
                 base.CheckLoginByApi(account, password);
             } else {
-                var dto = Task.Run(async () => await Workflow_SCII_XT.OperatorLogin(new(account, password)))
+                var config = ConfigUtils.LoadConfig<SciiXtConfig>();
+                if (string.IsNullOrEmpty(config.equipment_code)) {
+                    WidgetUtils.ShowErrorPopUp(this, "设备编码不能为空，无法登录。请检查 SciiXtConfig 配置。");
+                    return;
+                }
+                var dto = Task.Run(async () => await Workflow_SCII_XT.OperatorLogin(new(account, password, config.equipment_code)))
                               .GetAwaiter()
                               .GetResult();
 
