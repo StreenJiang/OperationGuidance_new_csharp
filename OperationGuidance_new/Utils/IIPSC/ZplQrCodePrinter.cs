@@ -138,6 +138,29 @@ namespace OperationGuidance_new.Utils.IIPSC {
             }
         }
 
+        public bool PrintWithSn(SciiXtPrinterConfig config, int sn, string printerName) {
+            try {
+                string qrContent = Generate64BitCode(
+                    config.part_code, config.vender_code, config.batch_code,
+                    sn.ToString(), config.soft_version, config.hard_version);
+                string zpl = GenerateZplCommand(config, qrContent);
+                return PrintViaZpl(printerName, zpl);
+            } catch (Exception ex) {
+                log.Error($"PrintWithSn fails! PrinterName = [{printerName}], SN = [{sn}]：{ex.Message}");
+                return false;
+            }
+        }
+
+        public bool PrintQrContent(string content, string printerName) {
+            try {
+                string zpl = GenerateQrZpl(content);
+                return PrintViaZpl(printerName, zpl);
+            } catch (Exception ex) {
+                log.Error($"PrintQrContent fails! PrinterName = [{printerName}]：{ex.Message}");
+                return false;
+            }
+        }
+
         /// <summary>
         /// 获取系统中所有可用打印机
         /// </summary>

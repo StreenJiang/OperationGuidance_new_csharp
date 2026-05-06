@@ -7,6 +7,7 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
+using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Views {
@@ -38,6 +39,9 @@ namespace OperationGuidance_new.Views {
         private string _secondPrinterNameOriginal;
         private CustomTextBoxGroup _secondBarcodeLength;
         private int _secondBarcodeLengthOriginal;
+
+        // Printer test buttons
+        private CommonButtonGroup _printerTestBtnGroup;
 
         // Printer info fields
         private CustomTextBoxGroup _partCodeBox;
@@ -242,9 +246,17 @@ namespace OperationGuidance_new.Views {
                 PositiveIntOnly = true,
             };
 
+            _printerTestBtnGroup = new("打印机测试") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+            };
+            _printerTestBtnGroup.GetButton(0).Label = "第一打印机";
+            _printerTestBtnGroup.AddButton("第二打印机");
+
             // Bind toggle events to control combobox enable state
             _enablePrinter.CheckedChanged += (s, e) => {
                 _printerName.Enabled = _enablePrinter.Checked;
+                _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
                 _partCodeBox.Enabled = _enablePrinter.Checked;
                 _venderCodeBox.Enabled = _enablePrinter.Checked;
                 _softVersionBox.Enabled = _enablePrinter.Checked;
@@ -252,7 +264,22 @@ namespace OperationGuidance_new.Views {
             };
             _enableSecondPrinter.CheckedChanged += (s, e) => {
                 _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                 _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
+            };
+
+            // Bind test button click handlers
+            _printerTestBtnGroup.GetButton(0).MouseUp += (s, e) => {
+                using PrinterTestPopUpForm form = new(PrinterTestMode.Printer1);
+                form.PretendToShowToCreateHandlesForChildren();
+                form.ResizeSelf();
+                form.Show();
+            };
+            _printerTestBtnGroup.GetButton(1).MouseUp += (s, e) => {
+                using PrinterTestPopUpForm form = new(PrinterTestMode.Printer2);
+                form.PretendToShowToCreateHandlesForChildren();
+                form.ResizeSelf();
+                form.Show();
             };
         }
 
@@ -344,7 +371,7 @@ namespace OperationGuidance_new.Views {
             base.ResizeMissionSettings();
 
             // Resize printer settings panel - calculate location after work panel content
-            _printerSettingsPanel.Location = new(0, WorkContentPanel.Location.Y + WorkContentPanel.Height + ContentVPadding);
+            _printerSettingsPanel.Location = new(0, WorkContentPanel.Location.Y + WorkContentPanel.Height);
             _printerSettingsPanel.Size = new(Width, 0);
 
             // Resize title panel - needs height to render
@@ -374,24 +401,27 @@ namespace OperationGuidance_new.Views {
             _secondPrinterName.Margin = new(0, boxVMargin, 0, 0);
             // Resize box - fifth row
             _secondBarcodeLength.Size = new(boxWidth, BoxNBtnHeight);
-            _secondBarcodeLength.Margin = new(0, boxVMargin, 0, 0);
-            // Resize Content with padding (5 rows now)
-            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 5 + ContentVPadding * 2 + boxVMargin * 4);
+            _secondBarcodeLength.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            // Resize box - sixth row (printer test button group)
+            _printerTestBtnGroup.Size = new(boxWidth, BoxNBtnHeight);
+            _printerTestBtnGroup.Margin = new(0, boxVMargin, 0, 0);
+            // Resize Content with padding (6 rows now)
+            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 5 + ContentVPadding * 2 + boxVMargin * 5);
             _printerSettingsContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
             // Resize outer panel
             _printerSettingsPanel.Size = new(Width, _printerSettingsTitlePanel.Height + _printerSettingsContentPanel.Height);
 
             // HTTP server settings panel
-            _httpServerSettingsPanel.Location = new(0, _printerSettingsPanel.Location.Y + _printerSettingsPanel.Height + ContentVPadding);
+            _httpServerSettingsPanel.Location = new(0, _printerSettingsPanel.Location.Y + _printerSettingsPanel.Height);
             _httpServerSettingsPanel.Size = new(Width, 0);
             _httpServerSettingsTitlePanel.Size = new(Width, TitleHeight);
 
             boxWidth = (Width - ContentHPadding * 3) / 2;
             boxVMargin = BoxNBtnHeight / 2;
             _enableHttpServer.Size = new(boxWidth, BoxNBtnHeight);
-            _enableHttpServer.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _enableHttpServer.Margin = new(0, 0, ContentHGap / 2, 0);
             _httpIpBox.Size = new(boxWidth, BoxNBtnHeight);
-            _httpIpBox.Margin = new(0, boxVMargin, 0, 0);
+            _httpIpBox.Margin = new(0, 0, 0, 0);
             // Row 2 - IP + Port
             _httpPortBox.Size = new(boxWidth, BoxNBtnHeight);
             _httpPortBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
@@ -408,7 +438,7 @@ namespace OperationGuidance_new.Views {
 
         protected virtual void ResizeMesSettings() {
             // Position after printer settings panel
-            _mesSettingsPanel.Location = new(0, _httpServerSettingsPanel.Location.Y + _httpServerSettingsPanel.Height + ContentVPadding);
+            _mesSettingsPanel.Location = new(0, _httpServerSettingsPanel.Location.Y + _httpServerSettingsPanel.Height);
             _mesSettingsPanel.Size = new(Width, 0);
 
             // Title panel
@@ -420,9 +450,9 @@ namespace OperationGuidance_new.Views {
 
             // Row 1 - HTTP address + procedure code (two controls side by side)
             _httpHostBox.Size = new(boxWidth, BoxNBtnHeight);
-            _httpHostBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _httpHostBox.Margin = new(0, 0, ContentHGap / 2, 0);
             _procedureCodeBox.Size = new(boxWidth, BoxNBtnHeight);
-            _procedureCodeBox.Margin = new(0, boxVMargin, 0, 0);
+            _procedureCodeBox.Margin = new(0, 0, 0, 0);
 
             // Row 2 - equipment code + batch no
             _equipmentCodeBox.Size = new(boxWidth, BoxNBtnHeight);
@@ -448,7 +478,7 @@ namespace OperationGuidance_new.Views {
             _mesSettingsPanel.Size = new(Width, _mesSettingsTitlePanel.Height + _mesSettingsContentPanel.Height);
 
             // Update WorkPanel to include MES settings
-            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height + _httpServerSettingsPanel.Height + _printerSettingsPanel.Height + _mesSettingsPanel.Height + ContentVPadding * 3);
+            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height + _printerSettingsPanel.Height + _httpServerSettingsPanel.Height + _mesSettingsPanel.Height);
         }
 
         protected override async void LoadSettings() {
@@ -476,11 +506,13 @@ namespace OperationGuidance_new.Views {
 
                     // Set combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
+                    _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
                     _partCodeBox.Enabled = _enablePrinter.Checked;
                     _venderCodeBox.Enabled = _enablePrinter.Checked;
                     _softVersionBox.Enabled = _enablePrinter.Checked;
                     _hardVersionBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                    _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 
                     // Select saved printer by name
@@ -563,11 +595,13 @@ namespace OperationGuidance_new.Views {
 
                     // Reset combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
+                    _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
                     _partCodeBox.Enabled = _enablePrinter.Checked;
                     _venderCodeBox.Enabled = _enablePrinter.Checked;
                     _softVersionBox.Enabled = _enablePrinter.Checked;
                     _hardVersionBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
+                    _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
 
                     // Reset combobox selection (clear first, then select if valid value exists)
