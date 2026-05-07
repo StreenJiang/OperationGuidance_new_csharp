@@ -116,6 +116,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 }
 
                 if (valid) {
+                    _config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
                     bool ok = await Task.Run(() => {
                         using ZplQrCodePrinter printer = new();
                         return printer.PrintWithSn(_config, snVal, printerName);

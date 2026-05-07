@@ -14,6 +14,17 @@ namespace OperationGuidance_new.Utils.IIPSC {
         private const int SOFTWARE_VERSION_LENGTH = 16;// 软件版本号长度（前补0）
         private const int HARDWARE_VERSION_LENGTH = 16;// 硬件版本号长度（前补0）
 
+        public const double DPMM_203DPI = 8;   // 203 dpi ≈ 8 dots/mm
+        public const double DPMM_300DPI = 12;  // 300 dpi ≈ 12 dots/mm
+        public const double DPMM_600DPI = 24;  // 600 dpi ≈ 24 dots/mm
+
+        /// <summary>QR版本字母数字模式容量（M级纠错），索引即版本号（1-based）</summary>
+        private static readonly int[] QrAlphanumericCapacity = {
+            0,   // 占位（版本从1开始）
+            25, 47, 77, 114, 154, 195, 224, 279, 352, 430,
+            496, 574, 653, 738, 829, 922, 1017, 1117, 1224, 1332,
+        };
+
         /// <summary>
         /// 生成64位零部件完整编码
         /// </summary>
@@ -63,8 +74,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
             // 设置标签尺寸（必须与物理标签一致，否则居中失效）
             zpl.AppendLine($"^LH0,0");                          // 标签原点
-            zpl.AppendLine($"^PW{labelWidthMm * 8}");           // 标签宽度（点）
-            zpl.AppendLine($"^LL{labelHeightMm * 8}");          // 标签长度（点）
+            zpl.AppendLine($"^PW{MmToDots(labelWidthMm, DPMM_203DPI)}");
+            zpl.AppendLine($"^LL{MmToDots(labelHeightMm, DPMM_203DPI)}");
 
             // 二维码指令（居中+放大）
             zpl.AppendLine($"^FO{sProfile.sn_pos_x},{sProfile.sn_pos_y}^BQN,2,{moduleSize}");
@@ -74,17 +85,49 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return zpl.ToString();
         }
 
-        public string GenerateQrZpl(string qrContent) {
-            // 203 DPI
-            // 标签 15mm → 120 点
-            // 二维码 9mm → 72 点
-            const int LABEL_SIZE = 120;
-            const int QR_SIZE = 72;
+        public string GenerateQrZpl(string qrContent,
+                                    double labelWidthMm = 15,
+                                    double labelHeightMm = 15,
+                                    double qrSizeMm = 9,
+                                    double dpmm = DPMM_300DPI) {
+            int labelDotsW = MmToDots(labelWidthMm, dpmm);
+            int labelDotsH = MmToDots(labelHeightMm, dpmm);
+            int targetDots = MmToDots(qrSizeMm, dpmm);
 
-            int x = (LABEL_SIZE - QR_SIZE) / 2;
-            int y = (LABEL_SIZE - QR_SIZE) / 2;
+            int version = GetMinQrVersion(qrContent);
+            int modules = GetModuleCountForVersion(version);
 
-            return $"^XA^PW{LABEL_SIZE}^LL{LABEL_SIZE}^FO{x},{y}^BQN,2,1^FDMA,{qrContent}^FS^XZ";
+            int moduleWidth = Math.Clamp(targetDots / modules, 1, 10);
+            int actualDots = modules * moduleWidth;
+
+            int x = Math.Max(0, (labelDotsW - actualDots) / 2);
+            int y = Math.Max(0, (labelDotsH - actualDots) / 2);
+
+            // 强制指定QR版本，避免打印机自动选择版本与预期不符
+            return $"^XA^PW{labelDotsW}^LL{labelDotsH}^FO{x},{y}^BQN,2,{moduleWidth},0,{version}^FDMA,{qrContent}^FS^XZ";
+        }
+
+        /// <summary>
+        /// 根据内容长度查找所需最小QR版本，使用字母数字模式容量（M级纠错）
+        /// </summary>
+        private static int GetMinQrVersion(string content) {
+            int len = content.Length;
+            for (int v = 1; v < QrAlphanumericCapacity.Length; v++) {
+                if (len <= QrAlphanumericCapacity[v])
+                    return v;
+            }
+            return QrAlphanumericCapacity.Length - 1;
+        }
+
+        /// <summary>
+        /// QR版本号 → 模块数（ISO 18004: 模块数 = (版本-1)×4 + 21）
+        /// </summary>
+        private static int GetModuleCountForVersion(int version) {
+            return (version - 1) * 4 + 21;
+        }
+
+        private static int MmToDots(double mm, double dpmm) {
+            return (int) Math.Round(mm * dpmm);
         }
 
         /// <summary>

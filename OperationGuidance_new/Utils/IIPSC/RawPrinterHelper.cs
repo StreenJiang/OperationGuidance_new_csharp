@@ -114,6 +114,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
             if (string.IsNullOrEmpty(szString))
                 return false;
 
+            log.Info($"打印指令：{szString}");
+
             IntPtr pBytes = IntPtr.Zero;
             try {
                 // 关键修复：计算 ANSI 编码的实际字节数（使用系统默认 ANSI 编码，与 StringToCoTaskMemAnsi 匹配）
