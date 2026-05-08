@@ -24,7 +24,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private CustomComboBoxGroup<string> _dpiBox = null!;
         private CustomTextBoxGroup _labelSizeBox = null!;
         private CustomTextBoxGroup _qrSizeBox = null!;
-        private CustomTextBoxGroup _marginFactorBox = null!;
+        private CustomTextBoxGroup _marginXFactorBox = null!;
+        private CustomTextBoxGroup _marginYFactorBox = null!;
 
         public PrinterTestPopUpForm(PrinterTestMode mode) {
             _mode = mode;
@@ -57,7 +58,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     Parent = ContentPanel,
                     Ratio = 6.95,
                 };
-                _marginFactorBox = new("边距系数") {
+                _marginXFactorBox = new("X边距系数") {
+                    Parent = ContentPanel,
+                    Ratio = 6.95,
+                };
+                _marginYFactorBox = new("Y边距系数") {
                     Parent = ContentPanel,
                     Ratio = 6.95,
                 };
@@ -109,7 +114,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
                 _labelSizeBox.SetValue(0, _detailConfig.label_size_mm.ToString());
                 _qrSizeBox.SetValue(0, _detailConfig.qr_size_mm.ToString());
-                _marginFactorBox.SetValue(0, _detailConfig.margin_factor.ToString());
+                _marginXFactorBox.SetValue(0, _detailConfig.margin_x_factor.ToString());
+                _marginYFactorBox.SetValue(0, _detailConfig.margin_y_factor.ToString());
             }
 
             _loaded = true;
@@ -142,10 +148,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _qrSizeBox.Size = new(boxWidth, boxHeight);
                 _qrSizeBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
 
-                _marginFactorBox.Size = new(boxWidth, boxHeight);
-                _marginFactorBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
+                _marginXFactorBox.Size = new(boxWidth, boxHeight);
+                _marginXFactorBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
 
-                rowCount = 6;
+                _marginYFactorBox.Size = new(boxWidth, boxHeight);
+                _marginYFactorBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
+
+                rowCount = 7;
             } else {
                 _printerNameBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
             }
@@ -215,12 +224,20 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _qrSizeBox.CheckError(0, false);
                 }
 
-                double marginFactor = double.TryParse(_marginFactorBox.GetTextBox(0).Box.Text, out double mf) && mf >= 0 && mf <= 1 ? mf : -1;
-                if (marginFactor < 0) {
-                    _marginFactorBox.CheckError(0, true);
+                double marginXFactor = double.TryParse(_marginXFactorBox.GetTextBox(0).Box.Text, out double mxf) && mxf >= 0 && mxf <= 1 ? mxf : -1;
+                if (marginXFactor < 0) {
+                    _marginXFactorBox.CheckError(0, true);
                     valid = false;
                 } else {
-                    _marginFactorBox.CheckError(0, false);
+                    _marginXFactorBox.CheckError(0, false);
+                }
+
+                double marginYFactor = double.TryParse(_marginYFactorBox.GetTextBox(0).Box.Text, out double myf) && myf >= 0 && myf <= 1 ? myf : -1;
+                if (marginYFactor < 0) {
+                    _marginYFactorBox.CheckError(0, true);
+                    valid = false;
+                } else {
+                    _marginYFactorBox.CheckError(0, false);
                 }
 
                 if (valid) {
@@ -229,12 +246,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _detailConfig.dpmm = dpmm;
                     _detailConfig.label_size_mm = labelSizeMm;
                     _detailConfig.qr_size_mm = qrSizeMm;
-                    _detailConfig.margin_factor = marginFactor;
+                    _detailConfig.margin_x_factor = marginXFactor;
+                    _detailConfig.margin_y_factor = marginYFactor;
                     ConfigUtils.SaveConfig(_detailConfig);
 
                     bool ok = await Task.Run(() => {
                         using ZplQrCodePrinter printer = new();
-                        return printer.PrintQrContent(content, printerName, dpmm, labelSizeMm, qrSizeMm, marginFactor);
+                        return printer.PrintQrContent(content, printerName, dpmm, labelSizeMm, qrSizeMm, marginXFactor, marginYFactor);
                     });
                     if (ok) {
                         WidgetUtils.ShowNoticePopUp("打印成功");

@@ -268,7 +268,7 @@ namespace OperationGuidance_new.Views {
                                 var detailConfig = ConfigUtils.LoadConfig<SecondPrinterDetailConfig>();
                                 if (!printer.PrintQrContent(qrContent, printerName,
                                     detailConfig.dpmm, detailConfig.label_size_mm,
-                                    detailConfig.qr_size_mm, detailConfig.margin_factor)) {
+                                    detailConfig.qr_size_mm, detailConfig.margin_x_factor, detailConfig.margin_y_factor)) {
                                     WidgetUtils.ShowWarningPopUp("发送指令至条码打印机（第二台）失败！请检查日志信息定位问题。");
                                 }
                             }

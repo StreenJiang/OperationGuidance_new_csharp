@@ -89,7 +89,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
                                     double dpmm = DPMM_300DPI,
                                     double labelSizeMm = 9,
                                     double qrSizeMm = 5.4,
-                                    double marginFactor = 0.5) {
+                                    double marginXFactor = 0.5,
+                                    double marginYFactor = 0.5) {
             int labelDots = MmToDots(labelSizeMm, dpmm);
             int targetQrDots = MmToDots(qrSizeMm, dpmm);
 
@@ -100,9 +101,10 @@ namespace OperationGuidance_new.Utils.IIPSC {
             int actualQrDots = modules * moduleWidth;
 
             int centeredMargin = (labelDots - actualQrDots) / 2;
-            int margin = Math.Max(0, (int)(centeredMargin * marginFactor));
+            int marginX = Math.Max(0, (int)(centeredMargin * marginXFactor));
+            int marginY = Math.Max(0, (int)(centeredMargin * marginYFactor));
 
-            return $"^XA^PW{labelDots}^LL{labelDots}^FO{margin},{margin}^BQN,2,{moduleWidth},0,{version}^FDMA,{qrContent}^FS^XZ";
+            return $"^XA^PW{labelDots}^LL{labelDots}^FO{marginX},{marginY}^BQN,2,{moduleWidth},0,{version}^FDMA,{qrContent}^FS^XZ";
         }
 
         private static int GetMinQrVersion(string content) {
@@ -187,9 +189,9 @@ namespace OperationGuidance_new.Utils.IIPSC {
         }
 
         public bool PrintQrContent(string content, string printerName,
-            double dpmm, double labelSizeMm, double qrSizeMm, double marginFactor) {
+            double dpmm, double labelSizeMm, double qrSizeMm, double marginXFactor, double marginYFactor) {
             try {
-                string zpl = GenerateQrZpl(content, dpmm, labelSizeMm, qrSizeMm, marginFactor);
+                string zpl = GenerateQrZpl(content, dpmm, labelSizeMm, qrSizeMm, marginXFactor, marginYFactor);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
                 log.Error($"PrintQrContent fails! PrinterName = [{printerName}]：{ex.Message}");
