@@ -94,7 +94,6 @@ namespace OperationGuidance_new.Configs {
                     new(id: 510, name: "IO设备管理", icon: Properties.Resources.device_io_box) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(DeviceIoView)},
-                            {AppVersion.SCII_XT, typeof(DeviceIoView_SCII_XT)},
                         },
                     },
                     new(id: 511, name: "外部数据库管理", icon: Properties.Resources.database) {

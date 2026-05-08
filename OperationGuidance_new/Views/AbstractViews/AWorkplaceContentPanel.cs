@@ -170,6 +170,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public BarCodeObj BarCodeObj => _barCodeObj;
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         public MissionRecordDTO? MissionRecord => _missionRecord;
+        public Func<string, bool>? ActiveBarcodeInterceptor { get; set; }
         #endregion
 
         public AWorkplaceContentPanel() { }
@@ -712,26 +713,15 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         return;
                                     }
 
-                                    bool confirmed = OpenAdminPasswordPopUpForm("螺丝机信号点测试需要管理员操作密码", false);
-                                    if (!confirmed) {
-                                        return;
-                                    }
-
                                     ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
                                     deviceBlock.PopUpForm = popUpForm;
-                                    contentSize.Height = panelHeight * 2 + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
-
-
-                                    TableLayoutPanel tablePanel = popUpForm.TablePanel;
-                                    Panel contentPanel = deviceBlock.PopUpForm.ContentPanel;
-                                    int boxHeight = WidgetUtils.TextOrComboBoxHeight();
-                                    int boxMargin = boxHeight / 5;
-                                    int tableHeight = tablePanel.Controls.Count / tablePanel.ColumnCount * (boxHeight + boxMargin * 2);
-                                    contentSize.Height = tableHeight + contentPanel.Padding.Size.Height;
-                                    int tableWidth = contentSize.Width - contentPanel.Padding.Size.Width;
-                                    popUpForm.BoxHeight = boxHeight;
-                                    popUpForm.BoxMargin = boxMargin;
-                                    popUpForm.TablePanel.Size = new(tableWidth, tableHeight);
+                                    contentSize.Width = (int)(WidgetUtils.MainSize.Width * .30);
+                                    int boxMargin = panelHeight / 5;
+                                    int boxWithMargin = panelHeight + boxMargin * 2;
+                                    int titleHeight = (int)(panelHeight * 1.25);
+                                    int titleBoxWithMargin = titleHeight + boxMargin * 2;
+                                    int normalRows = popUpForm.OpenLidButtonCount + 1; // IO test btn + open-lid btns
+                                    contentSize.Height = normalRows * boxWithMargin + titleBoxWithMargin + boxMargin + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
                                 }
                             } else if (deviceBlock.Category == DeviceCategories.IOBOX_SETTERSELECTOR) {
                                 // TODO: 

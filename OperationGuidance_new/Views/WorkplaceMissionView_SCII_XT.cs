@@ -392,6 +392,16 @@ namespace OperationGuidance_new.Views {
                 await Task.Run(() => {
                     this.SafeInvoke(async () => {
                         if (!IsDisposed) {
+                            // Check barcode interceptor first (for arranger open-lid scan popup)
+                            if (ActiveBarcodeInterceptor != null) {
+                                DeviceSerialPortDTO serialDto = _serialPorts.Single(dto => dto.id == pair.Key);
+                                if (serialDto.invalid_char != null) {
+                                    msg = String.Concat(msg.Where(c => !serialDto.invalid_char.Contains(c)));
+                                }
+                                if (ActiveBarcodeInterceptor(msg))
+                                    return;
+                            }
+
                             DeviceIoDTO? deviceIoDTO = _ioBoxes.SingleOrDefault(dto => dto.barcode == msg);
                             if (deviceIoDTO != null) {
                                 IoBoxTask ioBoxTask = _ioBoxTasks[MainUtils.GetTCPClientKey(deviceIoDTO.ip, deviceIoDTO.port)];
@@ -401,7 +411,7 @@ namespace OperationGuidance_new.Views {
                                         && deviceIoDTO.open_pos != null
                                         && deviceIoDTO.open_pos > 0
                                         && deviceIoDTO.open_pos <= IoBoxArranger.max) {
-                                        int?[] pos = { 0, 0, 0, 0 };
+                                        int?[] pos = { null, null, null, null, null, null, null, null };
                                         pos[deviceIoDTO.open_pos.Value - 1] = 1;
                                         arrangerType.OpenDoor(pos);
                                         await Task.Delay(200);

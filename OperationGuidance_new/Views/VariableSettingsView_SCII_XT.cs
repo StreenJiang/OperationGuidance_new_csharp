@@ -4,7 +4,9 @@ using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -74,6 +76,13 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _plcRegisterAddrBox;
         private string _plcRegisterAddrOriginal;
 
+        // Arranger open-lid config panel
+        private CustomContentPanel _arrangerConfigPanel;
+        private TitlePanel _arrangerConfigTitlePanel;
+        private CustomContentPanel _arrangerConfigContentPanel;
+        private List<CustomTextBoxButtonGroup> _arrangerGroups;
+        private string _arrangerGroupsOriginal;
+
         public VariableSettingsView_SCII_XT() {
             MissionSelfLoopingModeToggle.Hide();
             StoreLooseningDataToggle.Hide();
@@ -99,6 +108,7 @@ namespace OperationGuidance_new.Views {
             InitializePrinterSettingsPanel();
             InitializeHttpServerSettingsPanel();
             InitializeMesSettingsPanel();
+            InitializeArrangerConfigPanel();
         }
 
         protected virtual void InitializeMesSettingsPanel() {
@@ -150,6 +160,105 @@ namespace OperationGuidance_new.Views {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
             };
+        }
+
+        protected virtual void InitializeArrangerConfigPanel() {
+            _arrangerConfigPanel = new() {
+                Parent = WorkPanel,
+                FlowDirection = FlowDirection.TopDown,
+            };
+            _arrangerConfigTitlePanel = new("螺丝机开盖配置") {
+                Parent = _arrangerConfigPanel,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
+            };
+            _arrangerConfigContentPanel = new() {
+                Parent = _arrangerConfigPanel,
+            };
+
+            _arrangerGroups = new();
+
+            var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
+            var groups = config.GroupList;
+            if (groups.Count == 0) {
+                AddArrangerGroup(isFirst: true);
+            } else {
+                for (int i = 0; i < groups.Count; i++) {
+                    AddArrangerGroup(isFirst: i == 0);
+                }
+            }
+        }
+
+        private string GetBoxRealText(CustomTextBox textBox) {
+            string text = textBox.Box.Text?.Trim() ?? "";
+            return text == textBox.DefaultText ? "" : text;
+        }
+
+        private bool HasIncompleteArrangerGroup() {
+            foreach (var groupBox in _arrangerGroups) {
+                string name = GetBoxRealText(groupBox.GetTextBox(0));
+                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
+                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+                bool nameFilled = !string.IsNullOrEmpty(name);
+                bool barcodeFilled = !string.IsNullOrEmpty(barcode);
+                bool posFilled = !string.IsNullOrEmpty(posText);
+                // If partially filled (not all empty and not all filled), it's incomplete
+                if ((nameFilled || barcodeFilled || posFilled) && !(nameFilled && barcodeFilled && posFilled))
+                    return true;
+            }
+            return false;
+        }
+
+        private void AddArrangerGroup(bool isFirst) {
+            int index = _arrangerGroups.Count;
+            CustomTextBoxButtonGroup box = new($"开盖组{index + 1}") {
+                Parent = _arrangerConfigContentPanel,
+                Ratio = 9.0,
+                Separator = "->",
+            };
+            box.AddTextBox();
+            box.AddTextBox();
+
+            box.SetDefaultText(0, "名称");
+            box.SetDefaultText(1, "条码");
+            box.SetDefaultText(2, "点位(1-8)");
+            box.GetTextBox(2).PositiveIntOnly = true;
+
+            if (isFirst) {
+                SignButton addButton = box.AddButton<SignButton>();
+                addButton.Icon = Properties.Resources.sign_plus;
+                addButton.Click += (s, e) => {
+                    if (HasIncompleteArrangerGroup()) {
+                        WidgetUtils.ShowWarningPopUp("请先完成当前开盖组的配置（名称、条码、点位均不可为空），或清空不完整的组后再新增");
+                        return;
+                    }
+                    AddArrangerGroup(false);
+                };
+            } else {
+                SignButton minusButton = box.AddButton<SignButton>();
+                minusButton.Icon = Properties.Resources.sign_minus;
+                minusButton.Click += (s, e) => {
+                    _arrangerGroups.Remove(box);
+                    box.Dispose();
+                    for (int i = 0; i < _arrangerGroups.Count; i++) {
+                        _arrangerGroups[i].TextName = $"开盖组{i + 1}";
+                        _arrangerGroups[i].ResizeChildren();
+                    }
+                    if (IsHandleCreated) {
+                        ResizeMissionSettings();
+                        OuterVScrollPanel?.ResizeChildren();
+                    }
+                };
+            }
+
+            _arrangerGroups.Add(box);
+            for (int i = 0; i < _arrangerGroups.Count; i++) {
+                _arrangerGroups[i].TextName = $"开盖组{i + 1}";
+            }
+
+            if (IsHandleCreated) {
+                ResizeMissionSettings();
+                OuterVScrollPanel?.ResizeChildren();
+            }
         }
 
         protected virtual void InitializeHttpServerSettingsPanel() {
@@ -319,8 +428,46 @@ namespace OperationGuidance_new.Views {
             SaveMesSettings();
             SaveHttpServerSettings();
 
+            // Save arranger config
+            SaveArrangerConfig();
+
             // Reset unsaved changes check state
             WidgetUtils.CheckSaved = true;
+        }
+
+        protected virtual void SaveArrangerConfig() {
+            var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
+            var groups = new List<ArrangerGroupDTO>();
+            foreach (var groupBox in _arrangerGroups) {
+                string name = GetBoxRealText(groupBox.GetTextBox(0));
+                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
+                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+                bool hasContent = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || !string.IsNullOrEmpty(posText);
+                if (!hasContent)
+                    continue;
+                int.TryParse(posText, out int position);
+                if (position < 1 || position > 8)
+                    position = 1;
+                groups.Add(new ArrangerGroupDTO { name = name, barcode = barcode, position = position });
+            }
+            config.GroupList = groups;
+            ConfigUtils.SaveConfig(config);
+            _arrangerGroupsOriginal = config.groups;
+        }
+
+        private string GetCurrentArrangerGroupsJson() {
+            var groups = new List<ArrangerGroupDTO>();
+            foreach (var groupBox in _arrangerGroups) {
+                string name = GetBoxRealText(groupBox.GetTextBox(0));
+                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
+                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+                int.TryParse(posText, out int position);
+                if (position < 1 || position > 8)
+                    position = 1;
+                if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || position != 1)
+                    groups.Add(new ArrangerGroupDTO { name = name, barcode = barcode, position = position });
+            }
+            return JsonConvert.SerializeObject(groups);
         }
 
         protected virtual void SaveMesSettings() {
@@ -432,8 +579,9 @@ namespace OperationGuidance_new.Views {
             // Resize WorkPanel to include printer settings (MES panel will be added in ResizeMesSettings)
             // Note: WorkPanel final size will be set in ResizeMesSettings
 
-            // Call ResizeMesSettings to position and size MES panel and finalize WorkPanel size
+            // Position and size MES panel and arranger config panel
             ResizeMesSettings();
+            ResizeArrangerConfigPanel();
         }
 
         protected virtual void ResizeMesSettings() {
@@ -476,9 +624,32 @@ namespace OperationGuidance_new.Views {
 
             // Outer panel
             _mesSettingsPanel.Size = new(Width, _mesSettingsTitlePanel.Height + _mesSettingsContentPanel.Height);
+        }
 
-            // Update WorkPanel to include MES settings
-            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height + _printerSettingsPanel.Height + _httpServerSettingsPanel.Height + _mesSettingsPanel.Height);
+        protected virtual void ResizeArrangerConfigPanel() {
+            // Position after MES settings panel
+            _arrangerConfigPanel.Location = new(0, _mesSettingsPanel.Location.Y + _mesSettingsPanel.Height);
+            _arrangerConfigPanel.Size = new(Width, 0);
+
+            _arrangerConfigTitlePanel.Size = new(Width, TitleHeight);
+
+            int boxVMargin = BoxNBtnHeight / 2;
+            int contentInnerWidth = Width - ContentHPadding * 2;
+            foreach (CustomTextBoxButtonGroup group in _arrangerGroups) {
+                group.Size = new(contentInnerWidth, BoxNBtnHeight);
+                group.Margin = new(0, boxVMargin, 0, 0);
+            }
+
+            int groupCount = _arrangerGroups.Count;
+            _arrangerConfigContentPanel.Size = new(Width, BoxNBtnHeight * groupCount + ContentVPadding * 2 + boxVMargin * groupCount);
+            _arrangerConfigContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
+
+            _arrangerConfigPanel.Size = new(Width, _arrangerConfigTitlePanel.Height + _arrangerConfigContentPanel.Height);
+
+            // Update WorkPanel to include all panels
+            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height
+                + _printerSettingsPanel.Height + _httpServerSettingsPanel.Height
+                + _mesSettingsPanel.Height + _arrangerConfigPanel.Height);
         }
 
         protected override async void LoadSettings() {
@@ -580,6 +751,18 @@ namespace OperationGuidance_new.Views {
                     _recipeCodeOriginal = mesConfig.recipe_code;
                     _plcIsReadyAddrOriginal = mesConfig.plc_is_ready_addr;
                     _plcRegisterAddrOriginal = mesConfig.plc_register_addr;
+
+                    // Load arranger config (groups already created in InitializeArrangerConfigPanel)
+                    var arrangerConfig = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
+                    var arrangerGroups = arrangerConfig.GroupList;
+                    for (int i = 0; i < arrangerGroups.Count && i < _arrangerGroups.Count; i++) {
+                        var group = arrangerGroups[i];
+                        var groupBox = _arrangerGroups[i];
+                        groupBox.GetTextBox(0).Box.Text = group.name;
+                        groupBox.GetTextBox(1).Box.Text = group.barcode;
+                        groupBox.GetTextBox(2).Box.Text = group.position > 0 ? group.position.ToString() : "";
+                    }
+                    _arrangerGroupsOriginal = arrangerConfig.groups;
                 });
             });
         }
@@ -644,6 +827,21 @@ namespace OperationGuidance_new.Views {
                     _recipeCodeBox.GetTextBox(0).Box.Text = defaultMesConfig.recipe_code;
                     _plcIsReadyAddrBox.GetTextBox(0).Box.Text = defaultMesConfig.plc_is_ready_addr;
                     _plcRegisterAddrBox.GetTextBox(0).Box.Text = defaultMesConfig.plc_register_addr;
+
+                    // Reset arranger config to default (empty)
+                    while (_arrangerGroups.Count > 1) {
+                        var last = _arrangerGroups[_arrangerGroups.Count - 1];
+                        _arrangerGroups.Remove(last);
+                        last.Dispose();
+                    }
+                    if (_arrangerGroups.Count == 1) {
+                        _arrangerGroups[0].GetTextBox(0).Box.Text = "";
+                        _arrangerGroups[0].GetTextBox(1).Box.Text = "";
+                        _arrangerGroups[0].GetTextBox(2).Box.Text = "";
+                    }
+                    _arrangerGroupsOriginal = "[]";
+                    ResizeMissionSettings();
+                    OuterVScrollPanel?.ResizeChildren();
                 });
             });
         }
@@ -666,8 +864,23 @@ namespace OperationGuidance_new.Views {
             }
             if (_enableHttpServer?.Checked == true) {
                 string? portText = _httpPortBox?.GetTextBox(0)?.Box?.Text;
-                if (string.IsNullOrEmpty(portText) || !int.TryParse(portText, out int port) || port <= 0) {
+                if (!string.IsNullOrEmpty(portText) && (!int.TryParse(portText, out int port) || port <= 0)) {
                     return "请输入有效的监听端口（大于0的整数）";
+                }
+            }
+            // Validate arranger config
+            foreach (var groupBox in _arrangerGroups) {
+                string name = GetBoxRealText(groupBox.GetTextBox(0));
+                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
+                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+                bool hasAny = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || !string.IsNullOrEmpty(posText);
+                if (hasAny) {
+                    if (string.IsNullOrEmpty(name))
+                        return "螺丝机开盖配置：名称不能为空";
+                    if (string.IsNullOrEmpty(barcode))
+                        return "螺丝机开盖配置：条码不能为空";
+                    if (!int.TryParse(posText, out int pos) || pos < 1 || pos > 8)
+                        return "螺丝机开盖配置：点位必须是1-8之间的整数";
                 }
             }
             return base.CheckBeforeSave();
@@ -693,7 +906,8 @@ namespace OperationGuidance_new.Views {
                     || CheckSvedFuncSeparately(_plcRegisterAddrBox.GetTextBox(0).Box.Text != _plcRegisterAddrOriginal, "PLC寄存器地址")
                     || CheckSvedFuncSeparately(_enableHttpServer.Checked != _enableHttpServerOriginal, "HTTP服务器启用")
                     || CheckSvedFuncSeparately(_httpIpBox.GetTextBox(0).Box.Text != _httpIpOriginal, "监听IP")
-                    || CheckSvedFuncSeparately(_httpPortBox.GetTextBox(0).Box.Text != _httpPortOriginal, "监听端口"));
+                    || CheckSvedFuncSeparately(_httpPortBox.GetTextBox(0).Box.Text != _httpPortOriginal, "监听端口")
+                    || CheckSvedFuncSeparately(GetCurrentArrangerGroupsJson() != _arrangerGroupsOriginal, "螺丝机开盖配置"));
         }
     }
 }

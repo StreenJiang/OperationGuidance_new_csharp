@@ -40,6 +40,10 @@ namespace CustomLibrary.Buttons {
             }
         }
         public int GapNameAndButton { get => this._gapNameAndButton; set => this._gapNameAndButton = value; }
+        public FlowDirection ButtonFlowDirection {
+            get => _buttonsPanel.FlowDirection;
+            set => _buttonsPanel.FlowDirection = value;
+        }
         public HorizontalAlignment NameAlignment {
             get => this._nameAlignment;
             set {

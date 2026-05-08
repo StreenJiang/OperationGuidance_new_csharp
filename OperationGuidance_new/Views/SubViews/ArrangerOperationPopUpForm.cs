@@ -1,186 +1,151 @@
+using CustomLibrary.Buttons;
 using CustomLibrary.Configs;
 using CustomLibrary.Forms;
-using log4net;
+using CustomLibrary.Utils;
+using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
-using System.Collections;
 
 namespace OperationGuidance_new.Views.SubViews {
     public class ArrangerOperationPopUpForm: CustomPopUpForm {
-        private ILog log = MainUtils.GetLogger(typeof(ArrangerOperationPopUpForm));
 
         private IoBoxTask ioBoxTask;
         private AWorkplaceContentPanel _workplace;
+        private string _categoryName;
 
-        private TableLayoutPanel _tablePanel;
+        private Panel _contentInnerPanel;
+        private CommonButton _ioTestButton;
+        private TitlePanel _openLidTitle;
+        private List<CommonButtonGroup> _openLidGroups;
+
+        private SciiXtArrangerConfig _config;
         private int _boxHeight;
         private int _boxMargin;
-        private List<SignalButton> _outBtns;
-        private List<SignalLabel> _inBtns;
 
-        private System.Windows.Forms.Timer updateTimer;
-        private int?[] _lastOutPos;
-        private int?[] _lastInPos;
-        private bool _isUpdating;
-        private bool _isSending;
-
-        public TableLayoutPanel TablePanel { get => _tablePanel; set => _tablePanel = value; }
-        public int BoxHeight { get => _boxHeight; set => _boxHeight = value; }
-        public int BoxMargin { get => _boxMargin; set => _boxMargin = value; }
+        public int OpenLidButtonCount => _config.GroupList.Count;
 
         public ArrangerOperationPopUpForm(string categoryName,
                                           AWorkplaceContentPanel workplace,
                                           IoBoxTask ioBoxTask) {
             this.ioBoxTask = ioBoxTask;
             _workplace = workplace;
+            _categoryName = categoryName;
 
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
-            Title = "螺丝机信号点测试 - " + categoryName + "";
+            Title = "螺丝机信号点测试 - " + categoryName;
 
-            _tablePanel = new() {
-                Margin = new(0),
-                Padding = new(0),
-                ColumnCount = 8,
+            _config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
+
+            _contentInnerPanel = new() {
                 Parent = ContentPanel,
             };
 
-            _outBtns = new();
-            for (int i = 0; i < 8; i++) {
-                SignalButton signalButton = new() {
-                    Label = $"输出-{i + 1}",
-                    Index = i,
-                    Parent = _tablePanel,
+            // IO test button at top, centered
+            _ioTestButton = new() {
+                Label = "IO点位测试",
+                Parent = _contentInnerPanel,
+            };
+            _ioTestButton.Click += IoTestClick;
+
+            // Subtitle using TitlePanel (same as system config)
+            _openLidTitle = new("螺丝机开盖") {
+                Parent = _contentInnerPanel,
+                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
+            };
+
+            // Open-lid groups
+            _openLidGroups = new();
+            foreach (var group in _config.GroupList) {
+                CommonButtonGroup btnGroup = new(group.name) {
+                    Parent = _contentInnerPanel,
                 };
-                signalButton.Click += OutClick;
-                _outBtns.Add(signalButton);
-            }
-
-            _inBtns = new();
-            for (int i = 0; i < 8; i++) {
-                _inBtns.Add(new SignalLabel() {
-                    Text = $"输入-{i + 1}",
-                    Index = i,
-                    Parent = _tablePanel,
-                });
-            }
-
-            updateTimer = new();
-            updateTimer.Interval = 50; // 50ms
-            updateTimer.Tick += UpdateTimerTick;
-            updateTimer.Start();
-        }
-        private bool IsEqual(int?[]? arr1, int?[]? arr2) {
-            if (arr1 == null && arr2 == null)
-                return true;
-            if (arr1 == null || arr2 == null)
-                return false;
-            if (arr1.Length != arr2.Length)
-                return false;
-
-            for (int i = 0; i < arr1.Length; i++) {
-                if (arr1[i] != arr2[i])
-                    return false;
-            }
-            return true;
-        }
-
-        private void UpdateTimerTick(object? sender, EventArgs e) {
-            if (_isUpdating)
-                return;
-
-            _isUpdating = true;
-            try {
-                var result = ioBoxTask.ArrangerType!.ReadCurrent();
-                var outPos = result.Item1;
-                var inPos = result.Item2;
-
-                bool outChanged = !IsEqual(outPos, _lastOutPos);
-                bool inChanged = !IsEqual(inPos, _lastInPos);
-
-                if (outChanged || inChanged) {
-                    var capturedOutPos = outPos;
-                    var capturedInPos = inPos;
-
-                    BeginInvoke(() => {
-                        UpdateButtonStates(_outBtns, capturedOutPos);
-                        UpdateLabelStates(_inBtns, capturedInPos);
-                        _lastOutPos = capturedOutPos;
-                        _lastInPos = capturedInPos;
-                    });
-                }
-            } catch (OperationCanceledException) {
-                log.Info("Cancel looping...");
-                updateTimer.Stop();
-            } catch (Exception ex) {
-                log.Warn("Failed to read IO status", ex);
-            } finally {
-                _isUpdating = false;
+                btnGroup.GetButton(0).Label = "点击开盖";
+                var capturedGroup = group;
+                btnGroup.GetButton(0).Click += (s, e) => OpenLidScan(capturedGroup);
+                _openLidGroups.Add(btnGroup);
             }
         }
 
-        private void UpdateButtonStates(List<SignalButton> buttons, int?[] values) {
-            if (values == null)
-                return;
-            for (int i = 0; i < Math.Min(buttons.Count, values.Length); i++) {
-                buttons[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
-                buttons[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
+        private void OpenLidScan(ArrangerGroupDTO group) {
+            using ArrangerOpenLidScanPopUpForm scanForm = new(group, ioBoxTask, _workplace);
+            scanForm.PretendToShowToCreateHandlesForChildren();
+
+            int contentWidth = (int)(WidgetUtils.MainSize.Width * .65);
+            Padding contentPadding = scanForm.ContentPanel.Padding;
+            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxMargin = boxHeight / 5;
+            scanForm.BarcodeBox.Size = new(contentWidth - contentPadding.Size.Width - boxMargin * 2, boxHeight);
+            scanForm.BarcodeBox.Margin = new(boxMargin);
+            int contentHeight = boxHeight + boxMargin * 2 + contentPadding.Size.Height;
+
+            scanForm.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
+            scanForm.ShowDialog();
+        }
+
+        private void IoTestClick(object? sender, EventArgs e) {
+            bool confirmed = _workplace.OpenAdminPasswordPopUpForm("IO点位测试需要管理员操作密码", false);
+            if (confirmed) {
+                int panelHeight = WidgetUtils.TextOrComboBoxHeight();
+                int boxMargin = panelHeight / 5;
+                int tableHeight = 2 * (panelHeight + boxMargin * 2) + boxMargin;
+
+                using ArrangerIoTestPopUpForm ioTestForm = new(_categoryName, ioBoxTask);
+                ioTestForm.PretendToShowToCreateHandlesForChildren();
+                Size contentSize = new((int)(WidgetUtils.MainSize.Width * .5),
+                    tableHeight + ioTestForm.ContentPanel.Padding.Size.Height);
+                ioTestForm.SetContentSizeAndSelfSize(contentSize);
+                ioTestForm.ShowDialog();
             }
         }
 
-        private void UpdateLabelStates(List<SignalLabel> labels, int?[] values) {
-            if (values == null)
-                return;
-            for (int i = 0; i < Math.Min(labels.Count, values.Length); i++) {
-                labels[i].BackColor = values[i] == 1 ? Color.Yellow : Color.Gray;
-                labels[i].ForeColor = values[i] == 1 ? Color.Gray : Color.White;
-            }
+        public void ResizeSelf() {
+            CalculateSizes();
+            Invalidate();
         }
 
-        private async void OutClick(object? sender, EventArgs eventArgs) {
-            SignalButton btn = (SignalButton)sender!;
+        private void CalculateSizes() {
+            Padding contentPadding = ContentPanel.Padding;
+            int contentWidth = ContentPanel.Width - contentPadding.Size.Width;
 
-            // 防止重复点击
-            if (_isSending)
-                return;
-            _isSending = true;
+            _boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            _boxMargin = _boxHeight / 5;
+            int boxWithMargin = _boxHeight + _boxMargin * 2;
 
-            try {
-                int?[] sendPos = { null, null, null, null, null, null, null, null };
-                sendPos[btn.Index] = 1;
+            int fullWidth = contentWidth - _boxMargin * 2;
+            int titleHeight = (int)(_boxHeight * 1.25);
+            int titleBoxWithMargin = titleHeight + _boxMargin * 2;
+            int y = _boxMargin;
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                await ioBoxTask.ArrangerType!.SendPulseAsync(sendPos, 200, cts.Token);
+            // IO test button — full width with margin
+            _ioTestButton.Location = new(_boxMargin, y);
+            _ioTestButton.Size = new(fullWidth, _boxHeight);
+            y += boxWithMargin;
 
-            } catch (OperationCanceledException) {
-                log.Info("Send pulse operation timed out.");
-            } catch (Exception ex) {
-                log.Warn("Error while sending pulse...", ex);
-            } finally {
-                _isSending = false;
+            // TitlePanel — slightly taller for larger font
+            _openLidTitle.Location = new(0, y);
+            _openLidTitle.Size = new(contentWidth, titleHeight);
+            y += titleBoxWithMargin;
+
+            // Open-lid groups — full width with margin, suitable ratio
+            foreach (CommonButtonGroup grp in _openLidGroups) {
+                grp.Ratio = null;
+                grp.ButtonFlowDirection = FlowDirection.RightToLeft;
+                grp.Location = new(_boxMargin, y);
+                grp.Size = new(fullWidth, _boxHeight);
+                y += boxWithMargin;
             }
-        }
 
-        // 确保窗体关闭时释放资源
-        protected override void OnFormClosed(FormClosedEventArgs e) {
-            base.OnFormClosed(e);
-            updateTimer.Stop();
+            int panelHeight = y + _boxMargin;
+
+            _contentInnerPanel.Location = new(contentPadding.Left, contentPadding.Top);
+            _contentInnerPanel.Size = new(contentWidth, panelHeight);
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
             base.ResizeChildren(sender, eventArgs);
-            _tablePanel.Size = new(ContentPanel.Width - ContentPanel.Padding.Size.Width, ContentPanel.Height - ContentPanel.Padding.Size.Height);
-
-            int boxW = _tablePanel.Width / _tablePanel.ColumnCount - _boxMargin * 2;
-            IList list = _tablePanel.Controls;
-            for (int i = 0; i < list.Count; i++) {
-                Control? control = (Control?) list[i];
-                if (control != null) {
-                    control.Margin = new(_boxMargin);
-                    control.Size = new(boxW, _boxHeight);
-                }
-            }
+            CalculateSizes();
         }
     }
 }
-
