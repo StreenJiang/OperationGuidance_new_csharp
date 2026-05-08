@@ -13,11 +13,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
     public class PrinterTestPopUpForm: CustomPopUpForm {
         private readonly PrinterTestMode _mode;
         private SciiXtPrinterConfig _config = null!;
+        private SecondPrinterDetailConfig _detailConfig = null!;
         private List<string> _printerList = new();
         private bool _loaded;
 
         private CustomTextBoxGroup _inputBox = null!;
         private CustomComboBoxGroup<string> _printerNameBox = null!;
+
+        // Printer2 detail fields
+        private CustomComboBoxGroup<string> _dpiBox = null!;
+        private CustomTextBoxGroup _labelSizeBox = null!;
+        private CustomTextBoxGroup _qrSizeBox = null!;
+        private CustomTextBoxGroup _marginFactorBox = null!;
 
         public PrinterTestPopUpForm(PrinterTestMode mode) {
             _mode = mode;
@@ -36,6 +43,25 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = ContentPanel,
                 Ratio = 6.95,
             };
+
+            if (_mode == PrinterTestMode.Printer2) {
+                _dpiBox = new("DPI") {
+                    Parent = ContentPanel,
+                    Ratio = 6.95,
+                };
+                _labelSizeBox = new("标签尺寸(mm)") {
+                    Parent = ContentPanel,
+                    Ratio = 6.95,
+                };
+                _qrSizeBox = new("QR尺寸(mm)") {
+                    Parent = ContentPanel,
+                    Ratio = 6.95,
+                };
+                _marginFactorBox = new("边距系数") {
+                    Parent = ContentPanel,
+                    Ratio = 6.95,
+                };
+            }
 
             AddButton("打印测试").Click += PrintTest;
             AddButton("关闭").Click += (s, e) => Dispose();
@@ -67,6 +93,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else {
                 int idx = _printerNameBox.IndexOf(_config.second_printer_name);
                 if (idx >= 0) _printerNameBox.SetCurrent(idx);
+
+                try {
+                    _detailConfig = ConfigUtils.LoadConfig<SecondPrinterDetailConfig>();
+                } catch (Exception ex) {
+                    LogManager.GetLogger(GetType()).Error("加载第二打印机详细配置失败", ex);
+                    _detailConfig = new SecondPrinterDetailConfig();
+                }
+
+                _dpiBox.AddItem("203 dpi", ZplQrCodePrinter.DPMM_203DPI.ToString());
+                _dpiBox.AddItem("300 dpi", ZplQrCodePrinter.DPMM_300DPI.ToString());
+                _dpiBox.AddItem("600 dpi", ZplQrCodePrinter.DPMM_600DPI.ToString());
+                int dpiIdx = _dpiBox.IndexOf(_detailConfig.dpmm.ToString());
+                if (dpiIdx >= 0) _dpiBox.SetCurrent(dpiIdx);
+
+                _labelSizeBox.SetValue(0, _detailConfig.label_size_mm.ToString());
+                _qrSizeBox.SetValue(0, _detailConfig.qr_size_mm.ToString());
+                _marginFactorBox.SetValue(0, _detailConfig.margin_factor.ToString());
             }
 
             _loaded = true;
@@ -85,9 +128,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _inputBox.Margin = new(boxMargin, boxMargin, boxMargin, boxMargin / 2);
 
             _printerNameBox.Size = new(boxWidth, boxHeight);
-            _printerNameBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
 
-            int contentHeight = boxHeight * 2 + boxMargin * 2 + contentPadding.Size.Height;
+            int rowCount = 2;
+            if (_mode == PrinterTestMode.Printer2) {
+                _printerNameBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
+
+                _dpiBox.Size = new(boxWidth, boxHeight);
+                _dpiBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
+
+                _labelSizeBox.Size = new(boxWidth, boxHeight);
+                _labelSizeBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
+
+                _qrSizeBox.Size = new(boxWidth, boxHeight);
+                _qrSizeBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin / 2);
+
+                _marginFactorBox.Size = new(boxWidth, boxHeight);
+                _marginFactorBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
+
+                rowCount = 6;
+            } else {
+                _printerNameBox.Margin = new(boxMargin, boxMargin / 2, boxMargin, boxMargin);
+            }
+
+            int contentHeight = boxHeight * rowCount + boxMargin * rowCount + contentPadding.Size.Height;
             SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
         }
 
@@ -136,10 +199,42 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _inputBox.CheckError(0, false);
                 }
 
+                double labelSizeMm = double.TryParse(_labelSizeBox.GetTextBox(0).Box.Text, out double ls) && ls > 0 ? ls : -1;
+                if (labelSizeMm <= 0) {
+                    _labelSizeBox.CheckError(0, true);
+                    valid = false;
+                } else {
+                    _labelSizeBox.CheckError(0, false);
+                }
+
+                double qrSizeMm = double.TryParse(_qrSizeBox.GetTextBox(0).Box.Text, out double qs) && qs > 0 ? qs : -1;
+                if (qrSizeMm <= 0) {
+                    _qrSizeBox.CheckError(0, true);
+                    valid = false;
+                } else {
+                    _qrSizeBox.CheckError(0, false);
+                }
+
+                double marginFactor = double.TryParse(_marginFactorBox.GetTextBox(0).Box.Text, out double mf) && mf >= 0 && mf <= 1 ? mf : -1;
+                if (marginFactor < 0) {
+                    _marginFactorBox.CheckError(0, true);
+                    valid = false;
+                } else {
+                    _marginFactorBox.CheckError(0, false);
+                }
+
                 if (valid) {
+                    double dpmm = double.TryParse(_dpiBox.Value, out double d) ? d : ZplQrCodePrinter.DPMM_300DPI;
+
+                    _detailConfig.dpmm = dpmm;
+                    _detailConfig.label_size_mm = labelSizeMm;
+                    _detailConfig.qr_size_mm = qrSizeMm;
+                    _detailConfig.margin_factor = marginFactor;
+                    ConfigUtils.SaveConfig(_detailConfig);
+
                     bool ok = await Task.Run(() => {
                         using ZplQrCodePrinter printer = new();
-                        return printer.PrintQrContent(content, printerName);
+                        return printer.PrintQrContent(content, printerName, dpmm, labelSizeMm, qrSizeMm, marginFactor);
                     });
                     if (ok) {
                         WidgetUtils.ShowNoticePopUp("打印成功");

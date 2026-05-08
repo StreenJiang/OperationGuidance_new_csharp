@@ -86,30 +86,25 @@ namespace OperationGuidance_new.Utils.IIPSC {
         }
 
         public string GenerateQrZpl(string qrContent,
-                                    double labelWidthMm = 15,
-                                    double labelHeightMm = 15,
-                                    double qrSizeMm = 9,
-                                    double dpmm = DPMM_300DPI) {
-            int labelDotsW = MmToDots(labelWidthMm, dpmm);
-            int labelDotsH = MmToDots(labelHeightMm, dpmm);
-            int targetDots = MmToDots(qrSizeMm, dpmm);
+                                    double dpmm = DPMM_300DPI,
+                                    double labelSizeMm = 9,
+                                    double qrSizeMm = 5.4,
+                                    double marginFactor = 0.5) {
+            int labelDots = MmToDots(labelSizeMm, dpmm);
+            int targetQrDots = MmToDots(qrSizeMm, dpmm);
 
             int version = GetMinQrVersion(qrContent);
             int modules = GetModuleCountForVersion(version);
 
-            int moduleWidth = Math.Clamp(targetDots / modules, 1, 10);
-            int actualDots = modules * moduleWidth;
+            int moduleWidth = Math.Clamp(targetQrDots / modules, 1, 10);
+            int actualQrDots = modules * moduleWidth;
 
-            int x = Math.Max(0, (labelDotsW - actualDots) / 2);
-            int y = Math.Max(0, (labelDotsH - actualDots) / 2);
+            int centeredMargin = (labelDots - actualQrDots) / 2;
+            int margin = Math.Max(0, (int)(centeredMargin * marginFactor));
 
-            // 强制指定QR版本，避免打印机自动选择版本与预期不符
-            return $"^XA^PW{labelDotsW}^LL{labelDotsH}^FO{x},{y}^BQN,2,{moduleWidth},0,{version}^FDMA,{qrContent}^FS^XZ";
+            return $"^XA^PW{labelDots}^LL{labelDots}^FO{margin},{margin}^BQN,2,{moduleWidth},0,{version}^FDMA,{qrContent}^FS^XZ";
         }
 
-        /// <summary>
-        /// 根据内容长度查找所需最小QR版本，使用字母数字模式容量（M级纠错）
-        /// </summary>
         private static int GetMinQrVersion(string content) {
             int len = content.Length;
             for (int v = 1; v < QrAlphanumericCapacity.Length; v++) {
@@ -119,9 +114,6 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return QrAlphanumericCapacity.Length - 1;
         }
 
-        /// <summary>
-        /// QR版本号 → 模块数（ISO 18004: 模块数 = (版本-1)×4 + 21）
-        /// </summary>
         private static int GetModuleCountForVersion(int version) {
             return (version - 1) * 4 + 21;
         }
@@ -194,9 +186,10 @@ namespace OperationGuidance_new.Utils.IIPSC {
             }
         }
 
-        public bool PrintQrContent(string content, string printerName) {
+        public bool PrintQrContent(string content, string printerName,
+            double dpmm, double labelSizeMm, double qrSizeMm, double marginFactor) {
             try {
-                string zpl = GenerateQrZpl(content);
+                string zpl = GenerateQrZpl(content, dpmm, labelSizeMm, qrSizeMm, marginFactor);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
                 log.Error($"PrintQrContent fails! PrinterName = [{printerName}]：{ex.Message}");

@@ -264,8 +264,13 @@ namespace OperationGuidance_new.Views {
                             string? printerName = list.Find(p => p == config.second_printer_name);
                             if (printerName == null) {
                                 WidgetUtils.ShowWarningPopUp("未找到指定配置的条码打印机（第二台），请检查配置或打印机。");
-                            } else if (!printer.PrintViaZpl(printerName, printer.GenerateQrZpl(qrContent))) {
-                                WidgetUtils.ShowWarningPopUp("发送指令至条码打印机（第二台）失败！请检查日志信息定位问题。");
+                            } else {
+                                var detailConfig = ConfigUtils.LoadConfig<SecondPrinterDetailConfig>();
+                                if (!printer.PrintQrContent(qrContent, printerName,
+                                    detailConfig.dpmm, detailConfig.label_size_mm,
+                                    detailConfig.qr_size_mm, detailConfig.margin_factor)) {
+                                    WidgetUtils.ShowWarningPopUp("发送指令至条码打印机（第二台）失败！请检查日志信息定位问题。");
+                                }
                             }
                         } else {
                             WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
@@ -755,7 +760,6 @@ namespace OperationGuidance_new.Views {
         private async Task _loopingToCheckBatchNo() {
             await Task.Run(() => {
                 BeginInvoke(async () => {
-                    SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
                     string batchNo = ConfigUtils.LoadConfig<SciiXtConfig>().batch_no;
                     while (string.IsNullOrEmpty(batchNo)) {
                         _productBatch.GetTextBox(0).IsError = true;
