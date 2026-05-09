@@ -3,5 +3,6 @@ namespace OperationGuidance_new.Configs.DTOs {
         public string name { get; set; } = "";
         public string barcode { get; set; } = "";
         public int position { get; set; } = 1;
+        public int? arranger_id { get; set; }
     }
 }

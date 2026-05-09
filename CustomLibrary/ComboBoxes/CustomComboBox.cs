@@ -262,6 +262,7 @@ namespace CustomLibrary.ComboBoxes {
                     ResetWidthOfItemScrollPanelByItemProperWidth();
                 } else {
                     if (_selectButton.SelectedItem != null) {
+                        IsError = false;
                         _itemSelected();
                     }
                 }
@@ -367,6 +368,7 @@ namespace CustomLibrary.ComboBoxes {
                 }
                 _itemButtons[0].SetToggle(true);
                 _selectButton.SelectedItem = _itemButtons[0];
+                IsError = false;
                 _itemSelected();
                 Invalidate();
             }
@@ -386,6 +388,7 @@ namespace CustomLibrary.ComboBoxes {
                 }
                 _selectButton.SelectedItem = _itemButtons[trueIndex];
                 _selectButton.SelectedItem.SetToggle(true);
+                IsError = false;
                 _itemSelected();
                 Invalidate();
             }

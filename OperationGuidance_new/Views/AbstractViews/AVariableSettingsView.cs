@@ -173,9 +173,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #region Override methods
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
-            // Load settings
-            LoadSettings();
-
+            // LoadSettings() is called by VisibleToTrue() when the panel becomes active.
+            // Calling it here as well would double-load on first activation.
             WidgetUtils.CheckSavedFunc += CheckSavedFunc;
         }
         protected override void OnHandleDestroyed(EventArgs e) {

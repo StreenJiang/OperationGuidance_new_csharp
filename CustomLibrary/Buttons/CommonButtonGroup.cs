@@ -25,8 +25,8 @@ namespace CustomLibrary.Buttons {
                 SetButtonsProperties((button) => button.Enabled = value);
             }
         }
-        public string TextName { get => this._textName; set => this._textName = value; }
-        public Color TextColor { get => _textColor; set => _textColor = value; }
+        public string TextName { get => _textName; set { _textName = value; Invalidate(); } }
+        public Color TextColor { get => _textColor; set { _textColor = value; Invalidate(); } }
         public Point ButtonBeginLocation { get => _buttonBeginLocation; set => _buttonBeginLocation = value; }
         public List<CommonButton> Buttons { get => _buttons; }
         public double? Ratio { get => this._ratio; set => this._ratio = value; }

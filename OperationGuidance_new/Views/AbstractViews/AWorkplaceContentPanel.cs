@@ -700,20 +700,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 // TODO: 
                             } else if (deviceBlock.Category == DeviceCategories.IOBOX_ARRANGER) {
                                 if (_ioBoxTasks.Count > 0) {
-                                    IoBoxTask? ioBoxTask = null;
-                                    foreach (IoBoxTask ioTask in _ioBoxTasks.Values) {
-                                        if (ioTask.ArrangerType != null) {
-                                            ioBoxTask = ioTask;
-                                            break;
-                                        }
-                                    }
-
-                                    if (ioBoxTask == null) {
+                                    bool hasAnyArranger = _ioBoxTasks.Values.Any(task => task.ArrangerType != null);
+                                    if (!hasAnyArranger) {
                                         WidgetUtils.ShowConfirmPopUp("没有配置螺丝机");
                                         return;
                                     }
 
-                                    ArrangerOperationPopUpForm popUpForm = new(deviceBlock.CategoryName, this, ioBoxTask);
+                                    ArrangerOperationPopUpForm popUpForm = new(
+                                        deviceBlock.CategoryName, this, _ioBoxTasks, _ioBoxes);
                                     deviceBlock.PopUpForm = popUpForm;
                                     contentSize.Width = (int)(WidgetUtils.MainSize.Width * .30);
                                     int boxMargin = panelHeight / 5;

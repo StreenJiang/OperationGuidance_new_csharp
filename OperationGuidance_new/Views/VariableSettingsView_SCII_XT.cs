@@ -11,6 +11,10 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Controllers;
+using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Utils;
+using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView_SCII_XT: VariableSettingsView_SCII {
@@ -80,8 +84,10 @@ namespace OperationGuidance_new.Views {
         private CustomContentPanel _arrangerConfigPanel;
         private TitlePanel _arrangerConfigTitlePanel;
         private CustomContentPanel _arrangerConfigContentPanel;
-        private List<CustomTextBoxButtonGroup> _arrangerGroups;
+        private List<ArrangerGroupRow> _arrangerGroupRows;
         private string _arrangerGroupsOriginal;
+        private List<DeviceIoDTO> _deviceIoDTOs;
+        private List<DeviceIoDTO> _arrangerDTOs;
 
         public VariableSettingsView_SCII_XT() {
             MissionSelfLoopingModeToggle.Hide();
@@ -175,7 +181,17 @@ namespace OperationGuidance_new.Views {
                 Parent = _arrangerConfigPanel,
             };
 
-            _arrangerGroups = new();
+            _arrangerGroupRows = new();
+
+            // Load device list and filter arranger-type devices
+            OperationGuidanceApis apis = SystemUtils.GetApis();
+            _deviceIoDTOs = apis.QueryDeviceIoList(
+                new(SystemUtils.MacAddressesDTO.id)).DeviceIoDTOs
+                .Where(dto => dto.macs_id == SystemUtils.MacAddressesDTO.id)
+                .ToList();
+            _arrangerDTOs = _deviceIoDTOs
+                .Where(dto => dto.type == DeviceType_IoBox.Arranger.Id && dto.deleted == (int)YesOrNo.NO)
+                .ToList();
 
             var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
             var groups = config.GroupList;
@@ -194,54 +210,66 @@ namespace OperationGuidance_new.Views {
         }
 
         private bool HasIncompleteArrangerGroup() {
-            foreach (var groupBox in _arrangerGroups) {
-                string name = GetBoxRealText(groupBox.GetTextBox(0));
-                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
-                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+            foreach (var row in _arrangerGroupRows) {
+                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
+                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
+                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
+                bool arrangerSelected = !row.ArrangerBox.IsDefaultValue();
                 bool nameFilled = !string.IsNullOrEmpty(name);
                 bool barcodeFilled = !string.IsNullOrEmpty(barcode);
                 bool posFilled = !string.IsNullOrEmpty(posText);
-                // If partially filled (not all empty and not all filled), it's incomplete
-                if ((nameFilled || barcodeFilled || posFilled) && !(nameFilled && barcodeFilled && posFilled))
+                // 任一有值则四个全必填
+                if ((nameFilled || barcodeFilled || posFilled || arrangerSelected)
+                    && !(nameFilled && barcodeFilled && posFilled && arrangerSelected))
                     return true;
             }
             return false;
         }
 
         private void AddArrangerGroup(bool isFirst) {
-            int index = _arrangerGroups.Count;
-            CustomTextBoxButtonGroup box = new($"开盖组{index + 1}") {
-                Parent = _arrangerConfigContentPanel,
-                Ratio = 9.0,
-                Separator = "->",
-            };
-            box.AddTextBox();
-            box.AddTextBox();
+            int index = _arrangerGroupRows.Count;
+            ArrangerGroupRow row = new($"开盖组{index + 1}");
 
-            box.SetDefaultText(0, "名称");
-            box.SetDefaultText(1, "条码");
-            box.SetDefaultText(2, "点位(1-8)");
-            box.GetTextBox(2).PositiveIntOnly = true;
+            // Set parent (Panel goes into the content panel's FlowLayoutPanel)
+            row.Panel.Parent = _arrangerConfigContentPanel;
 
+            // Configure text boxes
+            row.TextBoxGroup.SetDefaultText(0, "名称");
+            row.TextBoxGroup.SetDefaultText(1, "条码");
+            row.TextBoxGroup.SetDefaultText(2, "点位(1-8)");
+            row.TextBoxGroup.GetTextBox(2).PositiveIntOnly = true;
+
+            // Populate arranger combobox
+            foreach (DeviceIoDTO dto in _arrangerDTOs) {
+                row.ArrangerBox.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
+            }
+
+            // Add/remove buttons (standalone, placed after ArrangerBox)
             if (isFirst) {
-                SignButton addButton = box.AddButton<SignButton>();
-                addButton.Icon = Properties.Resources.sign_plus;
+                SignButton addButton = new() {
+                    Parent = row.Panel,
+                    Icon = Properties.Resources.sign_plus,
+                };
+                row.ActionButton = addButton;
                 addButton.Click += (s, e) => {
                     if (HasIncompleteArrangerGroup()) {
-                        WidgetUtils.ShowWarningPopUp("请先完成当前开盖组的配置（名称、条码、点位均不可为空），或清空不完整的组后再新增");
+                        WidgetUtils.ShowWarningPopUp("请先完成当前开盖组的配置（名称、条码、点位和螺丝机组均不可为空），或清空不完整的组后再新增");
                         return;
                     }
                     AddArrangerGroup(false);
                 };
             } else {
-                SignButton minusButton = box.AddButton<SignButton>();
-                minusButton.Icon = Properties.Resources.sign_minus;
+                SignButton minusButton = new() {
+                    Parent = row.Panel,
+                    Icon = Properties.Resources.sign_minus,
+                };
+                row.ActionButton = minusButton;
                 minusButton.Click += (s, e) => {
-                    _arrangerGroups.Remove(box);
-                    box.Dispose();
-                    for (int i = 0; i < _arrangerGroups.Count; i++) {
-                        _arrangerGroups[i].TextName = $"开盖组{i + 1}";
-                        _arrangerGroups[i].ResizeChildren();
+                    _arrangerGroupRows.Remove(row);
+                    row.Dispose();
+                    for (int i = 0; i < _arrangerGroupRows.Count; i++) {
+                        _arrangerGroupRows[i].TextName = $"开盖组{i + 1}";
+                        _arrangerGroupRows[i].TextBoxGroup.ResizeChildren();
                     }
                     if (IsHandleCreated) {
                         ResizeMissionSettings();
@@ -250,9 +278,9 @@ namespace OperationGuidance_new.Views {
                 };
             }
 
-            _arrangerGroups.Add(box);
-            for (int i = 0; i < _arrangerGroups.Count; i++) {
-                _arrangerGroups[i].TextName = $"开盖组{i + 1}";
+            _arrangerGroupRows.Add(row);
+            for (int i = 0; i < _arrangerGroupRows.Count; i++) {
+                _arrangerGroupRows[i].TextName = $"开盖组{i + 1}";
             }
 
             if (IsHandleCreated) {
@@ -438,17 +466,26 @@ namespace OperationGuidance_new.Views {
         protected virtual void SaveArrangerConfig() {
             var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
             var groups = new List<ArrangerGroupDTO>();
-            foreach (var groupBox in _arrangerGroups) {
-                string name = GetBoxRealText(groupBox.GetTextBox(0));
-                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
-                string posText = GetBoxRealText(groupBox.GetTextBox(2));
-                bool hasContent = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || !string.IsNullOrEmpty(posText);
+            foreach (var row in _arrangerGroupRows) {
+                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
+                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
+                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
+                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
+                bool hasContent = !string.IsNullOrEmpty(name)
+                    || !string.IsNullOrEmpty(barcode)
+                    || !string.IsNullOrEmpty(posText)
+                    || (arrangerDto != null);
                 if (!hasContent)
                     continue;
                 int.TryParse(posText, out int position);
                 if (position < 1 || position > 8)
                     position = 1;
-                groups.Add(new ArrangerGroupDTO { name = name, barcode = barcode, position = position });
+                groups.Add(new ArrangerGroupDTO {
+                    name = name,
+                    barcode = barcode,
+                    position = position,
+                    arranger_id = arrangerDto?.id
+                });
             }
             config.GroupList = groups;
             ConfigUtils.SaveConfig(config);
@@ -457,15 +494,22 @@ namespace OperationGuidance_new.Views {
 
         private string GetCurrentArrangerGroupsJson() {
             var groups = new List<ArrangerGroupDTO>();
-            foreach (var groupBox in _arrangerGroups) {
-                string name = GetBoxRealText(groupBox.GetTextBox(0));
-                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
-                string posText = GetBoxRealText(groupBox.GetTextBox(2));
+            foreach (var row in _arrangerGroupRows) {
+                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
+                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
+                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
+                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
                 int.TryParse(posText, out int position);
                 if (position < 1 || position > 8)
                     position = 1;
-                if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || position != 1)
-                    groups.Add(new ArrangerGroupDTO { name = name, barcode = barcode, position = position });
+                if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode)
+                    || position != 1 || arrangerDto != null)
+                    groups.Add(new ArrangerGroupDTO {
+                        name = name,
+                        barcode = barcode,
+                        position = position,
+                        arranger_id = arrangerDto?.id
+                    });
             }
             return JsonConvert.SerializeObject(groups);
         }
@@ -627,7 +671,6 @@ namespace OperationGuidance_new.Views {
         }
 
         protected virtual void ResizeArrangerConfigPanel() {
-            // Position after MES settings panel
             _arrangerConfigPanel.Location = new(0, _mesSettingsPanel.Location.Y + _mesSettingsPanel.Height);
             _arrangerConfigPanel.Size = new(Width, 0);
 
@@ -635,18 +678,31 @@ namespace OperationGuidance_new.Views {
 
             int boxVMargin = BoxNBtnHeight / 2;
             int contentInnerWidth = Width - ContentHPadding * 2;
-            foreach (CustomTextBoxButtonGroup group in _arrangerGroups) {
-                group.Size = new(contentInnerWidth, BoxNBtnHeight);
-                group.Margin = new(0, boxVMargin, 0, 0);
+            int gap = BoxNBtnHeight / 4;
+            int btnWidth = BoxNBtnHeight;
+            int textBoxWidth = (int)((contentInnerWidth - gap * 2 - btnWidth) * 0.68);
+            int arrangerWidth = contentInnerWidth - textBoxWidth - btnWidth - gap * 2;
+
+            foreach (ArrangerGroupRow row in _arrangerGroupRows) {
+                row.Panel.Size = new(contentInnerWidth, BoxNBtnHeight);
+                row.Panel.Margin = new(0, boxVMargin, 0, 0);
+                row.TextBoxGroup.Size = new(textBoxWidth, BoxNBtnHeight);
+                row.ArrangerBox.Size = new(arrangerWidth, BoxNBtnHeight);
+                row.ArrangerBox.Location = new(textBoxWidth + gap, 0);
+                if (row.ActionButton != null) {
+                    row.ActionButton.Size = new(btnWidth, BoxNBtnHeight);
+                    row.ActionButton.Location = new(textBoxWidth + gap + arrangerWidth + gap, 0);
+                }
             }
 
-            int groupCount = _arrangerGroups.Count;
-            _arrangerConfigContentPanel.Size = new(Width, BoxNBtnHeight * groupCount + ContentVPadding * 2 + boxVMargin * groupCount);
+            int groupCount = _arrangerGroupRows.Count;
+            _arrangerConfigContentPanel.Size = new(Width,
+                BoxNBtnHeight * groupCount + ContentVPadding * 2 + boxVMargin * groupCount);
             _arrangerConfigContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
 
-            _arrangerConfigPanel.Size = new(Width, _arrangerConfigTitlePanel.Height + _arrangerConfigContentPanel.Height);
+            _arrangerConfigPanel.Size = new(Width,
+                _arrangerConfigTitlePanel.Height + _arrangerConfigContentPanel.Height);
 
-            // Update WorkPanel to include all panels
             WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height
                 + _printerSettingsPanel.Height + _httpServerSettingsPanel.Height
                 + _mesSettingsPanel.Height + _arrangerConfigPanel.Height);
@@ -752,15 +808,40 @@ namespace OperationGuidance_new.Views {
                     _plcIsReadyAddrOriginal = mesConfig.plc_is_ready_addr;
                     _plcRegisterAddrOriginal = mesConfig.plc_register_addr;
 
-                    // Load arranger config (groups already created in InitializeArrangerConfigPanel)
+                    // Load arranger config
                     var arrangerConfig = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
                     var arrangerGroups = arrangerConfig.GroupList;
-                    for (int i = 0; i < arrangerGroups.Count && i < _arrangerGroups.Count; i++) {
+                    for (int i = 0; i < arrangerGroups.Count && i < _arrangerGroupRows.Count; i++) {
                         var group = arrangerGroups[i];
-                        var groupBox = _arrangerGroups[i];
-                        groupBox.GetTextBox(0).Box.Text = group.name;
-                        groupBox.GetTextBox(1).Box.Text = group.barcode;
-                        groupBox.GetTextBox(2).Box.Text = group.position > 0 ? group.position.ToString() : "";
+                        var row = _arrangerGroupRows[i];
+                        row.TextBoxGroup.GetTextBox(0).Box.Text = group.name;
+                        row.TextBoxGroup.GetTextBox(1).Box.Text = group.barcode;
+                        row.TextBoxGroup.GetTextBox(2).Box.Text = group.position > 0 ? group.position.ToString() : "";
+
+                        // Set arranger combobox
+                        if (group.arranger_id != null) {
+                            DeviceIoDTO? deviceIoDTO = _deviceIoDTOs
+                                .Where(dto => dto.deleted == (int)YesOrNo.NO)
+                                .FirstOrDefault(dto => dto.id == group.arranger_id.Value);
+                            if (deviceIoDTO != null) {
+                                int idx = row.ArrangerBox.IndexOf(deviceIoDTO);
+                                if (idx >= 0) {
+                                    row.ArrangerBox.SetCurrent(idx);
+                                } else {
+                                    // Device found but not arranger type (type changed)
+                                    row.ArrangerBox.SetError(true);
+                                    WidgetUtils.ShowWarningPopUp(
+                                        $"螺丝机开盖配置「{group.name}」：螺丝机组设备（ID={group.arranger_id}）" +
+                                        "不是螺丝机组类型，可能已被修改");
+                                }
+                            } else {
+                                // Device not found (deleted or missing)
+                                row.ArrangerBox.SetError(true);
+                                WidgetUtils.ShowWarningPopUp(
+                                    $"螺丝机开盖配置「{group.name}」：螺丝机组设备（ID={group.arranger_id}）" +
+                                    "找不到指定设备，可能已被删除");
+                            }
+                        }
                     }
                     _arrangerGroupsOriginal = arrangerConfig.groups;
                 });
@@ -829,15 +910,16 @@ namespace OperationGuidance_new.Views {
                     _plcRegisterAddrBox.GetTextBox(0).Box.Text = defaultMesConfig.plc_register_addr;
 
                     // Reset arranger config to default (empty)
-                    while (_arrangerGroups.Count > 1) {
-                        var last = _arrangerGroups[_arrangerGroups.Count - 1];
-                        _arrangerGroups.Remove(last);
+                    while (_arrangerGroupRows.Count > 1) {
+                        var last = _arrangerGroupRows[_arrangerGroupRows.Count - 1];
+                        _arrangerGroupRows.Remove(last);
                         last.Dispose();
                     }
-                    if (_arrangerGroups.Count == 1) {
-                        _arrangerGroups[0].GetTextBox(0).Box.Text = "";
-                        _arrangerGroups[0].GetTextBox(1).Box.Text = "";
-                        _arrangerGroups[0].GetTextBox(2).Box.Text = "";
+                    if (_arrangerGroupRows.Count == 1) {
+                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(0).Box.Text = "";
+                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(1).Box.Text = "";
+                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(2).Box.Text = "";
+                        _arrangerGroupRows[0].ArrangerBox.Reset();
                     }
                     _arrangerGroupsOriginal = "[]";
                     ResizeMissionSettings();
@@ -869,11 +951,14 @@ namespace OperationGuidance_new.Views {
                 }
             }
             // Validate arranger config
-            foreach (var groupBox in _arrangerGroups) {
-                string name = GetBoxRealText(groupBox.GetTextBox(0));
-                string barcode = GetBoxRealText(groupBox.GetTextBox(1));
-                string posText = GetBoxRealText(groupBox.GetTextBox(2));
-                bool hasAny = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode) || !string.IsNullOrEmpty(posText);
+            var arrangerPositions = new Dictionary<int, List<int>>(); // arranger_id -> list of positions
+            foreach (var row in _arrangerGroupRows) {
+                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
+                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
+                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
+                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
+                bool hasAny = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode)
+                    || !string.IsNullOrEmpty(posText) || arrangerDto != null;
                 if (hasAny) {
                     if (string.IsNullOrEmpty(name))
                         return "螺丝机开盖配置：名称不能为空";
@@ -881,6 +966,18 @@ namespace OperationGuidance_new.Views {
                         return "螺丝机开盖配置：条码不能为空";
                     if (!int.TryParse(posText, out int pos) || pos < 1 || pos > 8)
                         return "螺丝机开盖配置：点位必须是1-8之间的整数";
+                    if (arrangerDto == null)
+                        return "螺丝机开盖配置：螺丝机组不能为空";
+
+                    // Track position per arranger for uniqueness check
+                    int arrangerId = arrangerDto.id;
+                    if (!arrangerPositions.ContainsKey(arrangerId)) {
+                        arrangerPositions[arrangerId] = new List<int>();
+                    }
+                    if (arrangerPositions[arrangerId].Contains(pos)) {
+                        return $"螺丝机开盖配置：螺丝机组「{arrangerDto.name}」的点位 {pos} 重复，同一个螺丝机组的点位不能重复";
+                    }
+                    arrangerPositions[arrangerId].Add(pos);
                 }
             }
             return base.CheckBeforeSave();
