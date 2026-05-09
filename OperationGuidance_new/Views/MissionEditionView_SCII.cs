@@ -1247,7 +1247,7 @@ namespace OperationGuidance_new.Views {
                     // 根据校验结果判断可以保存
                     Modified = true;
                     popUpForm.SaveTo(boltDTO);
-                    WidgetUtils.ShowNoticePopUp("信息暂存成功！");
+                    WidgetUtils.ShowNoticePopUp("信息暂存成功！", 2);
                     popUpForm.Dispose();
                 }
 

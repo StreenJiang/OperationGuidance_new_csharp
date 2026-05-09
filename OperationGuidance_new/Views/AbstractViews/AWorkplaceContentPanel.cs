@@ -709,10 +709,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                     ArrangerOperationPopUpForm popUpForm = new(
                                         deviceBlock.CategoryName, this, _ioBoxTasks, _ioBoxes);
                                     deviceBlock.PopUpForm = popUpForm;
-                                    contentSize.Width = (int)(WidgetUtils.MainSize.Width * .30);
+                                    contentSize.Width = (int) (WidgetUtils.MainSize.Width * .30);
                                     int boxMargin = panelHeight / 5;
                                     int boxWithMargin = panelHeight + boxMargin * 2;
-                                    int titleHeight = (int)(panelHeight * 1.25);
+                                    int titleHeight = (int) (panelHeight * 1.25);
                                     int titleBoxWithMargin = titleHeight + boxMargin * 2;
                                     int normalRows = popUpForm.OpenLidButtonCount + 1; // IO test btn + open-lid btns
                                     contentSize.Height = normalRows * boxWithMargin + titleBoxWithMargin + boxMargin + deviceBlock.PopUpForm.ContentPanel.Padding.Size.Height;
@@ -2224,7 +2224,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     // Show message after setting DialogResult to avoid unexpected issues
                     this.SafeInvoke(() => {
-                        WidgetUtils.ShowNoticePopUp("验证成功");
+                        WidgetUtils.ShowNoticePopUp("验证成功", 2);
 
                         try {
                             actionAfterTrue?.Invoke(true);

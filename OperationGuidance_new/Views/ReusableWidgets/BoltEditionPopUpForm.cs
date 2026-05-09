@@ -180,7 +180,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         _positionBox.SetValue(0, coordinates.X + "");
                         _positionBox.SetValue(1, coordinates.Y + "");
                         _positionBox.SetValue(2, coordinates.Z + "");
-                        WidgetUtils.ShowNoticePopUp("读取成功！");
+                        WidgetUtils.ShowNoticePopUp("读取成功！", 2);
                     } else {
                         WidgetUtils.ShowWarningPopUp("读取失败，可能原因：\r\n1. 当前站点不存在\r\n2. 当前站点没有配置力臂\r\n3. 没有连接至指定力臂");
                     }

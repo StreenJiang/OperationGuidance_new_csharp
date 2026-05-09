@@ -30,7 +30,7 @@ namespace OperationGuidance_new.Views {
                                     apis.UpdateMacsIds(new(macAddressesDTO.id, SystemUtils.MacAddressesDTO.id));
                                 }
 
-                                WidgetUtils.ShowNoticePopUp("操作成功");
+                                WidgetUtils.ShowNoticePopUp("操作成功", 2);
                             }
                         }
                     };

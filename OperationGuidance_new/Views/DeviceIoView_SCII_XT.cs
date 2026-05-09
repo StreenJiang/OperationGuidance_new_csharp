@@ -274,7 +274,7 @@ namespace OperationGuidance_new.Views {
         protected override void AddOrUpdate(DeviceIoDTO dto, Action action) {
             AddOrUpdateDeviceIoRsp rsp = apis.AddOrUpdateDeviceIo(new(dto));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
-                WidgetUtils.ShowNoticePopUp("保存成功！");
+                WidgetUtils.ShowNoticePopUp("保存成功！", 2);
             } else {
                 WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
             }
@@ -286,7 +286,7 @@ namespace OperationGuidance_new.Views {
             } else if (WidgetUtils.ShowConfirmPopUp($"确认要删除已选择的{ids.Count}条数据吗？")) {
                 DeleteDeviceIoByIdsRsp rsp = apis.DeleteDeviceIo(new(ids));
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
-                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！", 2);
                 }
             }
         }

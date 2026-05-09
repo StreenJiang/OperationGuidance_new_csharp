@@ -80,9 +80,11 @@ namespace OperationGuidance_new.Views.SubViews {
                 return;
 
             if (barcode != _expectedBarcode) {
-                _barcodeBox.GetTextBox(0).Box.Text = "";
-                _barcodeBox.GetTextBox(0).Box.Focus();
-                _barcodeBox.GetTextBox(0).IsError = true;
+                var textBox = _barcodeBox.GetTextBox(0);
+                textBox.IsError = true;
+                WidgetUtils.ShowWarningPopUp($"条码校验不通过，当前条码【{barcode}】与期望条码不匹配", 2);
+                textBox.Box.Focus();
+                textBox.Box.SelectAll();
                 return;
             }
 

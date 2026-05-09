@@ -6,7 +6,6 @@ using System.Text.Json;
 using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_service.Models.AbstractClasses;
-using OperationGuidance_service.Utils;
 using Newtonsoft.Json;
 
 namespace OperationGuidance_new.HttpServer {
@@ -64,9 +63,9 @@ namespace OperationGuidance_new.HttpServer {
                 string accessibleUrl = $"http://{localIp}:{Port}/";
                 // Log and show
                 log.Info($"HTTP 服务器已启动，监听地址: {accessibleUrl}");
-                WidgetUtils.ShowNoticePopUp($"HTTP 服务器已启动，监听地址: {accessibleUrl}");
+                WidgetUtils.ShowNoticePopUp($"HTTP 服务器已启动，监听地址: {accessibleUrl}", 2);
             } catch (Exception ex) {
-                SystemUtils.ShowWarningPopUp($"无法启动 Http 服务器: {ex.Message}");
+                WidgetUtils.ShowWarningPopUp($"无法启动 Http 服务器: {ex.Message}", 2);
                 // throw new InvalidOperationException($"无法启动服务器: {ex.Message}", ex);
             }
         }

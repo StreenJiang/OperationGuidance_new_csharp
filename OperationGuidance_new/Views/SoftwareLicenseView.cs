@@ -46,7 +46,7 @@ namespace OperationGuidance_new.Views {
                         MainUtils.CheckLicense();
 
                         if (MainUtils.LicenseMacsOk && MainUtils.LicenseExpirationTimeOk) {
-                            WidgetUtils.ShowNoticePopUp("许可证认证成功！");
+                            WidgetUtils.ShowNoticePopUp("许可证认证成功！", 2);
 
                             // Set flag to re-create all forms
                             MainUtils.Self.AllCreated = false;

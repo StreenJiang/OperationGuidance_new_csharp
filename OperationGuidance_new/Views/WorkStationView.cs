@@ -620,7 +620,7 @@ namespace OperationGuidance_new.Views {
         protected override void AddOrUpdate(WorkstationDTO dto, Action action) {
             AddOrUpdateWorkstationRsp rsp = apis.AddOrUpdateWorkstation(new(dto));
             if (rsp.RsponseCode == HttpResponseCode.OK) {
-                WidgetUtils.ShowNoticePopUp("保存成功！");
+                WidgetUtils.ShowNoticePopUp("保存成功！", 2);
             } else {
                 WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
             }
@@ -632,7 +632,7 @@ namespace OperationGuidance_new.Views {
             } else if (WidgetUtils.ShowConfirmPopUp($"确认要删除已选择的{ids.Count}条数据吗？")) {
                 DeleteWorkstationByIdsRsp rsp = apis.DeleteWorkstation(new(ids));
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
-                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！", 2);
                 } else {
                     WidgetUtils.ShowErrorPopUp($"删除失败！错误信息：{rsp.RsponseMessage}");
                 }

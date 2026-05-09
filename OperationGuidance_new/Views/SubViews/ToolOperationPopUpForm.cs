@@ -98,7 +98,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
                     await Task.Delay(500);
                     if (toolTask.Locked) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
+                        WidgetUtils.ShowNoticePopUp("操作成功！", 2);
                     } else {
                         WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令");
                     }
@@ -113,7 +113,7 @@ namespace OperationGuidance_new.Views.SubViews {
 
                     await Task.Delay(500);
                     if (!toolTask.Locked) {
-                        WidgetUtils.ShowNoticePopUp("操作成功！");
+                        WidgetUtils.ShowNoticePopUp("操作成功！", 2);
                     } else {
                         string parameterSet = _parameterSetTextBox.GetTextBox(0).Text;
                         WidgetUtils.ShowErrorPopUp($"操作失败！可能原因：\r\n1. 设备未连接\r\n2. 未给当前工具型号配置命令\r\n3. 控制器未配置【程序{parameterSet}】");
@@ -155,7 +155,7 @@ namespace OperationGuidance_new.Views.SubViews {
                             () => {
                                 this.SafeInvoke(() => {
                                     // === 下发成功 ===
-                                    WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！");
+                                    WidgetUtils.ShowNoticePopUp($"程序号 {pset} 下发成功！", 2);
 
                                     // 更新螺栓状态
                                     BoltButton? boltButton = null;

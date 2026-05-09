@@ -301,7 +301,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             if (rsp.RsponseCode == HttpResponseCode.OK) {
                 logger.Info($"[BarCodeMatchingRule] 保存成功: id={dto.id}");
-                WidgetUtils.ShowNoticePopUp("保存成功！");
+                WidgetUtils.ShowNoticePopUp("保存成功！", 2);
             } else {
                 logger.Error($"[BarCodeMatchingRule] 保存失败: id={dto.id}, error={rsp.RsponseMessage}");
                 WidgetUtils.ShowErrorPopUp($"保存失败！错误信息：{rsp.RsponseMessage}");
@@ -315,7 +315,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } else if (WidgetUtils.ShowConfirmPopUp($"确认要删除已选择的{ids.Count}条数据吗？")) {
                 DeleteBarCodeMatchingRuleByIdsRsp rsp = apis.DeleteBarCodeMatchingRule(new(ids));
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
-                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！");
+                    WidgetUtils.ShowNoticePopUp($"成功删除{ids.Count}条数据！", 2);
                 }
             }
         }

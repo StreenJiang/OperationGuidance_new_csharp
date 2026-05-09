@@ -194,7 +194,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         return printer.PrintWithSn(_config, snVal, printerName);
                     });
                     if (ok) {
-                        WidgetUtils.ShowNoticePopUp("打印成功");
+                        WidgetUtils.ShowNoticePopUp("打印成功", 2);
                     } else {
                         WidgetUtils.ShowWarningPopUp("打印失败");
                     }
@@ -255,7 +255,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         return printer.PrintQrContent(content, printerName, dpmm, labelSizeMm, qrSizeMm, marginXFactor, marginYFactor);
                     });
                     if (ok) {
-                        WidgetUtils.ShowNoticePopUp("打印成功");
+                        WidgetUtils.ShowNoticePopUp("打印成功", 2);
                     } else {
                         WidgetUtils.ShowWarningPopUp("打印失败");
                     }

@@ -15,7 +15,7 @@ namespace OperationGuidance_new.Views {
                 SaveStorageSettings();
                 SaveSystemSettings();
                 SaveMissionSettings();
-                WidgetUtils.ShowNoticePopUp("保存成功");
+                WidgetUtils.ShowNoticePopUp("保存成功", 2);
 
                 if (AutoLockToolToggle.Checked) {
                     MainUtils.ToolTasks.Values.ToList().ForEach(tool => tool.ForceSendLock());

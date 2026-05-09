@@ -165,7 +165,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 SaveStorageSettings();
                 SaveSystemSettings();
                 SaveMissionSettings();
-                WidgetUtils.ShowNoticePopUp("保存成功");
+                WidgetUtils.ShowNoticePopUp("保存成功", 2);
             }
         }
         #endregion

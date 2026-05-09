@@ -569,10 +569,15 @@ namespace CustomLibrary.Utils {
             return Color.FromArgb(newR, newG, newB);
         }
 
-        public static bool ShowConfirmPopUp(string message) => ShowConfirmPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
-        public static DialogResult ShowNoticePopUp(string message) => ShowNoticePopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
-        public static DialogResult ShowWarningPopUp(string message) => ShowWarningPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
-        public static DialogResult ShowErrorPopUp(string message) => ShowErrorPopUp(MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null, message);
+        internal const int PopUpDefaultCountdownSeconds = 2;
+
+        private static Control? SafeMainForm =>
+            MainForm != null && MainForm.IsHandleCreated && !MainForm.IsDisposed ? MainForm : null;
+
+        public static bool ShowConfirmPopUp(string message) => ShowConfirmPopUp(SafeMainForm, message);
+        public static DialogResult ShowNoticePopUp(string message, int? countdownSeconds = null) => ShowNoticePopUp(SafeMainForm, message, countdownSeconds);
+        public static DialogResult ShowWarningPopUp(string message, int? countdownSeconds = null) => ShowWarningPopUp(SafeMainForm, message, countdownSeconds);
+        public static DialogResult ShowErrorPopUp(string message, int? countdownSeconds = null) => ShowErrorPopUp(SafeMainForm, message, countdownSeconds);
 
         public static bool ShowConfirmPopUp(Control? mainForm, string message) {
             if (mainForm != null) {
@@ -583,32 +588,39 @@ namespace CustomLibrary.Utils {
             }
             return MessageBox.Show(message, "请确认", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
-        public static DialogResult ShowNoticePopUp(Control? mainForm, string message) {
+
+        public static DialogResult ShowNoticePopUp(Control? mainForm, string message, int? countdownSeconds = null)
+            => ShowPopUp(mainForm, message, "提示", MessageBoxIcon.Information, countdownSeconds);
+        public static DialogResult ShowWarningPopUp(Control? mainForm, string message, int? countdownSeconds = null)
+            => ShowPopUp(mainForm, message, "警告", MessageBoxIcon.Warning, countdownSeconds);
+        public static DialogResult ShowErrorPopUp(Control? mainForm, string message, int? countdownSeconds = null)
+            => ShowPopUp(mainForm, message, "错误", MessageBoxIcon.Error, countdownSeconds);
+
+        private static DialogResult ShowPopUp(Control? mainForm, string message, string title, MessageBoxIcon icon, int? countdownSeconds) {
+            if (countdownSeconds != null && countdownSeconds > 0) {
+                return ShowCountdownPopUp(mainForm, message, title, icon, countdownSeconds.Value);
+            }
             if (mainForm != null) {
                 IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
-                    return MessageBox.Show(mainForm, message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return MessageBox.Show(mainForm, message, title, MessageBoxButtons.OK, icon);
                 });
                 return (DialogResult) mainForm.EndInvoke(asyncResult);
             }
-            return MessageBox.Show(message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
         }
-        public static DialogResult ShowWarningPopUp(Control? mainForm, string message) {
+
+        private static DialogResult ShowCountdownPopUp(Control? mainForm, string message, string title, MessageBoxIcon icon, int countdownSeconds) {
             if (mainForm != null) {
                 IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
-                    return MessageBox.Show(mainForm, message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    using (var form = new CountdownPopUpForm(message, title, icon, countdownSeconds)) {
+                        return form.ShowDialog(mainForm);
+                    }
                 });
                 return (DialogResult) mainForm.EndInvoke(asyncResult);
             }
-            return MessageBox.Show(message, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-        public static DialogResult ShowErrorPopUp(Control? mainForm, string message) {
-            if (mainForm != null) {
-                IAsyncResult asyncResult = mainForm.BeginInvoke(() => {
-                    return MessageBox.Show(mainForm, message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                });
-                return (DialogResult) mainForm.EndInvoke(asyncResult);
+            using (var form = new CountdownPopUpForm(message, title, icon, countdownSeconds)) {
+                return form.ShowDialog();
             }
-            return MessageBox.Show(message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private static Point controlOriginalLocation;
