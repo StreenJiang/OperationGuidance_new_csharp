@@ -58,11 +58,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     Parent = ContentPanel,
                     Ratio = 6.95,
                 };
-                _marginXFactorBox = new("X边距系数") {
+                _marginXFactorBox = new("X边距系数(0-2)") {
                     Parent = ContentPanel,
                     Ratio = 6.95,
                 };
-                _marginYFactorBox = new("Y边距系数") {
+                _marginYFactorBox = new("Y边距系数(0-2)") {
                     Parent = ContentPanel,
                     Ratio = 6.95,
                 };
@@ -208,37 +208,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     _inputBox.CheckError(0, false);
                 }
 
-                double labelSizeMm = double.TryParse(_labelSizeBox.GetTextBox(0).Box.Text, out double ls) && ls > 0 ? ls : -1;
-                if (labelSizeMm <= 0) {
-                    _labelSizeBox.CheckError(0, true);
-                    valid = false;
-                } else {
-                    _labelSizeBox.CheckError(0, false);
-                }
-
-                double qrSizeMm = double.TryParse(_qrSizeBox.GetTextBox(0).Box.Text, out double qs) && qs > 0 ? qs : -1;
-                if (qrSizeMm <= 0) {
-                    _qrSizeBox.CheckError(0, true);
-                    valid = false;
-                } else {
-                    _qrSizeBox.CheckError(0, false);
-                }
-
-                double marginXFactor = double.TryParse(_marginXFactorBox.GetTextBox(0).Box.Text, out double mxf) && mxf >= 0 && mxf <= 1 ? mxf : -1;
-                if (marginXFactor < 0) {
-                    _marginXFactorBox.CheckError(0, true);
-                    valid = false;
-                } else {
-                    _marginXFactorBox.CheckError(0, false);
-                }
-
-                double marginYFactor = double.TryParse(_marginYFactorBox.GetTextBox(0).Box.Text, out double myf) && myf >= 0 && myf <= 1 ? myf : -1;
-                if (marginYFactor < 0) {
-                    _marginYFactorBox.CheckError(0, true);
-                    valid = false;
-                } else {
-                    _marginYFactorBox.CheckError(0, false);
-                }
+                if (!TryValidateDouble(_labelSizeBox, v => v > 0, null, out double labelSizeMm)) valid = false;
+                if (!TryValidateDouble(_qrSizeBox, v => v > 0, null, out double qrSizeMm)) valid = false;
+                if (!TryValidateDouble(_marginXFactorBox, v => v >= SecondPrinterDetailConfig.MarginFactorMin && v <= SecondPrinterDetailConfig.MarginFactorMax, "X边距系数超出范围，请输入0~2之间的数值", out double marginXFactor)) valid = false;
+                if (!TryValidateDouble(_marginYFactorBox, v => v >= SecondPrinterDetailConfig.MarginFactorMin && v <= SecondPrinterDetailConfig.MarginFactorMax, "Y边距系数超出范围，请输入0~2之间的数值", out double marginYFactor)) valid = false;
 
                 if (valid) {
                     double dpmm = double.TryParse(_dpiBox.Value, out double d) ? d : ZplQrCodePrinter.DPMM_300DPI;
@@ -261,6 +234,17 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
             }
+        }
+        private bool TryValidateDouble(CustomTextBoxGroup box, Func<double, bool> predicate, string? warningMessage, out double value) {
+            value = double.TryParse(box.GetTextBox(0).Box.Text, out double parsed) && predicate(parsed) ? parsed : -1;
+            if (value < 0) {
+                if (warningMessage != null)
+                    WidgetUtils.ShowWarningPopUp(warningMessage);
+                box.CheckError(0, true);
+                return false;
+            }
+            box.CheckError(0, false);
+            return true;
         }
     }
 }

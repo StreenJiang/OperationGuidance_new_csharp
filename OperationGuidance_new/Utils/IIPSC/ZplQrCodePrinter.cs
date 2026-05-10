@@ -89,8 +89,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
                                     double dpmm = DPMM_300DPI,
                                     double labelSizeMm = 9,
                                     double qrSizeMm = 5.4,
-                                    double marginXFactor = 0.5,
-                                    double marginYFactor = 0.5) {
+                                    double marginXFactor = 1,
+                                    double marginYFactor = 1) {
             int labelDots = MmToDots(labelSizeMm, dpmm);
             int targetQrDots = MmToDots(qrSizeMm, dpmm);
 
