@@ -12,6 +12,7 @@ using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Reflection;
@@ -118,12 +119,12 @@ namespace OperationGuidance_new.Views {
                     MainUtils.SetSortConfigCurr(sortConfigCurr);
                     headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                 }
-                // 组装数据 
-                List<Dictionary<int, object?>> dataWithConfigFields = new();
+                // 根据过滤条件从服务端获取全量数据（不分页）
+                var exportReq = BuildQueryOperationDataListReq(null, null, _dataGridView.FilterParametersVO);
+                var exportRsp = apis.QueryOperationDataList(exportReq);
                 List<OperationDataVO> dataFormatted = new();
-                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, dataFormatted);
-                // 根据过滤条件过滤数据
-                dataFormatted = DataFiltering(dataFormatted, _dataGridView.FilterParametersVO);
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(exportRsp.OperationDataDTOs, dataFormatted);
+                List<Dictionary<int, object?>> dataWithConfigFields = new();
                 // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
                 dataFormatted.ForEach(dto => {
                     Dictionary<int, object?> record = new();
@@ -147,7 +148,22 @@ namespace OperationGuidance_new.Views {
             };
 
             // 按钮逻辑
-            _dataGridView.QueryData = (vo) => DataFiltering(QueryList(), vo);
+            _dataGridView.QueryData = (vo) => {
+                _dataGridView.VoGridView.ServerFetch = (page, pageSize) => {
+                    var pageReq = BuildQueryOperationDataListReq(page, pageSize, vo);
+                    var pageRsp = apis.QueryOperationDataList(pageReq);
+                    var pageVos = new List<OperationDataVO>();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(pageRsp.OperationDataDTOs, pageVos);
+                    return (pageVos, pageRsp.TotalCount);
+                };
+                var req = BuildQueryOperationDataListReq(1, _dataGridView.VoGridView.PageSize, vo);
+                var rsp = apis.QueryOperationDataList(req);
+                _dataDTOList = rsp.OperationDataDTOs;
+                var vos = new List<OperationDataVO>();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(_dataDTOList, vos);
+                _dataGridView.VoGridView.SetServerDataSource(vos, rsp.TotalCount);
+                return vos;
+            };
             // 隐藏不需要的按钮 
             _dataGridView.AddNewButtonVisible = false;
             _dataGridView.ModifyButtonVisible = false;
@@ -188,14 +204,15 @@ namespace OperationGuidance_new.Views {
                 _workstationNameComboBox.AddItem(workstation.name, workstation.id);
             }
         }
-        // 数据过滤（同时兼顾条件查询和数据导出）
-        private List<OperationDataVO> DataFiltering(List<OperationDataVO> vos, OperationDataVO vo) {
-            return vos
-                .Where(o => vo.vin_number == null || o.vin_number != null && o.vin_number.Contains(vo.vin_number))
-                .Where(o => vo.filter_create_time_min == null || vo.filter_create_time_max == null || o.create_time == null
-                        || (DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_min.Value.Date) >= 0
-                            && DateTime.Compare(o.create_time.Value.Date, vo.filter_create_time_max.Value.Date) <= 0))
-                .ToList();
+        private QueryOperationDataListReq BuildQueryOperationDataListReq(int? page, int? pageSize, OperationDataVO vo) {
+            return new() {
+                Page = page,
+                PageSize = pageSize,
+                VinNumber = vo.vin_number,
+                CreateTimeMin = vo.filter_create_time_min,
+                CreateTimeMax = vo.filter_create_time_max,
+                WorkstationId = vo.workstation_id,
+            };
         }
         // 选择保存路径
         private string ShowSaveFileDialog() {

@@ -731,6 +731,46 @@ namespace OperationGuidance_service.Controllers {
                 condition += " and product_batch = @product_batch";
                 parameters.Add("product_batch", req.ProductBatch);
             }
+            if (req.ProductBarCode != null) {
+                condition += " and product_bar_code like @product_bar_code";
+                parameters.Add("product_bar_code", $"%{req.ProductBarCode}%");
+            }
+            if (req.PartsBarCode != null) {
+                condition += " and parts_bar_code like @parts_bar_code";
+                parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
+            }
+            if (req.CreateTimeMin != null && req.CreateTimeMax != null) {
+                condition += " and create_time between @ct_min and @ct_max";
+                parameters.Add("ct_min", req.CreateTimeMin.Value.Date.ToString("yyyy-MM-dd HH:mm:ss"));
+                parameters.Add("ct_max", req.CreateTimeMax.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss"));
+            }
+            if (req.MissionName != null || req.IsChallengeMission != null) {
+                string missionCondition = "";
+                Dictionary<string, object> missionParams = new();
+                if (req.MissionName != null) {
+                    missionCondition += " and name like @mission_name";
+                    missionParams.Add("mission_name", $"%{req.MissionName}%");
+                }
+                if (req.IsChallengeMission != null) {
+                    missionCondition += " and is_challenge_mission = @is_challenge";
+                    missionParams.Add("is_challenge", req.IsChallengeMission.Value ? (int) YesOrNo.YES : (int) YesOrNo.NO);
+                }
+                string missionSql = $"select id from {_productMissionService.TableName} where deleted = {(int) YesOrNo.NO}{missionCondition}";
+                List<ProductMission> missions = _productMissionService.FindBySql(missionSql, missionParams);
+                if (missions.Count == 0) {
+                    return new() { MissionRecordDTOs = new(), TotalCount = 0 };
+                }
+                condition += " and mission_id in @filter_mission_ids";
+                parameters.Add("filter_mission_ids", missions.Select(m => m.id).ToList());
+            }
+
+            int totalCount = 0;
+            bool paginate = req.Page != null && req.PageSize != null;
+            if (paginate) {
+                string countSql = $"select count(*) from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} {condition}";
+                totalCount = _missionRecordService.ExecuteScalar(countSql, parameters);
+                condition += BuildPaginationClause(req.Page.Value, req.PageSize.Value);
+            }
 
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
             List<MissionRecordDTO> missionRecordDTOs = new();
@@ -738,6 +778,7 @@ namespace OperationGuidance_service.Controllers {
 
             return new() {
                 MissionRecordDTOs = missionRecordDTOs,
+                TotalCount = totalCount,
             };
         }
         // 新增或修改任务记录
@@ -807,12 +848,47 @@ namespace OperationGuidance_service.Controllers {
 
         #region 拧紧数据相关
         public QueryOperationDataListRsp QueryOperationDataList(QueryOperationDataListReq req) {
-            List<OperationData> operationDatas = _operationDataService.QueryList(req.UserId, req.MissionRecordId);
+            string sql = $"select * from {_operationDataService.TableName} where {_operationDataService.ConditionWithoutUserId}";
+            Dictionary<string, object> parameters = new();
 
+            string condition = "";
+            if (req.UserId != null) {
+                condition += " and user_id = @user_id";
+                parameters.Add("user_id", req.UserId.Value);
+            }
+            if (req.MissionRecordId != null) {
+                condition += " and mission_record_id = @mission_record_id";
+                parameters.Add("mission_record_id", req.MissionRecordId.Value);
+            }
+            if (req.VinNumber != null) {
+                condition += " and vin_number like @vin_number";
+                parameters.Add("vin_number", $"%{req.VinNumber}%");
+            }
+            if (req.WorkstationId != null) {
+                condition += " and workstation_id = @workstation_id";
+                parameters.Add("workstation_id", req.WorkstationId.Value);
+            }
+            if (req.CreateTimeMin != null && req.CreateTimeMax != null) {
+                condition += " and create_time between @ct_min and @ct_max";
+                parameters.Add("ct_min", req.CreateTimeMin.Value.Date.ToString("yyyy-MM-dd HH:mm:ss"));
+                parameters.Add("ct_max", req.CreateTimeMax.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss"));
+            }
+
+            int totalCount = 0;
+            bool paginate = req.Page != null && req.PageSize != null;
+            if (paginate) {
+                string countSql = $"select count(*) from {_operationDataService.TableName} where {_operationDataService.ConditionWithoutUserId} {condition}";
+                totalCount = _operationDataService.ExecuteScalar(countSql, parameters);
+                condition += BuildPaginationClause(req.Page.Value, req.PageSize.Value);
+            }
+
+            List<OperationData> operationDatas = _operationDataService.FindBySql(sql + condition, parameters);
             List<OperationDataDTO> operationDataDTOs = new();
             CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
 
-            return new(operationDataDTOs);
+            return new(operationDataDTOs) {
+                TotalCount = totalCount,
+            };
         }
         public AddOrUpdateOperationDataRsp AddOrUpdateOperationData(AddOrUpdateOperationDataReq req) {
             OperationData operationData = new();
@@ -1496,6 +1572,20 @@ namespace OperationGuidance_service.Controllers {
             }
 
             return rsp;
+        }
+        #endregion
+
+        #region Private helpers
+        private static string BuildPaginationClause(int page, int pageSize) {
+            int offset = (page - 1) * pageSize;
+            switch (SystemUtils.GetDBTypes()) {
+                case DBTypes.SQLSERVER:
+                    return $" order by id offset {offset} rows fetch next {pageSize} rows only";
+                case DBTypes.SQLITE:
+                case DBTypes.MYSQL:
+                default:
+                    return $" limit {pageSize} offset {offset}";
+            }
         }
         #endregion
     }
