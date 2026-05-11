@@ -452,6 +452,24 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.MissionErrorPromptForArmEnabled, (int) YesOrNo.NO + "");
             }
         }
+        // Buzzer enabled (SCII only)
+        public static bool IsBuzzerEnabled() {
+            string buzzerEnabled = Settings.Read(IniFileKeys.MissionBuzzerEnabled);
+            if (string.IsNullOrEmpty(buzzerEnabled)) {
+                bool flag = DefaultIsBuzzerEnabled();
+                SetBuzzerEnabled(flag);
+                return flag;
+            }
+            return int.Parse(buzzerEnabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultIsBuzzerEnabled() => false;
+        public static void SetBuzzerEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MissionBuzzerEnabled, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MissionBuzzerEnabled, (int) YesOrNo.NO + "");
+            }
+        }
         // Mission self looping mode
         public static bool IsMissionSelfLoopingModeEnabled() {
             string missionSelfLoopingModeEnabled = Settings.Read(IniFileKeys.MissionSelfLoopingMode);

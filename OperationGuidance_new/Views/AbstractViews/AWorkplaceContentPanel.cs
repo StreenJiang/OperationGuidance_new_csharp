@@ -1539,6 +1539,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
+            // Send barcode to PF series tools
+            List<int> toolIds = new();
+            foreach (List<BoltButton> bolts in _allBolts.Values) {
+                toolIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id).Distinct()
+                    .Select(wsId => _workstationsDTOs.Single(dto => dto.id == wsId).tool_id)
+                    .Where(toolId => toolId != null)
+                    .Select(toolId => toolId!.Value));
+            }
+            toolIds = toolIds.Distinct().ToList();
+            _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId) && t.ToolType is ToolPFSeries).ToList()
+                .ForEach(t => t.SendBarcode(_barCodeObj.ProductBarCode));
+
             // If locating enabled
             if (_locating_enabled) {
                 List<WorkstationDTO> workstationDTOs;
@@ -2225,7 +2237,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected void BoltNGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。", allowCancel: false);
 
         // NG次数达到上限，任务失败，必须管理员输入密码确认
-        protected void MissionNGConfirmPopUp(string msg) {
+        protected virtual void MissionNGConfirmPopUp(string msg) {
             // 在弹窗阻塞期间阻止串口消息处理
             _missionNGAdminConfirmed = false;
             _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, allowCancel: false);

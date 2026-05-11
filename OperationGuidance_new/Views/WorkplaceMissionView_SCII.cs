@@ -1164,6 +1164,20 @@ namespace OperationGuidance_new.Views {
             return true;
         }
 
+        protected override void MissionNGConfirmPopUp(string msg) {
+            bool buzzerEnabled = MainUtils.IsBuzzerEnabled();
+            if (buzzerEnabled) {
+                BuzzerController.TurnOn();
+            }
+            try {
+                base.MissionNGConfirmPopUp(msg);
+            } finally {
+                if (buzzerEnabled) {
+                    BuzzerController.TurnOff();
+                }
+            }
+        }
+
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Received tightening data, device ID: {deviceId}, torque: {data.torque}, angle: {data.angle}, status: {data.tightening_status}");
 

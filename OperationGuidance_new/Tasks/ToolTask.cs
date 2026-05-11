@@ -620,6 +620,24 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
+        public void SendBarcode(string barcode) {
+            if (!Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Barcode not sent - not connected");
+                return;
+            }
+            if (_toolType is not ToolPFSeries toolPF) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Barcode not sent - tool type {_toolType?.Name} does not support barcode");
+                return;
+            }
+            if (string.IsNullOrEmpty(barcode)) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Barcode not sent - barcode is empty");
+                return;
+            }
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending barcode [{barcode}]");
+            string command = toolPF.GetBarcodeCommand(barcode);
+            SendCommand(command);
+        }
+
         /// <summary>
         /// 检查指定时间戳是否在冷却期内
         /// </summary>

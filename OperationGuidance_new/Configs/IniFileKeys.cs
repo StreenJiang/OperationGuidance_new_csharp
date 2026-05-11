@@ -11,6 +11,7 @@ namespace OperationGuidance_new.Configs {
         public static string MissionArmLocatingEnabled => "mission_arm_locating_enabled";
         public static string MissionArmLocatingAccuracy => "mission_arm_locating_accuracy";
         public static string MissionErrorPromptForArmEnabled => "mission_error_prompt_for_arm";
+        public static string MissionBuzzerEnabled => "mission_buzzer_enabled";
         public static string MissionSelfLoopingMode => "mission_self_looping_mode";
         public static string PLCBarCodeSelfLooping => "plc_bar_code_self_looping";
         public static string PLCModel => "plc_model";
