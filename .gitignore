@@ -385,3 +385,6 @@ omnisharp.json
 
 # Ignore Claude configuration
 .claude/
+
+# Ignore superpowers plugin cache
+.superpowers/

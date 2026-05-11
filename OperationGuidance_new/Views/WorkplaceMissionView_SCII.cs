@@ -66,7 +66,6 @@ namespace OperationGuidance_new.Views {
 
         // 其他自定义组件
         private CustomComboBoxGroup<string> _batchDropDownBox;
-        private volatile bool _missionNGAdminConfirmed = true;
 
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
@@ -144,7 +143,7 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
                     logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active, requesting admin password");
-                    if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false)) {
+                    if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码")) {
                         logger.Info($"[SCII:ActionAfterAllInitialized] Admin password confirmed, terminating mission with NG status");
                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                     } else {
@@ -324,7 +323,7 @@ namespace OperationGuidance_new.Views {
                                 logger.Debug($"[SCII:OpenBarCodePopUpForm] Current OK count: {okSum}, limit: {shifts[1]}");
                                 if (okSum >= int.Parse(shifts[1])) {
                                     logger.Warn($"[SCII:OpenBarCodePopUpForm] Batch completion count has reached limit, requesting admin confirmation");
-                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
+                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁");
                                     if (!confirmed) {
                                         logger.Debug($"[SCII:OpenBarCodePopUpForm] Admin confirmation failed or cancelled, batch limit reached");
                                         if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
@@ -1086,37 +1085,6 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void AdminPopUpExtraActions() {
-            if (_adminPasswordPopUpForm != null && !_adminPasswordPopUpForm.IsDisposed) {
-                _adminPasswordPopUpForm.CloseButton.Enabled = false;
-                _adminPasswordPopUpForm.Buttons[1].Enabled = false;
-            }
-        }
-
-        protected async Task MissionNGConfirmPopUp(string msg) {
-            logger.Info($"[SCII:MissionNGConfirmPopUp] Opening mission NG confirmation popup, message: {msg}");
-
-            int maxRetry = 3;
-            int retryCount = 0;
-            _missionNGAdminConfirmed = false;
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Set admin confirmation flag to false");
-
-            while (!_missionNGAdminConfirmed && retryCount < maxRetry) {
-                retryCount++;
-
-                logger.Debug($"[SCII:MissionNGConfirmPopUp] Waiting for admin confirmation...");
-                _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
-                if (_missionNGAdminConfirmed) {
-                    logger.Info($"[SCII:MissionNGConfirmPopUp] Admin confirmation received");
-                } else {
-                    logger.Warn($"[SCII:MissionNGConfirmPopUp] Admin confirmation failed or cancelled, retrying...");
-                }
-
-                await Task.Delay(250);
-            }
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Admin confirmation loop completed");
-        }
-
         protected override async Task ActionAfterActivatingMission() {
             logger.Debug($"[SCII:ActionAfterActivatingMission] Action after activating mission started");
 
@@ -1145,7 +1113,7 @@ namespace OperationGuidance_new.Views {
                 if (!CountScrewBitUsedTime(out screwBitCounter)) {
                     logger.Warn($"[SCII:ValidationBeforeActivatingMission] Screw bit usage limit exceeded for position {screwBitCounter.bit_position}, current: {screwBitCounter.current_counts}, max: {screwBitCounter.max_num}");
 
-                    bool confirmed = OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码", false);
+                    bool confirmed = OpenAdminPasswordPopUpForm($"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码");
                     if (confirmed) {
                         logger.Info($"[SCII:ValidationBeforeActivatingMission] Admin confirmed screw bit replacement, resetting counter");
                         screwBitCounter.current_counts = 0;

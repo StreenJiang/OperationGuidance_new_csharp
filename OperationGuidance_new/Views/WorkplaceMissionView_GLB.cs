@@ -29,7 +29,6 @@ namespace OperationGuidance_new.Views {
     public class WorkplaceContentPanel_GLB: WorkplaceContentPanel {
         private List<OuterDatabaseConfigGlbDTO>? _outerDatabases = null;
         private List<OperationDataDTO> _operationDatasCached = new();
-        private volatile bool _missionNGAdminConfirmed = true;
 
         public WorkplaceContentPanel_GLB() { }
         public WorkplaceContentPanel_GLB(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
@@ -567,30 +566,6 @@ namespace OperationGuidance_new.Views {
                     logger.Error($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Error occurred while handling tightening data, e: {e}");
                 }
             });
-        }
-
-        protected async Task MissionNGConfirmPopUp(string msg) {
-            logger.Info($"[SCII:MissionNGConfirmPopUp] Opening mission NG confirmation popup, message: {msg}");
-
-            int maxRetry = 3;
-            int retryCount = 0;
-            _missionNGAdminConfirmed = false;
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Set admin confirmation flag to false");
-
-            while (!_missionNGAdminConfirmed && retryCount < maxRetry) {
-                retryCount++;
-
-                logger.Debug($"[SCII:MissionNGConfirmPopUp] Waiting for admin confirmation...");
-                _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
-                if (_missionNGAdminConfirmed) {
-                    logger.Info($"[SCII:MissionNGConfirmPopUp] Admin confirmation received");
-                } else {
-                    logger.Warn($"[SCII:MissionNGConfirmPopUp] Admin confirmation failed or cancelled, retrying...");
-                }
-
-                await Task.Delay(250);
-            }
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Admin confirmation loop completed");
         }
     }
 }
