@@ -490,6 +490,10 @@ namespace OperationGuidance_new.Views {
             SetPset();
         }
         private void SetTodayData() {
+            if (InvokeRequired) {
+                Invoke(() => SetTodayData());
+                return;
+            }
             logger.Debug($"[SCII:SetTodayData] Setting today's data");
 
             int sum = 0;
@@ -1341,9 +1345,6 @@ namespace OperationGuidance_new.Views {
                                             logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Challenge mission result added");
                                         }
 
-                                        // 重置任务信息
-                                        ResetMissionDetails();
-
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
@@ -1363,9 +1364,6 @@ namespace OperationGuidance_new.Views {
                                     // Mission failed
                                     if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
                                         logger.Error($"[SCII:DoAfterRecevingTighteningDataAsync] Max NG count reached, terminating mission");
-
-                                        // 重置任务信息
-                                        ResetMissionDetails();
 
                                         // 记录数据
                                         StoreTighteningData(dataDTO);
@@ -1428,6 +1426,8 @@ namespace OperationGuidance_new.Views {
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
+
+            ResetMissionDetails();
 
             await base.TerminateMission(status);
 
