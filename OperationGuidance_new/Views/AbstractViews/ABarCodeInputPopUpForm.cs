@@ -255,8 +255,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Can not find any other mission that match this barcode [{barCode}]...");
 
                         checkPassed = false;
-                        WidgetUtils.ShowWarningPopUp($"当前条码【{barCode}】与选择的任务不匹配");
                         _productBarCodeBox.GetTextBox(0).IsError = true;
+                        _workplace.OpenAdminPasswordPopUpForm($"当前条码【{barCode}】与选择的任务不匹配", allowCancel: false);
                     }
                     // 如果匹配到其他任务，则做出特定提示
                     else {
@@ -284,8 +284,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
 
                     checkPassed = false;
-                    WidgetUtils.ShowWarningPopUp($"没有检索到匹配条码【{barCode}】的任务");
                     _productBarCodeBox.GetTextBox(0).IsError = true;
+                    _workplace.OpenAdminPasswordPopUpForm($"没有检索到匹配条码【{barCode}】的任务", allowCancel: false);
                 } else {
                     // 不为空则需要切换任务
                     needToSwtich = true;
@@ -334,12 +334,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     if (!yes) {
                         logger.Info($"Validation fails for predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
 
-                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                         checkPassed = false;
+                        _workplace.OpenAdminPasswordPopUpForm("未检测到前置任务的加工完成记录，请先完成前置任务", allowCancel: false);
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.id) { ProductBarCode = barCode }).Yes) {
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(null) { ProductBarCode = barCode }).Yes) {
                     logger.Info($"Checking REDO from recordings for matched mission id [{mission.id}], barcode = [{barCode}]...");
 
                     bool needRedo;
@@ -430,12 +430,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
             logger.Info($"Checking parts barcode = [{barCode}] for mission [id = {_mission.id}]...");
 
             if (string.IsNullOrEmpty(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
+                WidgetUtils.ShowWarningPopUp($"请输入或扫描条码", 2);
                 box.GetTextBox(0).IsError = true;
                 return;
             } else if (_workplace.BarCodeObj.PartsBarCodes.Contains(barCode)) {
-                WidgetUtils.ShowWarningPopUp($"请勿重复录入物料");
                 box.GetTextBox(0).IsError = true;
+                _workplace.OpenAdminPasswordPopUpForm($"请勿重复录入物料", allowCancel: false);
                 return;
             }
 
@@ -453,8 +453,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
                 }
 
-                WidgetUtils.ShowWarningPopUp($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
                 box.GetTextBox(0).IsError = true;
+                _workplace.OpenAdminPasswordPopUpForm($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配", allowCancel: false);
             }
             // 物料条码校验通过
             else {
@@ -508,7 +508,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // 物料码返工确认
                 if (_workplace.IsRedo != (int) YesOrNo.YES || _mission.is_challenge_mission == (int) YesOrNo.YES) {
                     if (checkPassed
-                            && _workplace.Apis.CheckPartsBarCode(new(_mission.id, barCode)).Yes) {
+                            && _workplace.Apis.CheckPartsBarCode(new(null, barCode)).Yes) {
                         logger.Info($"Checking REDO from recordings for matched mission id [{_mission.id}], parts barcode = [{barCode}]...");
 
                         bool needRedo;

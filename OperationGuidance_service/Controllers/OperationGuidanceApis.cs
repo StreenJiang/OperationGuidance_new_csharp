@@ -822,9 +822,16 @@ namespace OperationGuidance_service.Controllers {
         }
         // 检查当前条码是否存在于任务记录表中，用于判断是否需要返工
         public CheckIfBarCodeExistsInMissionRecordRsp CheckIfBarCodeExistsInMissionRecord(CheckIfBarCodeExistsInMissionRecordReq req) {
-            string sql = $"select 1 from {_missionRecordService.TableName} where mission_id = @mission_id";
+            string sql;
             Dictionary<string, object> parameters = new();
-            parameters.Add("mission_id", req.MissionId);
+
+            if (req.MissionId != null) {
+                sql = $"select 1 from {_missionRecordService.TableName} where mission_id = @mission_id";
+                parameters.Add("mission_id", req.MissionId.Value);
+            } else {
+                sql = $"select 1 from {_missionRecordService.TableName} where 1=1";
+            }
+
             if (req.MissionResult != null) {
                 sql += " and mission_result = @mission_result";
                 parameters.Add("mission_result", req.MissionResult);
@@ -894,13 +901,18 @@ namespace OperationGuidance_service.Controllers {
 
             List<PartsBarCode> partsBarCodes = _partsBarCodeService.FindBySql(sql, parameters);
             if (partsBarCodes.Count > 0) {
+                // 跨配方：只要有记录即视为重码
+                if (req.MissionId == null) {
+                    return new CheckPartsBarCodeRsp(true);
+                }
+
                 string sql2 = $"select distinct(mission_id) from {_missionRecordService.TableName} where id in @id";
                 Dictionary<string, object> parameters2 = new();
                 parameters2.Add("id", partsBarCodes.Select(p => p.mission_record_id).Distinct().ToList());
 
                 List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql2, parameters2);
                 if (missionRecords.Count > 0) {
-                    return new CheckPartsBarCodeRsp(missionRecords.Select(m => m.mission_id).ToList().IndexOf(req.MissionId) != -1);
+                    return new CheckPartsBarCodeRsp(missionRecords.Select(m => m.mission_id).ToList().IndexOf(req.MissionId.Value) != -1);
                 }
             }
 
