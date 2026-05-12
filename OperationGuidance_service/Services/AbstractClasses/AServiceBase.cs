@@ -86,5 +86,6 @@ namespace OperationGuidance_service.Services.AbstractClasses {
         }
 
         public int ExecuteSql(string sql, object? param = null) => Wrapper.ExecuteWithRetry(sql);
+        public int ExecuteScalar(string sql, Dictionary<string, object>? @params = null) => Wrapper.ExecuteScalar(sql, @params);
     }
 }

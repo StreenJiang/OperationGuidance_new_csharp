@@ -75,10 +75,15 @@ namespace OperationGuidance_new.Constants {
             COMMAND_LOCK_ASCII = new("00200042001         \x00");
             COMMAND_UNLOCK_ASCII = new("00200043001         \x00");
             COMMAND_PSET_ASCII = new("00230018001         {0}\x00");
-            COMMAND_SEND_BARCODE_ASCII = new("002801500010    00  {0}\x00");
+            COMMAND_SEND_BARCODE_ASCII = new("{0}01500010    00  {1}\x00");
         }
 
         public override string GetPSetCommand(int pSetNumber) => COMMAND_PSET_ASCII.GetMessage($"{pSetNumber:000}");
+
+        public string GetBarcodeCommand(string barcode) {
+            int totalLength = 20 + barcode.Length;
+            return COMMAND_SEND_BARCODE_ASCII.GetMessage($"{totalLength:0000}", barcode);
+        }
 
         public virtual string GetMid(string result) {
             string mid = "";
@@ -184,6 +189,8 @@ namespace OperationGuidance_new.Constants {
                     } else if (tail == "0043") {
                         logger.Info($"Unlock ok for {this.Name}...");
                         toolAction(null, null, false, null, null);
+                    } else if (tail == "0150") {
+                        logger.Info($"Barcode sending ok for {this.Name}...");
                     }
                 } else if (mid == "0061") {
                     logger.Info($"Analyzing tightening data...");

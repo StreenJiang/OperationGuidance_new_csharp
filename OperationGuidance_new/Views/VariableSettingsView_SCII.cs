@@ -1,6 +1,7 @@
 using CustomLibrary.Buttons;
 using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Utils;
+using CustomLibrary.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_service.Constants;
 
@@ -8,6 +9,10 @@ namespace OperationGuidance_new.Views {
     public class VariableSettingsView_SCII: AVariableSettingsView {
         private ToggleButtonGroup _enableBatchCounter;
         private bool _enableBatchCounterOriginal;
+
+        private ToggleButtonGroup _buzzerEnabledToggle;
+        private CommonButtonGroup _buzzerTestButtons;
+        private bool _buzzerEnabledOriginal;
 
         public VariableSettingsView_SCII() {
             MissionSelfLoopingModeToggle.Hide();
@@ -25,6 +30,29 @@ namespace OperationGuidance_new.Views {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
             };
+
+            _buzzerEnabledToggle = new("启用蜂鸣器") {
+                Parent = WorkContentPanel,
+                Ratio = 6.95,
+            };
+            _buzzerTestButtons = new("蜂鸣器测试") {
+                Parent = WorkContentPanel,
+                Ratio = 6.95,
+                Enabled = false,
+            };
+            CommonButton testOnButton = _buzzerTestButtons.GetButton(0);
+            testOnButton.Label = "测试开";
+            testOnButton.MouseUp += (s, e) => {
+                BuzzerController.TurnOn();
+                WidgetUtils.ShowNoticePopUp("蜂鸣器已启动");
+            };
+            _buzzerTestButtons.AddButton("测试关").MouseUp += (s, e) => {
+                BuzzerController.TurnOff();
+                WidgetUtils.ShowNoticePopUp("蜂鸣器已关闭");
+            };
+            _buzzerEnabledToggle.CheckedChanged += (s, e) => {
+                _buzzerTestButtons.Enabled = _buzzerEnabledToggle.Checked;
+            };
         }
 
         protected override void SaveMissionSettings() {
@@ -33,44 +61,51 @@ namespace OperationGuidance_new.Views {
             var sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
             sciiBatchConfig.enabled = _enableBatchCounter.Checked.ToYesOrNoInt();
             ConfigUtils.SaveConfig(sciiBatchConfig);
-
             _enableBatchCounterOriginal = sciiBatchConfig.enabled.ToYesOrNoBool();
+
+            bool buzzerEnabled = _buzzerEnabledToggle.Checked;
+            MainUtils.SetBuzzerEnabled(buzzerEnabled);
+            _buzzerEnabledOriginal = buzzerEnabled;
         }
 
         protected override void ResizeStoragePanel() {
             base.ResizeStoragePanel();
 
             int boxVMargin = BoxNBtnHeight / 2;
-            // Resize Content
             int contentHeight = BoxNBtnHeight * 3 + ContentVPadding * 2 + boxVMargin * 2;
             StorageContentPanel.Size = new(Width, contentHeight);
 
-            // Resize outer panel
             StoragePanel.Size = new(Width, StorageTitlePanel.Height + StorageContentPanel.Height);
         }
 
         protected override void ResizeMissionSettings() {
             base.ResizeMissionSettings();
 
-            // Resize title
             int boxWidth = (Width - ContentHPadding * 3) / 2;
             int boxVMargin = BoxNBtnHeight / 2;
-            // Resize box
             ErrorPromptForArmToggle.Margin = new(0, 0, ContentHGap / 2, 0);
             UsbScannerEnabledToggle.Margin = new(0, 0, 0, 0);
-            _enableBatchCounter.Size = new(boxWidth, this.BoxNBtnHeight);
+
+            _buzzerEnabledToggle.Size = new(boxWidth, BoxNBtnHeight);
+            _buzzerEnabledToggle.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _buzzerTestButtons.Size = new(boxWidth, BoxNBtnHeight);
+            _buzzerTestButtons.Margin = new(0, boxVMargin, 0, 0);
+
+            _enableBatchCounter.Size = new(boxWidth, BoxNBtnHeight);
             _enableBatchCounter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            // Resize Content
-            WorkContentPanel.Size = new(Width, BoxNBtnHeight * 2 + ContentVPadding * 3 + boxVMargin * 0);
-            // Resize outer panel
+
+            WorkContentPanel.Size = new(Width, BoxNBtnHeight * 3 + ContentVPadding * 2 + boxVMargin * 2);
             WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height);
         }
 
         protected override async void LoadSettings() {
             await Task.Run(() => {
-                base.LoadSettings();
-
                 BeginInvoke(() => {
+                    base.LoadSettings();
+
+                    _buzzerEnabledOriginal = MainUtils.IsBuzzerEnabled();
+                    _buzzerEnabledToggle.Checked = _buzzerEnabledOriginal;
+
                     var sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
                     _enableBatchCounter.Checked = sciiBatchConfig.enabled.ToYesOrNoBool();
                 });
@@ -79,13 +114,19 @@ namespace OperationGuidance_new.Views {
 
         protected override async void ResetAllToDefault() {
             await Task.Run(() => {
-                base.ResetAllToDefault();
-
                 BeginInvoke(() => {
+                    base.ResetAllToDefault();
+
+                    _buzzerEnabledToggle.Checked = MainUtils.DefaultIsBuzzerEnabled();
+
                     var sciiBatchConfig = ConfigUtils.GetDefault<SciiBatchConfig>();
                     _enableBatchCounter.Checked = sciiBatchConfig.enabled.ToYesOrNoBool();
                 });
             });
         }
+
+        protected override bool CheckSavedFunc_detail() => base.CheckSavedFunc_detail()
+            && _buzzerEnabledToggle.Checked == _buzzerEnabledOriginal
+            && _enableBatchCounter.Checked == _enableBatchCounterOriginal;
     }
 }

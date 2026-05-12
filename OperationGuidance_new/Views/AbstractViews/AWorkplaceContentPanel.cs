@@ -57,6 +57,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected bool _needLoosening = false;
         protected bool? _adminConfirmed = null;
         protected CustomPopUpForm? _adminPasswordPopUpForm;
+        protected volatile bool _missionNGAdminConfirmed = true;
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
         protected readonly object DataStorageLockObj = new();
@@ -628,7 +629,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (deviceBlock.Category == DeviceCategories.TOOL) {
                                 if (_toolTasks.Count > 0) {
                                     if (_toolControlNeedAdminPasswor) {
-                                        bool confirmed = OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码", false);
+                                        bool confirmed = OpenAdminPasswordPopUpForm("手动控制工具。需要管理员操作密码");
                                         if (!confirmed) {
                                             return;
                                         }
@@ -856,6 +857,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 await Task.Run(() => {
                     BeginInvoke(() => {
                         if (!IsDisposed) {
+                            // MissionNG 管理员确认弹窗期间阻止串口消息处理
+                            if (!_missionNGAdminConfirmed) {
+                                return;
+                            }
                             DeviceSerialPortDTO dto = _serialPorts.Single(dto => dto.id == pair.Key);
                             // 如果有空的数据进来，则跳过
                             if (string.IsNullOrEmpty(msg) || string.IsNullOrWhiteSpace(msg)) {
@@ -1521,6 +1526,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
+            // Send barcode to PF series tools
+            List<int> toolIds = new();
+            foreach (List<BoltButton> bolts in _allBolts.Values) {
+                toolIds.AddRange(bolts.Select(b => b.BoltDTO.workstation_id).Distinct()
+                    .Select(wsId => _workstationsDTOs.Single(dto => dto.id == wsId).tool_id)
+                    .Where(toolId => toolId != null)
+                    .Select(toolId => toolId!.Value));
+            }
+            toolIds = toolIds.Distinct().ToList();
+            _toolTasks.Values.Where(t => toolIds.Contains(t.DeviceId) && t.ToolType is ToolPFSeries).ToList()
+                .ForEach(t => t.SendBarcode(_barCodeObj.ProductBarCode));
+
             // If locating enabled
             if (_locating_enabled) {
                 List<WorkstationDTO> workstationDTOs;
@@ -2175,93 +2192,56 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 打开管理员密码输入弹框
-        public bool OpenAdminPasswordPopUpForm(string title, bool needExctraActions, Action<bool>? actionAfterTrue = null) {
-            _adminPasswordPopUpForm = new() {
-                Title = title,
-            };
-            CustomTextBoxGroup _adminPasswordBox = new("管理员密码") {
-                Parent = _adminPasswordPopUpForm.ContentPanel,
-            };
-            _adminPasswordBox.GetTextBox(0).Box.PasswordChar = '*';
-            _adminPasswordBox.GetTextBox(0).TextChanged += (s, e) => {
-                _adminPasswordBox.GetTextBox(0).IsError = false;
-            };
-            _adminPasswordBox.GetTextBox(0).Box.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter) {
-                    Confirm();
-                }
-            };
-            CommonButton confirmButton = _adminPasswordPopUpForm.AddButton("确定");
-            confirmButton.Click += (s, e) => Confirm();
-            CommonButton closeButton = _adminPasswordPopUpForm.AddButton("取消");
-            closeButton.Click += (s, e) => {
-                _adminPasswordPopUpForm.DialogResult = DialogResult.Cancel;
-            };
-            _adminPasswordPopUpForm.PretendToShowToCreateHandlesForChildren();
+        public bool OpenAdminPasswordPopUpForm(string title, Action<bool>? actionAfterTrue = null, bool allowCancel = true) {
+            AdminPasswordDialog dialog = new(title, password => _apis.AdminPasswordValidate(new(password)).Succeed, allowCancel);
+            _adminPasswordPopUpForm = dialog;
+
+            dialog.PretendToShowToCreateHandlesForChildren();
 
             int contentWidth = (int) (WidgetUtils.MainSize.Width * .75);
-            Padding contentPadding = _adminPasswordPopUpForm.ContentPanel.Padding;
+            Padding contentPadding = dialog.ContentPanel.Padding;
             int boxHeight = WidgetUtils.TextOrComboBoxHeight();
             int boxMargin = boxHeight / 5;
-            _adminPasswordBox.Size = new(contentWidth - contentPadding.Size.Width - boxMargin * 2, boxHeight);
-            _adminPasswordBox.Margin = new(boxMargin);
+            dialog.TextBox.Size = new(contentWidth - contentPadding.Size.Width - boxMargin * 2, boxHeight);
+            dialog.TextBox.Margin = new(boxMargin);
             int contentHeight = boxHeight + boxMargin * 2 + contentPadding.Size.Height;
-            _adminPasswordPopUpForm.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
-
-            // Extra actions
-            if (needExctraActions) {
-                AdminPopUpExtraActions();
-            }
+            dialog.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
 
             _adminConfirmed = false;
-            DialogResult dialogResult = _adminPasswordPopUpForm.ShowDialog();
-            if (DialogResult.OK == dialogResult) {
-                Task.Run(() => {
-                    logger.Debug("[OpenAdminPasswordPopUpForm] - DialogResult set to OK, about to invoke callback");
+            dialog.ShowDialog();
+            if (dialog.IsPasswordCorrect) {
+                _adminConfirmed = true;
+                logger.Debug("[OpenAdminPasswordPopUpForm] - Password verified, about to invoke callback");
 
-                    _adminPasswordPopUpForm?.Dispose();
+                this.SafeInvoke(() => {
+                    dialog.Dispose();
                     _adminPasswordPopUpForm = null;
 
-                    // Show message after setting DialogResult to avoid unexpected issues
-                    this.SafeInvoke(() => {
-                        WidgetUtils.ShowNoticePopUp("验证成功", 2);
+                    WidgetUtils.ShowNoticePopUp("验证成功", 2);
 
-                        try {
-                            actionAfterTrue?.Invoke(true);
-                        } catch (Exception ex) {
-                            logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
-                        }
-                    });
+                    try {
+                        actionAfterTrue?.Invoke(true);
+                    } catch (Exception ex) {
+                        logger.Error("[OpenAdminPasswordPopUpForm] - Admin password success callback failed", ex);
+                    }
                 });
                 return true;
             }
 
+            dialog.Dispose();
+            _adminPasswordPopUpForm = null;
             return false;
-
-            void Confirm() {
-                logger.Debug("[OpenAdminPasswordPopUpForm] - Confirm() entered");
-
-                string password = _adminPasswordBox.GetTextBox(0).Box.Text;
-                if (!string.IsNullOrEmpty(password) && _apis.AdminPasswordValidate(new(password)).Succeed) {
-                    // Set values immediately
-                    _adminConfirmed = true;
-                    _adminPasswordPopUpForm.DialogResult = DialogResult.OK;
-
-                    logger.Debug("[OpenAdminPasswordPopUpForm] - Setting DialogResult = OK");
-                } else {
-                    WidgetUtils.ShowErrorPopUp("密码错误");
-                    _adminPasswordBox.GetTextBox(0).IsError = true;
-
-                    logger.Debug("[OpenAdminPasswordPopUpForm] - Password incorrect...");
-                    return;
-                }
-            }
         }
 
-        protected virtual void AdminPopUpExtraActions() { }
-
         // 螺栓拧紧NG时，如果需要管理员输入密码，则调用此方法
-        protected void BoltNGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。", false);
+        protected void BoltNGConfirmPopUp() => OpenAdminPasswordPopUpForm("拧紧错误，工具已锁止。请输入管理员密码解锁。", allowCancel: false);
+
+        // NG次数达到上限，任务失败，必须管理员输入密码确认
+        protected virtual void MissionNGConfirmPopUp(string msg) {
+            // 在弹窗阻塞期间阻止串口消息处理
+            _missionNGAdminConfirmed = false;
+            _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, allowCancel: false);
+        }
 
         // 读取到控制器传回的数据后进行处理
         protected virtual void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {

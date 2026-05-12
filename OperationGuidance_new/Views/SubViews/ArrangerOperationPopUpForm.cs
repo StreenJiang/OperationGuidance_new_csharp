@@ -129,7 +129,7 @@ namespace OperationGuidance_new.Views.SubViews {
                 return;
             }
 
-            bool confirmed = _workplace.OpenAdminPasswordPopUpForm("IO点位测试需要管理员操作密码", false);
+            bool confirmed = _workplace.OpenAdminPasswordPopUpForm("IO点位测试需要管理员操作密码");
             if (confirmed) {
                 int panelHeight = WidgetUtils.TextOrComboBoxHeight();
                 int boxMargin = panelHeight / 5;

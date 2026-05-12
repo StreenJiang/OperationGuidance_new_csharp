@@ -353,12 +353,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], waiting for administrators to confirm...");
 
                         // 需要管理员密码弹窗
-                        _workplace.AdminConfirmed = false;
-                        needRedo = false;
-                        needRedo = _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", false, yes => {
-                            needRedo = yes;
-                            logger.Info($"Result of OpenAdminPasswordPopUpForm = {yes}, mission id = [{mission.id}], barcode = [{barCode}].");
-                        });
+                        needRedo = _workplace.OpenAdminPasswordPopUpForm("产品返工确认，请输入管理员密码解锁", allowCancel: false);
                     } else {
                         logger.Info($"Current mission doesn't need REDO, mission id = [{mission.id}], barcode = [{barCode}]...");
                         needRedo = false;
@@ -527,12 +522,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], waiting for administrators to confirm...");
 
                             // 需要管理员密码弹窗
-                            _workplace.AdminConfirmed = false;
-                            needRedo = false;
-                            needRedo = _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", false, yes => {
-                                needRedo = yes;
-                                logger.Info($"Result of OpenAdminPasswordPopUpForm = {yes}, mission id = [{_mission.id}], parts barcode = [{barCode}].");
-                            });
+                            needRedo = _workplace.OpenAdminPasswordPopUpForm("物料返工确认。请输入管理员密码解锁。", allowCancel: false);
                         } else {
                             logger.Info($"Current mission doesn't need REDO, mission id = [{_mission.id}], parts barcode = [{barCode}]...");
                             needRedo = false;

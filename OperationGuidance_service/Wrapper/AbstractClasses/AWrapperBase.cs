@@ -291,6 +291,21 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return null;
         }
 
+        public int ExecuteScalar(string sql, Dictionary<string, object>? @params = null) {
+            try {
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        return conn.QueryFirst<int>(sql, @params);
+                    }
+                } else {
+                    return _conn.QueryFirst<int>(sql, @params, _transaction);
+                }
+            } catch (Exception e) {
+                logger.Warn($"Something wrong here, please check error: e = {e}");
+                return 0;
+            }
+        }
+
         public int ExecuteSql(string sql) {
             int rows = 0;
             try {

@@ -6,5 +6,6 @@ namespace OperationGuidance_service.Models.Responses {
         public List<MissionRecordDTO> MissionRecordDTOs {
             get; set;
         }
+        public int TotalCount { get; set; }
     }
 }

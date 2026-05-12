@@ -3,7 +3,7 @@ using CustomLibrary.TextBoxes;
 namespace CustomLibrary.Forms {
     public class WaitDialog: CustomPopUpForm {
         private readonly TaskCompletionSource<bool> _tcs = new();
-        private bool _isClosingAllowed = false;
+        protected bool IsClosingAllowed { get; set; } = false;
         private CustomTextBoxGroup _textBox;
 
         public CustomTextBoxGroup TextBox { get => _textBox; set => _textBox = value; }
@@ -28,7 +28,7 @@ namespace CustomLibrary.Forms {
         private void SetupCloseProtection() {
             // 4. 拦截所有关闭请求（包括 Alt+F4、任务管理器关闭等）
             this.FormClosing += (s, e) => {
-                if (!_isClosingAllowed) {
+                if (!IsClosingAllowed) {
                     e.Cancel = true;  // 强制取消关闭
                 }
             };
@@ -47,7 +47,7 @@ namespace CustomLibrary.Forms {
         }
 
         private void CloseInternal() {
-            _isClosingAllowed = true;  // 5. 允许关闭
+            IsClosingAllowed = true;  // 5. 允许关闭
             _tcs.TrySetResult(true);   // 通知等待者
             this.Close();              // 执行关闭
         }

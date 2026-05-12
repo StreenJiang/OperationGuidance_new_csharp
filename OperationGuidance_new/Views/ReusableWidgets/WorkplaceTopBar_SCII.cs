@@ -5,7 +5,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
     public class WorkplaceTopBar_SCII: WorkplaceTopBar {
         protected override void ExitConfirm() {
             if (OperatorOpenning) {
-                bool confirmed = Workplace.OpenAdminPasswordPopUpForm("退出登录，请管理员输入权限密码", false);
+                bool confirmed = Workplace.OpenAdminPasswordPopUpForm("退出登录，请管理员输入权限密码");
                 if (confirmed) {
                     if (WidgetUtils.BackToLoginView != null) {
                         MainUtils.ActionAfterLogout = CloseWorkplace;

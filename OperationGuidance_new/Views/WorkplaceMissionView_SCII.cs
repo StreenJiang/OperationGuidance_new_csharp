@@ -65,7 +65,6 @@ namespace OperationGuidance_new.Views {
 
         // 其他自定义组件
         private CustomComboBoxGroup<string> _batchDropDownBox;
-        private volatile bool _missionNGAdminConfirmed = true;
 
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
@@ -147,7 +146,7 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
                     logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active, requesting admin password");
-                    if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", false)) {
+                    if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", allowCancel: false)) {
                         logger.Info($"[SCII:ActionAfterAllInitialized] Admin password confirmed, terminating mission with NG status");
                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
                     } else {
@@ -327,7 +326,7 @@ namespace OperationGuidance_new.Views {
                                 logger.Debug($"[SCII:OpenBarCodePopUpForm] Current OK count: {okSum}, limit: {shifts[1]}");
                                 if (okSum >= int.Parse(shifts[1])) {
                                     logger.Warn($"[SCII:OpenBarCodePopUpForm] Batch completion count has reached limit, requesting admin confirmation");
-                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", false);
+                                    bool confirmed = OpenAdminPasswordPopUpForm("当前批次完成数已达上限，需管理员确认。请输入管理员密码解锁", allowCancel: false);
                                     if (!confirmed) {
                                         logger.Debug($"[SCII:OpenBarCodePopUpForm] Admin confirmation failed or cancelled, batch limit reached");
                                         if (_barCodePopUpForm != null && !_barCodePopUpForm.IsDisposed) {
@@ -555,6 +554,10 @@ namespace OperationGuidance_new.Views {
             ResizeChildren();
         }
         private void SetTodayData() {
+            if (InvokeRequired) {
+                Invoke(() => SetTodayData());
+                return;
+            }
             logger.Debug($"[SCII:SetTodayData] Setting today's data");
 
             int sum = 0;
@@ -1170,37 +1173,6 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void AdminPopUpExtraActions() {
-            if (_adminPasswordPopUpForm != null && !_adminPasswordPopUpForm.IsDisposed) {
-                _adminPasswordPopUpForm.CloseButton.Enabled = false;
-                _adminPasswordPopUpForm.Buttons[1].Enabled = false;
-            }
-        }
-
-        protected async Task MissionNGConfirmPopUp(string msg) {
-            logger.Info($"[SCII:MissionNGConfirmPopUp] Opening mission NG confirmation popup, message: {msg}");
-
-            int maxRetry = 3;
-            int retryCount = 0;
-            _missionNGAdminConfirmed = false;
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Set admin confirmation flag to false");
-
-            while (!_missionNGAdminConfirmed && retryCount < maxRetry) {
-                retryCount++;
-
-                logger.Debug($"[SCII:MissionNGConfirmPopUp] Waiting for admin confirmation...");
-                _missionNGAdminConfirmed = OpenAdminPasswordPopUpForm(msg, true);
-                if (_missionNGAdminConfirmed) {
-                    logger.Info($"[SCII:MissionNGConfirmPopUp] Admin confirmation received");
-                } else {
-                    logger.Warn($"[SCII:MissionNGConfirmPopUp] Admin confirmation failed or cancelled, retrying...");
-                }
-
-                await Task.Delay(250);
-            }
-            logger.Debug($"[SCII:MissionNGConfirmPopUp] Admin confirmation loop completed");
-        }
-
         protected override async Task ActionAfterActivatingMission() {
             logger.Debug($"[SCII:ActionAfterActivatingMission] Action after activating mission started");
 
@@ -1242,22 +1214,21 @@ namespace OperationGuidance_new.Views {
         }
 
         protected virtual async Task<bool> CheckScrewBitCount() {
-            // Count screw bit used time
             ScrewBitCounterDTO screwBitCounter;
             if (!CountScrewBitUsedTime(out screwBitCounter)) {
-                _adminConfirmed = false;
+                logger.Warn($"[SCII:CheckScrewBitCount] Screw bit usage limit exceeded for position {screwBitCounter.bit_position}, current: {screwBitCounter.current_counts}, max: {screwBitCounter.max_num}");
+
                 bool confirmed = OpenAdminPasswordPopUpForm(
                     $"({screwBitCounter.bit_position})号位批头将超过使用上限【{screwBitCounter.max_num}次】，需更换批头。更换批头后，请输入管理员密码",
-                    false);
+                    allowCancel: false);
                 if (confirmed) {
-                    _adminConfirmed = null;
+                    logger.Info($"[SCII:CheckScrewBitCount] Admin confirmed screw bit replacement, resetting counter");
                     screwBitCounter.current_counts = 0;
                     _apis.AddOrUpdateScrewBitCounter(new(screwBitCounter));
-
-                    // Check again to ensure no more screw bit needs to be replaced
-                    return await ValidationBeforeActivatingMission();
+                    logger.Debug($"[SCII:CheckScrewBitCount] Screw bit counter reset for position {screwBitCounter.bit_position}");
                 }
-                return false;
+
+                return await ValidationBeforeActivatingMission();
             }
             return true;
         }
@@ -1282,6 +1253,20 @@ namespace OperationGuidance_new.Views {
             screwBitCounter = new();
             logger.Info($"[SCII:CountScrewBitUsedTime] All screw bits within usage limits");
             return true;
+        }
+
+        protected override void MissionNGConfirmPopUp(string msg) {
+            bool buzzerEnabled = MainUtils.IsBuzzerEnabled();
+            if (buzzerEnabled) {
+                BuzzerController.TurnOn();
+            }
+            try {
+                base.MissionNGConfirmPopUp(msg);
+            } finally {
+                if (buzzerEnabled) {
+                    BuzzerController.TurnOff();
+                }
+            }
         }
 
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
@@ -1449,9 +1434,6 @@ namespace OperationGuidance_new.Views {
                                             logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Challenge mission result added");
                                         }
 
-                                        // 重置任务信息
-                                        ResetMissionDetails();
-
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
@@ -1471,9 +1453,6 @@ namespace OperationGuidance_new.Views {
                                     // Mission failed
                                     if (_mission.max_ng_num != 0 && currentBolt.NgTimes >= _mission.max_ng_num) {
                                         logger.Error($"[SCII:DoAfterRecevingTighteningDataAsync] Max NG count reached, terminating mission");
-
-                                        // 重置任务信息
-                                        ResetMissionDetails();
 
                                         // 记录数据
                                         StoreTighteningData(dataDTO);
@@ -1537,6 +1516,8 @@ namespace OperationGuidance_new.Views {
         protected virtual void DoAfterTighteningOk() { }
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
+
+            ResetMissionDetails();
 
             await base.TerminateMission(status);
 

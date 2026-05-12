@@ -39,6 +39,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private int _currentPage;
         private int _pageSize;
         private int _totalPages;
+        private int _totalCount;
         private Action<DataGridView>? _initializeColumnHeader;
         private List<T> _dataSource;
         private bool _isAdjustingScroll;
@@ -51,6 +52,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int RowsHeight { get => _rowsHeight; set => _rowsHeight = value; }
         public int PageHeight { get => _pageHeight; set => _pageHeight = value; }
         public float ColumnsPaddingRatio { get => _columnsPaddingRatio; set => _columnsPaddingRatio = value; }
+        /// <summary>服务端分页回调: (page, pageSize) => (pageData, totalCount)，为 null 时使用客户端 Skip/Take</summary>
+        public Func<int, int, (List<T>, int)>? ServerFetch { get; set; }
         public int CurrentPage {
             get => _currentPage;
             set {
@@ -67,16 +70,34 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
         public Action<DataGridView>? InitializeColumnHeader { get => _initializeColumnHeader; set => _initializeColumnHeader = value; }
+        /// <summary>服务端模式：设置首页数据并触发翻页组件刷新。调用前必须先设置 ServerFetch。</summary>
+        public void SetServerDataSource(List<T> firstPageData, int totalCount) {
+            if (ServerFetch == null) {
+                throw new InvalidOperationException("SetServerDataSource requires ServerFetch to be set first for page navigation.");
+            }
+            _dataSource = firstPageData;
+            _totalCount = totalCount;
+            _currentPage = 1;
+            _totalPages = (int) Math.Ceiling(totalCount / (double) _pageSize);
+            if (_totalPages == 0) {
+                _totalPages = 1;
+            }
+            if (IsHandleCreated) {
+                DisplayPageData(firstPageData);
+            }
+        }
         public List<T> DataSource {
             get => _dataSource;
             set {
                 _dataSource = value;
-                _currentPage = 1;
-                _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
-                if (_totalPages == 0) {
-                    _totalPages = 1;
+                if (ServerFetch == null) {
+                    _currentPage = 1;
+                    _totalPages = (int) Math.Ceiling(value.Count / (double) _pageSize);
+                    if (_totalPages == 0) {
+                        _totalPages = 1;
+                    }
+                    Paging(_currentPage, _pageSize);
                 }
-                Paging(_currentPage, _pageSize);
             }
         }
         #endregion
@@ -561,27 +582,34 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         public void ResetPageInfo() {
             _countPerPage.Text = $"{_pageSize} 条/页";
-            _dataCountInfo.Text = $"共 {_dataSource.Count} 条";
+            _dataCountInfo.Text = $"共 {(_totalCount > 0 ? _totalCount : _dataSource.Count)} 条";
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";
         }
         private void ResizePageInfoContent(Label label, int newPageInfoHeight) {
             label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .475F, FontStyle.Regular, GraphicsUnit.Pixel);
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
         }
-        private void Paging(int currentPage, int pageSize) {
-            DateTime startTime = DateTime.Now;
-            System.Console.WriteLine($"========================================== Paging");
-            if (IsHandleCreated) {
-                BeginInvoke(new Action(ClearAllToggleButtonCells));
-                BindingSource bindingSource = new();
-                if (_dataSource.Count > 0) {
-                    bindingSource.DataSource = _dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize);
-                } else {
-                    bindingSource.DataSource = null;
-                }
-                BeginInvoke(new Action<BindingSource>(LoadDataAsync), bindingSource);
+        private void DisplayPageData(List<T> data) {
+            BeginInvoke(new Action(ClearAllToggleButtonCells));
+            BindingSource bindingSource = new();
+            if (data.Count > 0) {
+                bindingSource.DataSource = data;
             }
-            System.Console.WriteLine($"========================================== Paging finished in {(DateTime.Now - startTime).Milliseconds}ms");
+            BeginInvoke(new Action<BindingSource>(LoadDataAsync), bindingSource);
+        }
+        private void Paging(int currentPage, int pageSize) {
+            if (IsHandleCreated) {
+                if (ServerFetch != null) {
+                    var (data, totalCount) = ServerFetch(currentPage, pageSize);
+                    _dataSource = data;
+                    _totalCount = totalCount;
+                    DisplayPageData(data);
+                } else {
+                    if (_dataSource.Count > 0) {
+                        DisplayPageData(_dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList());
+                    }
+                }
+            }
         }
         private void LoadDataAsync(BindingSource bindingSource) {
             System.Console.WriteLine($"========================================== LoadDataAsync");
