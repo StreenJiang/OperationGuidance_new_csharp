@@ -4,6 +4,7 @@ using CustomLibrary.Constants;
 using CustomLibrary.DateTimePickers;
 using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
+using System.Collections.Concurrent;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using CustomLibrary.TextBoxes;
@@ -75,7 +76,10 @@ namespace CustomLibrary.Utils {
         public static Action<string>? RefreshLoginUserName;
         public static Action<bool>? BackToLoginView;
 
-        public static void ClearViews() => _views.Clear();
+        public static void ClearViews() {
+            _views.Clear();
+            _lazyViewInfos.Clear();
+        }
         public static void AddView(CustomContentPanel view) => _views.Add(view);
         public static V GetView<V>() where V : CustomContentPanel {
             foreach (CustomContentPanel view in _views) {
@@ -83,7 +87,55 @@ namespace CustomLibrary.Utils {
                     return (V) view;
                 }
             }
+            if (_lazyViewInfos.TryGetValue(typeof(V), out var info)) {
+                return (V) CreateViewInstance(typeof(V), info);
+            }
             throw new NullReferenceException("Can not find view type <" + typeof(V) + ">, please check system config.");
+        }
+
+        private static ConcurrentDictionary<Type, LazyViewInfo> _lazyViewInfos = new();
+
+        public class LazyViewInfo {
+            public string ViewName;
+            public CustomMenuButton MenuButton;
+            public Control ParentPanel;
+        }
+
+        public static void RegisterLazyView(Type viewType, string viewName, CustomMenuButton menuButton, Control parentPanel) {
+            _lazyViewInfos[viewType] = new LazyViewInfo {
+                ViewName = viewName,
+                MenuButton = menuButton,
+                ParentPanel = parentPanel,
+            };
+        }
+
+        public static CustomVScrollingContentPanel CreateContentView(Type type, string name, CustomMenuButton button) {
+            object instance = type.Assembly.CreateInstance(type.FullName)!;
+            CustomContentPanel contentPanel = (CustomContentPanel)instance;
+            contentPanel.Name = name;
+            if (contentPanel.Controls.Count == 0) {
+                int hPadding = contentPanel.Width / 2;
+                int vPadding = contentPanel.Height / 2;
+                contentPanel.Controls.Add(new Label() {
+                    Text = "载入错误，没有找到对应的功能",
+                    AutoSize = true,
+                    Margin = new Padding(hPadding, vPadding, hPadding, vPadding)
+                });
+            }
+            contentPanel.CorrespondingMenuButton = button;
+            WidgetUtils.AddView(contentPanel);
+            return new CustomVScrollingContentPanel(null, contentPanel, false, true) {
+                Name = name
+            };
+        }
+
+        internal static CustomContentPanel CreateViewInstance(Type viewType, LazyViewInfo info) {
+            CustomVScrollingContentPanel wrapper = CreateContentView(viewType, info.ViewName, info.MenuButton);
+            wrapper.Visible = false;
+            info.ParentPanel.Controls.Add(wrapper);
+            info.MenuButton.CorrespondingContentPanel = wrapper;
+            _lazyViewInfos.TryRemove(viewType, out _);
+            return (CustomContentPanel)wrapper.ContentPanel;
         }
 
         public static void ClearMainMenus() => _mainMenus.Clear();

@@ -86,13 +86,22 @@ namespace CustomLibrary.Panels.BaseClasses {
                 return;
             }
 
-            // Recalculate all inner controls
             _vScrollBar.Height = Height;
             _vScrollBar.Width = WidgetUtils.ScrollBarThickness();
 
-            // Check if needs scrollbar
-            bool needsScrollBar = _vScrollBar.Visible || _alwaysShowScrollBar;
             int innerHeight = _needsPadding ? Height - (WidgetUtils.ContentInnerBorderMargin(TopLevelControl.Width, TopLevelControl.Height) * 2 + 1) * 2 : Height;
+
+            // Set preliminary sizes so content panel has a correct width for its own ResizeChildren
+            bool prelimScrollBar = _vScrollBar.Visible || _alwaysShowScrollBar;
+            int prelimOuterWidth = prelimScrollBar ? Width - _vScrollBar.Width : Width;
+            int prelimInnerWidth = prelimOuterWidth - _outerPanel.Padding.Size.Width;
+            if (ConerRadius > 0) prelimInnerWidth -= 2;
+            _innerPanel.Size = new(prelimInnerWidth, innerHeight);
+            _contentPanel.Size = new(prelimInnerWidth, innerHeight);
+            _contentPanel.ResizeChildren();
+
+            // Now CheckNeedsScrollBar uses correct sub-panel heights
+            bool needsScrollBar = prelimScrollBar;
             if (_contentPanel.CheckNeedsScrollBar(innerHeight)) {
                 _vScrollBar.Visible = true;
                 needsScrollBar = true;
@@ -102,7 +111,6 @@ namespace CustomLibrary.Panels.BaseClasses {
                 _contentPanel.Location = new Point(0, 0);
             }
 
-            // Check if scrollbar is shown
             if (needsScrollBar) {
                 _outerPanel.Size = new(Width - _vScrollBar.Width, Height);
             } else {
@@ -117,6 +125,7 @@ namespace CustomLibrary.Panels.BaseClasses {
 
             if (_contentPanel.NewHeight > 0) {
                 _contentPanel.Size = new(innerWidth, _contentPanel.NewHeight);
+                _contentPanel.ResizeChildren();
             } else {
                 _contentPanel.Size = new(innerWidth, innerHeight);
             }

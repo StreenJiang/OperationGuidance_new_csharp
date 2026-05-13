@@ -55,6 +55,23 @@ Images load via `ProductImageCache` (thread-safe `ConcurrentDictionary<string, I
 
 After `SaveProductImage`, call `ProductImageCache.Invalidate(fileName)` in both `MissionEditionView` and `MissionEditionView_SCII`.
 
+### Startup Lazy View Loading
+
+`AfterLogin` menu loop creates buttons and panels eagerly; views deferred to first click via `WireLazyLoader`. Each lazily-loaded menu item must:
+1. Create a lightweight placeholder `CustomContentPanel`, assign to `button.CorrespondingContentPanel`
+2. Call `WireLazyLoader(parentPanel, button, viewType, viewName)` — subscribes one-shot Click that replaces placeholder with real view
+3. Call `WidgetUtils.RegisterLazyView(viewType, viewName, button, parentPanel)` for cross-view reference fallback
+
+`WireLazyLoader`: on click, checks `button.CorrespondingContentPanel is CustomVScrollingContentPanel` (already created) → return. Otherwise dispose placeholder, call `CreateViewPanel` (delegates to `WidgetUtils.CreateContentView`), add wrapper to parent, set `Visible` if toggled.
+
+### Lazy View Registry
+
+`WidgetUtils.RegisterLazyView` stores creation params in `ConcurrentDictionary<Type, LazyViewInfo>`. `GetView<V>()` searches `_views` list first, then falls back to on-demand creation via `CreateViewInstance` (calls `CreateContentView`, adds wrapper to parent panel, removes from lazy registry). `ClearViews()` clears both collections for re-login.
+
+### CustomVScrollingContentPanel ResizeChildren Timing
+
+Must call `_contentPanel.ResizeChildren()` BEFORE `_contentPanel.CheckNeedsScrollBar()`. Set preliminary width on content panel first so sub-panel heights are computed correctly. After final sizing, if content height was determined by `NewHeight`, call `_contentPanel.ResizeChildren()` again. Skipping this causes clipped content in lazy-loaded views.
+
 ## Docs
 
 - `docs/superpowers/specs/` — Design specs
