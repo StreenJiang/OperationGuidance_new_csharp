@@ -1601,23 +1601,7 @@ namespace OperationGuidance_new.Views {
                     Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                 };
-                _isChallengeMission = new("是否挑战任务") {
-                    Parent = _tablePanel,
-                    Ratio = _boxRatio,
-                    NameAlignment = HorizontalAlignment.Right,
-                };
-                _isFirstMission = new("是否首道岗位") {
-                    Parent = _tablePanel,
-                    Ratio = _boxRatio,
-                    NameAlignment = HorizontalAlignment.Right,
-                    Enabled = false,
-                };
-                _challengMission = new("挑战对应任务") {
-                    Parent = _tablePanel,
-                    Ratio = _boxRatioOneLine,
-                    NameAlignment = HorizontalAlignment.Right,
-                    Enabled = false,
-                };
+                InitChallengeControls();
                 _maxNGNum = new("最大NG数") {
                     Parent = _tablePanel,
                     Ratio = _boxRatio,
@@ -1642,29 +1626,6 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Right,
                 };
 
-                _allOtherMissions.ForEach(m => {
-                    _challengMission.AddItem(m.name, m.id);
-                    _predecessorMission.AddItem(m.name, m.id);
-                });
-                _isChallengeMission.CheckedChanged += (s, e) => {
-                    if (_isChallengeMission.Checked) {
-                        _isFirstMission.Enabled = true;
-                        _challengMission.Enabled = true;
-
-                        _isFirstMission.Checked = _missionDTO.is_first_mission == (int) YesOrNo.YES;
-                        if (_missionDTO.challenge_mission_id != null) {
-                            _challengMission.SetCurrent(_challengMission.IndexOf(_missionDTO.challenge_mission_id.Value));
-                        }
-                    } else {
-                        _isFirstMission.Checked = false;
-                        _isFirstMission.Enabled = false;
-                        _challengMission.Reset();
-                        _challengMission.Enabled = false;
-                    }
-                    _isFirstMission.Invalidate();
-                    _challengMission.Invalidate();
-                };
-                _challengMission.ItemSelected += () => _challengMission.SetError(false);
                 _predecessorMission.ItemSelected += () => _predecessorMission.SetError(false);
                 _partsBarCodeNum = new("物料条码") {
                     Parent = _tablePanel,
@@ -1737,7 +1698,9 @@ namespace OperationGuidance_new.Views {
                 InitScrewCounterBoxes();
 
                 _tablePanel.SetColumnSpan(_missionName, _columnCount);
-                _tablePanel.SetColumnSpan(_challengMission, _columnCount);
+                if (_challengMission != null) {
+                    _tablePanel.SetColumnSpan(_challengMission, _columnCount);
+                }
                 _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
                 _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
                 _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
@@ -1776,6 +1739,54 @@ namespace OperationGuidance_new.Views {
                 SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
                 addButton.Icon = Properties.Resources.sign_plus;
                 addButton.Click += (s, e) => AddScrewBitCounter();
+            }
+
+            protected virtual void InitChallengeControls() {
+                _isChallengeMission = new("是否挑战任务") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatio,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                _isFirstMission = new("是否首道岗位") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatio,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Enabled = false,
+                };
+                _challengMission = new("挑战对应任务") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
+                    Enabled = false,
+                };
+
+                _allOtherMissions.ForEach(m => {
+                    _challengMission.AddItem(m.name, m.id);
+                    _predecessorMission.AddItem(m.name, m.id);
+                });
+                _isChallengeMission.CheckedChanged += (s, e) => {
+                    if (_isChallengeMission.Checked) {
+                        _isFirstMission.Enabled = true;
+                        _challengMission.Enabled = true;
+
+                        _isFirstMission.Checked = _missionDTO.is_first_mission == (int) YesOrNo.YES;
+                        if (_missionDTO.challenge_mission_id != null) {
+                            _challengMission.SetCurrent(_challengMission.IndexOf(_missionDTO.challenge_mission_id.Value));
+                        }
+                    } else {
+                        _isFirstMission.Checked = false;
+                        _isFirstMission.Enabled = false;
+                        _challengMission.Reset();
+                        _challengMission.Enabled = false;
+                    }
+                    _isFirstMission.Invalidate();
+                    _challengMission.Invalidate();
+                };
+                _challengMission.ItemSelected += () => _challengMission.SetError(false);
+            }
+
+            protected virtual void FillChallengeFields() {
+                _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
             }
 
             protected virtual void AddScrewBitCounter() {
@@ -1825,7 +1836,7 @@ namespace OperationGuidance_new.Views {
 
             protected override void AfterShown() {
                 _missionName.SetValue(0, _missionDTO.name);
-                _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
+                FillChallengeFields();
                 _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");
                 if (_missionDTO.predecessor_mission_id != null) {

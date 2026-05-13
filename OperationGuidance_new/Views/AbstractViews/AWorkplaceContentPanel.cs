@@ -1144,106 +1144,20 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
 
-        public bool CheckChallengeMissionConfirmation() {
-            List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _mission.id).ToList();
-            ProductMissionDTO? challengeMission = allOtherMissions.Find(m =>
-                                                                        m.challenge_mission_id != null &&
-                                                                        m.challenge_mission_id > 0 &&
-                                                                        m.challenge_mission_id == _mission.id);
-
-            // Check if current mission has challenge mission
-            if (challengeMission != null) {
-                // Check if it's first mission
-                if (challengeMission.is_first_mission == (int) YesOrNo.YES) {
-                    // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
-                        WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 首档岗位】，但此任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
-                        return false;
-                    } else {
-                        // Check if challenge mission is finished
-                        if (!ChallengeChecks(challengeMission.id, false)) {
-                            return false;
-                        }
-                    }
-                } else {
-                    // Check if current mission has predecessor_mission_id
-                    if (_mission.predecessor_mission_id != null && _mission.predecessor_mission_id > 0) {
-                        if (challengeMission.predecessor_mission_id == null) {
-                            WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务存在前置任务，但挑战任务不存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
-                            return false;
-                        } else {
-                            // Check if challenge mission's predecessor mission is finished
-                            ProductMissionDTO? predecessorMissionForChallengeMission =
-                                allOtherMissions.Find(m => m.predecessor_mission_id == challengeMission.predecessor_mission_id);
-                            if (!ChallengeChecks(challengeMission.id, predecessorMissionForChallengeMission != null)) {
-                                return false;
-                            }
-                        }
-                    } else {
-                        if (challengeMission.predecessor_mission_id != null && challengeMission.predecessor_mission_id > 0) {
-                            WidgetUtils.ShowWarningPopUp("当前任务绑定了【挑战任务 - 非首档岗位】且当前任务不存在前置任务，但挑战任务存在前置任务，配置出错，请联系开发人员检查软件逻辑！");
-                            return false;
-                        }
-
-                        // Check if challenge mission is finished
-                        if (!ChallengeChecks(challengeMission.id, false)) {
-                            return false;
-                        }
-                    }
-                }
-            }
+        public virtual bool CheckChallengeMissionConfirmation() {
             return true;
         }
 
-        private bool ChallengeChecks(int challengeMissionId, bool hasPredecessorMission) {
-            string jsonObj = MainUtils.ChallengeTaskUtil.Read(challengeMissionId.ToString());
-            ChallengeTask? task = JsonConvert.DeserializeObject<ChallengeTask>(jsonObj);
-
-            bool hasPartsBarCode = false;
-            if (_partsBarCodeMatchingRules.ContainsKey(_mission.id)) {
-                hasPartsBarCode = _partsBarCodeMatchingRules[_mission.id].Count > 0;
-            }
-
-            if (task == null || !task.IsToday()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务校验！");
-                return false;
-            } else if (!hasPredecessorMission && !task.ProductBarCodeErrorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-错码】校验！");
-                return false;
-            } else if (hasPredecessorMission && !task.ProductPredecessorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-上一道岗位未完成】校验！");
-                return false;
-            } else if (!hasPredecessorMission && !task.ProductBarCodeRedoOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【追溯码-重码】校验！");
-                return false;
-            } else if (hasPartsBarCode && !task.PartsBarCodeErrorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-错码】校验！");
-                return false;
-            } else if (hasPredecessorMission && !task.PartsPredecessorOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-上一道岗位未完成】校验！");
-                return false;
-            } else if (hasPartsBarCode && !task.PartsBarCodeRedoOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务还未通过挑战任务【物料码-重码】校验！");
-                return false;
-            } else if (!task.MissionOK()) {
-                WidgetUtils.ShowWarningPopUp("此任务对应挑战任务未完成！");
-                return false;
-            }
+        protected virtual bool ChallengeChecks(int challengeMissionId, bool hasPredecessorMission) {
             return true;
         }
 
-        public void AddChallengeResult(int challengeMissionId, ChallengeTaskEnum type) {
-            string jsonObj = MainUtils.ChallengeTaskUtil.Read(challengeMissionId.ToString());
-            ChallengeTask? task = JsonConvert.DeserializeObject<ChallengeTask>(jsonObj);
+        public virtual void AddChallengeResult(int challengeMissionId, ChallengeTaskEnum type) { }
 
-            if (task == null) {
-                task = new();
-            }
+        protected virtual void OnMissionComplete() { }
 
-            task.MissionId = challengeMissionId;
-            task.AddResult(type);
-
-            MainUtils.ChallengeTaskUtil.Write(challengeMissionId.ToString(), JsonConvert.SerializeObject(task));
+        protected virtual bool IsChallengeMission() {
+            return _mission.is_challenge_mission == (int) YesOrNo.YES;
         }
 
         public virtual List<BarCodeMatchingRuleDTO> GetCurrentExcludedRules(ProductBoltDTO? boltDTO = null) {
@@ -2499,10 +2413,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
-                                        // Checks for challenge mission
-                                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                            AddChallengeResult(_mission.id, ChallengeTaskEnum.MISSION_OK);
-                                        }
+                                        OnMissionComplete();
 
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
@@ -2870,7 +2781,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _isRedo = (int) YesOrNo.NO;
 
             // If it's not challenge mission, then check auto activation logic
-            if (_mission.is_challenge_mission != (int) YesOrNo.YES
+            if (!IsChallengeMission()
                     && _missionRecord != null
                     && _missionRecord.mission_result == (int) TighteningStatus.OK) {
                 // If is self looping mode, then activate mission automatically

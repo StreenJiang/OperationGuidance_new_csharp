@@ -99,111 +99,7 @@ namespace OperationGuidance_new.Views {
                         warningMsg += $"{warningIndex++}. 第几次起需密码必须小于最大NG数，NG次数达到最大时任务已经失败，无法再弹窗输入管理员密码\r\n";
                     }
 
-                    // Check challenge mission settings
-                    if (_detialPopUpForm.IsChallengeMission.Checked) {
-                        // Check challenge mission is empty or not
-                        if (_detialPopUpForm.ChallengMission.IsDefaultValue()) {
-                            check = false;
-                            _detialPopUpForm.ChallengMission.SetError(true);
-                            warningMsg += $"{warningIndex++}. 挑战任务必须对应一个普通任务\r\n";
-                        } else {
-                            int selectedMissionId = _detialPopUpForm.ChallengMission.Value;
 
-                            // Check if current selected challenge mission is already a challenge mission
-                            if (allOtherMissions.SingleOrDefault(m => m.challenge_mission_id == selectedMissionId) != null) {
-                                check = false;
-                                _detialPopUpForm.ChallengMission.SetError(true);
-                                warningMsg += $"{warningIndex++}. 当前选择的对应普通任务已存在挑战任务\r\n";
-                            } else {
-                                ProductMissionDTO selectedMission = allOtherMissions.Single(m => m.id == selectedMissionId);
-
-                                // Check if setting isFirstMission = true
-                                if (_detialPopUpForm.IsFirstMission.Checked) {
-                                    if (selectedMission.predecessor_mission_id != null || selectedMission.predecessor_mission_id > 0) {
-                                        check = false;
-                                        _detialPopUpForm.ChallengMission.SetError(true);
-                                        warningMsg += $"{warningIndex++}. 当前选择的对应普通任务存在前置任务，无法设置成首道岗位\r\n";
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Check part predecessor mission
-                    if (_detialPopUpForm.PredecessorPartMissionMaps.Count > 0) {
-                        List<int> ids = new();
-                        bool flag = false;
-                        foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
-                            if (map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
-                                flag = true;
-                                map.BarCodeRuleId.SetError(true);
-                            } else {
-                                map.BarCodeRuleId.SetError(false);
-                            }
-
-                            if (!map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
-                                flag = true;
-                                map.MissionId.SetError(true);
-                            } else {
-                                map.MissionId.SetError(false);
-                            }
-
-                            if (map.BarCodeRuleId.IsDefaultValue() && map.MissionId.IsDefaultValue()) {
-                                map.BarCodeRuleId.SetError(false);
-                                map.MissionId.SetError(false);
-                            }
-                        }
-
-                        if (flag) {
-                            check = false;
-                            warningMsg += $"{warningIndex++}. 物料前置任务需要选择要限制的物料匹配规则ID\r\n";
-                        }
-
-                        List<int> missionIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.MissionId.IsDefaultValue()).Select(map => map.MissionId.Value).ToList();
-                        if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                            missionIds.Add(_detialPopUpForm.PredecessorMission.Value);
-                        }
-
-                        Dictionary<int, int> idsDict = missionIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
-                        List<int> idKeys = idsDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
-                        if (idKeys.Count > 0) {
-                            check = false;
-                            _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
-                                if (idKeys.Contains(map.MissionId.Value)) {
-                                    map.MissionId.SetError(true);
-                                } else if (!map.MissionId.IsError) {
-                                    map.MissionId.SetError(false);
-                                }
-                            });
-                            if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                _detialPopUpForm.PredecessorMission.SetError(true);
-                            }
-                            warningMsg += $"{warningIndex++}. 任务的“前置任务”与“物料前置任务”无法选择重复的任务\r\n";
-                        } else {
-                            if (_detialPopUpForm.IsFirstMission.Checked && !_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                                check = false;
-                                _detialPopUpForm.PredecessorMission.SetError(true);
-                                warningMsg += $"{warningIndex++}. 首道岗位挑战任务无法设置前置任务\r\n";
-                            } else {
-                                _detialPopUpForm.PredecessorMission.SetError(false);
-                            }
-                        }
-
-                        List<int> barCodeRuleIds = _detialPopUpForm.PredecessorPartMissionMaps.Where(map => !map.BarCodeRuleId.IsDefaultValue()).Select(map => map.BarCodeRuleId.Value).ToList();
-                        Dictionary<int, int> barCodeRulesDict = barCodeRuleIds.GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
-                        List<int> ruleKeys = barCodeRulesDict.Where(pair => pair.Value > 1).Select(pair => pair.Key).ToList();
-                        if (ruleKeys.Count > 0) {
-                            check = false;
-                            _detialPopUpForm.PredecessorPartMissionMaps.ForEach(map => {
-                                if (ruleKeys.Contains(map.BarCodeRuleId.Value)) {
-                                    map.BarCodeRuleId.SetError(true);
-                                } else if (!map.BarCodeRuleId.IsError) {
-                                    map.BarCodeRuleId.SetError(false);
-                                }
-                            });
-                            warningMsg += $"{warningIndex++}. 物料条码规则不能重复设置\r\n";
-                        }
-                    }
 
                     // Check screw bit counter boxes
                     List<CustomTextBox> bitPositions = new();
@@ -231,7 +127,7 @@ namespace OperationGuidance_new.Views {
                         foreach (CustomTextBox box in counters) {
                             box.IsError = true;
                         }
-                        warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限及每次任务计数也不能为空\r\n";
+                        warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限也不能为空\r\n";
                     }
 
                     // Check if can save
@@ -241,27 +137,12 @@ namespace OperationGuidance_new.Views {
                         _missionName.SetValue(0, missionName);
                         _missionDTO.name = missionName;
                         _missionDTO.is_challenge_mission = (int) (_detialPopUpForm.IsChallengeMission.Checked ? YesOrNo.YES : YesOrNo.NO);
-                        _missionDTO.is_first_mission = (int) (_detialPopUpForm.IsFirstMission.Checked ? YesOrNo.YES : YesOrNo.NO);
-                        _missionDTO.challenge_mission_id = _detialPopUpForm.ChallengMission.Value;
+                        _missionDTO.is_first_mission = null;
+                        _missionDTO.challenge_mission_id = null;
                         _missionDTO.max_ng_num = int.Parse(maxNGNum);
                         _missionDTO.password_need_time = int.Parse(passwordNeedTime);
-                        if (!_detialPopUpForm.PredecessorMission.IsDefaultValue()) {
-                            _missionDTO.predecessor_mission_id = _detialPopUpForm.PredecessorMission.Value;
-                        } else {
-                            _missionDTO.predecessor_mission_id = null;
-                        }
-                        Dictionary<int, int> idsDict = new();
-                        foreach (PredecessorPartMissionMap map in _detialPopUpForm.PredecessorPartMissionMaps) {
-                            if (!map.BarCodeRuleId.IsDefaultValue() && !map.MissionId.IsDefaultValue()) {
-                                idsDict.Add(map.BarCodeRuleId.Value, map.MissionId.Value);
-                            }
-                        }
-
-                        if (idsDict.Count > 0) {
-                            _missionDTO.predecessor_part_mission_ids = JsonConvert.SerializeObject(idsDict);
-                        } else {
-                            _missionDTO.predecessor_part_mission_ids = null;
-                        }
+                        _missionDTO.predecessor_mission_id = null;
+                        _missionDTO.predecessor_part_mission_ids = null;
 
                         _detialPopUpForm.ScrewBitCounters.ForEach(box => {
                             if (!box.GetTextBox(0).IsEmpty() && !box.GetTextBox(1).IsEmpty()) {
@@ -415,15 +296,23 @@ namespace OperationGuidance_new.Views {
                 ResizeSelf();
             }
 
+            protected override void InitChallengeControls() {
+                _isChallengeMission = new("是否是点检任务") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatio,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+            }
+
+            protected override void FillChallengeFields() {
+                _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
+            }
+
             protected override void AfterShown() {
                 _missionName.SetValue(0, _missionDTO.name);
                 _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
                 _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");
-                if (_missionDTO.predecessor_mission_id != null) {
-                    _predecessorMission.SetCurrent(_predecessorMission.IndexOf(_missionDTO.predecessor_mission_id.Value));
-                }
-
                 for (int i = 0; i < _screwBitCounterDTOs.Count - 1; i++) {
                     AddScrewBitCounter();
                 }

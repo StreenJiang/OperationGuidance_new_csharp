@@ -101,14 +101,24 @@ namespace OperationGuidance_new.Views {
             _operationDataDTOs = new();
         }
 
+        protected override bool IsChallengeMission() {
+            return false;
+        }
+
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
-            await SendDataToMES(_operationDataDTOs);
-            _inBoundStationOk = false;
+            bool isPointInspection = _mission.is_challenge_mission == (int) YesOrNo.YES;
 
-            if (await OutBound()) {
+            if (isPointInspection) {
+                await SendCheckToMES(_operationDataDTOs);
+                _inBoundStationOk = false;
                 await base.TerminateMission(status);
-
-                SwitchMissionByRecipe(_getRecipeCode());
+            } else {
+                await SendDataToMES(_operationDataDTOs);
+                _inBoundStationOk = false;
+                if (await OutBound()) {
+                    await base.TerminateMission(status);
+                    SwitchMissionByRecipe(_getRecipeCode());
+                }
             }
         }
 
@@ -172,6 +182,9 @@ namespace OperationGuidance_new.Views {
         }
 
         private void SwitchMissionByRecipe(string recipeCode) {
+            if (_mission != null && _mission.is_challenge_mission == (int) YesOrNo.YES) {
+                return;
+            }
             if (_activated) {
                 WidgetUtils.ShowWarningPopUp("接收到配方变更请求，将在当前未结束任务结束以后自动切换至指定配方所对应的任务。");
                 return;
@@ -279,9 +292,33 @@ namespace OperationGuidance_new.Views {
                 }
             }));
         }
+        private List<Dictionary<string, object>> BuildAttributeValues(List<OperationDataDTO> operationDataDTOs) {
+            List<Dictionary<string, object>> value = new();
+            foreach (OperationDataDTO operationDataDTO in operationDataDTOs) {
+                Dictionary<string, object> eachValue = new();
+                OperationDataDTO_SCII_XT data = new OperationDataDTO_SCII_XT();
+                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
+
+                data.parts_bar_codes = _missionRecord?.parts_bar_code;
+                data.batch_code = _getBatchNo();
+                data.time = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
+
+                PropertyInfo[] propertyInfos = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                foreach (PropertyInfo property in propertyInfos) {
+                    IEnumerable<Attribute> fieldAttrs = property.GetCustomAttributes();
+                    foreach (Attribute fieldAttr in fieldAttrs) {
+                        if (fieldAttr is SCII_XT_Column column) {
+                            NewAttribute(eachValue, property, data, column.Name ?? property.Name, column.Type);
+                        }
+                    }
+                }
+                value.Add(eachValue);
+            }
+            return value;
+        }
+
         private async Task SendDataToMES(List<OperationDataDTO> operationDataDTOs) {
             if (operationDataDTOs.Count > 0) {
-
                 SCII_XT_BindProductDataReq req = new() {
                     bingType = (int) SCII_XT_BindType.PRODUCT,
                     productInfos = new(),
@@ -293,36 +330,7 @@ namespace OperationGuidance_new.Views {
                     attributeList = new(),
                 };
 
-                // Set values
-                List<Dictionary<string, object>> value = new();
-                foreach (OperationDataDTO operationDataDTO in operationDataDTOs) {
-                    Dictionary<string, object> eachValue = new();
-                    OperationDataDTO_SCII_XT data = new OperationDataDTO_SCII_XT();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataDTO_SCII_XT>(operationDataDTO, data);
-
-                    data.parts_bar_codes = _missionRecord?.parts_bar_code;
-                    data.batch_code = _getBatchNo();
-                    data.time = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYY_MM_DD_HH_MM_SS);
-
-                    PropertyInfo[] propertyInfos = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    foreach (PropertyInfo property in propertyInfos) {
-
-                        IEnumerable<Attribute> fieldAttrs = property.GetCustomAttributes();
-                        foreach (Attribute fieldAttr in fieldAttrs) {
-
-                            if (fieldAttr is SCII_XT_Column column) {
-
-                                NewAttribute(eachValue,
-                                             property,
-                                             data,
-                                             column.Name ?? property.Name,
-                                             column.Type);
-                            }
-                        }
-                    }
-
-                    value.Add(eachValue);
-                }
+                var value = BuildAttributeValues(operationDataDTOs);
                 productInfos.attributeList.Add(new() {
                     attributeName = $"{_mission.name}_拧紧数据",
                     attributeCode = $"{_mission.name}_Screw",
@@ -337,6 +345,39 @@ namespace OperationGuidance_new.Views {
                     logger.Warn($"数据上传 MES 失败！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 错误信息：{dto.message}");
                 } else {
                     logger.Info($"数据上传 MES 成功！[任务（配方)：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 。");
+                }
+
+                _operationDataDTOs = new();
+            }
+        }
+
+        private async Task SendCheckToMES(List<OperationDataDTO> operationDataDTOs) {
+            if (operationDataDTOs.Count > 0) {
+                EquipmentCheckReq req = new() {
+                    equipmentCheckInfos = new(),
+                    employeeNumber = SystemUtils.UserInfo.account,
+                    equipmentCode = _getEquipmentCode(),
+                };
+
+                EquipmentCheckReq.EquipmentCheckInfo checkInfo = new() {
+                    attributeList = new(),
+                };
+
+                var value = BuildAttributeValues(operationDataDTOs);
+                checkInfo.attributeList.Add(new EquipmentCheckReq.Attribute() {
+                    attributeName = $"{_mission.name}_拧紧数据",
+                    attributeCode = $"{_mission.name}_Screw",
+                    attributeUnit = "json",
+                    attributeType = 2,
+                    value = JsonConvert.SerializeObject(value),
+                });
+                req.equipmentCheckInfos.Add(checkInfo);
+
+                var dto = await Workflow_SCII_XT.EquipmentCheck(req);
+                if (!dto.checkSuccess) {
+                    logger.Warn($"设备点检数据上传 MES 失败！[任务：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 错误信息：{dto.message}");
+                } else {
+                    logger.Info($"设备点检数据上传 MES 成功！[任务：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 。");
                 }
 
                 _operationDataDTOs = new();

@@ -167,5 +167,22 @@ namespace OperationGuidance_new.Utils {
 
             return result;
         }
+
+        // 7. 设备点检数据上报
+        public static async Task<EquipmentCheckDTO> EquipmentCheck(EquipmentCheckReq req) {
+            var api = "/check";
+            var result = new EquipmentCheckDTO();
+
+            try {
+                var rsp = await HttpUtils.SendPost_SCII_XT<EquipmentCheckReq, SCII_XT_Response>(RequestPrefix + api, req);
+                result.checkSuccess = rsp.code == (int) SCII_XT_ResponseCode.OK;
+                result.message = rsp.message;
+            } catch (Exception ex) {
+                result.checkSuccess = false;
+                result.message = ex.Message;
+            }
+
+            return result;
+        }
     }
 }

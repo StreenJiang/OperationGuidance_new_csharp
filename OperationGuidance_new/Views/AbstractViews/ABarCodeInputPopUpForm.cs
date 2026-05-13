@@ -242,11 +242,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         return;
                     }
 
-                    // Checks for challenge mission
-                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                        logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}]...");
-                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
-                    }
+                    CheckProductBarCodeErrorForChallenge();
 
                     logger.Info($"Finding another mission that matchs this mission id [{_mission.id}], barcode = [{barCode}]...");
                     mission = FindBarCodeMatchedMission(barCode);
@@ -277,11 +273,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 if (mission == null) {
                     logger.Info($"Can not find any other mission that match this barcode [{barCode}]...");
 
-                    // Checks for challenge mission
-                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                        logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}], checking product bar code...");
-                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
-                    }
+                    CheckProductBarCodeErrorForChallenge();
 
                     checkPassed = false;
                     _productBarCodeBox.GetTextBox(0).IsError = true;
@@ -316,20 +308,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(mission.predecessor_mission_id.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
                     bool yes = rsp.Yes;
 
-                    // Checks for challenge mission
-                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                        logger.Info($"*Current mission id = [{mission.id}] is a challenge mission, barcode = [{barCode}]...");
-
-                        if (rsp.Yes) {
-                            if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
-                                logger.Info($"*Checking predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
-                                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
-                            }
-                        } else {
-                            logger.Info($"*Checking predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
-                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
-                        }
-                    }
+                    CheckProductPredecessorForChallenge(rsp.Yes, rsp.MissionRecordDTO?.create_time);
 
                     if (!yes) {
                         logger.Info($"Validation fails for predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
@@ -343,11 +322,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     logger.Info($"Checking REDO from recordings for matched mission id [{mission.id}], barcode = [{barCode}]...");
 
                     bool needRedo;
-                    // Checks for challenge mission
-                    if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                        logger.Info($"*Current mission id = [{_mission.id}], barcode = [{barCode}] is a challenge mission, checking REDO...");
-                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_REDO);
-                    }
+                    CheckProductBarCodeRedoForChallenge();
 
                     if (WidgetUtils.ShowConfirmPopUp("检测到已对该产品进行过加工，是否需要返工？")) {
                         logger.Info($"Current mission needs REDO, mission id = [{mission.id}], barcode = [{barCode}], waiting for administrators to confirm...");
@@ -447,11 +422,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     return;
                 }
 
-                // Checks for challenge mission
-                if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                    logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, parts barcode = [{barCode}], checking parts bar code...");
-                    _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
-                }
+                CheckPartsBarCodeErrorForChallenge();
 
                 box.GetTextBox(0).IsError = true;
                 _workplace.OpenAdminPasswordPopUpForm($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配", allowCancel: false);
@@ -473,20 +444,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 CheckIfBarCodeExistsInMissionRecordRsp rsp = _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(pair.Value, (int) TighteningStatus.OK) { ProductBarCode = barCode });
                                 bool yes = rsp.Yes;
 
-                                // Checks for challenge mission
-                                if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                                    logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, barcode = [{barCode}]...");
-
-                                    if (rsp.Yes) {
-                                        if (rsp.MissionRecordDTO.create_time.Date != DateTime.Now.Date) {
-                                            logger.Info($"*Checking parts predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
-                                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
-                                        }
-                                    } else {
-                                        logger.Info($"*Checking parts predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
-                                        _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
-                                    }
-                                }
+                                CheckPartsPredecessorForChallenge(rsp.Yes, rsp.MissionRecordDTO?.create_time);
 
                                 if (!yes) {
                                     logger.Info($"Validation fails for predecessor mission, mission id = [{_mission.id}], predecessor_part_mission_ids = [{string.Join(",", _mission.predecessor_part_mission_ids)}], barcode = [{barCode}]...");
@@ -512,11 +470,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Checking REDO from recordings for matched mission id [{_mission.id}], parts barcode = [{barCode}]...");
 
                         bool needRedo;
-                        // Checks for challenge mission
-                        if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
-                            logger.Info($"*Current mission id = [{_mission.id}], barcode = [{barCode}] is a challenge mission, checking REDO...");
-                            _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
-                        }
+                        CheckPartsBarCodeRedoForChallenge();
 
                         if (WidgetUtils.ShowConfirmPopUp($"检测到数据库已存在此物料，是否需要返工？")) {
                             logger.Info($"Current mission needs REDO, mission id = [{_mission.id}], parts barcode = [{barCode}], waiting for administrators to confirm...");
@@ -704,6 +658,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             logger.Info($"No any rules for parts barcodes, checking barcode = [{barCode}], mission [id = {_mission.id}]...");
             return 0;
         }
+
+        protected virtual void CheckProductBarCodeErrorForChallenge() { }
+        protected virtual void CheckProductPredecessorForChallenge(bool predecessorExists, DateTime? createTime) { }
+        protected virtual void CheckProductBarCodeRedoForChallenge() { }
+        protected virtual void CheckPartsBarCodeErrorForChallenge() { }
+        protected virtual void CheckPartsPredecessorForChallenge(bool predecessorExists, DateTime? createTime) { }
+        protected virtual void CheckPartsBarCodeRedoForChallenge() { }
 
         // 检查是否可以激活任务
         public virtual bool CheckCanActivateMission() {

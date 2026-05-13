@@ -33,7 +33,8 @@ namespace OperationGuidance_new.Views {
         private EditEntityPopUpForm<MissionRecordDTO> _editEntityPopUpForm;
         private List<WorkstationDTO> _workstations;
         private CustomComboBoxGroup<List<int?>> _workstationNameComboBox;
-        private CustomComboBoxGroup<bool?> _isChallengMissionComboBox;
+        protected CustomComboBoxGroup<bool?> _isChallengMissionComboBox;
+        protected virtual string ChallengeMissionFilterLabel => "是否挑战任务";
         private List<ProductMissionDTO> _missions;
         private Dictionary<int, Dictionary<int, string>> _workstationInfoCache;
         #endregion
@@ -96,7 +97,7 @@ namespace OperationGuidance_new.Views {
             Dictionary<String, bool?> yesOrNos = new() {
                 { "是", true }, { "否", false }
             };
-            _isChallengMissionComboBox = _dataGridView.AddComboBox("是否挑战任务", (MissionRecordVO vo, bool? value) => vo.is_challenge_mission = value, yesOrNos);
+            _isChallengMissionComboBox = _dataGridView.AddComboBox(ChallengeMissionFilterLabel, (MissionRecordVO vo, bool? value) => vo.is_challenge_mission = value, yesOrNos);
             _isChallengMissionComboBox.SelectedTop = false;
             int indexTemp = 0;
             for (; indexTemp < _isChallengMissionComboBox.Items.Count; indexTemp++) {

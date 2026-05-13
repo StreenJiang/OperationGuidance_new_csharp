@@ -11,7 +11,7 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class BarCodeInputPopUpForm_SCII_XT: BarCodeInputPopUpForm_SCII {
+    public class BarCodeInputPopUpForm_SCII_XT: ABarCodeInputPopUpForm {
         private string _productBatch;
         private bool inBoundStationOk;
         private bool bindAccessoryOk;
@@ -117,6 +117,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
 
         protected override bool ProductBarCodeExtraCheck(string barCode) {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                return true;
+            }
             // 向 MES 发出进站请求
             WorkplaceContentPanel_SCII_XT workplace = (WorkplaceContentPanel_SCII_XT) _workplace;
             inBoundStationOk = workplace.InBound(barCode, _productBatch);

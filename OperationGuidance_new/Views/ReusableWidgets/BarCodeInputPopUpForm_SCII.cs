@@ -1,5 +1,7 @@
 using CustomLibrary.Utils;
 using OperationGuidance_new.Views.AbstractViews;
+using OperationGuidance_new.Utils;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
@@ -44,6 +46,52 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
 
             return true;
+        }
+
+        protected override void CheckProductBarCodeErrorForChallenge() {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission...");
+                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_ERROR);
+            }
+        }
+
+        protected override void CheckProductPredecessorForChallenge(bool predecessorExists, DateTime? createTime) {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission...");
+                if (!predecessorExists || (createTime != null && createTime.Value.Date != DateTime.Now.Date)) {
+                    _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_PREDECESSOR);
+                }
+            }
+        }
+
+        protected override void CheckProductBarCodeRedoForChallenge() {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, checking REDO...");
+                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PRODUCT_BAR_CODE_REDO);
+            }
+        }
+
+        protected override void CheckPartsBarCodeErrorForChallenge() {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, checking parts bar code...");
+                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_ERROR);
+            }
+        }
+
+        protected override void CheckPartsPredecessorForChallenge(bool predecessorExists, DateTime? createTime) {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission...");
+                if (!predecessorExists || (createTime != null && createTime.Value.Date != DateTime.Now.Date)) {
+                    _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_PREDECESSOR);
+                }
+            }
+        }
+
+        protected override void CheckPartsBarCodeRedoForChallenge() {
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                logger.Info($"*Current mission id = [{_mission.id}] is a challenge mission, checking REDO...");
+                _workplace.AddChallengeResult(_mission.id, ChallengeTaskEnum.PARTS_BAR_CODE_REDO);
+            }
         }
     }
 }
