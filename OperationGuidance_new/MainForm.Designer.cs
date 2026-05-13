@@ -222,7 +222,7 @@ namespace OperationGuidance_new {
             _operatorView = new();
         }
 
-        private void AfterLogin(Size mainFormSize) {
+        private async void AfterLogin(Size mainFormSize) {
             // Reset back color after login
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
 
@@ -287,6 +287,9 @@ namespace OperationGuidance_new {
                     };
                 }
 
+                CustomMainMenuButton? openFirstBtn = null;
+                Type? openFirstType = null;
+                string? openFirstName = null;
                 List<MenuConfig> menuCongfigs = SystemConfigs.MenuCongfigs;
                 for (int i = 0; i < menuCongfigs.Count; i++) {
                     MenuConfig mainMenuConfig = menuCongfigs[i];
@@ -316,23 +319,8 @@ namespace OperationGuidance_new {
                                 type = mainMenuConfig.ViewTypes[AppVersion.STANDARD];
                             }
 
-                            object instance = type.Assembly.CreateInstance(type.FullName);
-                            if (instance is CustomContentPanel) {
-                                CustomContentPanel contentPanelTemp = (CustomContentPanel) instance;
-                                //contentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
-                                contentPanelTemp.Name = "mainContentPanel_" + mainMenuConfig.Id;
-                                if (contentPanelTemp.Controls.Count == 0) {
-                                    int hPadding = contentPanelTemp.Width / 2;
-                                    int vPadding = contentPanelTemp.Height / 2;
-                                    contentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
-                                }
-                                contentPanelTemp.CorrespondingMenuButton = mainMenuButton;
-                                mainMenuButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, contentPanelTemp, false, true) {
-                                    Name = contentPanelTemp.Name
-                                };
-                                WidgetUtils.AddView(contentPanelTemp);
-                            } else {
-                                CustomTabPanel childTapPanel = (CustomTabPanel) instance;
+                            if (type == typeof(CustomTabPanel)) {
+                                CustomTabPanel childTapPanel = new();
                                 CustomChildMenuFirstPanel childMenuPanel = new();
                                 CustomContentPanelBase childContentPanel = new();
                                 // childMenuPanel
@@ -352,7 +340,7 @@ namespace OperationGuidance_new {
                                 childContentPanel.Margin = new Padding(0);
                                 childContentPanel.Name = "mainContentPanel";
 
-                                List<MenuConfig> childMenuConfigs = mainMenuConfig.Children;
+                                List<MenuConfig> childMenuConfigs = mainMenuConfig.Children!;
                                 for (int j = 0; j < childMenuConfigs.Count; j++) {
                                     MenuConfig childMenuConfig = childMenuConfigs[j];
                                     CustomChildMenuFirstButton childMenuFirstButton = new();
@@ -372,32 +360,23 @@ namespace OperationGuidance_new {
                                             }
                                             childType = childMenuConfig.ViewTypes[AppVersion.STANDARD];
                                         }
-                                        // TODO: License checking here
-                                        object childInstance = childType.Assembly.CreateInstance(childType.FullName);
                                         if (MainUtils.License.MenuIds[mainMenuConfig.Id] == null || !MainUtils.License.MenuIds[mainMenuConfig.Id].Contains(childMenuConfig.Id)) {
                                             CustomContentPanel childContentPanelTemp = new();
                                             childContentPanelTemp.Name = "childContentPanel_" + j;
-                                            int hPadding = childContentPanelTemp.Width / 2;
-                                            int vPadding = childContentPanelTemp.Height / 2;
-                                            childContentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
+                                            int hp = childContentPanelTemp.Width / 2;
+                                            int vp = childContentPanelTemp.Height / 2;
+                                            childContentPanelTemp.Controls.Add(new Label() { Text = "许可证信息缺失", AutoSize = true, Margin = new(hp, vp, hp, vp) });
                                             childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
                                             childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, childContentPanelTemp, false, true) {
                                                 Name = childContentPanelTemp.Name
                                             };
-                                        } else if (childInstance is CustomContentPanel) {
-                                            CustomContentPanel childContentPanelTemp = (CustomContentPanel) childInstance;
-                                            //childContentPanelTemp.PenBorderColor = ConfigsVariables.COLOR_CONTENT_PANEL_INNER_BORDER;
-                                            childContentPanelTemp.Name = "childContentPanel_" + j;
-                                            if (childContentPanelTemp.Controls.Count == 0) {
-                                                int hPadding = childContentPanelTemp.Width / 2;
-                                                int vPadding = childContentPanelTemp.Height / 2;
-                                                childContentPanelTemp.Controls.Add(new Label() { Text = "载入错误，没有找到对应的功能", AutoSize = true, Margin = new(hPadding, vPadding, hPadding, vPadding) });
-                                            }
-                                            childContentPanelTemp.CorrespondingMenuButton = childMenuFirstButton;
-                                            childMenuFirstButton.CorrespondingContentPanel = new CustomVScrollingContentPanel(null, childContentPanelTemp, false, true) {
-                                                Name = childContentPanelTemp.Name
+                                        } else {
+                                            CustomContentPanel childPlaceholder = new() {
+                                                Name = "lazyPlaceholder_child_" + childMenuConfig.Id
                                             };
-                                            WidgetUtils.AddView(childContentPanelTemp);
+                                            childMenuFirstButton.CorrespondingContentPanel = childPlaceholder;
+                                            WireLazyLoader(childContentPanel, childMenuFirstButton, childType, "childContentPanel_" + j);
+                                            WidgetUtils.RegisterLazyView(childType, "childContentPanel_" + j, childMenuFirstButton, childContentPanel);
                                         }
                                     }
                                     childMenuFirstButton.ToggledButton = childMenuConfig.IsToggleButton;
@@ -413,7 +392,6 @@ namespace OperationGuidance_new {
                                     childMenuFirstButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
 
                                     WidgetUtils.AddChildMenu(childMenuConfig.Id, childMenuFirstButton);
-                                    // Add child menu button an content panel into their parent panels
                                     childMenuPanel.Controls.Add(childMenuFirstButton);
                                     childContentPanel.Controls.Add(childMenuFirstButton.CorrespondingContentPanel);
                                 }
@@ -426,6 +404,21 @@ namespace OperationGuidance_new {
                                 childTapPanel.Name = "childFirstPanel";
 
                                 mainMenuButton.CorrespondingContentPanel = childTapPanel;
+                                foreach (Control c in childMenuPanel.Controls) {
+                                    if (c is CustomChildMenuFirstButton firstChildBtn) {
+                                        firstChildBtn.PerformClick();
+                                        break;
+                                    }
+                                }
+                            } else {
+                                if (mainMenuConfig.OpenFirst) {
+                                    openFirstBtn = mainMenuButton;
+                                    openFirstType = type;
+                                    openFirstName = "mainContentPanel_" + mainMenuConfig.Id;
+                                } else {
+                                    WireLazyLoader(mainContentPanel, mainMenuButton, type, "mainContentPanel_" + mainMenuConfig.Id);
+                                    WidgetUtils.RegisterLazyView(type, "mainContentPanel_" + mainMenuConfig.Id, mainMenuButton, mainContentPanel);
+                                }
                             }
                         }
                     }
@@ -441,20 +434,28 @@ namespace OperationGuidance_new {
                     mainMenuButton.ToggledColor = ColorConfigs.COLOR_MENU_TOGGLED;
 
                     WidgetUtils.AddMainMenu(mainMenuConfig.Id, mainMenuButton);
-                    // Add main menu button and main content panel into their parent panels
                     mainMenuPanel.Controls.Add(mainMenuButton);
-                    mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
                     if (mainMenuButton.CorrespondingContentPanel != null) {
+                        mainContentPanel.Controls.Add(mainMenuButton.CorrespondingContentPanel);
                         mainMenuButton.CorrespondingContentPanel.Visible = false;
                     }
-                    if (mainMenuConfig.OpenFirst) {
-                        mainMenuButton.OpenFirst = mainMenuConfig.OpenFirst;
-                        mainMenuButton.PerformClick();
-                    }
+                }
+
+                if (openFirstBtn != null && openFirstType != null && openFirstName != null) {
+                    CustomVScrollingContentPanel realView = CreateViewPanel(openFirstType, openFirstName, openFirstBtn);
+                    realView.Visible = false;
+                    mainContentPanel.Controls.Add(realView);
+                    openFirstBtn.CorrespondingContentPanel = realView;
                 }
 
                 AllCreated = true;
                 mainPanel.Show();
+
+                await Task.Yield();
+
+                if (openFirstBtn != null) {
+                    openFirstBtn.PerformClick();
+                }
             }
 
             // BackgroundWorker
@@ -552,6 +553,33 @@ namespace OperationGuidance_new {
                     }
                     break;
             }
+        }
+
+        private CustomVScrollingContentPanel CreateViewPanel(Type type, string name, CustomMenuButton button) {
+            return WidgetUtils.CreateContentView(type, name, button);
+        }
+
+        private void WireLazyLoader(Control parentPanel, CustomMenuButton button,
+                Type viewType, string viewName) {
+            EventHandler lazyLoader = null!;
+            lazyLoader = (s, e) => {
+                button.Click -= lazyLoader;
+                if (button.CorrespondingContentPanel is CustomVScrollingContentPanel) {
+                    return;
+                }
+                if (button.CorrespondingContentPanel is Control placeholder) {
+                    parentPanel.Controls.Remove(placeholder);
+                    placeholder.Dispose();
+                }
+                CustomVScrollingContentPanel realView = CreateViewPanel(viewType, viewName, button);
+                realView.Visible = false;
+                parentPanel.Controls.Add(realView);
+                button.CorrespondingContentPanel = realView;
+                if (button.Toggled) {
+                    realView.Visible = true;
+                }
+            };
+            button.Click += lazyLoader;
         }
         #endregion
 

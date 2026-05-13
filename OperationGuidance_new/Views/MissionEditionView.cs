@@ -415,6 +415,7 @@ namespace OperationGuidance_new.Views {
                                 // 数据复制并保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                                 foreach (SideButton sideBtn in _sideButtons) {
                                     MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                                    ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                                 }
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 // 复制成功后跳转至任务列表界面
@@ -480,7 +481,6 @@ namespace OperationGuidance_new.Views {
             }
 
             protected virtual void SaveClick(object? sender, EventArgs eventArgs) {
-                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
                 string missionName = _missionName.GetTextBox(0).Box.Text;
                 if (string.IsNullOrEmpty(missionName)) {
                     _missionName.GetTextBox(0).IsError = true;
@@ -500,6 +500,7 @@ namespace OperationGuidance_new.Views {
                     // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                     foreach (SideButton sideBtn in _sideButtons) {
                         MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                        ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                     }
                     MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     // 保存后跳转至任务列表界面

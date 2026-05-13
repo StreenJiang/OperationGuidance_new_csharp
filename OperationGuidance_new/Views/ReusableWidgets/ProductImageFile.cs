@@ -237,7 +237,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void RecalculateZoomingRatio() {
             if (_image != null && (_containerMaxRect.Size != _container.MaxRectSize || _zoomingRatio == 0)) {
                 _containerMaxRect = _container.MaxRect;
-                _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                try {
+                    _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                } catch (ArgumentException) {
+                    _image = ReloadImage();
+                    if (_image != null)
+                        _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                }
             }
         }
 

@@ -229,31 +229,36 @@ namespace OperationGuidance_new.Utils {
             return $"ProductSideImage_{DateTime.Now.ToString(DATETIME_FORMAT_FULL_NO_PUNCTUATION)}.png";
         }
         public static Image? GetProductImage(string? fileName) {
-            if (string.IsNullOrEmpty(fileName)) {
-                return null;
-            }
+            return ProductImageCache.GetOrLoad(fileName);
+        }
+
+        internal static Image? LoadProductImageFromDisk(string? fileName) {
+            if (string.IsNullOrEmpty(fileName)) return null;
             string imageFilePath = GetProductImagesPath() + "\\" + fileName;
-            if (!File.Exists(imageFilePath)) {
-                return null;
-            }
+            if (!File.Exists(imageFilePath)) return null;
 
             try {
-                // 这里居然出现过一次 Out of Memory，也很奇怪。。所以放到 try-catch 里面，然后下面用另一个方案
                 Bitmap bitmap = new Bitmap(imageFilePath);
                 Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(bitmap));
                 bitmap.Dispose();
                 return image;
             } catch {
-                // 这个很奇怪，只会画出图片的一部分，真奇葩
-                // 将图片转化成字节，然后再将字节转化为一个图片对象，防止对图片文件本身锁死
-                using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
-                using (Bitmap bitmap = new Bitmap(ms)) {
-                    Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat);
-                    using (Graphics g = Graphics.FromImage(newBitmap)) {
-                        g.DrawImage(bitmap, Point.Empty);
-                        g.Flush();
+                // 回退路径同样需要 Base64 往返标准化，否则返回的 Image 句柄不稳定，后续访问 Width/Height 会抛 "parameter is not valid"
+                try {
+                    using (MemoryStream ms = new MemoryStream(File.ReadAllBytes(imageFilePath)))
+                    using (Bitmap bitmap = new Bitmap(ms)) {
+                        using (Bitmap newBitmap = new(bitmap.Width, bitmap.Height, bitmap.PixelFormat)) {
+                            using (Graphics g = Graphics.FromImage(newBitmap)) {
+                                g.DrawImage(bitmap, Point.Empty);
+                                g.Flush();
+                            }
+                            Image? image = CommonUtils.ImageBase64ToImage(CommonUtils.ImageToBase64(newBitmap));
+                            return image;
+                        }
                     }
-                    return newBitmap;
+                } catch {
+                    // 彻底失败，放弃加载
+                    return null;
                 }
             }
         }
