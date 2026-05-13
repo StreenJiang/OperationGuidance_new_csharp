@@ -1854,7 +1854,6 @@ namespace OperationGuidance_new.Views {
                     Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                 };
-                InitChallengeControls();
                 _maxNGNum = new("最大NG数") {
                     Parent = _tablePanel,
                     Ratio = _boxRatio,
@@ -1880,6 +1879,7 @@ namespace OperationGuidance_new.Views {
                 };
 
                 _predecessorMission.ItemSelected += () => _predecessorMission.SetError(false);
+                InitChallengeControls();
                 _partsBarCodeNum = new("物料条码") {
                     Parent = _tablePanel,
                     Ratio = _boxRatioOneLine,

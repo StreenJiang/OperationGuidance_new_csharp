@@ -112,6 +112,7 @@ internal class CountdownPopUpForm : Form {
             Width = btnHeight * 5 / 2,
             DialogResult = DialogResult.OK,
         };
+        CancelButton = okButton;
         var bottomPanel = new TableLayoutPanel {
             Height = btnHeight + 8,
             Dock = DockStyle.Bottom,

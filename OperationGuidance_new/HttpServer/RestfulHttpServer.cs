@@ -63,7 +63,7 @@ namespace OperationGuidance_new.HttpServer {
                 string accessibleUrl = $"http://{localIp}:{Port}/";
                 // Log and show
                 log.Info($"HTTP 服务器已启动，监听地址: {accessibleUrl}");
-                WidgetUtils.ShowNoticePopUp($"HTTP 服务器已启动，监听地址: {accessibleUrl}", 2);
+                WidgetUtils.ShowNoticePopUp($"HTTP 服务器已启动，监听地址: {accessibleUrl}", 3);
             } catch (Exception ex) {
                 WidgetUtils.ShowWarningPopUp($"无法启动 Http 服务器: {ex.Message}", 2);
                 // throw new InvalidOperationException($"无法启动服务器: {ex.Message}", ex);

@@ -222,16 +222,11 @@ namespace CustomLibrary.Utils {
                         g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
                     } catch (ArgumentException) {
                         // 源图 GDI+ 句柄可能已损坏，通过 PNG 流往返修复
-                        try {
-                            using (var ms = new MemoryStream()) {
-                                image.Save(ms, ImageFormat.Png);
-                                ms.Position = 0;
-                                using (var normalized = Image.FromStream(ms)) {
-                                    g.DrawImage(normalized, new Rectangle(0, 0, newWidth, newHeight));
-                                }
-                            }
-                        } catch {
-                            // 彻底失败，返回透明占位图
+                        var normalized = NormalizeImageHandle(image, null);
+                        if (normalized != null) {
+                            g.DrawImage(normalized, new Rectangle(0, 0, newWidth, newHeight));
+                            normalized.Dispose();
+                        } else {
                             resultImage = new Bitmap(newWidth, newHeight);
                         }
                     }
@@ -369,9 +364,36 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
+        private static Image? NormalizeImageHandle(Image image, ILog? logger) {
+            try {
+                using (var ms = new MemoryStream()) {
+                    image.Save(ms, ImageFormat.Png);
+                    ms.Position = 0;
+                    return Image.FromStream(ms);
+                }
+            } catch (Exception ex) {
+                logger?.Warn($"NormalizeImageHandle: PNG stream round-trip failed. ex = {ex}");
+                return null;
+            }
+        }
+
         public static Image RotateImage(Image image, float angle, ILog? logger = null, bool dispose = true) {
-            int w = image.Width;
-            int h = image.Height;
+            int w;
+            int h;
+            try {
+                w = image.Width;
+                h = image.Height;
+            } catch (ArgumentException ex) {
+                logger?.Warn($"RotateImage: image handle invalid, attempting PNG stream fix. ex = {ex}");
+                var normalized = NormalizeImageHandle(image, logger);
+                if (normalized != null) {
+                    if (dispose) image.Dispose();
+                    return RotateImage(normalized, angle, logger, true);
+                }
+                logger?.Error("RotateImage: PNG stream fix also failed, returning original image");
+                if (dispose) image.Dispose();
+                return image;
+            }
             Image dsImage = new Bitmap(w, h);
 
             int W = w;

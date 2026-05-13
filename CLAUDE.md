@@ -72,6 +72,18 @@ After `SaveProductImage`, call `ProductImageCache.Invalidate(fileName)` in both 
 
 Must call `_contentPanel.ResizeChildren()` BEFORE `_contentPanel.CheckNeedsScrollBar()`. Set preliminary width on content panel first so sub-panel heights are computed correctly. After final sizing, if content height was determined by `NewHeight`, call `_contentPanel.ResizeChildren()` again. Skipping this causes clipped content in lazy-loaded views.
 
+### RotateImage dispose Default
+
+`WidgetUtils.RotateImage` has `dispose = true` default (from HEAD). When passing a cached `Image` reference (from `ProductImageCache`), always pass `dispose: false`. Otherwise `RotateImage` silently destroys the cached Image, causing `ArgumentException: "parameter is not valid"` on all subsequent Width/Height accesses to that same cached object.
+
+### GDI+ Handle Recovery
+
+`WidgetUtils.NormalizeImageHandle` wraps PNG stream encode/decode as a shared GDI+ handle repair utility. Both `ResizeImage` and `RotateImage` recovery paths use it when `DrawImage` or `.Width`/`.Height` throws `ArgumentException`.
+
+### ProductImageCache Null Policy
+
+`GetOrLoad` uses `TryGetValue` + `TryAdd` — null is never cached. Corrupted files retry disk load on next access instead of being permanently broken in cache. This differs from `GetOrAdd` which would cache null forever.
+
 ## Docs
 
 - `docs/superpowers/specs/` — Design specs
