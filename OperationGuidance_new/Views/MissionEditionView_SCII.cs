@@ -214,7 +214,9 @@ namespace OperationGuidance_new.Views {
                     Label = "任务详情",
                     BlockHoverUp = true,
                 };
-                _screwBitCounterDTOs = _apis.FindScrewBitCounterByMissionId(new(_missionDTO.id)).ScrewBitCounterDTOs;
+                _screwBitCounterDTOs = _missionDTO.id > 0
+                    ? _apis.FindScrewBitCounterByMissionId(new(_missionDTO.id)).ScrewBitCounterDTOs
+                    : new();
                 _editDetail.Click += (s, e) => {
                     List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
                     List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
@@ -1762,12 +1764,14 @@ namespace OperationGuidance_new.Views {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(_missionDTO.predecessor_mission_id.Value));
                 }
 
-                for (int i = 0; i < _screwBitCounterDTOs.Count - 1; i++) {
+                int countToAdd = Math.Min(_screwBitCounterDTOs.Count - 1, _screwBitCounterMax - 1);
+                for (int i = 0; i < countToAdd; i++) {
                     AddScrewBitCounter();
                 }
 
                 // Data backfill
-                for (int i = 0; i < _screwBitCounterDTOs.Count; i++) {
+                int backfillCount = Math.Min(_screwBitCounterDTOs.Count, _screwBitCounters.Count);
+                for (int i = 0; i < backfillCount; i++) {
                     ScrewBitCounterDTO sbc = _screwBitCounterDTOs[i];
                     _screwBitCounters[i].SetValue(0, sbc.bit_position + "");
                     _screwBitCounters[i].SetValue(1, sbc.max_num + "");
