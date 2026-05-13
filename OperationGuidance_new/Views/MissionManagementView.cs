@@ -4,6 +4,8 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace OperationGuidance_new.Views {
     public class MissionManagementView: CustomContentPanel {
@@ -11,6 +13,7 @@ namespace OperationGuidance_new.Views {
         private List<ProductMissionDTO> _productMissionDTOs;
         private readonly OperationGuidanceApis apis;
         private MissionEditionView? _editionView;
+        private CancellationTokenSource? _checkCts;
 
         public MissionEditionView EditionView {
             get {
@@ -35,18 +38,28 @@ namespace OperationGuidance_new.Views {
             };
         }
 
-        private void CheckAndDisplay() {
-            // Fetch data
-            FetchData();
-            // If there is no any mission, so show the big button
+        private async Task CheckAndDisplayAsync() {
+            _checkCts?.Cancel();
+            _checkCts?.Dispose();
+            _checkCts = new CancellationTokenSource();
+            var ct = _checkCts.Token;
+
+            try {
+                await FetchDataAsync();
+                ct.ThrowIfCancellationRequested();
+            } catch (OperationCanceledException) {
+                return;
+            } catch (Exception ex) {
+                System.Diagnostics.Debug.WriteLine($"CheckAndDisplayAsync error: {ex.Message}");
+                return;
+            }
+
+            if (IsDisposed || !Visible) return;
             _missionListPanel.RefreshMissionBlocks(_productMissionDTOs, OpenEditionPageView);
         }
 
-        public override void VisibleToTrue() {
-            // Check and display view
-            CheckAndDisplay();
-            // Invoke base, it will resize all children
-            // base.VisibleToTrue();
+        public override async void VisibleToTrue() {
+            await CheckAndDisplayAsync();
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
@@ -66,8 +79,18 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private void FetchData() {
-            _productMissionDTOs = apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id) { IsEditing = true }).ProductMissionDTOs;
+        private async Task FetchDataAsync() {
+            _productMissionDTOs = await Task.Run(() =>
+                apis.QueryProductMissionList(new(SystemUtils.MacAddressesDTO.id) { IsEditing = true }).ProductMissionDTOs
+            );
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _checkCts?.Cancel();
+                _checkCts?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

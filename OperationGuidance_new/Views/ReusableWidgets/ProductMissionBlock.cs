@@ -24,7 +24,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => _coverImage;
             set {
                 _coverImage = value;
-                _innerButton.Image = value;
+                _innerButton.Icon = value;
+                _innerButton.RefreshImage();
             }
         }
         public string MissionName {
@@ -162,7 +163,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             } else if (_defaultImage != null) {
                 ImageShowing = WidgetUtils.ResizeImage(_defaultImage, imageNewSize);
             }
-            // Recalculate image position
             ImageX = (Width - imageNewSize.Width) / 2;
             ImageY = (int) ((Height * 0.85 - imageNewSize.Height) / 2);
         }
@@ -199,6 +199,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         protected override void OnClick(EventArgs e) {
             base.OnClick(e);
             _missionBlock.PerformClick(e);
+        }
+
+        public void RefreshImage() {
+            var oldShowing = ImageShowing;
+            ResizeIconImage();
+            if (ImageShowing != null) {
+                _imageBorderRect = new Rectangle(ImageX, ImageY, ImageShowing.Width, ImageShowing.Height);
+            }
+            oldShowing?.Dispose();
+            Invalidate();
         }
     }
 }

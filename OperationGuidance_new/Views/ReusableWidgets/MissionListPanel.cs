@@ -4,6 +4,9 @@ using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Models.DTOs;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
@@ -13,6 +16,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private List<ProductMissionDTO> _missionDTOs;
         private ProductMissionBlock<ProductMissionDTO>? _currentToggledMission = null;
         private int _titleHeight;
+        private CancellationTokenSource? _loadCts;
+        private readonly SemaphoreSlim _loadSemaphore = new(4);
 
         public int TitleHeight { get => _titleHeight; set => _titleHeight = value; }
         public ProductMissionBlock<ProductMissionDTO>? CurrentToggledMission { get => _currentToggledMission; set => _currentToggledMission = value; }
@@ -77,29 +82,33 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
+            // Skip rebuild if data is identical
+            if (_missionDTOs.Count > 0 && missionDTOs.Select(m => m.id).SequenceEqual(_missionDTOs.Select(m => m.id)))
+                return;
+
+            _loadCts?.Cancel();
+            _loadCts?.Dispose();
+            _loadCts = new CancellationTokenSource();
+            var ct = _loadCts.Token;
+
             if (missionDTOs.Count > 0) {
                 _contentPanel.BigButtonPanel.Hide();
                 _contentPanel.MissionsTable.Show();
+
+                // Dispose old controls to prevent memory leaks (ToList avoids collection-modified-during-enumeration)
+                _currentToggledMission = null;
+                var oldControls = _contentPanel.MissionsTable.Controls.Cast<Control>().ToList();
+                foreach (Control ctrl in oldControls) {
+                    ctrl.Dispose();
+                }
                 _contentPanel.MissionsTable.Controls.Clear();
+
                 for (int i = 0; i < missionDTOs.Count; i++) {
                     ProductMissionDTO mission = missionDTOs[i];
                     if (mission.ProductSides != null && mission.ProductSides.Count > 0) {
-                        Image? coverImage = null;
-                        foreach (ProductSideDTO sideDTO in mission.ProductSides) {
-                            if (sideDTO.image != null && sideDTO.image != string.Empty) {
-                                coverImage = MainUtils.GetProductImage(sideDTO.image);
-                                if (coverImage != null) {
-                                    if (sideDTO.rotate_angle != null) {
-                                        coverImage = WidgetUtils.RotateImage(coverImage, sideDTO.rotate_angle.Value);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                        // 创建一个任务展示块
                         ProductMissionBlock<ProductMissionDTO> block = new(
                             mission,
-                            coverImage,
+                            null,
                             Properties.Resources.image_choose,
                             mission.name,
                             ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
@@ -130,15 +139,66 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         };
                     }
                 }
-                if (!_missionDTOs.Select(m => m.id).SequenceEqual(missionDTOs.Select(m => m.id))) {
-                    _missionDTOs = missionDTOs;
-                    _contentOuterPanel.ResizeChildren();
-                }
+                _missionDTOs = missionDTOs;
+                _contentOuterPanel.ResizeChildren();
+
+                StartLoadingCoverImages(ct);
             } else {
                 _contentPanel.MissionsTable.Hide();
                 _contentPanel.BigButtonPanel.Show();
             }
             _contentPanel.ResizeCells();
+        }
+
+        private void StartLoadingCoverImages(CancellationToken ct) {
+            var blocks = MissionBlocks;
+            foreach (var block in blocks) {
+                _ = LoadOneCoverAsync(block, ct);
+            }
+        }
+
+        private async Task LoadOneCoverAsync(ProductMissionBlock<ProductMissionDTO> block, CancellationToken ct) {
+            await _loadSemaphore.WaitAsync(ct);
+            try {
+                Image? image = await Task.Run(() => {
+                    ct.ThrowIfCancellationRequested();
+                    Image? loaded = null;
+                    if (block.Entity.ProductSides != null) {
+                        foreach (var side in block.Entity.ProductSides) {
+                            if (!string.IsNullOrEmpty(side.image)) {
+                                loaded = ProductImageCache.GetOrLoad(side.image);
+                                if (loaded != null) {
+                                    if (side.rotate_angle != null) {
+                                        loaded = WidgetUtils.RotateImage(loaded, side.rotate_angle.Value);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return loaded;
+                }, ct);
+
+                if (image != null && !ct.IsCancellationRequested && !IsDisposed) {
+                    BeginInvoke(() => {
+                        if (!block.IsDisposed && block.Parent != null) {
+                            block.CoverImage = image;
+                        }
+                    });
+                }
+            } catch (OperationCanceledException) {
+            } finally {
+                _loadSemaphore.Release();
+            }
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _loadCts?.Cancel();
+                _loadCts?.Dispose();
+                // _loadSemaphore intentionally NOT disposed — pending async tasks may Release() after Cancel
+            }
+            base.Dispose(disposing);
         }
 
         protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
