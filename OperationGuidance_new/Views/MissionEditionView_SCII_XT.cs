@@ -50,6 +50,19 @@ namespace OperationGuidance_new.Views {
             return _editionPage;
         }
 
+        public override void VisibleToTrue() {
+            if ((_editionPage != null && _editionPage.IsDisposed)
+                || (_missionDTO.id > 0 && _missionDTO.deleted == (int) YesOrNo.YES)) {
+                CreateANewOne();
+            }
+        }
+
+        protected override void ResizeChildren(object? sender, EventArgs eventArgs) {
+            if (_editionPage != null && !_editionPage.IsDisposed) {
+                _editionPage.Size = Size;
+            }
+        }
+
         // Class: inner page panel
         public class MissionEditionPage_SCII_XT: MissionEditionPage_SCII {
             public MissionEditionPage_SCII_XT(MissionEditionView_SCII_XT parent, ProductMissionDTO missionDTO) : base(parent, missionDTO) { }
@@ -212,6 +225,7 @@ namespace OperationGuidance_new.Views {
                     // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                     foreach (SideButton sideBtn in _sideButtons) {
                         MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
+                        ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                     }
                     MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
 

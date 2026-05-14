@@ -84,14 +84,22 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
-            // Skip rebuild if data is identical
-            if (_missionDTOs.Count > 0 && missionDTOs.Select(m => m.id).SequenceEqual(_missionDTOs.Select(m => m.id)))
-                return;
+            bool sameIds = _missionDTOs.Count > 0 && missionDTOs.Select(m => m.id).SequenceEqual(_missionDTOs.Select(m => m.id));
 
             _loadCts?.Cancel();
             _loadCts?.Dispose();
             _loadCts = new CancellationTokenSource();
             var ct = _loadCts.Token;
+
+            if (sameIds) {
+                _missionDTOs = missionDTOs;
+                var blocks = MissionBlocks;
+                for (int i = 0; i < blocks.Count && i < missionDTOs.Count; i++) {
+                    blocks[i].Entity = missionDTOs[i];
+                }
+                StartLoadingCoverImages(ct);
+                return;
+            }
 
             if (missionDTOs.Count > 0) {
                 _contentPanel.BigButtonPanel.Hide();

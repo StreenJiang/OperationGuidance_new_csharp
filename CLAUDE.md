@@ -42,6 +42,8 @@ Images load via `ProductImageCache` (thread-safe `ConcurrentDictionary<string, I
 
 `StartLoadingCoverImages` fires one `LoadOneCoverAsync` per block. Cancellation via `CancellationTokenSource _loadCts`. Dispose guard: `!block.IsDisposed && block.Parent != null`.
 
+When mission IDs are unchanged (e.g., after image edit), blocks are NOT rebuilt. Instead, existing blocks get their `Entity` references synced to the new DTOs and cover loading re-triggered — this picks up new images from disk after `ProductImageCache.Invalidate`.
+
 ### ProductMissionBlock Image Update
 
 `CoverImage` setter sets `_innerButton.Icon` and calls `_innerButton.RefreshImage()`.
@@ -53,7 +55,7 @@ Images load via `ProductImageCache` (thread-safe `ConcurrentDictionary<string, I
 
 ### Cache Invalidation
 
-After `SaveProductImage`, call `ProductImageCache.Invalidate(fileName)` in both `MissionEditionView` and `MissionEditionView_SCII`.
+After `SaveProductImage`, call `ProductImageCache.Invalidate(fileName)` in `MissionEditionView`, `MissionEditionView_SCII`, and `MissionEditionView_SCII_XT` (all three edition views).
 
 ### Startup Lazy View Loading
 
@@ -74,11 +76,23 @@ Must call `_contentPanel.ResizeChildren()` BEFORE `_contentPanel.CheckNeedsScrol
 
 ### RotateImage dispose Default
 
-`WidgetUtils.RotateImage` has `dispose = true` default (from HEAD). When passing a cached `Image` reference (from `ProductImageCache`), always pass `dispose: false`. Otherwise `RotateImage` silently destroys the cached Image, causing `ArgumentException: "parameter is not valid"` on all subsequent Width/Height accesses to that same cached object.
+`WidgetUtils.RotateImage` has `dispose = true` default. When passing a cached `Image` reference (from `ProductImageCache`), always pass `dispose: false`. Otherwise `RotateImage` destroys the cached Image, causing `ArgumentException: "parameter is not valid"` on all subsequent Width/Height accesses to that same cached object.
+
+`RotateImage` holds `lock (_rotateLocker)` for the entire operation. `ResizeImage` holds `lock (_resizeLocker)` — two separate locks so resize and rotate don't block each other. The lock is required because GDI+ `Image` is not thread-safe and `ProductImageCache` may return the same object to concurrent callers (e.g., `MissionListPanel` background cover loading).
 
 ### GDI+ Handle Recovery
 
 `WidgetUtils.NormalizeImageHandle` wraps PNG stream encode/decode as a shared GDI+ handle repair utility. Both `ResizeImage` and `RotateImage` recovery paths use it when `DrawImage` or `.Width`/`.Height` throws `ArgumentException`.
+
+### CustomVScrollingContentPanel VisibleToTrue Propagation
+
+`CustomVScrollingContentPanel.VisibleToTrue()` calls `_contentPanel.VisibleToTrue()` before sizing itself. This ensures wrapped views can react every time the panel becomes visible (menu toggle), not just on first creation. The call runs before `Size` is set so disposed child pages are recreated before resize touches them.
+
+Views that override `VisibleToTrue` (e.g. `MissionEditionView` recreates disposed page, `MissionManagementView` refreshes mission list) now work correctly on every menu switch. Async views already have `_checkCts` cancellation guards; the propagation makes those guards actually exercised.
+
+### MissionEditionView_SCII_XT Field Hiding
+
+XT inherits from SCII and uses `new` on `_editionPage` / `EditionPage`. Base class methods resolve `_editionPage` to the base field (always null in XT). Any base method touching `_editionPage` must be overridden in XT with identical body — the duplicate is intentional because field access resolves at compile time. Currently overridden: `OpenEditionPage`, `CreateANewOne`, `VisibleToTrue`, `ResizeChildren`.
 
 ### ProductImageCache Null Policy
 

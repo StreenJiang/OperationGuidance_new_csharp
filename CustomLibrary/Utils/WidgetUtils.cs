@@ -15,7 +15,8 @@ using log4net;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
-        private static readonly Object _imageLocker = new();
+        private static readonly object _resizeLocker = new();
+        private static readonly object _rotateLocker = new();
         private static Dictionary<int, CustomMainMenuButton> _mainMenus = new();
         private static Dictionary<int, CustomChildMenuFirstButton> _childMenus = new();
         private static List<CustomContentPanel> _views = new();
@@ -202,7 +203,7 @@ namespace CustomLibrary.Utils {
         /// <param name="newHeight">New height of new Image.</param>
         /// <returns>New image witdh new size.</returns>        
         public static Image ResizeImage(Image image, int newWidth, int newHeight, bool dispose = false) {
-            lock (_imageLocker) {
+            lock (_resizeLocker) {
                 if (newWidth <= 0 || newHeight <= 0) {
                     Bitmap bitmap = new Bitmap(image);
                     if (dispose) {
@@ -369,7 +370,9 @@ namespace CustomLibrary.Utils {
                 using (var ms = new MemoryStream()) {
                     image.Save(ms, ImageFormat.Png);
                     ms.Position = 0;
-                    return Image.FromStream(ms);
+                    using (var temp = Image.FromStream(ms)) {
+                        return new Bitmap(temp);
+                    }
                 }
             } catch (Exception ex) {
                 logger?.Warn($"NormalizeImageHandle: PNG stream round-trip failed. ex = {ex}");
@@ -378,84 +381,74 @@ namespace CustomLibrary.Utils {
         }
 
         public static Image RotateImage(Image image, float angle, ILog? logger = null, bool dispose = true) {
-            int w;
-            int h;
-            try {
-                w = image.Width;
-                h = image.Height;
-            } catch (ArgumentException ex) {
-                logger?.Warn($"RotateImage: image handle invalid, attempting PNG stream fix. ex = {ex}");
-                var normalized = NormalizeImageHandle(image, logger);
-                if (normalized != null) {
+            lock (_rotateLocker) {
+                int w;
+                int h;
+                try {
+                    w = image.Width;
+                    h = image.Height;
+                } catch (ArgumentException ex) {
+                    logger?.Warn($"RotateImage: image handle invalid, attempting PNG stream fix. ex = {ex}");
+                    var normalized = NormalizeImageHandle(image, logger);
+                    if (normalized != null) {
+                        if (dispose) image.Dispose();
+                        return RotateImage(normalized, angle, logger, true);
+                    }
+                    logger?.Error("RotateImage: PNG stream fix also failed, returning original image");
                     if (dispose) image.Dispose();
-                    return RotateImage(normalized, angle, logger, true);
+                    return image;
                 }
-                logger?.Error("RotateImage: PNG stream fix also failed, returning original image");
-                if (dispose) image.Dispose();
-                return image;
-            }
-            Image dsImage = new Bitmap(w, h);
+                Image? dsImage = null;
+                int W = w;
+                int H = h;
+                try {
+                    angle = angle % 360;
+                    double radian = angle * Math.PI / 180.0;
+                    double cos = Math.Cos(radian);
+                    double sin = Math.Sin(radian);
 
-            int W = w;
-            int H = h;
-            try {
-                angle = angle % 360; // 弧度转换
-                double radian = angle * Math.PI / 180.0;
-                double cos = Math.Cos(radian);
-                double sin = Math.Sin(radian);
+                    cos = Math.Round(cos, 10);
+                    sin = Math.Round(sin, 10);
 
-                // INFO: need to varify
-                cos = Math.Round(cos, 10); // 保留 10 位小数
-                sin = Math.Round(sin, 10);
+                    if (double.IsNaN(cos) || double.IsInfinity(cos) || double.IsNaN(sin) || double.IsInfinity(sin)) {
+                        throw new ArgumentException("Cosine or sine value is invalid.");
+                    }
 
-                // Check for values
-                if (double.IsNaN(cos) || double.IsInfinity(cos) || double.IsNaN(sin) || double.IsInfinity(sin)) {
-                    throw new ArgumentException("Cosine or sine value is invalid.");
+                    long W_long = (long)(Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
+                    long H_long = (long)(Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
+
+                    if (W_long > int.MaxValue || H_long > int.MaxValue) {
+                        throw new ArgumentException("Calculated dimensions are too large.");
+                    }
+
+                    W = (int)W_long;
+                    H = (int)H_long;
+
+                    if (W <= 0 || H <= 0) {
+                        throw new ArgumentException("Calculated dimensions must be positive.");
+                    }
+
+                    dsImage = new Bitmap(W, H);
+                } catch (Exception e) {
+                    if (logger != null) {
+                        logger.Error($"Error while rotating image, e = {e}");
+                    }
+                    dsImage?.Dispose();
+                    throw;
                 }
 
-                long W_long = (long) (Math.Max(Math.Abs(w * cos - h * sin), Math.Abs(w * cos + h * sin)));
-                long H_long = (long) (Math.Max(Math.Abs(w * sin - h * cos), Math.Abs(w * sin + h * cos)));
-
-                // Check for values again
-                if (W_long > int.MaxValue || H_long > int.MaxValue) {
-                    throw new ArgumentException("Calculated dimensions are too large.");
-                }
-
-                W = (int) W_long;
-                H = (int) H_long;
-
-                // Check for final values
-                if (W <= 0 || H <= 0) {
-                    throw new ArgumentException("Calculated dimensions must be positive.");
-                }
-
-                // 目标位图
-                dsImage = new Bitmap(W, H);
-            } catch (Exception e) {
-                if (logger != null) {
-                    logger.Error($"Error while rotating image, e = {e}");
-                }
-                throw e;
-            } finally {
                 try {
                     using (Graphics g = Graphics.FromImage(dsImage)) {
                         g.InterpolationMode = InterpolationMode.Bilinear;
                         g.SmoothingMode = SmoothingMode.HighQuality;
 
-                        // 计算偏移量
                         Point Offset = new Point((W - w) / 2, (H - h) / 2);
-
-                        // 构造图像显示区域：让图像的中心与窗口的中心点一致
                         Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
                         Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
                         g.TranslateTransform(center.X, center.Y);
                         g.RotateTransform(360 + angle);
-
-                        // 恢复图像在水平和垂直方向的平移
                         g.TranslateTransform(-center.X, -center.Y);
                         g.DrawImage(image, rect);
-
-                        // 重置绘图的所有变换
                         g.ResetTransform();
                         g.Save();
                     }
@@ -463,14 +456,15 @@ namespace CustomLibrary.Utils {
                     if (logger != null) {
                         logger.Error($"Error while rotating image in finally block, e = {e}");
                     }
-                    throw e;
+                    dsImage.Dispose();
+                    throw;
                 }
-            }
 
-            if (dispose) {
-                image.Dispose();
+                if (dispose) {
+                    image.Dispose();
+                }
+                return dsImage;
             }
-            return dsImage;
         }
 
         // Check if type if a sub class of T
