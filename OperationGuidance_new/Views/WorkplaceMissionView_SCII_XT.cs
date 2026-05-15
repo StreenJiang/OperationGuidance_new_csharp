@@ -352,7 +352,7 @@ namespace OperationGuidance_new.Views {
         }
 
         private async Task SendCheckToMES(List<OperationDataDTO> operationDataDTOs) {
-            if (operationDataDTOs.Count > 0) {
+            if (_operationDataDTOs != null && operationDataDTOs.Count > 0) {
                 EquipmentCheckReq req = new() {
                     equipmentCheckInfos = new(),
                     employeeNumber = SystemUtils.UserInfo.account,

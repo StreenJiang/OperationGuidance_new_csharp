@@ -26,16 +26,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Stack<ProductImageFile> _undoBuffer;
         private int _undoBufferLength;
         private Rectangle? _imageRange;
+        private bool _ownsImage = true;
         public AProductImageDisplayPanel Container { get => _container; set => _container = value; }
         public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
         public string? FilePath { get => _filePath; set => _filePath = value; }
         public Image? Image {
             get => _image;
             set {
+                var old = _image;
+                var oldOwns = _ownsImage;
                 _image = value;
+                _ownsImage = value != null;
                 if (value == null) {
                     _imageRange = null;
                 }
+                if (oldOwns) old?.Dispose();
             }
         }
         public string? ImageFileName { get => _imageFileName; set => _imageFileName = value; }
@@ -58,7 +63,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             Image? image = MainUtils.GetProductImage(sideDTO.image);
             if (image != null) {
                 _imageFileName = sideDTO.image;
-                _image = image;
+                Image = image;
+                _ownsImage = false;  // cache reference, must not dispose
                 if (sideDTO.max_rectangle_width != null && sideDTO.max_rectangle_height != null) {
                     _containerMaxRect = new(CommonUtils.PointStringToPoint(sideDTO.max_rectangle_location), new(sideDTO.max_rectangle_width.Value, sideDTO.max_rectangle_height.Value));
                     _centerLocation = CommonUtils.PointStringToPoint(sideDTO.center_location);
@@ -139,9 +145,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (reloadedImage == null && !string.IsNullOrEmpty(_imageFileName)) {
                 try {
                     logger.Info($"正在通过图像文件名重新加载图像: {_imageFileName}");
-                    reloadedImage = MainUtils.GetProductImage(_imageFileName);
-                    if (reloadedImage != null) {
-                        logger.Info($"成功通过图像文件名加载图像 - 尺寸: {reloadedImage.Width}x{reloadedImage.Height}");
+                    var cached = MainUtils.GetProductImage(_imageFileName);
+                    if (cached != null) {
+                        try {
+                            reloadedImage = new Bitmap(cached);
+                            logger.Info($"成功通过图像文件名加载图像 - 尺寸: {reloadedImage.Width}x{reloadedImage.Height}");
+                        } catch (ArgumentException) {
+                            logger.Warn($"通过图像文件名加载图像失败 (缓存图片已损坏): {_imageFileName}");
+                        } catch (ObjectDisposedException) {
+                            logger.Warn($"通过图像文件名加载图像失败 (缓存图片已释放): {_imageFileName}");
+                        }
                     } else {
                         logger.Warn($"通过图像文件名未能加载图像: {_imageFileName}");
                     }
@@ -186,18 +199,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             if (from.Image != null && IsImageValid(from.Image)) {
                 try {
-                    _image = new Bitmap(from.Image);
+                    Image = new Bitmap(from.Image);
                 } catch (ArgumentException ex) {
                     logger.Warn($"复制图像失败: {ex.Message}");
-                    _image = ReloadImage();
+                    Image = ReloadImage();
                 } catch (ObjectDisposedException ex) {
                     logger.Warn($"图像已被释放: {ex.Message}");
-                    _image = ReloadImage();
+                    Image = ReloadImage();
                 }
             } else {
                 // 源图像无效或为 null，尝试重新加载
                 logger.Info("源图像无效或为 null，正在尝试重新加载...");
-                _image = ReloadImage();
+                Image = ReloadImage();
             }
 
             _centerLocation = from.CenterLocation;
@@ -217,7 +230,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (dialog.ShowDialog() == DialogResult.OK) {
                 ClearBuffer();
                 _filePath = dialog.FileName;
-                _image = Image.FromFile(_filePath);
+                Image = System.Drawing.Image.FromFile(_filePath);
                 _centerLocation = new(0, 0);
                 _locationOffset = new(0, 0);
                 _locationOffsetMoving = new(0, 0);
@@ -240,7 +253,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 try {
                     _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
                 } catch (ArgumentException) {
-                    _image = ReloadImage();
+                    Image = ReloadImage();
                     if (_image != null)
                         _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
                 }
@@ -306,7 +319,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Point croppingRectLocation = new(_container.MaxRectLocation.X - _centerLocation.X, _container.MaxRectLocation.Y - _centerLocation.Y);
                 Point lowerRightConer = new(_centerLocation.X + imageDisplay.Width, _centerLocation.Y + imageDisplay.Height);
                 if (!_container.MaxRect.Contains(_centerLocation) || !_container.MaxRect.Contains(lowerRightConer)) {
-                    _image = MainUtils.CropImage(imageDisplay, new(croppingRectLocation, _container.MaxRectSize));
+                    Image = MainUtils.CropImage(imageDisplay, new(croppingRectLocation, _container.MaxRectSize));
                     _locationOffset = new(0, 0);
                     _locationOffsetMoving = new(0, 0);
                     _zoomingRatio = 1;
@@ -343,7 +356,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 const int maxRetries = 5;
                 for (int attempt = 1; attempt <= maxRetries; attempt++) {
                     logger.Info($"图像处理失败，第 {attempt} 次重试：重新加载源图像...");
-                    _image = ReloadImage();
+                    Image = ReloadImage();
 
                     result = TryCreateDisplayImage();
                     if (result != null)
@@ -425,7 +438,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void Dispose() {
-            _image?.Dispose();
+            if (_ownsImage) {
+                _image?.Dispose();
+            }
         }
     }
 }

@@ -2,12 +2,13 @@ using CustomLibrary.Buttons.BaseClasses;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels.BaseClasses;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Utils;
 using System.Drawing.Drawing2D;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class ProductMissionBlock<T>: CustomContentPanelBase {
         private T _t;
-        private Image? _coverImage;
+        internal Image? _coverImage;
         private string _missionName;
         private Rectangle _innerBorderRect;
         private int _borderSize;
@@ -20,11 +21,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             get => _t;
             set => _t = value;
         }
+        public string? ImageFileName { get; set; }
         public Image? CoverImage {
             get => _coverImage;
             set {
-                _coverImage = value;
-                _innerButton.Icon = value;
+                Image? clone = null;
+                if (value != null) {
+                    try {
+                        clone = new Bitmap(value);
+                    } catch (ArgumentException) {
+                        clone = WidgetUtils.NormalizeImageHandle(value, null);
+                    }
+                }
+                _coverImage?.Dispose();
+                _coverImage = clone;
+                _innerButton.Icon = clone;
                 _innerButton.RefreshImage();
             }
         }
@@ -56,8 +67,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public InnerButton<T> InnerButton { get => _innerButton; set => _innerButton = value; }
 
         public ProductMissionBlock(T t, Image? coverImage, Image defaultImage, string missionName, Color? borderColor, Color buttonColor, Color imageBorderColor) {
+            Image? initialCover = null;
+            if (coverImage != null) {
+                try {
+                    initialCover = new Bitmap(coverImage);
+                } catch (ArgumentException) {
+                    initialCover = WidgetUtils.NormalizeImageHandle(coverImage, null);
+                }
+            }
             _innerButton = new InnerButton<T>(this, defaultImage) {
-                Icon = coverImage,
+                Icon = initialCover,
                 Label = missionName,
                 BackColor = buttonColor,
                 ImageBorderColor = imageBorderColor,
@@ -67,7 +86,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ConerRadius = WidgetUtils.ControlRadius(),
             };
             _t = t;
-            _coverImage = coverImage;
+            _coverImage = initialCover;
             _missionName = missionName;
             // _borderColor = borderColor;
             _buttonColor = buttonColor;
@@ -191,20 +210,69 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         private Size CalcImageSize() {
-            int newHeight = (int) (Height * ImageRatio);
+            int newHeight = (int)(Height * ImageRatio);
             int newWidth;
             if (this.Icon != null) {
-                newWidth = (int) (newHeight / (decimal) this.Icon.Height * this.Icon.Width);
-                if (newWidth > (Width * .9)) {
-                    newWidth = (int) (Width * .9);
-                    newHeight = (int) (newWidth / (decimal) this.Icon.Width * this.Icon.Height);
+                try {
+                    (newWidth, newHeight) = CalcImageDimensions(this.Icon, newHeight);
+                } catch (ArgumentException) {
+                    var recovered = RecoverIconHandle();
+                    if (recovered != null) {
+                        (newWidth, newHeight) = CalcImageDimensions(recovered, newHeight);
+                    } else if (_defaultImage != null) {
+                        newWidth = (int)(newHeight / (decimal)_defaultImage.Height * _defaultImage.Width);
+                    } else {
+                        newWidth = (int)(Width * .8);
+                    }
                 }
             } else if (_defaultImage != null) {
-                newWidth = (int) (newHeight / (decimal) _defaultImage.Height * _defaultImage.Width);
+                newWidth = (int)(newHeight / (decimal)_defaultImage.Height * _defaultImage.Width);
             } else {
-                newWidth = (int) (Width * .8);
+                newWidth = (int)(Width * .8);
             }
             return new(newWidth, newHeight);
+        }
+
+        private (int width, int height) CalcImageDimensions(Image image, int maxHeight) {
+            int newHeight = maxHeight;
+            int newWidth = (int)(newHeight / (decimal)image.Height * image.Width);
+            if (newWidth > (Width * .9)) {
+                newWidth = (int)(Width * .9);
+                newHeight = (int)(newWidth / (decimal)image.Width * image.Height);
+            }
+            return (newWidth, newHeight);
+        }
+
+        private Image? RecoverIconHandle() {
+            if (this.Icon == null) {
+                _missionBlock._coverImage = null;
+                return null;
+            }
+            // Tier 1: try to repair corrupted handle via PNG round-trip
+            var normalized = WidgetUtils.NormalizeImageHandle(this.Icon!, null);
+            if (normalized != null) {
+                this.Icon!.Dispose();
+                this.Icon = normalized;
+                _missionBlock._coverImage = normalized;
+                return normalized;
+            }
+
+            // Tier 2: reload from disk bypassing cache
+            this.Icon!.Dispose();
+            var fileName = _missionBlock.ImageFileName;
+            if (!string.IsNullOrEmpty(fileName)) {
+                var reloaded = MainUtils.LoadProductImageFromDisk(fileName);
+                if (reloaded != null) {
+                    this.Icon = reloaded;
+                    _missionBlock._coverImage = reloaded;
+                    return reloaded;
+                }
+            }
+
+            // Tier 3: give up, fall through to _defaultImage
+            this.Icon = null;
+            _missionBlock._coverImage = null;
+            return null;
         }
 
         protected override void OnClick(EventArgs e) {

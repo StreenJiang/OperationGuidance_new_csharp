@@ -170,14 +170,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private async Task LoadOneCoverAsync(ProductMissionBlock<ProductMissionDTO> block, CancellationToken ct) {
             await _loadSemaphore.WaitAsync(ct);
             try {
-                Image? image = await Task.Run(() => {
+                (Image? image, string? fileName) = await Task.Run(() => {
                     ct.ThrowIfCancellationRequested();
                     Image? loaded = null;
+                    string? capturedFileName = null;
                     if (block.Entity.ProductSides != null) {
                         foreach (var side in block.Entity.ProductSides) {
                             if (!string.IsNullOrEmpty(side.image)) {
                                 loaded = ProductImageCache.GetOrLoad(side.image);
                                 if (loaded != null) {
+                                    capturedFileName = side.image;
                                     if (side.rotate_angle != null) {
                                         loaded = WidgetUtils.RotateImage(loaded, side.rotate_angle.Value, dispose: false);
                                     }
@@ -186,12 +188,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                             }
                         }
                     }
-                    return loaded;
+                    return (loaded, capturedFileName);
                 }, ct);
 
                 if (image != null && !ct.IsCancellationRequested && !IsDisposed) {
                     BeginInvoke(() => {
                         if (!block.IsDisposed && block.Parent != null) {
+                            block.ImageFileName = fileName;
                             block.CoverImage = image;
                         }
                     });

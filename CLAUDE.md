@@ -46,8 +46,13 @@ When mission IDs are unchanged (e.g., after image edit), blocks are NOT rebuilt.
 
 ### ProductMissionBlock Image Update
 
-`CoverImage` setter sets `_innerButton.Icon` and calls `_innerButton.RefreshImage()`.
+`CoverImage` setter clones incoming `Image` via `new Bitmap(value)` before storing in both `_coverImage` and `_innerButton.Icon`. On `new Bitmap` failure (corrupted handle), falls back to `NormalizeImageHandle`. Old `_coverImage` is disposed before replacement (blocks may be reused when mission IDs are unchanged after image edit).
+
 `RefreshImage()` calls `ResizeIconImage()`, updates `_imageBorderRect`, disposes old `ImageShowing`, and `Invalidate()`.
+
+`CalcImageSize` wraps `CalcImageDimensions` (tuple-returning width/height helper) in try-catch for `ArgumentException`. On corrupted handle, calls `RecoverIconHandle` — three-tier recovery: NormalizeImageHandle PNG repair → `LoadProductImageFromDisk` bypassing cache → fall through to `_defaultImage`. Recovery updates both `this.Icon` and `_missionBlock._coverImage`.
+
+`ImageFileName` property bridges filename from `LoadOneCoverAsync` to `RecoverIconHandle` for Tier 2 disk reload.
 
 ### Async Data Fetch
 
@@ -97,6 +102,14 @@ XT inherits from SCII and uses `new` on `_editionPage` / `EditionPage`. Base cla
 ### ProductImageCache Null Policy
 
 `GetOrLoad` uses `TryGetValue` + `TryAdd` — null is never cached. Corrupted files retry disk load on next access instead of being permanently broken in cache. This differs from `GetOrAdd` which would cache null forever.
+
+### Image Cache Ownership (anti-poisoning)
+
+Never dispose a shared `ProductImageCache` reference. Three defenses:
+
+1. **`ProductMissionBlock.CoverImage` setter/constructor** — clones incoming Image via `new Bitmap()`. `_coverImage` is always a private copy, safely disposed on block Dispose or re-set.
+2. **`ProductImageFile._ownsImage`** — defaults `true`. Set `false` only in constructor (holds cache ref). `Dispose()` checks flag. `Image` setter snapshots old value before reassign, disposes old only if it was owned. `ReloadImage()` clones cache result via `new Bitmap()` so it always returns an owned image.
+3. **`AWorkplaceContentPanel` side switch** — calls `RefreshImage()` directly (which creates its own display clone via `GetDisplayImage` → `TryCreateDisplayImage`). Never passes raw cache refs to `AProductImageDisplayPanel.SetImage` (which unconditionally disposes its old `_productImage`).
 
 ## Docs
 

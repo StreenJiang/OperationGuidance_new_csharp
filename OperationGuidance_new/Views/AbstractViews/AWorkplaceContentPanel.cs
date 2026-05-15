@@ -498,8 +498,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 _showingBoltButtons.ForEach(btn => btn.Visible = true);
             }
 
-            // 切换产品图片
-            _productImageDisplayPanel.SetImage(_productImageFiles[_currentSideIndex].Image, _productImageFiles[_currentSideIndex].CenterLocation);
+            // 切换产品图片 — RefreshImage 内部通过 GetDisplayImage 创建展示图并调 SetImage
             _productImageFiles[_currentSideIndex].RefreshImage();
 
             // Change side name

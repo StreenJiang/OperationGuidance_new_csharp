@@ -118,6 +118,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         protected override bool ProductBarCodeExtraCheck(string barCode) {
             if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
+                inBoundStationOk = true;
                 return true;
             }
             // 向 MES 发出进站请求

@@ -365,7 +365,7 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
-        private static Image? NormalizeImageHandle(Image image, ILog? logger) {
+        public static Image? NormalizeImageHandle(Image image, ILog? logger) {
             try {
                 using (var ms = new MemoryStream()) {
                     image.Save(ms, ImageFormat.Png);
