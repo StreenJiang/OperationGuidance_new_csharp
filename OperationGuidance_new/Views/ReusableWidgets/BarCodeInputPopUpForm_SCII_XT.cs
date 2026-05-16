@@ -14,7 +14,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BarCodeInputPopUpForm_SCII_XT: ABarCodeInputPopUpForm {
         private string _productBatch;
         private bool inBoundStationOk;
-        private bool bindAccessoryOk;
 
         public BarCodeInputPopUpForm_SCII_XT(AWorkplaceContentPanel workplace,
                 string initStr, ProductMissionDTO mission, bool activated,
@@ -24,7 +23,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules, isForBolt) {
             _productBatch = productBatch;
             this.inBoundStationOk = inBoundStationOk;
-            bindAccessoryOk = false;
         }
 
         protected override async void OnHandleCreated(EventArgs e) {
@@ -39,40 +37,50 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public override bool CheckCanActivateMission() {
-            if (base.CheckCanActivateMission() && inBoundStationOk) {
-                // 向 MES 发送绑定上盖请求
-                SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+            if (!base.CheckCanActivateMission() || !inBoundStationOk) {
+                return false;
+            }
 
-                // 只有一个工站会用这个，所以要加一个配置
-                if (config.send_upper_cover == (int) YesOrNo.YES) {
-                    if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
-                        var req = new SCII_XT_BindUpperCoverReq() {
-                            productCode = _workplace.BarCodeObj.ProductBarCode,
-                            upperCoverCode = _workplace.BarCodeObj.PartsBarCodes[0],
-                            employeeNumber = SystemUtils.UserInfo.account,
-                        };
-
-                        // Send request
-                        var dto = Task.Run(async () => await Workflow_SCII_XT.BindUppderCover(req))
-                                      .GetAwaiter()
-                                      .GetResult();
-                        if (!dto.bindSuccess) {
-                            string msg = $"上盖绑定请求失败，详细信息：{dto.message}";
-                            logger.Warn(msg);
-                            WidgetUtils.ShowWarningPopUp(msg);
-                        } else {
-                            logger.Info($"【{_workplace.BarCodeObj.PartsBarCodes[0]}】上盖绑定成功。");
-                            bindAccessoryOk = true;
-                        }
-                        return dto.bindSuccess;
-                    }
-                }
-
-                logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
+            // 点检任务跳过后续逻辑，直接通过
+            if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
                 return true;
             }
 
-            return false;
+            // 向 MES 发送绑定上盖请求。只有一个工站会用这个
+            SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+            if (config.send_upper_cover.ToYesOrNoBool()) {
+                if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
+                    var req = new SCII_XT_BindUpperCoverReq() {
+                        productCode = _workplace.BarCodeObj.ProductBarCode,
+                        upperCoverCode = _workplace.BarCodeObj.PartsBarCodes[0],
+                        employeeNumber = SystemUtils.UserInfo.account,
+                    };
+
+                    var dto = Task.Run(async () => await Workflow_SCII_XT.BindUppderCover(req))
+                                  .GetAwaiter()
+                                  .GetResult();
+                    if (!dto.bindSuccess) {
+                        string msg = $"上盖绑定请求失败，详细信息：{dto.message}";
+                        logger.Warn(msg);
+                        WidgetUtils.ShowWarningPopUp(msg);
+                        return false;
+                    }
+                    logger.Info($"【{_workplace.BarCodeObj.PartsBarCodes[0]}】上盖绑定成功。");
+                }
+            }
+
+            // 第二打印机扫码打印
+            var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+            if (printerConfig.enabled_second.ToYesOrNoBool()) {
+                if (printerConfig.second_printer_name == null) {
+                    WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
+                    return false;
+                }
+                CheckSecondBarCode();
+            }
+
+            logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
+            return true;
         }
 
         private void CheckSecondBarCode() {
@@ -118,18 +126,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (inBoundStationOk) {
                 // 向打印机发送指令
                 _ = workplace.SendToPrinter();
-
-                // 第二条码扫码逻辑
-                var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
-                if (printerConfig.enabled_second.ToYesOrNoBool()) {
-                    if (printerConfig.second_printer_name == null) {
-                        WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
-                        return false;
-                    }
-
-                    CheckSecondBarCode();
-                }
-
             }
 
             return inBoundStationOk;

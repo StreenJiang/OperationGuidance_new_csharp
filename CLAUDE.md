@@ -103,6 +103,10 @@ XT inherits from SCII and uses `new` on `_editionPage` / `EditionPage`. Base cla
 
 `GetOrLoad` uses `TryGetValue` + `TryAdd` — null is never cached. Corrupted files retry disk load on next access instead of being permanently broken in cache. This differs from `GetOrAdd` which would cache null forever.
 
+### CustomPopUpForm.Show() Is Blocking
+
+`CustomPopUpForm.Show()` (not `ShowDialog()`) internally calls `base.ShowDialog()` when `ShowInFront == true` (the default). The call blocks until `Hide()`/`Dispose()` is called on the form. This means any `form.Show()` on a `CustomPopUpForm` subclass (including `WaitDialog`) is a modal blocking call — code after it won't execute until the form closes.
+
 ### Image Cache Ownership (anti-poisoning)
 
 Never dispose a shared `ProductImageCache` reference. Three defenses:
