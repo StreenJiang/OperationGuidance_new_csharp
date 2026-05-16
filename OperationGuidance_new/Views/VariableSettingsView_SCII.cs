@@ -14,6 +14,9 @@ namespace OperationGuidance_new.Views {
         private CommonButtonGroup _buzzerTestButtons;
         private bool _buzzerEnabledOriginal;
 
+        private ToggleButtonGroup _errorPromptForWrongBarcodeToggle;
+        private bool _errorPromptForWrongBarcodeOriginal;
+
         public VariableSettingsView_SCII() {
             MissionSelfLoopingModeToggle.Hide();
             StoreLooseningDataToggle.Hide();
@@ -27,6 +30,11 @@ namespace OperationGuidance_new.Views {
             base.InitializeMissionSettings();
 
             _enableBatchCounter = new("启用批次计数") {
+                Parent = WorkContentPanel,
+                Ratio = 6.95,
+            };
+
+            _errorPromptForWrongBarcodeToggle = new("启用错码验证") {
                 Parent = WorkContentPanel,
                 Ratio = 6.95,
             };
@@ -63,6 +71,10 @@ namespace OperationGuidance_new.Views {
             ConfigUtils.SaveConfig(sciiBatchConfig);
             _enableBatchCounterOriginal = sciiBatchConfig.enabled.ToYesOrNoBool();
 
+            bool wrongBarcodeEnabled = _errorPromptForWrongBarcodeToggle.Checked;
+            MainUtils.SetErrorPromptForWrongBarcodeEnabled(wrongBarcodeEnabled);
+            _errorPromptForWrongBarcodeOriginal = wrongBarcodeEnabled;
+
             bool buzzerEnabled = _buzzerEnabledToggle.Checked;
             MainUtils.SetBuzzerEnabled(buzzerEnabled);
             _buzzerEnabledOriginal = buzzerEnabled;
@@ -94,6 +106,9 @@ namespace OperationGuidance_new.Views {
             _enableBatchCounter.Size = new(boxWidth, BoxNBtnHeight);
             _enableBatchCounter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
 
+            _errorPromptForWrongBarcodeToggle.Size = new(boxWidth, BoxNBtnHeight);
+            _errorPromptForWrongBarcodeToggle.Margin = new(0, boxVMargin, 0, 0);
+
             WorkContentPanel.Size = new(Width, BoxNBtnHeight * 3 + ContentVPadding * 2 + boxVMargin * 2);
             WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height);
         }
@@ -108,6 +123,9 @@ namespace OperationGuidance_new.Views {
 
                     var sciiBatchConfig = ConfigUtils.LoadConfig<SciiBatchConfig>();
                     _enableBatchCounter.Checked = sciiBatchConfig.enabled.ToYesOrNoBool();
+
+                    _errorPromptForWrongBarcodeOriginal = MainUtils.IsErrorPromptForWrongBarcodeEnabled();
+                    _errorPromptForWrongBarcodeToggle.Checked = _errorPromptForWrongBarcodeOriginal;
                 });
             });
         }
@@ -121,11 +139,14 @@ namespace OperationGuidance_new.Views {
 
                     var sciiBatchConfig = ConfigUtils.GetDefault<SciiBatchConfig>();
                     _enableBatchCounter.Checked = sciiBatchConfig.enabled.ToYesOrNoBool();
+
+                    _errorPromptForWrongBarcodeToggle.Checked = MainUtils.DefaultIsErrorPromptForWrongBarcodeEnabled();
                 });
             });
         }
 
         protected override bool CheckSavedFunc_detail() => base.CheckSavedFunc_detail()
+            && _errorPromptForWrongBarcodeToggle.Checked == _errorPromptForWrongBarcodeOriginal
             && _buzzerEnabledToggle.Checked == _buzzerEnabledOriginal
             && _enableBatchCounter.Checked == _enableBatchCounterOriginal;
     }

@@ -1143,6 +1143,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
 
+        public bool CheckErrorPromptForWrongBarcodeEnabled() {
+            return MainUtils.IsErrorPromptForWrongBarcodeEnabled();
+        }
+
         public virtual bool CheckChallengeMissionConfirmation() {
             return true;
         }
@@ -1271,13 +1275,20 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     b.ResetStatusWithoutChangingVisible();
                     // Reset ng times
                     b.NgTimes = 0;
+                    b.CurrentParameterSet = null;
                 });
             }
 
             // Sort all bolts in _allBoltsIndependence
             foreach (int sideId in _allBoltsIndependence.Keys) {
                 foreach (int workstationId in _allBoltsIndependence[sideId].Keys) {
-                    _allBoltsIndependence[sideId][workstationId] = _allBoltsIndependence[sideId][workstationId].OrderBy(btn => btn.BoltDTO.serial_num).ToList();
+                    _allBoltsIndependence[sideId][workstationId] = _allBoltsIndependence[sideId][workstationId]
+                        .OrderBy(btn => btn.BoltDTO.serial_num).ToList();
+                    _allBoltsIndependence[sideId][workstationId].ForEach(b => {
+                        b.ResetStatusWithoutChangingVisible();
+                        b.NgTimes = 0;
+                        b.CurrentParameterSet = null;
+                    });
                 }
             }
         }

@@ -252,7 +252,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                         checkPassed = false;
                         _productBarCodeBox.GetTextBox(0).IsError = true;
-                        _workplace.OpenAdminPasswordPopUpForm($"当前条码【{barCode}】与选择的任务不匹配", allowCancel: false);
+                        ShowWrongBarcodeGate($"当前条码【{barCode}】与选择的任务不匹配");
                     }
                     // 如果匹配到其他任务，则做出特定提示
                     else {
@@ -277,7 +277,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     checkPassed = false;
                     _productBarCodeBox.GetTextBox(0).IsError = true;
-                    _workplace.OpenAdminPasswordPopUpForm($"没有检索到匹配条码【{barCode}】的任务", allowCancel: false);
+                    ShowWrongBarcodeGate($"没有检索到匹配条码【{barCode}】的任务");
                 } else {
                     // 不为空则需要切换任务
                     needToSwtich = true;
@@ -314,7 +314,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Validation fails for predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
 
                         checkPassed = false;
-                        _workplace.OpenAdminPasswordPopUpForm("未检测到前置任务的加工完成记录，请先完成前置任务", allowCancel: false);
+                        ShowWrongBarcodeGate("未检测到前置任务的加工完成记录，请先完成前置任务");
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
@@ -410,7 +410,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 return;
             } else if (_workplace.BarCodeObj.PartsBarCodes.Contains(barCode)) {
                 box.GetTextBox(0).IsError = true;
-                _workplace.OpenAdminPasswordPopUpForm($"请勿重复录入物料", allowCancel: false);
+                ShowWrongBarcodeGate($"请勿重复录入物料");
                 return;
             }
 
@@ -425,7 +425,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 CheckPartsBarCodeErrorForChallenge();
 
                 box.GetTextBox(0).IsError = true;
-                _workplace.OpenAdminPasswordPopUpForm($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配", allowCancel: false);
+                ShowWrongBarcodeGate($"当前物料条码【{barCode}】与当前任务所配置的物料条码不匹配");
             }
             // 物料条码校验通过
             else {
@@ -665,6 +665,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected virtual void CheckPartsBarCodeErrorForChallenge() { }
         protected virtual void CheckPartsPredecessorForChallenge(bool predecessorExists, DateTime? createTime) { }
         protected virtual void CheckPartsBarCodeRedoForChallenge() { }
+
+        private void ShowWrongBarcodeGate(string message) {
+            if (_workplace.CheckErrorPromptForWrongBarcodeEnabled()) {
+                _workplace.OpenAdminPasswordPopUpForm(message, allowCancel: false);
+            } else {
+                WidgetUtils.ShowWarningPopUp(message);
+            }
+        }
 
         // 检查是否可以激活任务
         public virtual bool CheckCanActivateMission() {

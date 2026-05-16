@@ -16,6 +16,7 @@ using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 using System.Reflection;
+using System.Threading;
 
 namespace OperationGuidance_new.Views {
     public class DataQueryView: CustomDataGridViewOuterPanel<OperationDataDTO, OperationDataVO> {
@@ -24,6 +25,7 @@ namespace OperationGuidance_new.Views {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
+        private CancellationTokenSource _loadCts;
         private List<OperationDataDTO> _dataDTOList;
         private List<OperationDataField> _operationDataFields;
         // DataGridView panel
@@ -81,7 +83,6 @@ namespace OperationGuidance_new.Views {
 
             // 搜索条件 - 站点名称
             _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (OperationDataVO vo, int? value) => vo.workstation_id = value, new());
-            RefreshWorkstationOptions();
 
             // 搜索条件 - 日期
             CustomDatePickerGroup dateFitler = _dataGridView.AddSeparateDatePicker("日期", "~",
@@ -198,11 +199,46 @@ namespace OperationGuidance_new.Views {
 
         #region Reusable methods
         private void RefreshWorkstationOptions() {
-            _workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-            _workstationNameComboBox.ClearItem();
-            foreach (WorkstationDTO workstation in _workstations) {
-                _workstationNameComboBox.AddItem(workstation.name, workstation.id);
-            }
+            _workstationNameComboBox.Enabled = false;
+
+            _loadCts?.Cancel();
+            _loadCts?.Dispose();
+            _loadCts = new CancellationTokenSource();
+            var token = _loadCts.Token;
+
+            Task.Run(() => {
+                var workstations = new List<WorkstationDTO>();
+                bool loadSuccess = false;
+                try {
+                    workstations = apis.QueryWorkstationList(
+                        new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
+                    if (token.IsCancellationRequested) return;
+
+                    loadSuccess = true;
+                } catch (Exception ex) {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            logger.Error("Failed to load workstation options", ex);
+                        }
+                    });
+                } finally {
+                    var capturedToken = token;
+                    BeginInvoke(() => {
+                        if (IsDisposed || capturedToken.IsCancellationRequested) return;
+                        try {
+                            if (loadSuccess) {
+                                _workstations = workstations;
+                                _workstationNameComboBox.ClearItem();
+                                foreach (WorkstationDTO workstation in _workstations) {
+                                    _workstationNameComboBox.AddItem(workstation.name, workstation.id);
+                                }
+                            }
+                        } finally {
+                            _workstationNameComboBox.Enabled = true;
+                        }
+                    });
+                }
+            }, token);
         }
         private QueryOperationDataListReq BuildQueryOperationDataListReq(int? page, int? pageSize, OperationDataVO vo) {
             return new() {

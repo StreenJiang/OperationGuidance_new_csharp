@@ -17,6 +17,8 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace OperationGuidance_new.Views {
     public class DataQueryView_SCII: CustomDataGridViewOuterPanel<MissionRecordDTO, MissionRecordVO> {
@@ -25,6 +27,7 @@ namespace OperationGuidance_new.Views {
         #region Fields
         // Apis
         private OperationGuidanceApis apis;
+        private CancellationTokenSource _loadCts;
         private List<MissionRecordDTO> _dataDTOList;
         private List<OperationDataField> _operationDataFields;
         // DataGridView panel
@@ -106,7 +109,6 @@ namespace OperationGuidance_new.Views {
                 }
             }
             _isChallengMissionComboBox.SetCurrent(indexTemp);
-            RefreshWorkstationOptions();
 
             // 添加详情按钮
             CommonButton detailBtn = _dataGridView.AddExtraButton("详情");
@@ -160,20 +162,57 @@ namespace OperationGuidance_new.Views {
 
         #region Reusable methods
         private void RefreshWorkstationOptions() {
-            _workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-            Dictionary<int, List<int>> missionRecordIds = new();
-            if (_workstations.Count > 0) {
-                missionRecordIds = apis.QueryMissionRecordsByWorkstationIds(new(_workstations.Select(w => w.id).ToList())).MissionRecordsDict;
-                _workstationNameComboBox.ClearItem();
-                foreach (WorkstationDTO workstation in _workstations) {
-                    if (missionRecordIds.ContainsKey(workstation.id)) {
-                        List<int?> ids = new();
-                        missionRecordIds[workstation.id].ForEach(id => ids.Add(id));
-                        _workstationNameComboBox.AddItem(workstation.name, ids);
+            _workstationNameComboBox.Enabled = false;
+
+            _loadCts?.Cancel();
+            _loadCts?.Dispose();
+            _loadCts = new CancellationTokenSource();
+            var token = _loadCts.Token;
+
+            Task.Run(() => {
+                var workstations = new List<WorkstationDTO>();
+                Dictionary<int, List<int>> missionRecordIds = new();
+                bool loadSuccess = false;
+                try {
+                    workstations = apis.QueryWorkstationList(
+                        new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
+                    if (token.IsCancellationRequested) return;
+
+                    if (workstations.Count > 0) {
+                        missionRecordIds = apis.QueryMissionRecordsByWorkstationIds(
+                            new(workstations.Select(w => w.id).ToList())).MissionRecordsDict;
                     }
+                    if (token.IsCancellationRequested) return;
+
+                    loadSuccess = true;
+                } catch (Exception ex) {
+                    BeginInvoke(() => {
+                        if (!IsDisposed) {
+                            logger.Error("Failed to load workstation options", ex);
+                        }
+                    });
+                } finally {
+                    BeginInvoke(() => {
+                        if (IsDisposed) return;
+                        try {
+                            if (loadSuccess) {
+                                _workstations = workstations;
+                                _workstationNameComboBox.ClearItem();
+                                foreach (WorkstationDTO workstation in _workstations) {
+                                    if (missionRecordIds.ContainsKey(workstation.id)) {
+                                        List<int?> ids = new();
+                                        missionRecordIds[workstation.id].ForEach(id => ids.Add(id));
+                                        _workstationNameComboBox.AddItem(workstation.name, ids);
+                                    }
+                                }
+                                _workstationNameComboBox.AddItem("无", null);
+                            }
+                        } finally {
+                            _workstationNameComboBox.Enabled = true;
+                        }
+                    });
                 }
-                _workstationNameComboBox.AddItem("无", null);
-            }
+            }, token);
         }
         private QueryMissionRecordListReq BuildQueryMissionRecordListReq(int? page, int? pageSize, MissionRecordVO vo) {
             return new() {

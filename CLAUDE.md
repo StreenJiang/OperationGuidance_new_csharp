@@ -107,6 +107,10 @@ XT inherits from SCII and uses `new` on `_editionPage` / `EditionPage`. Base cla
 
 `CustomPopUpForm.Show()` (not `ShowDialog()`) internally calls `base.ShowDialog()` when `ShowInFront == true` (the default). The call blocks until `Hide()`/`Dispose()` is called on the form. This means any `form.Show()` on a `CustomPopUpForm` subclass (including `WaitDialog`) is a modal blocking call — code after it won't execute until the form closes.
 
+### BoltButton State Reset on Re-Activation
+
+`PrepareBeforeActivatingMission()` in `AWorkplaceContentPanel` is the central reset point for all bolts before a new mission activation. It already clears `BoltStatus` and `NgTimes`. Any new cached state added to `BoltButton` (e.g. `CurrentParameterSet`) **must** also be cleared here — both in `_allBolts` and `_allBoltsIndependence` loops. Otherwise the `ChangeBoltStatusToWorking` cache check (e.g. `boltDTO.parameters_set != boltButton.CurrentParameterSet`) may skip a required action, as the controller could retain stale state from the previous NG termination.
+
 ### Image Cache Ownership (anti-poisoning)
 
 Never dispose a shared `ProductImageCache` reference. Three defenses:

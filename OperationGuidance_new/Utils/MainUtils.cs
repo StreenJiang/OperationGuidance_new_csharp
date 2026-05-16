@@ -464,6 +464,24 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.MissionErrorPromptForArmEnabled, (int) YesOrNo.NO + "");
             }
         }
+        // Wrong barcode error prompt (SCII / SCII_XT)
+        public static bool IsErrorPromptForWrongBarcodeEnabled() {
+            string enabled = Settings.Read(IniFileKeys.MissionErrorPromptForWrongBarcode);
+            if (string.IsNullOrEmpty(enabled)) {
+                bool flag = DefaultIsErrorPromptForWrongBarcodeEnabled();
+                SetErrorPromptForWrongBarcodeEnabled(flag);
+                return flag;
+            }
+            return int.Parse(enabled) == (int) YesOrNo.YES;
+        }
+        public static bool DefaultIsErrorPromptForWrongBarcodeEnabled() => false;
+        public static void SetErrorPromptForWrongBarcodeEnabled(bool flag) {
+            if (flag) {
+                Settings.Write(IniFileKeys.MissionErrorPromptForWrongBarcode, (int) YesOrNo.YES + "");
+            } else {
+                Settings.Write(IniFileKeys.MissionErrorPromptForWrongBarcode, (int) YesOrNo.NO + "");
+            }
+        }
         // Buzzer enabled (SCII only)
         public static bool IsBuzzerEnabled() {
             string buzzerEnabled = Settings.Read(IniFileKeys.MissionBuzzerEnabled);
