@@ -29,7 +29,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public PrinterTestPopUpForm(PrinterTestMode mode) {
             _mode = mode;
-            Title = mode == PrinterTestMode.Printer1 ? "打印机1测试" : "打印机2测试";
+            Title = mode == PrinterTestMode.Printer1 ? "大二维码打印测试" : "小二维码打印测试";
             BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
 
             string inputLabel = mode == PrinterTestMode.Printer1 ? "SN" : "二维码内容";

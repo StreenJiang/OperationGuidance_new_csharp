@@ -68,16 +68,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 }
 
-                var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
-                if (printerConfig.enabled_second.ToYesOrNoBool()) {
-                    if (printerConfig.second_printer_name == null) {
-                        WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
-                        return false;
-                    }
-
-                    CheckSecondBarCode();
-                }
-
                 logger.Info($"All checks passed (version SCII_XT) for mission = [id = {_mission.id}]...");
                 return true;
             }
@@ -128,6 +118,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (inBoundStationOk) {
                 // 向打印机发送指令
                 _ = workplace.SendToPrinter();
+
+                // 第二条码扫码逻辑
+                var printerConfig = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+                if (printerConfig.enabled_second.ToYesOrNoBool()) {
+                    if (printerConfig.second_printer_name == null) {
+                        WidgetUtils.ShowWarningPopUp("条码打印机（第二台）名称配置未设置，请先配置打印机。");
+                        return false;
+                    }
+
+                    CheckSecondBarCode();
+                }
+
             }
 
             return inBoundStationOk;

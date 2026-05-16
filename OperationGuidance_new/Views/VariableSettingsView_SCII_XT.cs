@@ -190,7 +190,7 @@ namespace OperationGuidance_new.Views {
                 .Where(dto => dto.macs_id == SystemUtils.MacAddressesDTO.id)
                 .ToList();
             _arrangerDTOs = _deviceIoDTOs
-                .Where(dto => dto.type == DeviceType_IoBox.Arranger.Id && dto.deleted == (int)YesOrNo.NO)
+                .Where(dto => dto.type == DeviceType_IoBox.Arranger.Id && dto.deleted == (int) YesOrNo.NO)
                 .ToList();
 
             var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
@@ -383,12 +383,12 @@ namespace OperationGuidance_new.Views {
                 PositiveIntOnly = true,
             };
 
-            _printerTestBtnGroup = new("打印机测试") {
+            _printerTestBtnGroup = new("二维码打印测试") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
             };
-            _printerTestBtnGroup.GetButton(0).Label = "第一打印机";
-            _printerTestBtnGroup.AddButton("第二打印机");
+            _printerTestBtnGroup.GetButton(0).Label = "大二维码打印测试";
+            _printerTestBtnGroup.AddButton("小二维码打印测试");
 
             // Bind toggle events to control combobox enable state
             _enablePrinter.CheckedChanged += (s, e) => {
@@ -680,7 +680,7 @@ namespace OperationGuidance_new.Views {
             int contentInnerWidth = Width - ContentHPadding * 2;
             int gap = BoxNBtnHeight / 4;
             int btnWidth = BoxNBtnHeight;
-            int textBoxWidth = (int)((contentInnerWidth - gap * 2 - btnWidth) * 0.68);
+            int textBoxWidth = (int) ((contentInnerWidth - gap * 2 - btnWidth) * 0.68);
             int arrangerWidth = contentInnerWidth - textBoxWidth - btnWidth - gap * 2;
 
             foreach (ArrangerGroupRow row in _arrangerGroupRows) {
@@ -821,7 +821,7 @@ namespace OperationGuidance_new.Views {
                         // Set arranger combobox
                         if (group.arranger_id != null) {
                             DeviceIoDTO? deviceIoDTO = _deviceIoDTOs
-                                .Where(dto => dto.deleted == (int)YesOrNo.NO)
+                                .Where(dto => dto.deleted == (int) YesOrNo.NO)
                                 .FirstOrDefault(dto => dto.id == group.arranger_id.Value);
                             if (deviceIoDTO != null) {
                                 int idx = row.ArrangerBox.IndexOf(deviceIoDTO);
