@@ -2,6 +2,7 @@ using CustomLibrary.Configs;
 using CustomLibrary.Forms;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Constants;
 using OperationGuidance_new.HttpObjects.Requests.SCII_XT;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
@@ -46,26 +47,50 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 return true;
             }
 
-            // 向 MES 发送绑定上盖请求。只有一个工站会用这个
-            SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
-            if (config.send_upper_cover.ToYesOrNoBool()) {
-                if (_partsBarCodeRules.ContainsKey(_mission.id) && _partsBarCodeRules[_mission.id].Count > 0) {
-                    var req = new SCII_XT_BindUpperCoverReq() {
-                        productCode = _workplace.BarCodeObj.ProductBarCode,
-                        upperCoverCode = _workplace.BarCodeObj.PartsBarCodes[0],
-                        employeeNumber = SystemUtils.UserInfo.account,
-                    };
+            // 向 MES 上传配件绑定
+            if (_partsBarCodeRules.ContainsKey(_mission.id)) {
+                var partsRules = _partsBarCodeRules[_mission.id]
+                    .Where(r => r.type == BarCodeTypes.PARTS.Id)
+                    .OrderBy(r => r.id)
+                    .ToList();
 
-                    var dto = Task.Run(async () => await Workflow_SCII_XT.BindUppderCover(req))
-                                  .GetAwaiter()
-                                  .GetResult();
-                    if (!dto.bindSuccess) {
-                        string msg = $"上盖绑定请求失败，详细信息：{dto.message}";
-                        logger.Warn(msg);
-                        WidgetUtils.ShowWarningPopUp(msg);
-                        return false;
+                if (partsRules.Count > 0 && _workplace.BarCodeObj.PartsBarCodes.Count > 0) {
+                    var accessories = new List<SCII_XT_BindAccessoryReq.Accessory>();
+                    for (int i = 0; i < _workplace.BarCodeObj.PartsBarCodes.Count; i++) {
+                        int ruleId = _workplace.BarCodeObj.PartsMatchingRulesCached[i];
+                        var rule = partsRules.FirstOrDefault(r => r.id == ruleId);
+                        if (rule != null) {
+                            accessories.Add(new SCII_XT_BindAccessoryReq.Accessory {
+                                accessoryCode = _workplace.BarCodeObj.PartsBarCodes[i],
+                                accessoryType = rule.name ?? "",
+                                partNo = rule.part_no ?? "",
+                                orderId = partsRules.IndexOf(rule) + 1,
+                            });
+                        }
                     }
-                    logger.Info($"【{_workplace.BarCodeObj.PartsBarCodes[0]}】上盖绑定成功。");
+
+                    if (accessories.Count > 0) {
+                        SciiXtConfig config = ConfigUtils.LoadConfig<SciiXtConfig>();
+                        var req = new SCII_XT_BindAccessoryReq() {
+                            productCode = _workplace.BarCodeObj.ProductBarCode,
+                            procedureCode = config.procedure_code,
+                            recipeCode = _mission.name,
+                            accessorys = accessories,
+                            createBy = SystemUtils.UserInfo.staff_id,
+                            employeeNumber = SystemUtils.UserInfo.account,
+                        };
+
+                        var dto = Task.Run(async () => await Workflow_SCII_XT.BindAccessory(req))
+                                      .GetAwaiter()
+                                      .GetResult();
+                        if (!dto.bindSuccess) {
+                            string msg = $"配件绑定请求失败，详细信息：{dto.message}";
+                            logger.Warn(msg);
+                            WidgetUtils.ShowWarningPopUp(msg);
+                            return false;
+                        }
+                        logger.Info("配件绑定成功。");
+                    }
                 }
             }
 

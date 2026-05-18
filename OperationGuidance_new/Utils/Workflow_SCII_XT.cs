@@ -99,8 +99,7 @@ namespace OperationGuidance_new.Utils {
             return result;
         }
 
-        // INFO: 已废弃：4. 绑定PCBA、分流器.....等配件(配件需要动态 ，你的界面设置多少配件就需要扫多少个配件)
-        [Obsolete("This is not the one, use [BindUppderCover] instead.")]
+        // INFO: 上传配件绑定
         public static async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
             var api = "/api/product-accessory/bind";
             var result = new SCII_XT_BindAccessoryDTO();
@@ -118,6 +117,7 @@ namespace OperationGuidance_new.Utils {
         }
 
         // 4. 绑定上盖（特殊）
+        [Obsolete("This is not the one, use [BindAccessory] instead.")]
         public static async Task<SCII_XT_BindUpperCoverDTO> BindUppderCover(SCII_XT_BindUpperCoverReq req) {
             var api = "/api/product/upper-cover/bind";
             var result = new SCII_XT_BindUpperCoverDTO();

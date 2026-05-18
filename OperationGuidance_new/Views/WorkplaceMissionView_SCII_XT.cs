@@ -109,7 +109,6 @@ namespace OperationGuidance_new.Views {
             bool isPointInspection = _mission.is_challenge_mission == (int) YesOrNo.YES;
 
             if (isPointInspection) {
-                await SendCheckToMES(_operationDataDTOs);
                 _inBoundStationOk = false;
                 await base.TerminateMission(status);
             } else {
@@ -351,38 +350,6 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private async Task SendCheckToMES(List<OperationDataDTO> operationDataDTOs) {
-            if (_operationDataDTOs != null && operationDataDTOs.Count > 0) {
-                EquipmentCheckReq req = new() {
-                    equipmentCheckInfos = new(),
-                    employeeNumber = SystemUtils.UserInfo.account,
-                    equipmentCode = _getEquipmentCode(),
-                };
-
-                EquipmentCheckReq.EquipmentCheckInfo checkInfo = new() {
-                    attributeList = new(),
-                };
-
-                var value = BuildAttributeValues(operationDataDTOs);
-                checkInfo.attributeList.Add(new EquipmentCheckReq.Attribute() {
-                    attributeName = $"{_mission.name}_拧紧数据",
-                    attributeCode = $"{_mission.name}_Screw",
-                    attributeUnit = "json",
-                    attributeType = 2,
-                    value = JsonConvert.SerializeObject(value),
-                });
-                req.equipmentCheckInfos.Add(checkInfo);
-
-                var dto = await Workflow_SCII_XT.EquipmentCheck(req);
-                if (!dto.checkSuccess) {
-                    logger.Warn($"设备点检数据上传 MES 失败！[任务：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 错误信息：{dto.message}");
-                } else {
-                    logger.Info($"设备点检数据上传 MES 成功！[任务：{_mission.name}, 产品条码：{operationDataDTOs[0].vin_number}] 。");
-                }
-
-                _operationDataDTOs = new();
-            }
-        }
 
         private async Task PlcStatusTask() {
             _plcLoopCts = new CancellationTokenSource();

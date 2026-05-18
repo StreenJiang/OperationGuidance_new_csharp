@@ -45,6 +45,8 @@ namespace OperationGuidance_new.Views {
             partNo.Hide();
             if (!string.IsNullOrEmpty(dto.part_no)) {
                 partNo.SetValue(0, dto.part_no);
+            } else if (dto.id <= 0) {
+                partNo.SetValue(0, "1");
             }
 
             CustomTextBoxGroup serialNum = _editEntityPopUpForm.AddTextBox<int>("物料序号", false, null);
