@@ -101,7 +101,7 @@ namespace OperationGuidance_new.Utils {
 
         // INFO: 上传配件绑定
         public static async Task<SCII_XT_BindAccessoryDTO> BindAccessory(SCII_XT_BindAccessoryReq req) {
-            var api = "/api/product-accessory/bind";
+            var api = "/api/product-accessory/product/bind";
             var result = new SCII_XT_BindAccessoryDTO();
 
             try {
