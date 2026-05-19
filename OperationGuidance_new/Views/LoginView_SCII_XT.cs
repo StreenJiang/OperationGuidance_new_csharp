@@ -1,7 +1,9 @@
 using CustomLibrary.Utils;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
+using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
@@ -13,6 +15,17 @@ namespace OperationGuidance_new.Views {
         protected override void CheckLoginByApi(string account, string password) {
             if (account == "admin") {
                 base.CheckLoginByApi(account, password);
+            } else if (_isAdminLogin) {
+                LoginValidateRsp rsp = SystemUtils.GetApis().LoginValidate(new(account, password));
+                if (!rsp.Succeed) {
+                    WidgetUtils.ShowErrorPopUp(rsp.FailedReason);
+                } else if (rsp.UserAccountInfoDTO.role_type != (int) Roles.DEVELOPER
+                           && rsp.UserAccountInfoDTO.role_type != (int) Roles.ADMIN) {
+                    WidgetUtils.ShowErrorPopUp("权限不足，仅管理员可访问后台管理");
+                } else {
+                    SystemUtils.UserInfo = CommonUtils.CannotBeNull(rsp.UserAccountInfoDTO);
+                    ActionAfterLogin();
+                }
             } else {
                 var config = ConfigUtils.LoadConfig<SciiXtConfig>();
                 if (string.IsNullOrEmpty(config.equipment_code)) {

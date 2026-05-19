@@ -127,6 +127,8 @@ namespace OperationGuidance_new {
                     break;
             }
 
+            loginView.AfterAdminLogin = AfterAdminLogin;
+
             loginView.Parent = this;
             MainUtils.LoginView = loginView;
             WidgetUtils.BackToLoginView = needToAsk => {
@@ -220,6 +222,50 @@ namespace OperationGuidance_new {
 
         private void OperatorOpenning() {
             _operatorView = new();
+        }
+
+        private async void AfterAdminLogin(Size mainFormSize) {
+            if (!SystemUtils.IsAdmin) {
+                WidgetUtils.ShowErrorPopUp("权限不足，仅管理员可访问后台管理");
+                WidgetUtils.BackToLoginView?.Invoke(false);
+                return;
+            }
+
+            BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
+
+            // Dispose all controls except LoginView
+            foreach (Control c in WidgetUtils.MainForm.Controls) {
+                if (c is LoginView) continue;
+                c.Dispose();
+            }
+
+            // Create admin management view
+            AdminManagementView adminView = new() {
+                Parent = this,
+            };
+            MainUtils.LoginView.Hide();
+
+            // Resize MainForm
+            Size screenSize = WidgetUtils.GetScreenResolution();
+            if (mainFormSize == screenSize) {
+                WindowState = FormWindowState.Maximized;
+            } else {
+                Size = mainFormSize;
+                ClientSize = mainFormSize;
+                CenterToScreen();
+            }
+            MinimumSize = new Size(400, 300);
+            MaximumSize = screenSize;
+
+            // Size & position adminView
+            adminView.Size = ClientSize;
+            adminView.Location = Point.Empty;
+
+            // SizeChanged handler
+            SizeChanged += (sender, eventArgs) => {
+                if (WindowState == FormWindowState.Minimized) return;
+                adminView.Size = ((Form) sender!).ClientSize;
+            };
         }
 
         private async void AfterLogin(Size mainFormSize) {

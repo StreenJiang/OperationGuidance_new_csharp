@@ -18,14 +18,17 @@ namespace OperationGuidance_new.Views {
         private Image _backShowing;
         private LoginPopUpForm? _loginForm;
         private Action<Size> _afterLogin;
+        private Action<Size>? _afterAdminLogin;
         private Size _mainFormSize;
         private bool _isLoggedIn = false;
+        protected bool _isAdminLogin = false;
         #endregion
 
         public Image Back { get => _back; set => _back = value; }
         public Image BackShowing { get => _backShowing; set => _backShowing = value; }
         public Size MainFormSize { get => _mainFormSize; set => _mainFormSize = value; }
         public Action<Size> AfterLogin { get => _afterLogin; set => _afterLogin = value; }
+        public Action<Size>? AfterAdminLogin { get => _afterAdminLogin; set => _afterAdminLogin = value; }
 
         #region Constructors
         public LoginView(Size size, Image back, Action<Size> afterLogin, Size mainFormSize) {
@@ -51,6 +54,7 @@ namespace OperationGuidance_new.Views {
         public async void ShowLoginForm(bool firstLogin = false) {
             WidgetUtils.RefreshMainSize(MainUtils.GetSettingResolution());
             _isLoggedIn = false;
+            _isAdminLogin = false;
             await Task.Delay(300);
             _loginForm = new(ClickLogin, firstLogin);
             WidgetUtils.MakeControlDraggable(_loginForm.ContentPanel, WidgetUtils.MainForm);
@@ -69,6 +73,7 @@ namespace OperationGuidance_new.Views {
                     }
                 }
             };
+            _loginForm.AddButton("后台管理").Click += (s, e) => ClickAdminLogin();
             _loginForm.AddButton("登录").Click += (s, e) => ClickLogin();
             _loginForm.AddButton("退出").Click += (s, e) => _loginForm.Close();
 
@@ -77,6 +82,13 @@ namespace OperationGuidance_new.Views {
             _loginForm.Show();
 
             void ClickLogin() {
+                _isAdminLogin = false;
+                string account = _loginForm.AccountBox.GetTextBox(0).Box.Text;
+                string password = _loginForm.PasswordBox.GetTextBox(0).Box.Text;
+                CheckLoginByApi(account, password);
+            }
+            void ClickAdminLogin() {
+                _isAdminLogin = true;
                 string account = _loginForm.AccountBox.GetTextBox(0).Box.Text;
                 string password = _loginForm.PasswordBox.GetTextBox(0).Box.Text;
                 CheckLoginByApi(account, password);
@@ -94,17 +106,19 @@ namespace OperationGuidance_new.Views {
         protected void ActionAfterLogin() {
             _isLoggedIn = true;
             _loginForm.Dispose();
-            // Dispose();
             Hide();
             MainUtils.LoginFlag = true;
-            _afterLogin(_mainFormSize);
 
-            // Store current account info
-            if (MainUtils.IsAutoLoginEnabled()) {
-                String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
-                MainUtils.SetAutoLoginInfo(loginInfo);
+            if (_isAdminLogin) {
+                _afterAdminLogin?.Invoke(_mainFormSize);
+            } else {
+                _afterLogin(_mainFormSize);
+
+                if (MainUtils.IsAutoLoginEnabled()) {
+                    String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
+                    MainUtils.SetAutoLoginInfo(loginInfo);
+                }
             }
-
         }
         #endregion
 

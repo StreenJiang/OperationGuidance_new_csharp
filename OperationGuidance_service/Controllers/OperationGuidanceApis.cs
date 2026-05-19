@@ -61,6 +61,8 @@ namespace OperationGuidance_service.Controllers {
         private MatCodeMapWhycService _matCodeMapWhycService;
         [Autowired]
         private PartsBarCodeService _partsBarCodeService;
+        [Autowired]
+        private SqlExecuteRecordService _sqlExecuteRecordService;
 
         #region 用户账户信息相关
         // 根据用户ID查询用户信息
@@ -212,6 +214,92 @@ namespace OperationGuidance_service.Controllers {
             return new() {
                 Succeed = succeed,
             };
+        }
+        // 修改admin密码
+        public string ChangeAdminPassword(ChangeAdminPasswordReq req) {
+            if (!SystemUtils.IsAdmin) {
+                return "权限不足";
+            }
+
+            string sql = $"select * from {_userAccountInfoService.TableName} where {_userAccountInfoService.ConditionWithoutUserId} and account = 'admin'";
+            List<UserAccountInfo> users = _userAccountInfoService.FindBySql(sql);
+
+            if (users.Count == 0) {
+                return "未找到admin账户";
+            }
+
+            UserAccountInfo admin = users[0];
+
+            if (!string.IsNullOrEmpty(req.Password)) {
+                admin.password = SystemUtils.ToMD5String(req.Password);
+            }
+            if (!string.IsNullOrEmpty(req.OperationPassword)) {
+                admin.operation_password = SystemUtils.ToMD5String(req.OperationPassword);
+            }
+
+            _userAccountInfoService.UpdateEntity(admin);
+            return "";
+        }
+        // 重新导入物料码
+        public ReimportPartsBarcodeRsp ReimportPartsBarcode(ReimportPartsBarcodeReq req) {
+            ReimportPartsBarcodeRsp rsp = new();
+
+            if (!SystemUtils.IsAdmin) {
+                rsp.ErrorMessage = "权限不足";
+                return rsp;
+            }
+
+            try {
+                // 1. 删除 parts_bar_code 表数据
+                string deleteSql = $"delete from parts_bar_code where deleted = {(int) YesOrNo.NO}";
+                rsp.DeletedRows = _partsBarCodeService.ExecuteSql(deleteSql);
+
+                // 2. 查询 mission_record 中有 parts_bar_code 的记录
+                string selectSql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
+                List<MissionRecord> records = _missionRecordService.FindBySql(selectSql);
+
+                // 3. 拆分逗号分隔的条码，逐行插入 parts_bar_code
+                List<PartsBarCode> entities = new();
+                foreach (MissionRecord record in records) {
+                    if (string.IsNullOrEmpty(record.parts_bar_code)) continue;
+
+                    string[] barcodes = record.parts_bar_code.Split(',');
+                    foreach (string barcode in barcodes) {
+                        string trimmed = barcode.Trim();
+                        if (string.IsNullOrEmpty(trimmed)) continue;
+
+                        entities.Add(new PartsBarCode {
+                            mission_record_id = record.id,
+                            parts_bar_code = trimmed,
+                        });
+                    }
+                }
+                if (entities.Count > 0) {
+                    rsp.InsertedRows = _partsBarCodeService.AddBatch(entities);
+                }
+
+                // 4. 检查 sql_execute_record 是否有 20250625_1 记录，没有则补上
+                DBTypes dbType = SystemUtils.GetDBTypes();
+                string fileName = dbType switch {
+                    DBTypes.MYSQL => "modify_mysql_20250625_1",
+                    DBTypes.SQLSERVER => "modify_sqlserver_20250625_1",
+                    _ => "modify_sqlite_20250625_1",
+                };
+
+                string checkSql = $"select * from sql_execute_record where file_name = '{fileName}' and deleted = {(int) YesOrNo.NO}";
+                List<SqlExecuteRecord> existingRecords = _sqlExecuteRecordService.FindBySql(checkSql);
+
+                if (existingRecords.Count == 0) {
+                    SqlExecuteRecord newRecord = new() {
+                        file_name = fileName,
+                    };
+                    _sqlExecuteRecordService.AddEntity(newRecord);
+                }
+            } catch (Exception ex) {
+                rsp.ErrorMessage = ex.Message;
+            }
+
+            return rsp;
         }
         #endregion
 
