@@ -238,6 +238,7 @@ namespace OperationGuidance_new {
                 if (c is LoginView) continue;
                 c.Dispose();
             }
+            AllCreated = false;
 
             // Create admin management view
             AdminManagementView adminView = new() {

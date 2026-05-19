@@ -56,12 +56,16 @@ namespace OperationGuidance_new.Views {
             _isLoggedIn = false;
             _isAdminLogin = false;
             await Task.Delay(300);
-            _loginForm = new(ClickLogin, firstLogin);
+            _loginForm = new(ClickLogin, ClickAdminLogin, firstLogin);
             WidgetUtils.MakeControlDraggable(_loginForm.ContentPanel, WidgetUtils.MainForm);
             _loginForm.TitlePanel.Hide();
             _loginForm.KeyDown += (s, e) => {
                 if (e.KeyCode == Keys.Enter) {
-                    ClickLogin();
+                    if (e.Alt) {
+                        ClickAdminLogin();
+                    } else {
+                        ClickLogin();
+                    }
                 }
             };
             _loginForm.FormClosing += (s, e) => {
@@ -136,7 +140,7 @@ namespace OperationGuidance_new.Views {
             public CustomTextBoxGroup AccountBox { get => _accountBox; set => _accountBox = value; }
             public CustomTextBoxGroup PasswordBox { get => _passwordBox; set => _passwordBox = value; }
 
-            public LoginPopUpForm(Action clickLogin, bool firstLogin) {
+            public LoginPopUpForm(Action clickLogin, Action clickAdminLogin, bool firstLogin) {
                 BorderColor = ColorConfigs.COLOR_POP_UP_BORDER;
                 ContentPanel.FlowDirection = FlowDirection.TopDown;
                 ButtonAlignment = HorizontalAlignment.Center;
@@ -171,7 +175,11 @@ namespace OperationGuidance_new.Views {
 
                 void ClickLogin(KeyEventArgs e) {
                     if (e.KeyCode == Keys.Enter) {
-                        clickLogin();
+                        if (e.Alt) {
+                            clickAdminLogin();
+                        } else {
+                            clickLogin();
+                        }
                     }
                 }
             }

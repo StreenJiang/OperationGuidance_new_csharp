@@ -8,169 +8,212 @@ using OperationGuidance_service.Models.Responses;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views {
-    public class AdminManagementView: CustomContentPanel {
+    public class AdminManagementView : CustomContentPanel {
         private CardPanel _passwordCard;
         private CardPanel _reimportCard;
         private TextBox _passwordBox;
         private TextBox _operationPasswordBox;
         private Button _savePwdBtn;
         private Button _reimportBtn;
-        private Panel _loadingOverlay;
-        private Panel _topBar;
+        private Form _loadingOverlay;
+        private Panel _contentArea;
 
         public AdminManagementView() {
             BackColor = ColorConfigs.COLOR_MAIN_FORM_BACKGROUND;
             AutoPadding = false;
             PaddingWithoutBorder = true;
 
-            // Top bar
-            _topBar = new Panel {
-                Parent = this,
-                Height = 44,
-            };
-            _topBar.Dock = DockStyle.Top;
+            _contentArea = new Panel();
+            _contentArea.Parent = this;
 
-            var backBtn = new Button {
-                Parent = _topBar,
-                Text = " ← 返回",
-                FlatStyle = FlatStyle.Flat,
+            // Header: back link + page title on one line
+            var backLink = new Label {
+                Parent = _contentArea,
+                Text = "← 返回",
+                Cursor = Cursors.Hand,
                 AutoSize = true,
+                ForeColor = Color.FromArgb(0x88, 0x88, 0x88),
             };
-            backBtn.FlatAppearance.BorderSize = 0;
-            backBtn.Click += (s, e) => WidgetUtils.BackToLoginView?.Invoke(false);
-            backBtn.Location = new Point(8, 8);
+            backLink.Font = new Font(WidgetsConfigs.SystemFontFamily, 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            backLink.MouseEnter += (s, e) => backLink.ForeColor = Color.FromArgb(0xE8, 0x6C, 0x10);
+            backLink.MouseLeave += (s, e) => backLink.ForeColor = Color.FromArgb(0x88, 0x88, 0x88);
+            backLink.Click += (s, e) => WidgetUtils.BackToLoginView?.Invoke(false);
 
-            var title = new Label {
-                Parent = _topBar,
+            var pageTitle = new Label {
+                Parent = _contentArea,
                 Text = "后台管理",
                 AutoSize = true,
+                ForeColor = Color.FromArgb(0x33, 0x33, 0x33),
             };
-            title.Font = new Font(WidgetsConfigs.SystemFontFamily, 16F, FontStyle.Bold, GraphicsUnit.Pixel);
-            title.Location = new Point(8, 8);
-            _topBar.Resize += (s, e) => {
-                title.Location = new Point((_topBar.Width - title.Width) / 2, 8);
-            };
+            pageTitle.Font = new Font(WidgetsConfigs.SystemFontFamily, 22F, FontStyle.Bold, GraphicsUnit.Pixel);
 
-            // Card 1: Change admin password
+            // Card 1
             _passwordCard = new CardPanel {
-                Parent = this,
-                Width = 480,
-                Height = 200,
+                Parent = _contentArea,
+                Title = "修改管理员密码",
+                Width = 800,
+                Height = 260,
             };
             BuildPasswordCard();
 
-            // Card 2: Re-import parts barcode
+            // Card 2
             _reimportCard = new CardPanel {
-                Parent = this,
-                Width = 480,
-                Height = 170,
+                Parent = _contentArea,
+                Title = "重新导入物料码",
+                Width = 800,
+                Height = 190,
             };
             BuildReimportCard();
 
-            // Loading overlay (hidden initially)
-            _loadingOverlay = new Panel {
-                Parent = this,
-                Visible = false,
-                BackColor = Color.FromArgb(180, 0, 0, 0),
+            // Loading overlay — borderless semi-transparent Form
+            _loadingOverlay = new Form {
+                FormBorderStyle = FormBorderStyle.None,
+                BackColor = Color.Black,
+                Opacity = 0.4,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,
             };
-            var loadingLabel = new Label {
+            var loadingPopup = new Panel {
                 Parent = _loadingOverlay,
+                BackColor = Color.White,
+                Width = 400,
+                Height = 120,
+            };
+            void ApplyPopupRegion() {
+                if (loadingPopup.Width > 0 && loadingPopup.Height > 0) {
+                    loadingPopup.Region = new Region(
+                        WidgetUtils.RoundedRect(
+                            new Rectangle(0, 0, loadingPopup.Width - 1, loadingPopup.Height - 1), 8));
+                }
+            }
+            ApplyPopupRegion();
+            loadingPopup.Resize += (s, e) => ApplyPopupRegion();
+
+            var loadingLabel = new Label {
+                Parent = loadingPopup,
                 Text = "正在重新导入物料码，请稍候...",
-                ForeColor = Color.White,
+                ForeColor = Color.FromArgb(0x44, 0x44, 0x44),
                 AutoSize = true,
             };
             var marquee = new ProgressBar {
-                Parent = _loadingOverlay,
+                Parent = loadingPopup,
                 Style = ProgressBarStyle.Marquee,
                 Width = 300,
                 Height = 24,
                 MarqueeAnimationSpeed = 30,
             };
             _loadingOverlay.Resize += (s, e) => {
-                loadingLabel.Location = new Point((_loadingOverlay.Width - loadingLabel.Width) / 2, _loadingOverlay.Height / 2 - 30);
-                marquee.Location = new Point((_loadingOverlay.Width - marquee.Width) / 2, _loadingOverlay.Height / 2 + 10);
+                loadingPopup.Location = new Point(
+                    (_loadingOverlay.Width - loadingPopup.Width) / 2,
+                    (_loadingOverlay.Height - loadingPopup.Height) / 2);
+                loadingLabel.Location = new Point(
+                    (loadingPopup.Width - loadingLabel.Width) / 2, 28);
+                marquee.Location = new Point(
+                    (loadingPopup.Width - marquee.Width) / 2, 60);
             };
 
-            SizeChanged += (s, e) => LayoutCards();
             LayoutCards();
+
+            _contentArea.SizeChanged += (s, e) => LayoutCards();
+        }
+
+        protected override void OnLayout(LayoutEventArgs e) {
+            base.OnLayout(e);
+            _contentArea.Size = ClientSize;
+            _contentArea.Location = Point.Empty;
         }
 
         private void LayoutCards() {
-            int padding = WidgetUtils.ContentInnerBorderMargin();
-            int cardWidth = Math.Min(480, Width - padding * 4);
-            int topY = _topBar.Bottom + 20;
+            int areaW = _contentArea.Width;
+            int areaH = _contentArea.Height;
+            int hPad = WidgetUtils.ContentInnerBorderMargin(areaW, areaH);
+            int cardWidth = Math.Min(800, areaW - hPad * 2);
+            int cardX = hPad;
+
+            // Header: back link left, page title right-aligned with card edge
+            Control backLink = _contentArea.Controls[0];
+            Control pageTitle = _contentArea.Controls[1];
+
+            pageTitle.Location = new Point(cardX + cardWidth - pageTitle.Width, hPad);
+            backLink.Location = new Point(hPad, pageTitle.Top + (pageTitle.Height - backLink.Height) / 2);
+
+            // Cards: left-aligned with header
+            int topY = pageTitle.Bottom + 28;
 
             _passwordCard.Width = cardWidth;
-            _passwordCard.Location = new Point((Width - cardWidth) / 2, topY);
+            _passwordCard.Location = new Point(cardX, topY);
 
             _reimportCard.Width = cardWidth;
-            _reimportCard.Location = new Point((Width - cardWidth) / 2, _passwordCard.Bottom + 24);
+            _reimportCard.Location = new Point(cardX, _passwordCard.Bottom + 24);
         }
 
         private void BuildPasswordCard() {
-            var title = new Label {
-                Parent = _passwordCard,
-                Text = "修改管理员密码",
-                AutoSize = true,
-            };
-            title.Font = new Font(WidgetsConfigs.SystemFontFamily, 14F, FontStyle.Bold, GraphicsUnit.Pixel);
-            title.Location = new Point(24, 20);
-
-            int y = 56;
+            var pad = _passwordCard.ContentPadding;
             int labelW = 80;
             int inputW = 260;
-            int inputH = WidgetUtils.TextOrComboBoxHeight();
+            int rowH = WidgetUtils.TextOrComboBoxHeight();
+            int rowGap = 18;
+            int btnGap = 22;
+            int y = pad.Top;
 
-            new Label {
-                Parent = _passwordCard, Text = "登录密码", AutoSize = true,
-                Location = new Point(24, y + 4),
+            var label1 = new Label {
+                Parent = _passwordCard,
+                Text = "登录密码",
+                AutoSize = true,
             };
+            label1.Location = new Point(pad.Left, y + (rowH - label1.Height) / 2);
             _passwordBox = new TextBox {
-                Parent = _passwordCard, Width = inputW, Height = inputH,
-                Location = new Point(24 + labelW, y),
+                Parent = _passwordCard,
+                Width = inputW,
+                Height = rowH,
+                Location = new Point(pad.Left + labelW, y),
                 PasswordChar = '*',
             };
 
-            y += inputH + 12;
-            new Label {
-                Parent = _passwordCard, Text = "操作密码", AutoSize = true,
-                Location = new Point(24, y + 4),
+            y += rowH + rowGap;
+
+            var label2 = new Label {
+                Parent = _passwordCard,
+                Text = "操作密码",
+                AutoSize = true,
             };
+            label2.Location = new Point(pad.Left, y + (rowH - label2.Height) / 2);
             _operationPasswordBox = new TextBox {
-                Parent = _passwordCard, Width = inputW, Height = inputH,
-                Location = new Point(24 + labelW, y),
+                Parent = _passwordCard,
+                Width = inputW,
+                Height = rowH,
+                Location = new Point(pad.Left + labelW, y),
                 PasswordChar = '*',
             };
+
+            y += rowH + btnGap;
 
             _savePwdBtn = new Button {
-                Parent = _passwordCard, Text = "保存修改", AutoSize = true,
-                Location = new Point(24 + labelW + inputW - 80, y + inputH + 16),
+                Parent = _passwordCard,
+                Text = "保存修改",
+                AutoSize = true,
             };
+            _savePwdBtn.Location = new Point(pad.Left + labelW + inputW - _savePwdBtn.Width, y);
             _savePwdBtn.Click += OnSavePassword;
         }
 
         private void BuildReimportCard() {
-            var title = new Label {
-                Parent = _reimportCard,
-                Text = "重新导入物料码",
-                AutoSize = true,
-            };
-            title.Font = new Font(WidgetsConfigs.SystemFontFamily, 14F, FontStyle.Bold, GraphicsUnit.Pixel);
-            title.Location = new Point(24, 20);
+            var pad = _reimportCard.ContentPadding;
 
             var desc = new Label {
                 Parent = _reimportCard,
                 Text = "将清空 parts_bar_code 表，并从 mission_record 表\n重新拆分导入物料码数据。数据量大时可能耗时较长。",
                 AutoSize = true,
-                Location = new Point(24, 56),
+                Font = new Font(WidgetsConfigs.SystemFontFamily, 14F, FontStyle.Regular, GraphicsUnit.Pixel),
+                Location = new Point(pad.Left, pad.Top),
             };
 
             _reimportBtn = new Button {
                 Parent = _reimportCard,
                 Text = "重新导入物料码",
                 AutoSize = true,
-                Location = new Point(24, 110),
             };
+            _reimportBtn.Location = new Point(pad.Left, desc.Bottom + 22);
             _reimportBtn.Click += OnReimport;
         }
 
@@ -233,11 +276,13 @@ namespace OperationGuidance_new.Views {
         }
 
         private void ShowLoadingOverlay(bool show) {
-            _loadingOverlay.Visible = show;
-            _loadingOverlay.BringToFront();
             if (show) {
-                _loadingOverlay.Size = Size;
-                _loadingOverlay.Location = Point.Empty;
+                Form mainForm = (Form) TopLevelControl!;
+                _loadingOverlay.Location = mainForm.PointToScreen(Point.Empty);
+                _loadingOverlay.Size = mainForm.ClientSize;
+                _loadingOverlay.Show();
+            } else {
+                _loadingOverlay.Hide();
             }
         }
     }
