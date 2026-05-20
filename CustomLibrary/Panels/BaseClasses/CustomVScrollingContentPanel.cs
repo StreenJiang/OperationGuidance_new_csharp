@@ -153,8 +153,11 @@ namespace CustomLibrary.Panels.BaseClasses {
         }
 
         public override void VisibleToTrue() {
+            _contentPanel.VisibleToTrue();
             if (_doVisibleToTrue == null) {
-                Size = new(Parent.Width - Parent.Padding.Size.Width, Parent.Height - Parent.Padding.Size.Height);
+                if (Parent != null) {
+                    Size = new(Parent.Width - Parent.Padding.Size.Width, Parent.Height - Parent.Padding.Size.Height);
+                }
             } else {
                 _doVisibleToTrue();
             }

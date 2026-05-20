@@ -207,8 +207,10 @@ namespace CustomLibrary.Forms {
             // Sometimes cursor will hide and don't know why for now
             Cursor.Show();
             BeginInvoke(async () => {
-                await Task.Delay(50); // 确保窗口和内部组件完全准备好后再调用AfterShown
-                AfterShown();
+                await Task.Delay(50);
+                if (IsHandleCreated && !IsDisposed) {
+                    AfterShown();
+                }
             });
             base.Hide();
             _popUpFormBackboard.Show();
@@ -230,8 +232,10 @@ namespace CustomLibrary.Forms {
         public new DialogResult ShowDialog() {
             Cursor.Show();
             BeginInvoke(async () => {
-                await Task.Delay(50); // 确保窗口和内部组件完全准备好后再调用AfterShown
-                AfterShown();
+                await Task.Delay(50);
+                if (IsHandleCreated && !IsDisposed) {
+                    AfterShown();
+                }
             });
             base.Hide();
             _popUpFormBackboard.Show();
