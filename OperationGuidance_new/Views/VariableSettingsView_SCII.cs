@@ -33,11 +33,11 @@ namespace OperationGuidance_new.Views {
             CommonButton testOnButton = _buzzerTestButtons.GetButton(0);
             testOnButton.Label = "测试开";
             testOnButton.MouseUp += (s, e) => {
-                BuzzerController.TurnOn();
+                _ = BuzzerController.TurnOnAsync();
                 WidgetUtils.ShowNoticePopUp("蜂鸣器已启动");
             };
             _buzzerTestButtons.AddButton("测试关").MouseUp += (s, e) => {
-                BuzzerController.TurnOff();
+                _ = BuzzerController.TurnOffAsync();
                 WidgetUtils.ShowNoticePopUp("蜂鸣器已关闭");
             };
             _buzzerEnabledToggle.CheckedChanged += (s, e) => {

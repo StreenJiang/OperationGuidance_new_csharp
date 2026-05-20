@@ -1171,13 +1171,13 @@ namespace OperationGuidance_new.Views {
         protected override void MissionNGConfirmPopUp(string msg) {
             bool buzzerEnabled = MainUtils.IsBuzzerEnabled();
             if (buzzerEnabled) {
-                BuzzerController.TurnOn();
+                _ = BuzzerController.TurnOnAsync();
             }
             try {
                 base.MissionNGConfirmPopUp(msg);
             } finally {
                 if (buzzerEnabled) {
-                    BuzzerController.TurnOff();
+                    _ = BuzzerController.TurnOffAsync();
                 }
             }
         }
