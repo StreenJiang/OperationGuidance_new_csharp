@@ -249,34 +249,51 @@ namespace OperationGuidance_service.Controllers {
                 return rsp;
             }
 
+            using DbConnection conn = DbConnector.GetConnection();
+            DbTransaction transaction = conn.BeginTransaction();
+            _partsBarCodeService.UseConnection(conn, transaction);
+            _missionRecordService.UseConnection(conn, transaction);
+            _sqlExecuteRecordService.UseConnection(conn, transaction);
             try {
                 // 1. 删除 parts_bar_code 表数据
                 string deleteSql = $"delete from parts_bar_code where deleted = {(int) YesOrNo.NO}";
                 rsp.DeletedRows = _partsBarCodeService.ExecuteSql(deleteSql);
 
-                // 2. 查询 mission_record 中有 parts_bar_code 的记录
-                string selectSql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
-                List<MissionRecord> records = _missionRecordService.FindBySql(selectSql);
+                // 2. 分页查询 mission_record 中有 parts_bar_code 的记录
+                string baseSelectSql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
+                const int batchSize = 1000;
+                int offset = 0;
+                int totalInserted = 0;
 
-                // 3. 拆分逗号分隔的条码，逐行插入 parts_bar_code
-                List<PartsBarCode> entities = new();
-                foreach (MissionRecord record in records) {
-                    if (string.IsNullOrEmpty(record.parts_bar_code)) continue;
+                while (true) {
+                    string selectSql = $"{baseSelectSql} LIMIT {batchSize} OFFSET {offset}";
+                    List<MissionRecord> records = _missionRecordService.FindBySql(selectSql);
+                    if (records.Count == 0) break;
 
-                    string[] barcodes = record.parts_bar_code.Split(',');
-                    foreach (string barcode in barcodes) {
-                        string trimmed = barcode.Trim();
-                        if (string.IsNullOrEmpty(trimmed)) continue;
+                    // 3. 拆分逗号分隔的条码
+                    List<PartsBarCode> entities = new();
+                    foreach (MissionRecord record in records) {
+                        if (string.IsNullOrEmpty(record.parts_bar_code)) continue;
 
-                        entities.Add(new PartsBarCode {
-                            mission_record_id = record.id,
-                            parts_bar_code = trimmed,
-                        });
+                        string[] barcodes = record.parts_bar_code.Split(',');
+                        foreach (string barcode in barcodes) {
+                            string trimmed = barcode.Trim();
+                            if (string.IsNullOrEmpty(trimmed)) continue;
+
+                            entities.Add(new PartsBarCode {
+                                mission_record_id = record.id,
+                                parts_bar_code = trimmed,
+                            });
+                        }
                     }
+
+                    if (entities.Count > 0) {
+                        totalInserted += _partsBarCodeService.AddBatch(entities);
+                    }
+
+                    offset += batchSize;
                 }
-                if (entities.Count > 0) {
-                    rsp.InsertedRows = _partsBarCodeService.AddBatch(entities);
-                }
+                rsp.InsertedRows = totalInserted;
 
                 // 4. 检查 sql_execute_record 是否有 20250625_1 记录，没有则补上
                 DBTypes dbType = SystemUtils.GetDBTypes();
@@ -295,8 +312,15 @@ namespace OperationGuidance_service.Controllers {
                     };
                     _sqlExecuteRecordService.AddEntity(newRecord);
                 }
+
+                transaction.Commit();
             } catch (Exception ex) {
+                transaction.Rollback();
                 rsp.ErrorMessage = ex.Message;
+            } finally {
+                _partsBarCodeService.ReleaseConnection();
+                _missionRecordService.ReleaseConnection();
+                _sqlExecuteRecordService.ReleaseConnection();
             }
 
             return rsp;

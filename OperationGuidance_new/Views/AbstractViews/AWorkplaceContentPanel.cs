@@ -20,6 +20,7 @@ using OperationGuidance_new.Views.SubViews;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Utils;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -1449,6 +1450,34 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 is_redo = _isRedo,
             };
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+            // 异步写入 parts_bar_code 新表（v2.1.x 重码校验依赖此表）
+            if (_barCodeObj.PartsBarCodes.Count > 0) {
+                int missionRecordId = _missionRecord.id;
+                List<string> partsBarCodes = new(_barCodeObj.PartsBarCodes);
+                _ = Task.Run(async () => {
+                    const int maxRetries = 3;
+                    for (int attempt = 0; attempt < maxRetries; attempt++) {
+                        try {
+                            foreach (string barCode in partsBarCodes) {
+                                PartsBarCodeDTO dto = new() {
+                                    mission_record_id = missionRecordId,
+                                    parts_bar_code = barCode,
+                                };
+                                _apis.AddOrUpdatePartsBarCode(new AddOrUpdatePartsBarCodeReq(dto));
+                            }
+                            logger.Info($"Parts barcodes synced to new table: mission_record_id={missionRecordId}, count={partsBarCodes.Count}");
+                            return;
+                        } catch (Exception ex) {
+                            logger.Warn($"Failed to sync parts barcodes (attempt {attempt + 1}/{maxRetries}): mission_record_id={missionRecordId}, e={ex.Message}");
+                            if (attempt < maxRetries - 1) {
+                                await Task.Delay((int)Math.Pow(2, attempt) * 1000);
+                            }
+                        }
+                    }
+                    logger.Error($"All {maxRetries} retries failed to sync parts barcodes to new table: mission_record_id={missionRecordId}, barcodes=[{string.Join(", ", partsBarCodes)}]");
+                });
+            }
 
             // Send barcode to PF series tools
             List<int> toolIds = new();
