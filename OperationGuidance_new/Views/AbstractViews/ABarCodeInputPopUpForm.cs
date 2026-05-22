@@ -319,7 +319,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
-                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(new(null) { ProductBarCode = barCode }).Yes) {
+                var redoReq = new CheckIfBarCodeExistsInMissionRecordReq(null) {
+                    ProductBarCode = barCode,
+                    ExcludeMissionIds = _workplace.GetPredecessorChainMissionIds(_mission.id),
+                };
+                if (checkPassed && _workplace._checkRedo && _workplace.Apis.CheckIfBarCodeExistsInMissionRecord(redoReq).Yes) {
                     logger.Info($"Checking REDO from recordings for matched mission id [{mission.id}], barcode = [{barCode}]...");
 
                     bool needRedo;

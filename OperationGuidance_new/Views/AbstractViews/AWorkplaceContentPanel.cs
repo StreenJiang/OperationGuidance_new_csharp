@@ -122,6 +122,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected List<int>? _ruleIdsCheckedCached;
         protected bool _barcodeRelatedDone;
 
+        // 前道工序链缓存: mission_id → 所有祖先任务ID集合
+        protected Dictionary<int, HashSet<int>> _predecessorChains = new();
+
         // 设备相关
         protected List<DeviceBlock> _deviceBlocks;
         protected bool _toolControlNeedAdminPasswor;
@@ -784,8 +787,23 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         }
                     }
                 }
-                // 检查匹配规则中所对应的任务是否还存在
-                List<int> missionIds = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs.Select(m => m.id).ToList();
+                // 检查匹配规则中所对应的任务是否还存在，同时构建前道工序链缓存
+                List<ProductMissionDTO> missions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                List<int> missionIds = missions.Select(m => m.id).ToList();
+
+                // 构建前道工序链缓存（本地构建后原子交换，避免跨线程读写冲突）
+                var chains = new Dictionary<int, HashSet<int>>();
+                var predecessorMap = missions.ToDictionary(m => m.id, m => m.predecessor_mission_id);
+                foreach (var m in missions) {
+                    var ancestors = new HashSet<int>();
+                    int? cursor = m.predecessor_mission_id;
+                    while (cursor != null && cursor > 0 && !ancestors.Contains(cursor.Value)) {
+                        ancestors.Add(cursor.Value);
+                        cursor = predecessorMap.ContainsKey(cursor.Value) ? predecessorMap[cursor.Value] : null;
+                    }
+                    chains[m.id] = ancestors;
+                }
+                _predecessorChains = chains;
                 Dictionary<int, List<BarCodeMatchingRuleDTO>>.Enumerator productCodes = _productBarCodeMatchingRules.GetEnumerator();
                 while (productCodes.MoveNext()) {
                     int currId = productCodes.Current.Key;
@@ -1205,6 +1223,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
 
             return _rulesExcluded;
+        }
+
+        // 获取前道工序链中所有祖先任务ID
+        public List<int> GetPredecessorChainMissionIds(int missionId) {
+            return _predecessorChains.TryGetValue(missionId, out var ids) ? ids.ToList() : new();
         }
 
         // 激活任务

@@ -6,6 +6,7 @@ namespace OperationGuidance_service.Models.Requests {
         public string? PartsBarCode { get; set; }
         public int? MissionId { get; set; }
         public int? MissionResult { get; set; }
+        public List<int>? ExcludeMissionIds { get; set; }
 
         public CheckIfBarCodeExistsInMissionRecordReq(int? missionId, int? missionResult = null) {
             MissionId = missionId;

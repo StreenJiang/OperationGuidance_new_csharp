@@ -958,6 +958,10 @@ namespace OperationGuidance_service.Controllers {
                 parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
             }
 
+            if (req.ExcludeMissionIds != null && req.ExcludeMissionIds.Count > 0) {
+                sql += $" and mission_id not in ({string.Join(",", req.ExcludeMissionIds)})";
+            }
+
             List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql, parameters);
             CheckIfBarCodeExistsInMissionRecordRsp rsp = new() {
                 Yes = missionRecords.Count > 0,
