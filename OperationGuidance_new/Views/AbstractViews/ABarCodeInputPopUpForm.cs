@@ -6,6 +6,7 @@ using CustomLibrary.Utils;
 using log4net;
 using Newtonsoft.Json;
 using OperationGuidance_new.Constants;
+using OperationGuidance_new.Extensions;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.SubViews;
 using OperationGuidance_service.Constants;
@@ -725,7 +726,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected override void AfterShown() {
             base.AfterShown();
             // 弹窗显示后异步执行条码校验，避免阻塞弹窗显示
-            BeginInvoke(async () => {
+            this.SafeInvoke(async () => {
                 if (_barCode != null) {
                     await Task.Delay(500);
                     ValidateBarCode(_barCode);

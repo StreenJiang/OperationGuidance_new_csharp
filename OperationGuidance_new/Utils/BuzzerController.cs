@@ -13,27 +13,30 @@ namespace OperationGuidance_new.Utils {
         private static string ExePath =>
             Path.Combine(Application.StartupPath, "didi_control", "DiDi.exe");
 
-        public static void TurnOn() {
-            SendCommand(LightOnCmd);
-            SendCommand(SoundOnCmd);
+        public static async Task TurnOnAsync() {
+            await SendCommandAsync(LightOnCmd);
+            await SendCommandAsync(SoundOnCmd);
         }
 
-        public static void TurnOff() {
-            SendCommand(LightOffCmd);
-            SendCommand(SoundOffCmd);
+        public static async Task TurnOffAsync() {
+            await SendCommandAsync(LightOffCmd);
+            await SendCommandAsync(SoundOffCmd);
         }
 
-        private static void SendCommand(string command) {
+        private static async Task SendCommandAsync(string command) {
             try {
                 if (!File.Exists(ExePath)) {
                     logger.Warn($"[BuzzerController] DiDi.exe not found at: {ExePath}");
                     return;
                 }
-                using var _ = Process.Start(new ProcessStartInfo {
-                    FileName = ExePath,
-                    Arguments = $"POSTCOMMAND={command}",
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    CreateNoWindow = true,
+                await Task.Run(() => {
+                    using var process = Process.Start(new ProcessStartInfo {
+                        FileName = ExePath,
+                        Arguments = $"POSTCOMMAND={command}",
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        CreateNoWindow = true,
+                    });
+                    process?.WaitForExit(3000);
                 });
             } catch (Exception ex) {
                 logger.Error($"[BuzzerController] Failed to send command '{command}'", ex);
