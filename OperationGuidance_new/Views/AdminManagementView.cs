@@ -15,7 +15,8 @@ namespace OperationGuidance_new.Views {
         private TextBox _operationPasswordBox;
         private Button _savePwdBtn;
         private Button _reimportBtn;
-        private Form _loadingOverlay;
+        private Form _overlayBackdrop;
+        private Form _overlayPopup;
         private Panel _contentArea;
 
         public AdminManagementView() {
@@ -65,51 +66,56 @@ namespace OperationGuidance_new.Views {
             };
             BuildReimportCard();
 
-            // Loading overlay — borderless semi-transparent Form
-            _loadingOverlay = new Form {
+            // Loading overlay — two-form: semi-transparent backdrop + opaque popup
+            _overlayBackdrop = new Form {
                 FormBorderStyle = FormBorderStyle.None,
                 BackColor = Color.Black,
                 Opacity = 0.4,
                 ShowInTaskbar = false,
                 StartPosition = FormStartPosition.Manual,
+                TopMost = true,
             };
-            var loadingPopup = new Panel {
-                Parent = _loadingOverlay,
+            _overlayBackdrop.FormClosing += (s, e) => e.Cancel = true;
+
+            _overlayPopup = new Form {
+                FormBorderStyle = FormBorderStyle.None,
                 BackColor = Color.White,
+                Opacity = 1.0,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,
+                TopMost = true,
                 Width = 400,
                 Height = 120,
             };
+            _overlayPopup.FormClosing += (s, e) => e.Cancel = true;
             void ApplyPopupRegion() {
-                if (loadingPopup.Width > 0 && loadingPopup.Height > 0) {
-                    loadingPopup.Region = new Region(
+                if (_overlayPopup.Width > 0 && _overlayPopup.Height > 0) {
+                    _overlayPopup.Region = new Region(
                         WidgetUtils.RoundedRect(
-                            new Rectangle(0, 0, loadingPopup.Width - 1, loadingPopup.Height - 1), 8));
+                            new Rectangle(0, 0, _overlayPopup.Width - 1, _overlayPopup.Height - 1), 8));
                 }
             }
             ApplyPopupRegion();
-            loadingPopup.Resize += (s, e) => ApplyPopupRegion();
+            _overlayPopup.Resize += (s, e) => ApplyPopupRegion();
 
             var loadingLabel = new Label {
-                Parent = loadingPopup,
+                Parent = _overlayPopup,
                 Text = "正在重新导入物料码，请稍候...",
                 ForeColor = Color.FromArgb(0x44, 0x44, 0x44),
                 AutoSize = true,
             };
             var marquee = new ProgressBar {
-                Parent = loadingPopup,
+                Parent = _overlayPopup,
                 Style = ProgressBarStyle.Marquee,
                 Width = 300,
                 Height = 24,
                 MarqueeAnimationSpeed = 30,
             };
-            _loadingOverlay.Resize += (s, e) => {
-                loadingPopup.Location = new Point(
-                    (_loadingOverlay.Width - loadingPopup.Width) / 2,
-                    (_loadingOverlay.Height - loadingPopup.Height) / 2);
+            _overlayPopup.Resize += (s, e) => {
                 loadingLabel.Location = new Point(
-                    (loadingPopup.Width - loadingLabel.Width) / 2, 28);
+                    (_overlayPopup.Width - loadingLabel.Width) / 2, 28);
                 marquee.Location = new Point(
-                    (loadingPopup.Width - marquee.Width) / 2, 60);
+                    (_overlayPopup.Width - marquee.Width) / 2, 60);
             };
 
             LayoutCards();
@@ -278,11 +284,18 @@ namespace OperationGuidance_new.Views {
         private void ShowLoadingOverlay(bool show) {
             if (show) {
                 Form mainForm = (Form) TopLevelControl!;
-                _loadingOverlay.Location = mainForm.PointToScreen(Point.Empty);
-                _loadingOverlay.Size = mainForm.ClientSize;
-                _loadingOverlay.Show();
+                _overlayBackdrop.Location = mainForm.PointToScreen(Point.Empty);
+                _overlayBackdrop.Size = mainForm.ClientSize;
+                _overlayBackdrop.Show();
+                _overlayPopup.Location = new Point(
+                    _overlayBackdrop.Location.X + (_overlayBackdrop.Width - _overlayPopup.Width) / 2,
+                    _overlayBackdrop.Location.Y + (_overlayBackdrop.Height - _overlayPopup.Height) / 2);
+                _overlayPopup.Show();
             } else {
-                _loadingOverlay.Hide();
+                _overlayPopup.Hide();
+                _overlayBackdrop.Hide();
+                _overlayPopup.Dispose();
+                _overlayBackdrop.Dispose();
             }
         }
     }
