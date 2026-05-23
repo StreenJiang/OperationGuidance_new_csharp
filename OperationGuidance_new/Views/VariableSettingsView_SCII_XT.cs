@@ -50,14 +50,14 @@ namespace OperationGuidance_new.Views {
         private CommonButtonGroup _printerTestBtnGroup;
 
         // Printer info fields
-        private CustomTextBoxGroup _partCodeBox;
-        private string _partCodeOriginal;
-        private CustomTextBoxGroup _venderCodeBox;
-        private string _venderCodeOriginal;
-        private CustomTextBoxGroup _softVersionBox;
-        private string _softVersionOriginal;
-        private CustomTextBoxGroup _hardVersionBox;
-        private string _hardVersionOriginal;
+        private CustomTextBoxGroup _supplierNameBox;
+        private string _supplierNameOriginal;
+        private CustomTextBoxGroup _projectNameBox;
+        private string _projectNameOriginal;
+        private CustomTextBoxGroup _manufactureLocationBox;
+        private string _manufactureLocationOriginal;
+        private CustomTextBoxGroup _partNumberBox;
+        private string _partNumberOriginal;
 
         // MES settings panel
         private CustomContentPanel _mesSettingsPanel;
@@ -347,22 +347,22 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
-            _partCodeBox = new("零部件编码") {
+            _supplierNameBox = new("供应商名称") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
             };
 
-            _venderCodeBox = new("供应商编码") {
+            _projectNameBox = new("项目名称") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
             };
 
-            _softVersionBox = new("软件版本") {
+            _manufactureLocationBox = new("制造地代码") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
             };
 
-            _hardVersionBox = new("硬件版本") {
+            _partNumberBox = new("零件号") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
             };
@@ -394,10 +394,10 @@ namespace OperationGuidance_new.Views {
             _enablePrinter.CheckedChanged += (s, e) => {
                 _printerName.Enabled = _enablePrinter.Checked;
                 _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
-                _partCodeBox.Enabled = _enablePrinter.Checked;
-                _venderCodeBox.Enabled = _enablePrinter.Checked;
-                _softVersionBox.Enabled = _enablePrinter.Checked;
-                _hardVersionBox.Enabled = _enablePrinter.Checked;
+                _supplierNameBox.Enabled = _enablePrinter.Checked;
+                _projectNameBox.Enabled = _enablePrinter.Checked;
+                _manufactureLocationBox.Enabled = _enablePrinter.Checked;
+                _partNumberBox.Enabled = _enablePrinter.Checked;
             };
             _enableSecondPrinter.CheckedChanged += (s, e) => {
                 _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
@@ -433,10 +433,10 @@ namespace OperationGuidance_new.Views {
             printerConfig.second_barcode_length = int.TryParse(_secondBarcodeLength?.GetTextBox(0)?.Box?.Text, out int length) ? length : 0;
 
             // Save printer info
-            printerConfig.part_code = _partCodeBox.GetTextBox(0).Box.Text;
-            printerConfig.vender_code = _venderCodeBox.GetTextBox(0).Box.Text;
-            printerConfig.soft_version = _softVersionBox.GetTextBox(0).Box.Text;
-            printerConfig.hard_version = _hardVersionBox.GetTextBox(0).Box.Text;
+            printerConfig.supplier_name = _supplierNameBox.GetTextBox(0).Box.Text;
+            printerConfig.project_name = _projectNameBox.GetTextBox(0).Box.Text;
+            printerConfig.manufacture_location = _manufactureLocationBox.GetTextBox(0).Box.Text;
+            printerConfig.part_number = _partNumberBox.GetTextBox(0).Box.Text;
 
             ConfigUtils.SaveConfig(printerConfig);
 
@@ -447,10 +447,10 @@ namespace OperationGuidance_new.Views {
             _secondBarcodeLengthOriginal = printerConfig.second_barcode_length;
 
             // Update original values for unsaved change detection
-            _partCodeOriginal = printerConfig.part_code;
-            _venderCodeOriginal = printerConfig.vender_code;
-            _softVersionOriginal = printerConfig.soft_version;
-            _hardVersionOriginal = printerConfig.hard_version;
+            _supplierNameOriginal = printerConfig.supplier_name;
+            _projectNameOriginal = printerConfig.project_name;
+            _manufactureLocationOriginal = printerConfig.manufacture_location;
+            _partNumberOriginal = printerConfig.part_number;
 
             // Save MES settings
             SaveMesSettings();
@@ -576,15 +576,15 @@ namespace OperationGuidance_new.Views {
             _printerName.Size = new(boxWidth, BoxNBtnHeight);
             _printerName.Margin = new(0, 0, 0, 0);
             // Resize box - second row
-            _partCodeBox.Size = new(boxWidth, BoxNBtnHeight);
-            _partCodeBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            _venderCodeBox.Size = new(boxWidth, BoxNBtnHeight);
-            _venderCodeBox.Margin = new(0, boxVMargin, 0, 0);
+            _supplierNameBox.Size = new(boxWidth, BoxNBtnHeight);
+            _supplierNameBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _projectNameBox.Size = new(boxWidth, BoxNBtnHeight);
+            _projectNameBox.Margin = new(0, boxVMargin, 0, 0);
             // Resize box - third row
-            _softVersionBox.Size = new(boxWidth, BoxNBtnHeight);
-            _softVersionBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            _hardVersionBox.Size = new(boxWidth, BoxNBtnHeight);
-            _hardVersionBox.Margin = new(0, boxVMargin, 0, 0);
+            _manufactureLocationBox.Size = new(boxWidth, BoxNBtnHeight);
+            _manufactureLocationBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            _partNumberBox.Size = new(boxWidth, BoxNBtnHeight);
+            _partNumberBox.Margin = new(0, boxVMargin, 0, 0);
             // Resize box - fourth row
             _enableSecondPrinter.Size = new(boxWidth, BoxNBtnHeight);
             _enableSecondPrinter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
@@ -734,10 +734,10 @@ namespace OperationGuidance_new.Views {
                     // Set combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
                     _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
-                    _partCodeBox.Enabled = _enablePrinter.Checked;
-                    _venderCodeBox.Enabled = _enablePrinter.Checked;
-                    _softVersionBox.Enabled = _enablePrinter.Checked;
-                    _hardVersionBox.Enabled = _enablePrinter.Checked;
+                    _supplierNameBox.Enabled = _enablePrinter.Checked;
+                    _projectNameBox.Enabled = _enablePrinter.Checked;
+                    _manufactureLocationBox.Enabled = _enablePrinter.Checked;
+                    _partNumberBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
@@ -758,10 +758,10 @@ namespace OperationGuidance_new.Views {
                         : "";
 
                     // Load printer info
-                    _partCodeBox.GetTextBox(0).Box.Text = printerConfig.part_code;
-                    _venderCodeBox.GetTextBox(0).Box.Text = printerConfig.vender_code;
-                    _softVersionBox.GetTextBox(0).Box.Text = printerConfig.soft_version;
-                    _hardVersionBox.GetTextBox(0).Box.Text = printerConfig.hard_version;
+                    _supplierNameBox.GetTextBox(0).Box.Text = printerConfig.supplier_name;
+                    _projectNameBox.GetTextBox(0).Box.Text = printerConfig.project_name;
+                    _manufactureLocationBox.GetTextBox(0).Box.Text = printerConfig.manufacture_location;
+                    _partNumberBox.GetTextBox(0).Box.Text = printerConfig.part_number;
 
                     // Initialize Original values for unsaved change detection
                     _enablePrinterOriginal = printerConfig.enabled.ToYesOrNoBool();
@@ -769,10 +769,10 @@ namespace OperationGuidance_new.Views {
                     _printerNameOriginal = printerConfig.printer_name;
                     _secondPrinterNameOriginal = printerConfig.second_printer_name;
                     _secondBarcodeLengthOriginal = printerConfig.second_barcode_length;
-                    _partCodeOriginal = printerConfig.part_code;
-                    _venderCodeOriginal = printerConfig.vender_code;
-                    _softVersionOriginal = printerConfig.soft_version;
-                    _hardVersionOriginal = printerConfig.hard_version;
+                    _supplierNameOriginal = printerConfig.supplier_name;
+                    _projectNameOriginal = printerConfig.project_name;
+                    _manufactureLocationOriginal = printerConfig.manufacture_location;
+                    _partNumberOriginal = printerConfig.part_number;
 
                     // Load HTTP server config
                     var httpConfig = MainUtils.HttpConfig;
@@ -860,10 +860,10 @@ namespace OperationGuidance_new.Views {
                     // Reset combobox enabled state based on toggle
                     _printerName.Enabled = _enablePrinter.Checked;
                     _printerTestBtnGroup.GetButton(0).Enabled = _enablePrinter.Checked;
-                    _partCodeBox.Enabled = _enablePrinter.Checked;
-                    _venderCodeBox.Enabled = _enablePrinter.Checked;
-                    _softVersionBox.Enabled = _enablePrinter.Checked;
-                    _hardVersionBox.Enabled = _enablePrinter.Checked;
+                    _supplierNameBox.Enabled = _enablePrinter.Checked;
+                    _projectNameBox.Enabled = _enablePrinter.Checked;
+                    _manufactureLocationBox.Enabled = _enablePrinter.Checked;
+                    _partNumberBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
@@ -886,10 +886,10 @@ namespace OperationGuidance_new.Views {
                     _secondBarcodeLength.GetTextBox(0).Box.Text = "0";
 
                     // Reset printer info to default
-                    _partCodeBox.GetTextBox(0).Box.Text = defaultConfig.part_code;
-                    _venderCodeBox.GetTextBox(0).Box.Text = defaultConfig.vender_code;
-                    _softVersionBox.GetTextBox(0).Box.Text = defaultConfig.soft_version;
-                    _hardVersionBox.GetTextBox(0).Box.Text = defaultConfig.hard_version;
+                    _supplierNameBox.GetTextBox(0).Box.Text = defaultConfig.supplier_name;
+                    _projectNameBox.GetTextBox(0).Box.Text = defaultConfig.project_name;
+                    _manufactureLocationBox.GetTextBox(0).Box.Text = defaultConfig.manufacture_location;
+                    _partNumberBox.GetTextBox(0).Box.Text = defaultConfig.part_number;
 
                     // Reset HTTP server config to default (empty = use runtime fallback)
                     int.TryParse(MainUtils.HttpConfig.Read(ConfigName_Http.IsHost), out int isHostDefault);
@@ -990,10 +990,10 @@ namespace OperationGuidance_new.Views {
                     || CheckSvedFuncSeparately((_enablePrinter.Checked ? (_printerName.Value ?? "") : "") != _printerNameOriginal, "打印机名称")
                     || CheckSvedFuncSeparately((_enableSecondPrinter.Checked ? (_secondPrinterName.Value ?? "") : "") != _secondPrinterNameOriginal, "第二打印机名称")
                     || CheckSvedFuncSeparately((int.TryParse(_secondBarcodeLength?.GetTextBox(0)?.Box?.Text, out int bLen) ? bLen : 0) != _secondBarcodeLengthOriginal, "第二条码长度")
-                    || CheckSvedFuncSeparately(_partCodeBox.GetTextBox(0).Box.Text != _partCodeOriginal, "零部件编码")
-                    || CheckSvedFuncSeparately(_venderCodeBox.GetTextBox(0).Box.Text != _venderCodeOriginal, "供应商编码")
-                    || CheckSvedFuncSeparately(_softVersionBox.GetTextBox(0).Box.Text != _softVersionOriginal, "软件版本")
-                    || CheckSvedFuncSeparately(_hardVersionBox.GetTextBox(0).Box.Text != _hardVersionOriginal, "硬件版本")
+                    || CheckSvedFuncSeparately(_supplierNameBox.GetTextBox(0).Box.Text != _supplierNameOriginal, "供应商名称")
+                    || CheckSvedFuncSeparately(_projectNameBox.GetTextBox(0).Box.Text != _projectNameOriginal, "项目名称")
+                    || CheckSvedFuncSeparately(_manufactureLocationBox.GetTextBox(0).Box.Text != _manufactureLocationOriginal, "制造地代码")
+                    || CheckSvedFuncSeparately(_partNumberBox.GetTextBox(0).Box.Text != _partNumberOriginal, "零件号")
                     || CheckSvedFuncSeparately(_httpHostBox.GetTextBox(0).Box.Text != _httpHostOriginal, "HTTP地址")
                     || CheckSvedFuncSeparately(_procedureCodeBox.GetTextBox(0).Box.Text != _procedureCodeOriginal, "工序编码")
                     || CheckSvedFuncSeparately(_equipmentCodeBox.GetTextBox(0).Box.Text != _equipmentCodeOriginal, "设备编码")

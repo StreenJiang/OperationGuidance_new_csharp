@@ -246,7 +246,6 @@ namespace OperationGuidance_new.Views {
                         WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
                     } else {
                         int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
-                        config.batch_code = DateTime.Now.ToString(MainUtils.DATETIME_FORMAT_YYYYMMDD);
                         config.sn = _okSumToday + 1;
 
                         using (ZplQrCodePrinter printer = new()) {

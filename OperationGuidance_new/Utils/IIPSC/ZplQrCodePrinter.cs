@@ -7,12 +7,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
     /// </summary>
     public class ZplQrCodePrinter: IDisposable {
         private ILog log = LogManager.GetLogger(typeof(ZplQrCodePrinter));
-        private const int PART_CODE_LENGTH = 10;       // 零部件编码长度
-        private const int SUPPLIER_CODE_LENGTH = 6;    // 供应商编码长度
-        private const int BATCH_CODE_LENGTH = 8;       // 批次编码长度
-        private const int SERIAL_NUM_LENGTH = 8;       // 生产流水号长度（前补0）
-        private const int SOFTWARE_VERSION_LENGTH = 16;// 软件版本号长度（前补0）
-        private const int HARDWARE_VERSION_LENGTH = 16;// 硬件版本号长度（前补0）
+        private const int TRACE_CODE_LENGTH = 24;
 
         public const double DPMM_203DPI = 8;   // 203 dpi ≈ 8 dots/mm
         public const double DPMM_300DPI = 12;  // 300 dpi ≈ 12 dots/mm
@@ -26,60 +21,46 @@ namespace OperationGuidance_new.Utils.IIPSC {
         };
 
         /// <summary>
-        /// 生成64位零部件完整编码
+        /// 生成24位追溯码
+        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 0000(4) + 零件号(8)
         /// </summary>
-        public string Generate64BitCode(
-            string partCode,
-            string supplierCode,
-            string batchCode,
-            string serialNumber,
-            string softwareVersion,
-            string hardwareVersion) {
-            // 验证固定长度字段
-            ValidateFixedLength(partCode, PART_CODE_LENGTH, "零部件编码");
-            ValidateFixedLength(supplierCode, SUPPLIER_CODE_LENGTH, "供应商编码");
-            ValidateFixedLength(batchCode, BATCH_CODE_LENGTH, "批次编码");
+        public string Generate24BitTraceCode(string manufactureLocation, string partNumber, int serialNumber) {
+            if (string.IsNullOrEmpty(manufactureLocation) || manufactureLocation.Length != 2)
+                throw new ArgumentException("制造地代码必须为2位", nameof(manufactureLocation));
+            if (string.IsNullOrEmpty(partNumber) || partNumber.Length != 8)
+                throw new ArgumentException("零件号必须为8位", nameof(partNumber));
+            if (serialNumber < 0 || serialNumber > 9999)
+                throw new ArgumentOutOfRangeException(nameof(serialNumber), "流水号必须在0-9999之间");
 
-            // 可变长度字段前补0
-            string paddedSerial = PadLeft(serialNumber, SERIAL_NUM_LENGTH);
-            string paddedSoftware = PadLeft(softwareVersion, SOFTWARE_VERSION_LENGTH);
-            string paddedHardware = PadLeft(hardwareVersion, HARDWARE_VERSION_LENGTH);
+            var now = DateTime.Now;
+            string yearDigit = (now.Year % 10).ToString();
+            string dayOfYear = now.DayOfYear.ToString().PadLeft(3, '0');
+            string serial = serialNumber.ToString().PadLeft(4, '0');
 
-            // 拼接64位编码
-            return $"{partCode}{supplierCode}{batchCode}{paddedSerial}{paddedSoftware}{paddedHardware}";
+            return $"00{manufactureLocation}{yearDigit}{dayOfYear}{serial}0000{partNumber}";
         }
 
-        /// <summary>
-        /// 生成ZPL指令字符串（用于打印二维码）
-        /// </summary>
-        /// <param name="qrContent">64位编码内容</param>
-        /// <param name="moduleSize">二维码模块大小（1-10，数值越大二维码越大）</param>
-        /// <returns>ZPL指令</returns>
-        public string GenerateZplCommand(SciiXtPrinterConfig sProfile, string qrContent, int moduleSize = 5) {
-            if (string.IsNullOrEmpty(qrContent) || qrContent.Length != 64) {
-                throw new ArgumentException("二维码内容必须是64位编码", nameof(qrContent));
-            }
-            // 核心参数：确保二维码居中且足够大
-            int labelWidthMm = 110;   // 标签宽度（mm）
-            int labelHeightMm = 50;   // 标签高度（mm）
+        public string GenerateZplCommand(SciiXtPrinterConfig sProfile, string traceCode, int moduleSize = 5) {
+            if (string.IsNullOrEmpty(traceCode) || traceCode.Length != TRACE_CODE_LENGTH)
+                throw new ArgumentException($"追溯码必须是{TRACE_CODE_LENGTH}位", nameof(traceCode));
 
             var zpl = new StringBuilder();
             zpl.AppendLine("^XA");
 
-            zpl.AppendLine($"{sProfile.text_1}{qrContent.Substring(0, 16)}^FS");
-            zpl.AppendLine($"{sProfile.text_2}{qrContent.Substring(16, 16)}^FS");
-            zpl.AppendLine($"{sProfile.text_3}{qrContent.Substring(32, 16)}^FS");
-            zpl.AppendLine($"{sProfile.text_4}{qrContent.Substring(48, 16)}^FS");
-            zpl.AppendLine($"{sProfile.location_y}");
+            zpl.AppendLine($"{sProfile.text_1}{sProfile.supplier_name}^FS");
+            zpl.AppendLine($"{sProfile.text_2}{sProfile.project_name}^FS");
+            zpl.AppendLine($"{sProfile.text_3}{DateTime.Now:yyyy/MM/dd}^FS");
+            zpl.AppendLine($"{sProfile.text_4}{sProfile.sn}^FS");
+            zpl.AppendLine($"{sProfile.text_5}{traceCode}^FS");
 
-            // 设置标签尺寸（必须与物理标签一致，否则居中失效）
-            zpl.AppendLine($"^LH0,0");                          // 标签原点
+            int labelWidthMm = 110;
+            int labelHeightMm = 50;
+            zpl.AppendLine($"^LH0,0");
             zpl.AppendLine($"^PW{MmToDots(labelWidthMm, DPMM_203DPI)}");
             zpl.AppendLine($"^LL{MmToDots(labelHeightMm, DPMM_203DPI)}");
 
-            // 二维码指令（居中+放大）
             zpl.AppendLine($"^FO{sProfile.sn_pos_x},{sProfile.sn_pos_y}^BQN,2,{moduleSize}");
-            zpl.AppendLine($"^FDQA,{qrContent}^FS");                       // 二维码内容
+            zpl.AppendLine($"^FDQA,{traceCode}^FS");
             zpl.AppendLine("^XZ");
 
             return zpl.ToString();
@@ -147,27 +128,11 @@ namespace OperationGuidance_new.Utils.IIPSC {
         /// </summary>
         public bool QuickPrint(SciiXtPrinterConfig config) {
             string printerName = string.Empty;
-            string partCode = string.Empty;
-            string supplierCode = string.Empty;
-            string batchCode = string.Empty;
-            string serialNumber = string.Empty;
-            string softwareVersion = string.Empty;
-            string hardwareVersion = string.Empty;
-
             try {
                 printerName = config.printer_name;
-                partCode = config.part_code;
-                supplierCode = config.vender_code;
-                batchCode = config.batch_code;
-                serialNumber = config.sn.ToString();
-                softwareVersion = config.soft_version;
-                hardwareVersion = config.hard_version;
-
-                // 生成64位编码
-                string qrContent = Generate64BitCode(partCode, supplierCode, batchCode, serialNumber, softwareVersion, hardwareVersion);
-                // 生成ZPL指令
-                string zpl = GenerateZplCommand(config, qrContent);
-                // 发送到打印机
+                string traceCode = Generate24BitTraceCode(
+                    config.manufacture_location, config.part_number, config.sn);
+                string zpl = GenerateZplCommand(config, traceCode);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
                 log.Error($"Print fails! PrinterName = [{printerName}]：{ex.Message}");
@@ -177,10 +142,10 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
         public bool PrintWithSn(SciiXtPrinterConfig config, int sn, string printerName) {
             try {
-                string qrContent = Generate64BitCode(
-                    config.part_code, config.vender_code, config.batch_code,
-                    sn.ToString(), config.soft_version, config.hard_version);
-                string zpl = GenerateZplCommand(config, qrContent);
+                config.sn = sn;
+                string traceCode = Generate24BitTraceCode(
+                    config.manufacture_location, config.part_number, sn);
+                string zpl = GenerateZplCommand(config, traceCode);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
                 log.Error($"PrintWithSn fails! PrinterName = [{printerName}], SN = [{sn}]：{ex.Message}");
@@ -210,31 +175,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return printers;
         }
 
-        #region 辅助方法
-        /// <summary>
-        /// 验证固定长度编码
-        /// </summary>
-        private void ValidateFixedLength(string code, int requiredLength, string codeName) {
-            if (string.IsNullOrEmpty(code) || code.Length != requiredLength) {
-                throw new ArgumentException($"{codeName}必须为{requiredLength}位，实际为{code?.Length ?? 0}位", nameof(code));
-            }
-        }
-
-        /// <summary>
-        /// 左补0到指定长度
-        /// </summary>
-        private string PadLeft(string value, int totalLength) {
-            if (value == null)
-                value = string.Empty;
-            if (value.Length > totalLength) {
-                throw new ArgumentException($"{value}长度超过{totalLength}位", nameof(value));
-            }
-            return value.PadLeft(totalLength, '0');
-        }
-
         public void Dispose() {
             // TODO: 添加需要销毁的，被持有的实例（无法销毁自身）
         }
-        #endregion
     }
 }
