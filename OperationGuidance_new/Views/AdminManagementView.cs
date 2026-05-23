@@ -2,6 +2,8 @@ using System.Diagnostics;
 using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.Utils;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.Utils;
 using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Models.Responses;
@@ -57,14 +59,16 @@ namespace OperationGuidance_new.Views {
             };
             BuildPasswordCard();
 
-            // Card 2
-            _reimportCard = new CardPanel {
-                Parent = _contentArea,
-                Title = "重新导入物料码",
-                Width = 800,
-                Height = 190,
-            };
-            BuildReimportCard();
+            // Card 2 — 仅非 SCII XT 版本开放物料重新导入
+            if (MainUtils.GetVersion() != AppVersion.SCII_XT) {
+                _reimportCard = new CardPanel {
+                    Parent = _contentArea,
+                    Title = "重新导入物料码",
+                    Width = 800,
+                    Height = 190,
+                };
+                BuildReimportCard();
+            }
 
             // Loading overlay — two-form: semi-transparent backdrop + opaque popup
             _overlayBackdrop = new Form {
@@ -149,8 +153,10 @@ namespace OperationGuidance_new.Views {
             _passwordCard.Width = cardWidth;
             _passwordCard.Location = new Point(cardX, topY);
 
-            _reimportCard.Width = cardWidth;
-            _reimportCard.Location = new Point(cardX, _passwordCard.Bottom + 24);
+            if (_reimportCard != null) {
+                _reimportCard.Width = cardWidth;
+                _reimportCard.Location = new Point(cardX, _passwordCard.Bottom + 24);
+            }
         }
 
         private void BuildPasswordCard() {

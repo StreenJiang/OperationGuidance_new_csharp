@@ -13,7 +13,7 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void CheckLoginByApi(string account, string password) {
-            if (account == "admin") {
+            if (account == "admin" || account == "sys") {
                 base.CheckLoginByApi(account, password);
             } else if (_isAdminLogin) {
                 LoginValidateRsp rsp = SystemUtils.GetApis().LoginValidate(new(account, password));

@@ -39,6 +39,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Ratio = 6.95,
                 PositiveIntOnly = mode == PrinterTestMode.Printer1,
             };
+            if (mode == PrinterTestMode.Printer1) {
+                _inputBox.GetTextBox(0).Box.MaxLength = 4;
+            }
 
             _printerNameBox = new("打印机名称") {
                 Parent = ContentPanel,

@@ -376,7 +376,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     ActiveControl = firstPartsBox.GetTextBox(0).Box;
                 }
                 // 检查是否可以激活任务
-                if (CheckCanActivateMission()) {
+                if (!_workplace.Activated && CheckCanActivateMission()) {
                     // 激活任务
                     _workplace.ActivateMission();
                     await Task.Delay(200);

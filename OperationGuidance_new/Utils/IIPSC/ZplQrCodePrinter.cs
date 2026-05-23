@@ -50,7 +50,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
             zpl.AppendLine($"{sProfile.text_1}{sProfile.supplier_name}^FS");
             zpl.AppendLine($"{sProfile.text_2}{sProfile.project_name}^FS");
             zpl.AppendLine($"{sProfile.text_3}{DateTime.Now:yyyy/MM/dd}^FS");
-            zpl.AppendLine($"{sProfile.text_4}{sProfile.sn}^FS");
+            zpl.AppendLine($"{sProfile.text_4}{sProfile.sn.ToString().PadLeft(4, '0')}^FS");
             zpl.AppendLine($"{sProfile.text_5}{traceCode}^FS");
 
             int labelWidthMm = 110;

@@ -42,6 +42,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 return false;
             }
 
+            // 校验：有物料码规则但没有产品码规则时，阻止激活任务
+            // 否则第一个物料码会被当作产品码"吃掉"，导致物料码数量不匹配
+            if (_partsBarCodeRules.ContainsKey(_mission.id)
+                && _partsBarCodeRules[_mission.id].Count > 0
+                && !_productBarCodeRules.ContainsKey(_mission.id)) {
+                WidgetUtils.ShowWarningPopUp("当前任务配置了物料码规则但未配置产品码（追溯码）规则，请先配置产品码规则后再操作。");
+                return false;
+            }
+
             // 点检任务跳过后续逻辑，直接通过
             if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
                 return true;
@@ -155,7 +164,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             return inBoundStationOk;
         }
-        protected override bool PartsBarCodeExtraCheck(int ruleId) => true;
+        protected override bool PartsBarCodeExtraCheck(int ruleId) {
+            if (!base.PartsBarCodeExtraCheck(ruleId)) {
+                return false;
+            }
+            return true;
+        }
 
         private string _getProcedureCode() {
             string procedureCode = ConfigUtils.LoadConfig<SciiXtConfig>().procedure_code;
