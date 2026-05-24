@@ -184,22 +184,23 @@ namespace OperationGuidance_new.Views {
             if (_mission != null && _mission.is_challenge_mission == (int) YesOrNo.YES) {
                 return;
             }
+            if (string.IsNullOrEmpty(recipeCode) || (_mission != null && _mission.name == recipeCode)) {
+                return;
+            }
             if (_activated) {
                 WidgetUtils.ShowWarningPopUp("接收到配方变更请求，将在当前未结束任务结束以后自动切换至指定配方所对应的任务。");
                 return;
             }
 
-            if (!string.IsNullOrEmpty(recipeCode) && (_mission == null || _mission.name != recipeCode)) {
-                var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
-                if (rsp != null && rsp.ProductMissionDTO != null) {
-                    if (_mission == null || _mission.id != rsp.ProductMissionDTO.id) {
-                        BeginInvoke(() => {
-                            SwitchToMission(rsp.ProductMissionDTO);
-                        });
-                    }
-                } else {
-                    WidgetUtils.ShowWarningPopUp($"未找到配方[{recipeCode}]对应的任务，请检查是否配置了该任务。");
+            var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
+            if (rsp != null && rsp.ProductMissionDTO != null) {
+                if (_mission == null || _mission.id != rsp.ProductMissionDTO.id) {
+                    BeginInvoke(() => {
+                        SwitchToMission(rsp.ProductMissionDTO);
+                    });
                 }
+            } else {
+                WidgetUtils.ShowWarningPopUp($"未找到配方[{recipeCode}]对应的任务，请检查是否配置了该任务。");
             }
         }
 
