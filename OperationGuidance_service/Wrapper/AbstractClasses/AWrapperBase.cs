@@ -1,11 +1,13 @@
 ﻿using Dapper;
 using log4net;
 using OperationGuidance_service.Attributes;
+using OperationGuidance_service.Configurations;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Database;
 using OperationGuidance_service.Exceptions;
 using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Utils;
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Common;
 using System.Reflection;
@@ -71,6 +73,87 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 logger.Warn($"Something wrong here, please check error: e = {e}");
             }
             return result;
+        }
+
+        private static readonly ConcurrentDictionary<Type, BulkInsertMeta> _bulkInsertCache = new();
+
+        public int AddBatchBulk(List<T> entities, int rowsPerInsert = 500) {
+            if (entities.Count == 0) return 0;
+            int result = 0;
+            BulkInsertMeta meta = _bulkInsertCache.GetOrAdd(typeof(T), _ => BuildBulkInsertMeta());
+
+            // Cap batch size per DB parameter limits: SQL Server 2100, SQLite 999, MySQL fine
+            int maxRows = SystemUtils.GetDBTypes() switch {
+                DBTypes.SQLSERVER => 2100 / meta.Fields.Count,
+                DBTypes.SQLITE => 999 / meta.Fields.Count,
+                _ => rowsPerInsert,
+            };
+            int effectiveRows = Math.Min(rowsPerInsert, maxRows);
+            if (effectiveRows < 1) effectiveRows = 1;
+
+            for (int batchStart = 0; batchStart < entities.Count; batchStart += effectiveRows) {
+                int batchEnd = Math.Min(batchStart + effectiveRows, entities.Count);
+                int batchSize = batchEnd - batchStart;
+
+                var parameters = new DynamicParameters();
+                var valueTuples = new List<string>(batchSize);
+
+                for (int i = 0; i < batchSize; i++) {
+                    var rowParams = new List<string>(meta.Fields.Count);
+                    foreach (string field in meta.Fields) {
+                        string paramName = $"{field}_{batchStart + i}";
+                        object value = meta.FieldProps[field].GetValue(entities[batchStart + i]) ?? DBNull.Value;
+                        parameters.Add(paramName, value);
+                        rowParams.Add($"@{paramName}");
+                    }
+                    valueTuples.Add($"({string.Join(", ", rowParams)})");
+                }
+
+                string sql = $"INSERT INTO {meta.TableName} ({meta.ColumnList}) VALUES {string.Join(", ", valueTuples)}";
+                result += ExecuteWithRetry(sql, parameters);
+            }
+
+            return result;
+        }
+
+        private BulkInsertMeta BuildBulkInsertMeta() {
+            string tableName = GetTableName();
+            List<string> allFields = GetFiedsList();
+
+            // Resolve id column name accounting for possible [Column] rename
+            PropertyInfo idProp = typeof(T).GetProperty(nameof(AEntityBase.id))!;
+            string idFieldName = idProp.Name;
+            foreach (Attribute attr in idProp.GetCustomAttributes()) {
+                if (attr is ColumnAttribute colAttr && colAttr.Name != null) {
+                    idFieldName = colAttr.Name;
+                }
+            }
+            List<string> fields = allFields.Where(f => f != idFieldName).ToList();
+
+            Dictionary<string, PropertyInfo> fieldProps = new();
+            foreach (PropertyInfo prop in typeof(T).GetProperties()) {
+                string fieldName = prop.Name;
+                foreach (Attribute attr in prop.GetCustomAttributes()) {
+                    if (attr is ColumnAttribute colAttr && colAttr.Name != null) {
+                        fieldName = colAttr.Name;
+                    }
+                }
+                fieldProps[fieldName] = prop;
+            }
+
+            return new BulkInsertMeta {
+                TableName = tableName,
+                Fields = fields,
+                FieldProps = fieldProps,
+                ColumnList = string.Join(", ", fields),
+            };
+        }
+
+        private class BulkInsertMeta {
+            public string TableName = string.Empty;
+            public List<string> Fields = new();
+            public Dictionary<string, PropertyInfo> FieldProps = new();
+            public string ColumnList = string.Empty;
         }
 
         public T? FindById(int id) {
@@ -309,8 +392,12 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         public int ExecuteSql(string sql) {
             int rows = 0;
             try {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    rows = conn.Execute(sql);
+                if (_conn == null) {
+                    using (DbConnection conn = DbConnector.GetConnection()) {
+                        rows = conn.Execute(sql);
+                    }
+                } else {
+                    rows = _conn.Execute(sql, null, _transaction, commandTimeout: commandTimeout);
                 }
             } catch (Exception e) {
                 logger.Warn($"Something wrong here, please check error: e = {e}");
@@ -329,7 +416,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                         }
                     } else {
                         // Don't use 'using' to release resource, probably is in a transaction
-                        return _conn.Execute(sql, param, transaction, commandTimeout: commandTimeout);
+                        return _conn.Execute(sql, param, transaction ?? _transaction, commandTimeout: commandTimeout);
                     }
                 } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
                     // 死锁或锁超时，指数退避重试
@@ -344,7 +431,7 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                     return conn.Execute(sql, param, commandTimeout: commandTimeout);
                 }
             } else {
-                return _conn.Execute(sql, param, transaction, commandTimeout: commandTimeout);
+                return _conn.Execute(sql, param, transaction ?? _transaction, commandTimeout: commandTimeout);
             }
         }
 

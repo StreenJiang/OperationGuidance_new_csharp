@@ -255,22 +255,28 @@ namespace OperationGuidance_service.Controllers {
             _missionRecordService.UseConnection(conn, transaction);
             _sqlExecuteRecordService.UseConnection(conn, transaction);
             try {
-                // 1. 删除 parts_bar_code 表数据
+                // 1. delete all rows in parts_bar_code
                 string deleteSql = $"delete from parts_bar_code where deleted = {(int) YesOrNo.NO}";
                 rsp.DeletedRows = _partsBarCodeService.ExecuteSql(deleteSql);
 
-                // 2. 分页查询 mission_record 中有 parts_bar_code 的记录
+                // 2. keyset pagination through mission_record (ORDER BY id, avoids O(n^2) OFFSET scan)
                 string baseSelectSql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
                 const int batchSize = 1000;
-                int offset = 0;
+                const int logInterval = 100;
+                int lastId = 0;
                 int totalInserted = 0;
+                int batchCount = 0;
 
                 while (true) {
-                    string selectSql = $"{baseSelectSql} LIMIT {batchSize} OFFSET {offset}";
+                    string whereClause = lastId > 0 ? $" and id > {lastId}" : "";
+                    string selectSql = SystemUtils.GetDBTypes() switch {
+                        DBTypes.SQLSERVER => $"{baseSelectSql}{whereClause} ORDER BY id OFFSET 0 ROWS FETCH NEXT {batchSize} ROWS ONLY",
+                        _ => $"{baseSelectSql}{whereClause} ORDER BY id LIMIT {batchSize}",
+                    };
                     List<MissionRecord> records = _missionRecordService.FindBySql(selectSql);
                     if (records.Count == 0) break;
 
-                    // 3. 拆分逗号分隔的条码
+                    // 3. split comma-separated barcodes
                     List<PartsBarCode> entities = new();
                     foreach (MissionRecord record in records) {
                         if (string.IsNullOrEmpty(record.parts_bar_code)) continue;
@@ -288,14 +294,20 @@ namespace OperationGuidance_service.Controllers {
                     }
 
                     if (entities.Count > 0) {
-                        totalInserted += _partsBarCodeService.AddBatch(entities);
+                        totalInserted += _partsBarCodeService.AddBatchBulk(entities);
                     }
 
-                    offset += batchSize;
+                    lastId = records.Last().id;
+                    batchCount++;
+
+                    if (batchCount % logInterval == 0) {
+                        logger.Info($"ReimportPartsBarcode progress: {batchCount} batches, {totalInserted} rows inserted, lastId={lastId}");
+                    }
                 }
                 rsp.InsertedRows = totalInserted;
+                logger.Info($"ReimportPartsBarcode done: {batchCount} batches processed, {totalInserted} rows inserted");
 
-                // 4. 检查 sql_execute_record 是否有 20250625_1 记录，没有则补上
+                // 4. check sql_execute_record for migration marker
                 DBTypes dbType = SystemUtils.GetDBTypes();
                 string fileName = dbType switch {
                     DBTypes.MYSQL => "modify_mysql_20250625_1",
