@@ -255,16 +255,38 @@ namespace OperationGuidance_service.Controllers {
             _missionRecordService.UseConnection(conn, transaction);
             _sqlExecuteRecordService.UseConnection(conn, transaction);
             try {
-                // 1. delete all rows in parts_bar_code
-                string deleteSql = $"delete from parts_bar_code where deleted = {(int) YesOrNo.NO}";
-                rsp.DeletedRows = _partsBarCodeService.ExecuteSql(deleteSql);
+                // 0. count total rows to delete for progress estimation
+                string deleteCountSql = $"select count(*) from parts_bar_code where deleted = {(int)YesOrNo.NO}";
+                int totalToDelete = _partsBarCodeService.ExecuteScalar(deleteCountSql);
+
+                // 1. batch delete all rows in parts_bar_code (avoids 10s command timeout on large tables)
+                const int deleteBatchSize = 1000;
+                int deletedTotal = 0;
+                while (true) {
+                    string deleteSql = SystemUtils.GetDBTypes() switch {
+                        DBTypes.SQLSERVER => $"delete top({deleteBatchSize}) from parts_bar_code where deleted = {(int)YesOrNo.NO}",
+                        _ => $"delete from parts_bar_code where deleted = {(int)YesOrNo.NO} limit {deleteBatchSize}",
+                    };
+                    int affected = _partsBarCodeService.ExecuteSql(deleteSql);
+                    if (affected == 0) break;
+                    deletedTotal += affected;
+                    req.OnProgress?.Invoke(new ReimportProgressInfo {
+                        Phase = "deleting",
+                        DeletedCount = deletedTotal,
+                        TotalToDelete = totalToDelete,
+                    });
+                }
+                rsp.DeletedRows = deletedTotal;
 
                 // 2. keyset pagination through mission_record (ORDER BY id, avoids O(n^2) OFFSET scan)
                 string baseSelectSql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
                 const int batchSize = 1000;
-                const int logInterval = 100;
                 int lastId = 0;
                 int totalInserted = 0;
+                // 0. count total mission_record rows for progress estimation
+                string countSql = $"select count(*) from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} and parts_bar_code is not null and parts_bar_code != ''";
+                int totalRows = _missionRecordService.ExecuteScalar(countSql);
+                int totalBatches = (int)Math.Ceiling((double)totalRows / batchSize);
                 int batchCount = 0;
 
                 while (true) {
@@ -300,9 +322,13 @@ namespace OperationGuidance_service.Controllers {
                     lastId = records.Last().id;
                     batchCount++;
 
-                    if (batchCount % logInterval == 0) {
-                        logger.Info($"ReimportPartsBarcode progress: {batchCount} batches, {totalInserted} rows inserted, lastId={lastId}");
-                    }
+                    req.OnProgress?.Invoke(new ReimportProgressInfo {
+                        Phase = "importing",
+                        BatchCount = batchCount,
+                        TotalInserted = totalInserted,
+                        LastId = lastId,
+                        TotalBatches = totalBatches,
+                    });
                 }
                 rsp.InsertedRows = totalInserted;
                 logger.Info($"ReimportPartsBarcode done: {batchCount} batches processed, {totalInserted} rows inserted");
@@ -327,7 +353,9 @@ namespace OperationGuidance_service.Controllers {
 
                 transaction.Commit();
             } catch (Exception ex) {
-                transaction.Rollback();
+                if (conn.State == ConnectionState.Open) {
+                    transaction.Rollback();
+                }
                 rsp.ErrorMessage = ex.Message;
             } finally {
                 _partsBarCodeService.ReleaseConnection();
