@@ -315,7 +315,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         logger.Info($"Validation fails for predecessor mission, mission id = [{mission.id}], predecessor_mission_id = [{mission.predecessor_mission_id}], barcode = [{barCode}]...");
 
                         checkPassed = false;
-                        ShowWrongBarcodeGate("未检测到前置任务的加工完成记录，请先完成前置任务");
+                        WidgetUtils.ShowWarningPopUp("未检测到前置任务的加工完成记录，请先完成前置任务");
                     }
                 }
                 // 不管是否有前置任务，只要前面的校验过了，就查询自身的加工记录
