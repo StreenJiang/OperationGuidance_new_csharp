@@ -66,6 +66,7 @@ namespace OperationGuidance_new.Views {
 
         // 其他自定义组件
         private CustomComboBoxGroup<string> _batchDropDownBox;
+        private volatile bool _reconciling;
 
         public WorkplaceMissionView_SCII View { get => _view; set => _view = value; }
 
@@ -554,9 +555,9 @@ namespace OperationGuidance_new.Views {
             HandleScrewBitCounter();
             ResizeChildren();
         }
-        private void SetTodayData() {
+        private void SetTodayData(int? missionId = null) {
             if (InvokeRequired) {
-                Invoke(() => SetTodayData());
+                Invoke(() => SetTodayData(missionId));
                 return;
             }
             logger.Debug($"[SCII:SetTodayData] Setting today's data");
@@ -564,9 +565,10 @@ namespace OperationGuidance_new.Views {
             int sum = 0;
             int okSum = 0;
             double ngRate = 0;
+            int mId = missionId ?? _mission.id;
 
-            if (_mission.id > 0) {
-                List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
+            if (mId > 0) {
+                List<MissionRecordDTO> missionRecordDTOs = GetRecoreds(mId);
                 logger.Debug($"[SCII:SetTodayData] Retrieved {missionRecordDTOs.Count} mission records");
 
                 IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
@@ -588,11 +590,102 @@ namespace OperationGuidance_new.Views {
             _ngRatePerDay.SetValue(0, $"{ngRate.ToString("F2")}%");
             logger.Debug($"[SCII:SetTodayData] UI updated - Sum: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
         }
-        private List<MissionRecordDTO> GetRecoreds() {
-            logger.Debug($"[SCII:GetRecoreds] Getting mission records for mission ID: {_mission.id}");
+        private void IncrementTodayCountersOptimistically() {
+            if (InvokeRequired) {
+                Invoke(() => IncrementTodayCountersOptimistically());
+                return;
+            }
+            logger.Debug($"[SCII:IncrementTodayCountersOptimistically] Incrementing today counters optimistically");
+
+            int sum = 0;
+            int okSum = 0;
+            int.TryParse(_productSumPerDay.GetTextBox(0).Box.Text, out sum);
+            int.TryParse(_okSumPerDay.GetTextBox(0).Box.Text, out okSum);
+
+            sum++;
+            okSum++;
+
+            double ngRate = 0;
+            if (sum > 0) {
+                ngRate = Math.Max(0, (sum - okSum) / (double)sum * 100);
+            }
+
+            _productSumPerDay.SetValue(0, sum + "");
+            _okSumPerDay.SetValue(0, okSum + "");
+            _ngRatePerDay.SetValue(0, $"{ngRate.ToString("F2")}%");
+            logger.Debug($"[SCII:IncrementTodayCountersOptimistically] Optimistic update - Sum: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
+        }
+
+        private async void DelayedReconcileTodayData() {
+            if (_reconciling) {
+                logger.Debug($"[SCII:DelayedReconcileTodayData] Already reconciling, skipping");
+                return;
+            }
+            try {
+                _reconciling = true;
+                int capturedMissionId = _mission.id;
+                int optimisticOkSum = 0;
+                int.TryParse(_okSumPerDay.GetTextBox(0).Box.Text, out optimisticOkSum);
+                logger.Debug($"[SCII:DelayedReconcileTodayData] Starting delayed reconcile, optimistic OK sum: {optimisticOkSum}");
+
+                await Task.Delay(1500);
+
+                if (_mission.id != capturedMissionId) {
+                    logger.Debug($"[SCII:DelayedReconcileTodayData] Mission changed, skipping reconcile");
+                    return;
+                }
+
+                for (int i = 0; i < 3; i++) {
+                    if (IsDisposed) {
+                        logger.Debug($"[SCII:DelayedReconcileTodayData] Disposed, stopping reconcile");
+                        return;
+                    }
+
+                    SetTodayData(capturedMissionId);
+                    logger.Debug($"[SCII:DelayedReconcileTodayData] Reconcile attempt {i + 1} completed");
+
+                    if (IsDisposed) return;
+
+                    int realOkSum = 0;
+                    if (InvokeRequired) {
+                        Invoke(() => int.TryParse(_okSumPerDay.GetTextBox(0).Box.Text, out realOkSum));
+                    } else {
+                        int.TryParse(_okSumPerDay.GetTextBox(0).Box.Text, out realOkSum);
+                    }
+
+                    if (realOkSum >= optimisticOkSum) {
+                        logger.Info($"[SCII:DelayedReconcileTodayData] Reconcile succeeded - real: {realOkSum} >= optimistic: {optimisticOkSum}");
+                        return;
+                    }
+
+                    logger.Warn($"[SCII:DelayedReconcileTodayData] Real OK sum ({realOkSum}) < optimistic ({optimisticOkSum}), retrying...");
+                    await Task.Delay(3000);
+                }
+
+                logger.Warn($"[SCII:DelayedReconcileTodayData] Reconcile gave up after max retries");
+            } catch (Exception e) {
+                logger.Error($"[SCII:DelayedReconcileTodayData] Reconcile failed with exception: {e}");
+            } finally {
+                _reconciling = false;
+            }
+        }
+
+        private async void DelayedRefreshTodayData() {
+            try {
+                await Task.Delay(1500);
+                if (IsDisposed) return;
+                SetTodayData();
+            } catch (Exception e) {
+                logger.Error($"[SCII:DelayedRefreshTodayData] Refresh failed: {e}");
+            }
+        }
+
+        private List<MissionRecordDTO> GetRecoreds(int? missionId = null) {
+            int mId = missionId ?? _mission.id;
+            logger.Debug($"[SCII:GetRecoreds] Getting mission records for mission ID: {mId}");
 
             QueryMissionRecordListReq req = new() {
-                MissionId = _mission.id,
+                MissionId = mId,
             };
 
             // 如果打开了《班次配置》，则根据班次计算
@@ -1435,6 +1528,8 @@ namespace OperationGuidance_new.Views {
                                             logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Challenge mission result added");
                                         }
 
+                                        // 乐观更新当日计数，不等 DB 写入
+                                        IncrementTodayCountersOptimistically();
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                                     }
                                 } else {
@@ -1518,18 +1613,20 @@ namespace OperationGuidance_new.Views {
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
 
-            ResetMissionDetails();
+            SetPset();
+            HandleScrewBitCounter();
+            ResizeChildren();
 
             await base.TerminateMission(status);
 
             logger.Debug($"[SCII:TerminateMission] Base termination completed");
 
-            // // If it's challenge mission, then switch mission automatically
-            // if (_mission.is_challenge_mission == (int) YesOrNo.YES
-            //         && _missionRecord != null
-            //         && _missionRecord.mission_result == (int) TighteningStatus.OK) {
-            //     _view.OpenWorkplaceView(_mission.challenge_mission_id);
-            // }
+            if (status == WorkplaceProcessStatus.FINISHED_OK) {
+                DelayedReconcileTodayData();
+            } else if (status == WorkplaceProcessStatus.FINISHED_NG) {
+                DelayedRefreshTodayData();
+            }
+
             logger.Debug($"[SCII:TerminateMission] Mission termination completed");
         }
 
