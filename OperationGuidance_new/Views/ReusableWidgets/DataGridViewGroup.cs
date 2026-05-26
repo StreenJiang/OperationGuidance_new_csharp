@@ -31,6 +31,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private List<CommonButton> _extraButtons;
         // DataGridView panel
         private DataGridViewPanel<T> _voGridView;
+        // Loading overlay
+        private Panel _loadingOverlay;
+        private Label _loadingLabel;
+        private int _isQuerying;
         // Delegates
         private Func<T, List<T>> _queryData;
         private Action<Action> _addNewClick;
@@ -75,6 +79,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // Initialization
             InitializeContents(initializeColumnHeader);
             InitializeButtonsPanel();
+            InitializeLoadingOverlay();
         }
         #endregion
 
@@ -167,6 +172,23 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         #endregion
 
+        #region Loading Overlay
+        private void InitializeLoadingOverlay() {
+            _loadingOverlay = new() {
+                Visible = false,
+                BackColor = Color.Black,
+                BackgroundImageLayout = ImageLayout.Stretch,
+            };
+            _loadingLabel = new() {
+                Parent = _loadingOverlay,
+                Text = "加载中...",
+                TextAlign = ContentAlignment.MiddleCenter,
+                AutoSize = false,
+                Font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular),
+            };
+        }
+        #endregion
+
         #region Reusable methods
         public void ResetColumnHeaders() {
             _voGridView.ResetColumnHeaders();
@@ -194,7 +216,80 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _extraButtons.Add(extraButton);
             return extraButton;
         }
-        private void QueryAndRefresh() => _voGridView.DataSource = _queryData(_filterParametersVO);
+        private async void QueryAndRefresh() {
+            if (Interlocked.CompareExchange(ref _isQuerying, 1, 0) != 0) return;
+            _searchButton.Enabled = false;
+            _resetButton.Enabled = false;
+            try {
+                // Attach overlay to top-level Form so it escapes ALL FlowLayoutPanels.
+                // FlowLayoutPanel overrides child Location; only Form-level children
+                // can be freely positioned via screen coordinates.
+                Form? form = this.FindForm();
+                if (form != null && _loadingOverlay.Parent != form) {
+                    _loadingOverlay.Parent?.Controls.Remove(_loadingOverlay);
+                    form.Controls.Add(_loadingOverlay);
+                }
+                if (form != null) {
+                    Point gridScreen = _voGridView.PointToScreen(Point.Empty);
+                    Point formPos = form.PointToClient(gridScreen);
+                    _loadingOverlay.Location = formPos;
+                    _loadingOverlay.Size = _voGridView.Size;
+                }
+                // Match gridview rounded corners
+                int radius = WidgetUtils.ControlRadius();
+                _loadingOverlay.Region?.Dispose();
+                _loadingOverlay.Region = new Region(WidgetUtils.RoundedRect(
+                    new Rectangle(0, 0, _loadingOverlay.Width, _loadingOverlay.Height), radius));
+                // Capture grid screenshot, tint it, and draw loading text for semi-transparent mask effect
+                _loadingOverlay.BackgroundImage?.Dispose();
+                _loadingOverlay.BackgroundImage = null;
+                if (_voGridView.Width > 0 && _voGridView.Height > 0) {
+                    try {
+                        Bitmap bmp = new Bitmap(_voGridView.Width, _voGridView.Height);
+                        _voGridView.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+                        using (Graphics g = Graphics.FromImage(bmp)) {
+                            using (Brush brush = new SolidBrush(Color.FromArgb(120, 0, 0, 0))) {
+                                g.FillRectangle(brush, 0, 0, bmp.Width, bmp.Height);
+                            }
+                            using (Font font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular))
+                            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
+                                g.DrawString("加载中...", font, Brushes.White, new RectangleF(0, 0, bmp.Width, bmp.Height), sf);
+                            }
+                        }
+                        _loadingOverlay.BackgroundImage = bmp;
+                    } catch {
+                        // DrawToBitmap failed — fallback to label below
+                    }
+                }
+                // Show label only if bitmap capture failed or grid has no size yet
+                if (_loadingOverlay.BackgroundImage == null) {
+                    _loadingLabel.Size = new(_loadingOverlay.Width, 40);
+                    _loadingLabel.Location = new(0, (_loadingOverlay.Height - 40) / 2);
+                }
+                _loadingLabel.Visible = (_loadingOverlay.BackgroundImage == null);
+                _loadingOverlay.Visible = true;
+                _loadingOverlay.BringToFront();
+
+                var result = await Task.Run(() => _queryData(_filterParametersVO));
+                if (IsDisposed) return;
+                _voGridView.DataSource = result;
+            } catch (Exception ex) {
+                if (!IsDisposed) {
+                    WidgetUtils.ShowErrorPopUp($"查询失败：{ex.Message}");
+                }
+            } finally {
+                if (!IsDisposed) {
+                    _searchButton.Enabled = true;
+                    _resetButton.Enabled = true;
+                    _loadingOverlay.Visible = false;
+                    _loadingOverlay.Region = null;
+                    _loadingOverlay.BackgroundImage?.Dispose();
+                    _loadingOverlay.BackgroundImage = null;
+                    _loadingLabel.Visible = true;
+                }
+                _isQuerying = 0;
+            }
+        }
         public List<int> GetSelectedIds() {
             List<int> ids = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
@@ -341,8 +436,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             return false;
         }
         public override void VisibleToTrue() {
-            QueryAndRefresh();
             ResizeChildren();
+            QueryAndRefresh();
         }
         #endregion
     }

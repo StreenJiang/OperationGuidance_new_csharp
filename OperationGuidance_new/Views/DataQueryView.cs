@@ -103,60 +103,84 @@ namespace OperationGuidance_new.Views {
             };
 
             CommonButton exportBtn = _dataGridView.AddExtraButton("导出");
-            exportBtn.Click += (sender, eventArgs) => {
+            exportBtn.Click += async (sender, eventArgs) => {
                 string filePath = ShowSaveFileDialog();
-                List<string>? headers = null;
-                // 检查当前文件是否存在
-                bool excelFileExists = File.Exists(filePath);
-                // 从配置文件读取配置
-                List<int> sortConfig = MainUtils.GetSortConfig();
-                List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                // 检查当前是否存在正在使用的字段配置
-                if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
-                    sortConfigCurr = sortConfig;
-                    MainUtils.SetSortConfigCurr(sortConfigCurr);
-                    headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                }
-                // 根据过滤条件从服务端获取全量数据（不分页）
-                var exportReq = BuildQueryOperationDataListReq(null, null, _dataGridView.FilterParametersVO);
-                var exportRsp = apis.QueryOperationDataList(exportReq);
-                List<OperationDataVO> dataFormatted = new();
-                CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(exportRsp.OperationDataDTOs, dataFormatted);
-                List<Dictionary<int, object?>> dataWithConfigFields = new();
-                // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                dataFormatted.ForEach(dto => {
-                    Dictionary<int, object?> record = new();
-                    for (int i = 0; i < propertyNames.Count; i++) {
-                        string pName = propertyNames[i];
-                        PropertyInfo? propertyInfo = dto.GetType().GetProperty(pName);
-                        if (propertyInfo != null) {
-                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dto)));
+                if (string.IsNullOrEmpty(filePath)) return;
+
+                exportBtn.Enabled = false;
+                var filterVO = _dataGridView.FilterParametersVO;
+
+                try {
+                    await Task.Run(() => {
+                        List<string>? headers = null;
+                        bool excelFileExists = File.Exists(filePath);
+                        List<int> sortConfig = MainUtils.GetSortConfig();
+                        List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+                        List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+                        List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+
+                        if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
+                            sortConfigCurr = sortConfig;
+                            MainUtils.SetSortConfigCurr(sortConfigCurr);
+                            headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
                         }
+
+                        int pageSize = 5000;
+                        int? afterId = null;
+                        bool firstBatch = true;
+
+                        while (true) {
+                            var exportReq = BuildQueryOperationDataListReq(null, pageSize, filterVO, afterId);
+                            var exportRsp = apis.QueryOperationDataList(exportReq);
+                            var batch = exportRsp.OperationDataDTOs;
+                            if (batch.Count == 0) break;
+
+                            List<List<object?>> finalData = new();
+                            foreach (var dto in batch) {
+                                List<object?> row = new();
+                                foreach (string pName in propertyNames) {
+                                    var prop = typeof(OperationDataDTO).GetProperty(pName);
+                                    row.Add(prop?.GetValue(dto));
+                                }
+                                finalData.Add(row);
+                            }
+
+                            finalData.ExportToExcelFile(headers, filePath, !firstBatch);
+                            firstBatch = false;
+                            afterId = batch.Last().id;
+
+                            if (batch.Count < pageSize) break;
+                        }
+                    });
+
+                    WidgetUtils.ShowNoticePopUp("导出完成！");
+                } catch (Exception ex) {
+                    WidgetUtils.ShowErrorPopUp($"导出失败：{ex.Message}");
+                } finally {
+                    if (!IsDisposed) {
+                        exportBtn.Enabled = true;
                     }
-                    dataWithConfigFields.Add(record);
-                });
-                // 组装最终数据
-                List<List<object?>> finalData = new();
-                dataWithConfigFields.ForEach(dict => {
-                    IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                    finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                });
-                // 写入数据
-                finalData.ExportToExcelFile(headers, filePath, excelFileExists);
+                }
             };
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
-                _dataGridView.VoGridView.ServerFetch = (page, pageSize) => {
-                    var pageReq = BuildQueryOperationDataListReq(page, pageSize, vo);
-                    var pageRsp = apis.QueryOperationDataList(pageReq);
-                    var pageVos = new List<OperationDataVO>();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(pageRsp.OperationDataDTOs, pageVos);
-                    return (pageVos, pageRsp.TotalCount);
+                // Snapshot filter at query time to prevent async mutation by RefreshWorkstationOptions
+                var queryWorkstationId = vo.workstation_id;
+                _dataGridView.VoGridView.ServerFetch = (page, pageSize, afterId) => {
+                    var saved = vo.workstation_id;
+                    vo.workstation_id = queryWorkstationId;
+                    try {
+                        var pageReq = BuildQueryOperationDataListReq(page, pageSize, vo, afterId);
+                        var pageRsp = apis.QueryOperationDataList(pageReq);
+                        var pageVos = new List<OperationDataVO>();
+                        CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(pageRsp.OperationDataDTOs, pageVos);
+                        return (pageVos, pageRsp.TotalCount);
+                    } finally {
+                        vo.workstation_id = saved;
+                    }
                 };
-                var req = BuildQueryOperationDataListReq(1, _dataGridView.VoGridView.PageSize, vo);
+                var req = BuildQueryOperationDataListReq(1, _dataGridView.VoGridView.PageSize, vo, null);
                 var rsp = apis.QueryOperationDataList(req);
                 _dataDTOList = rsp.OperationDataDTOs;
                 var vos = new List<OperationDataVO>();
@@ -197,17 +221,28 @@ namespace OperationGuidance_new.Views {
         #endregion
 
         #region Reusable methods
-        private void RefreshWorkstationOptions() {
-            _workstations = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-            _workstationNameComboBox.ClearItem();
-            foreach (WorkstationDTO workstation in _workstations) {
-                _workstationNameComboBox.AddItem(workstation.name, workstation.id);
+        private async void RefreshWorkstationOptions() {
+            _workstationNameComboBox.Enabled = false;
+            try {
+                var workstations = await Task.Run(() =>
+                    apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs);
+                if (IsDisposed) return;
+                _workstations = workstations;
+                _workstationNameComboBox.ClearItem();
+                foreach (WorkstationDTO workstation in _workstations) {
+                    _workstationNameComboBox.AddItem(workstation.name, workstation.id);
+                }
+            } catch (Exception ex) {
+                logger.Error($"RefreshWorkstationOptions failed: {ex.Message}", ex);
+            } finally {
+                if (!IsDisposed) _workstationNameComboBox.Enabled = true;
             }
         }
-        private QueryOperationDataListReq BuildQueryOperationDataListReq(int? page, int? pageSize, OperationDataVO vo) {
+        private QueryOperationDataListReq BuildQueryOperationDataListReq(int? page, int? pageSize, OperationDataVO vo, int? afterId = null) {
             return new() {
                 Page = page,
                 PageSize = pageSize,
+                AfterId = afterId,
                 VinNumber = vo.vin_number,
                 CreateTimeMin = vo.filter_create_time_min,
                 CreateTimeMax = vo.filter_create_time_max,

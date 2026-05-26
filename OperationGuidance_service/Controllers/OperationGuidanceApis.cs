@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using Dapper;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Services;
@@ -15,6 +16,7 @@ using OperationGuidance_service.Models.AbstractClasses;
 using OperationGuidance_service.Wrapper.AbstractClasses;
 using Newtonsoft.Json;
 using OperationGuidance_service.Configurations;
+using System.Text.RegularExpressions;
 
 namespace OperationGuidance_service.Controllers {
     [Api]
@@ -704,77 +706,91 @@ namespace OperationGuidance_service.Controllers {
         #region 任务记录相关
         // 查询任务记录列表
         public QueryMissionRecordListRsp QueryMissionRecordList(QueryMissionRecordListReq req) {
-            string sql = $"select * from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId}";
-            Dictionary<string, object> parameters = new();
+            // FORCE INDEX (PRIMARY) ensures MySQL scans mr in PK order for ORDER BY id LIMIT.
+            // Do NOT force index for COUNT — let the optimizer choose the best plan for the aggregate.
+            bool isMysql = SystemUtils.GetDBTypes() == DBTypes.MYSQL;
+            string fromClause = isMysql
+                ? $"{_missionRecordService.TableName} mr FORCE INDEX (PRIMARY)"
+                : $"{_missionRecordService.TableName} mr";
+            string fromClauseNoForce = $"{_missionRecordService.TableName} mr";
 
+            string sql = $@"
+        SELECT mr.*,
+               pm.name AS mission_name,
+               pm.is_challenge_mission
+        FROM {fromClause}
+        LEFT JOIN {_productMissionService.TableName} pm
+            ON mr.mission_id = pm.id AND pm.deleted = {(int)YesOrNo.NO}
+        WHERE mr.{_missionRecordService.ConditionWithoutUserId}";
+
+            Dictionary<string, object> parameters = new();
             string condition = "";
+
             if (req.Ids != null && req.Ids.Count > 0) {
-                condition += " and id in @ids";
+                condition += " and mr.id in @ids";
                 parameters.Add("ids", req.Ids);
             }
             if (req.Date != null) {
-                condition += " and create_time between @date1 and @date2";
-                string date1 = req.Date.Value.Date.ToString("yyyy-MM-dd HH:mm:ss");
-                string date2 = req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss");
-                parameters.Add("date1", date1);
-                parameters.Add("date2", date2);
+                condition += " and mr.create_time between @date1 and @date2";
+                parameters.Add("date1", req.Date.Value.Date.ToString("yyyy-MM-dd HH:mm:ss"));
+                parameters.Add("date2", req.Date.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss"));
             }
             if (req.UserId != null) {
-                condition += " and user_id = @userId";
+                condition += " and mr.user_id = @userId";
                 parameters.Add("userId", req.UserId.Value);
             }
             if (req.MissionId != null) {
-                condition += " and mission_id = @mission_id";
+                condition += " and mr.mission_id = @mission_id";
                 parameters.Add("mission_id", req.MissionId.Value);
             }
             if (req.ProductBatch != null) {
-                condition += " and product_batch = @product_batch";
+                condition += " and mr.product_batch = @product_batch";
                 parameters.Add("product_batch", req.ProductBatch);
             }
             if (req.ProductBarCode != null) {
-                condition += " and product_bar_code like @product_bar_code";
+                condition += " and mr.product_bar_code like @product_bar_code";
                 parameters.Add("product_bar_code", $"%{req.ProductBarCode}%");
             }
             if (req.PartsBarCode != null) {
-                condition += " and parts_bar_code like @parts_bar_code";
+                condition += " and mr.parts_bar_code like @parts_bar_code";
                 parameters.Add("parts_bar_code", $"%{req.PartsBarCode}%");
             }
             if (req.CreateTimeMin != null && req.CreateTimeMax != null) {
-                condition += " and create_time between @ct_min and @ct_max";
+                condition += " and mr.create_time between @ct_min and @ct_max";
                 parameters.Add("ct_min", req.CreateTimeMin.Value.Date.ToString("yyyy-MM-dd HH:mm:ss"));
                 parameters.Add("ct_max", req.CreateTimeMax.Value.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss"));
             }
             if (req.MissionName != null || req.IsChallengeMission != null) {
-                string missionCondition = "";
-                Dictionary<string, object> missionParams = new();
                 if (req.MissionName != null) {
-                    missionCondition += " and name like @mission_name";
-                    missionParams.Add("mission_name", $"%{req.MissionName}%");
+                    condition += " and pm.name like @mission_name";
+                    parameters.Add("mission_name", $"%{req.MissionName}%");
                 }
                 if (req.IsChallengeMission != null) {
-                    missionCondition += " and is_challenge_mission = @is_challenge";
-                    missionParams.Add("is_challenge", req.IsChallengeMission.Value ? (int) YesOrNo.YES : (int) YesOrNo.NO);
+                    condition += " and pm.is_challenge_mission = @is_challenge";
+                    parameters.Add("is_challenge", req.IsChallengeMission.Value ? (int)YesOrNo.YES : (int)YesOrNo.NO);
                 }
-                string missionSql = $"select id from {_productMissionService.TableName} where deleted = {(int) YesOrNo.NO}{missionCondition}";
-                List<ProductMission> missions = _productMissionService.FindBySql(missionSql, missionParams);
-                if (missions.Count == 0) {
-                    return new() { MissionRecordDTOs = new(), TotalCount = 0 };
-                }
-                condition += " and mission_id in @filter_mission_ids";
-                parameters.Add("filter_mission_ids", missions.Select(m => m.id).ToList());
             }
 
             int totalCount = 0;
-            bool paginate = req.Page != null && req.PageSize != null;
-            if (paginate) {
-                string countSql = $"select count(*) from {_missionRecordService.TableName} where {_missionRecordService.ConditionWithoutUserId} {condition}";
+            if (req.AfterId == null) {
+                string countSql = $@"
+            SELECT count(*)
+            FROM {fromClauseNoForce}
+            LEFT JOIN {_productMissionService.TableName} pm
+                ON mr.mission_id = pm.id AND pm.deleted = {(int)YesOrNo.NO}
+            WHERE mr.{_missionRecordService.ConditionWithoutUserId} {condition}";
                 totalCount = _missionRecordService.ExecuteScalar(countSql, parameters);
-                condition += BuildPaginationClause(req.Page.Value, req.PageSize.Value);
             }
 
-            List<MissionRecord> missionRecords = _missionRecordService.FindBySql(sql + condition, parameters);
+            condition += BuildPaginationClause(req.Page ?? 1, req.PageSize ?? 20, req.AfterId, "mr.id", parameters: parameters);
+
             List<MissionRecordDTO> missionRecordDTOs = new();
-            CommonUtils.ObjectConverter<MissionRecord, MissionRecordDTO>(missionRecords, missionRecordDTOs);
+            string finalSql = sql + condition;
+            logger.Info($"QueryMissionRecordList sql: [{finalSql}], params: [{string.Join(",", parameters.Select(p => $"{p.Key}={p.Value}"))}]");
+            using (DbConnection conn = DbConnector.GetConnection()) {
+                missionRecordDTOs = conn.Query<MissionRecordDTO>(finalSql, parameters).ToList();
+            }
+            logger.Info($"QueryMissionRecordList result count: {missionRecordDTOs.Count}");
 
             return new() {
                 MissionRecordDTOs = missionRecordDTOs,
@@ -875,12 +891,11 @@ namespace OperationGuidance_service.Controllers {
             }
 
             int totalCount = 0;
-            bool paginate = req.Page != null && req.PageSize != null;
-            if (paginate) {
+            if (req.AfterId == null) {
                 string countSql = $"select count(*) from {_operationDataService.TableName} where {_operationDataService.ConditionWithoutUserId} {condition}";
                 totalCount = _operationDataService.ExecuteScalar(countSql, parameters);
-                condition += BuildPaginationClause(req.Page.Value, req.PageSize.Value);
             }
+            condition += BuildPaginationClause(req.Page ?? 1, req.PageSize ?? 20, req.AfterId, parameters: parameters);
 
             List<OperationData> operationDatas = _operationDataService.FindBySql(sql + condition, parameters);
             List<OperationDataDTO> operationDataDTOs = new();
@@ -1576,15 +1591,54 @@ namespace OperationGuidance_service.Controllers {
         #endregion
 
         #region Private helpers
-        private static string BuildPaginationClause(int page, int pageSize) {
+        private static string BuildPaginationClause(int page, int pageSize, int? afterId = null, string idColumn = "id", bool ascending = true, Dictionary<string, object>? parameters = null) {
+            const string paginationParamKey = "_pagination_after_id";
+
+            // Guard against invalid inputs
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 1000) pageSize = 1000;
+            if (string.IsNullOrWhiteSpace(idColumn) || !Regex.IsMatch(idColumn, @"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$")) {
+                SystemUtils.GetLogger(typeof(OperationGuidanceApis)).Warn($"BuildPaginationClause: invalid idColumn '{idColumn}', falling back to 'id'");
+                idColumn = "id";
+            }
+
+            // Keyset pagination ignores `page` — warn if caller passes both
+            if (afterId != null && page > 1) {
+                SystemUtils.GetLogger(typeof(OperationGuidanceApis)).Warn($"BuildPaginationClause: page={page} ignored because afterId is set (keyset pagination)");
+            }
+
+            string dir = ascending ? "asc" : "desc";
+            string op  = ascending ? ">"   : "<";
+
+            DBTypes dbType = SystemUtils.GetDBTypes();
+
+            if (afterId != null) {
+                string afterIdLiteral;
+                if (parameters != null) {
+                    parameters[paginationParamKey] = afterId.Value;
+                    afterIdLiteral = "@" + paginationParamKey;
+                } else {
+                    afterIdLiteral = afterId.Value.ToString();
+                }
+
+                switch (dbType) {
+                    case DBTypes.SQLSERVER:
+                        return $" and {idColumn} {op} {afterIdLiteral} order by {idColumn} {dir} offset 0 rows fetch next {pageSize} rows only";
+                    case DBTypes.SQLITE:
+                    case DBTypes.MYSQL:
+                    default:
+                        return $" and {idColumn} {op} {afterIdLiteral} order by {idColumn} {dir} limit {pageSize}";
+                }
+            }
             int offset = (page - 1) * pageSize;
-            switch (SystemUtils.GetDBTypes()) {
+            switch (dbType) {
                 case DBTypes.SQLSERVER:
-                    return $" order by id offset {offset} rows fetch next {pageSize} rows only";
+                    return $" order by {idColumn} {dir} offset {offset} rows fetch next {pageSize} rows only";
                 case DBTypes.SQLITE:
                 case DBTypes.MYSQL:
                 default:
-                    return $" limit {pageSize} offset {offset}";
+                    return $" order by {idColumn} {dir} limit {pageSize} offset {offset}";
             }
         }
         #endregion

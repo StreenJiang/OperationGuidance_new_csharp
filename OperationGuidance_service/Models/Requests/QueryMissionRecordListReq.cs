@@ -10,6 +10,7 @@ namespace OperationGuidance_service.Models.Requests {
         // 分页
         public int? Page { get; set; }
         public int? PageSize { get; set; }
+        public int? AfterId { get; set; }
         // 过滤
         public string? ProductBarCode { get; set; }
         public string? PartsBarCode { get; set; }

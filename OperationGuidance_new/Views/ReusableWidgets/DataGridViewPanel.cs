@@ -6,7 +6,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.ViewObjects.AbstractClasses;
-using CustomLibrary.TextBoxes;
 using log4net;
 using OperationGuidance_new.Utils;
 
@@ -29,9 +28,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Label _dataCountInfo;
         private Label _pageInfo;
         private Label _countPerPage;
-        private Label _jumpToText;
-        private CustomTextBox _jumpToBox;
-        private Label _jumpToTextRight;
         private PageSwitchButton _first;
         private PageSwitchButton _backward;
         private PageSwitchButton _forward;
@@ -43,6 +39,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Action<DataGridView>? _initializeColumnHeader;
         private List<T> _dataSource;
         private bool _isAdjustingScroll;
+        private bool _isPaging;
+        private int? _lastId;
+        private int? _firstId;
+        private Dictionary<int, (List<T> data, int firstId, int lastId)> _pageCache = new();
         #endregion
 
         #region Properties
@@ -53,7 +53,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public int PageHeight { get => _pageHeight; set => _pageHeight = value; }
         public float ColumnsPaddingRatio { get => _columnsPaddingRatio; set => _columnsPaddingRatio = value; }
         /// <summary>服务端分页回调: (page, pageSize) => (pageData, totalCount)，为 null 时使用客户端 Skip/Take</summary>
-        public Func<int, int, (List<T>, int)>? ServerFetch { get; set; }
+        public Func<int, int, int?, (List<T>, int)>? ServerFetch { get; set; }
         public int CurrentPage {
             get => _currentPage;
             set {
@@ -75,12 +75,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (ServerFetch == null) {
                 throw new InvalidOperationException("SetServerDataSource requires ServerFetch to be set first for page navigation.");
             }
+            _pageCache.Clear();
             _dataSource = firstPageData;
             _totalCount = totalCount;
             _currentPage = 1;
-            _totalPages = (int) Math.Ceiling(totalCount / (double) _pageSize);
-            if (_totalPages == 0) {
-                _totalPages = 1;
+            _totalPages = (int)Math.Ceiling(totalCount / (double)_pageSize);
+            if (_totalPages == 0) _totalPages = 1;
+            if (firstPageData.Count > 0) {
+                _firstId = (int)typeof(T).GetProperty("id")!.GetValue(firstPageData[0])!;
+                _lastId = (int)typeof(T).GetProperty("id")!.GetValue(firstPageData.Last())!;
+                _pageCache[1] = (firstPageData, _firstId.Value, _lastId.Value);
             }
             if (IsHandleCreated) {
                 DisplayPageData(firstPageData);
@@ -134,7 +138,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
                 AllowUserToAddRows = false,
@@ -379,9 +383,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 columnChanged = false;
             };
             _gridView.Scroll += (sender, eventArgs) => {
+                if (_isAdjustingScroll) return;
                 try {
                     if (_vScrollBar != null && _vScrollBar.Visible && eventArgs.ScrollOrientation == ScrollOrientation.VerticalScroll) {
-                        _vScrollBar.Value = eventArgs.NewValue;
+                        _isAdjustingScroll = true;
+                        try {
+                            _vScrollBar.Value = eventArgs.NewValue;
+                        } finally {
+                            _isAdjustingScroll = false;
+                        }
                     }
                 } catch (Exception e) {
                     logger.Error($"Exception occurred while scrolling data grid view: e = [{e}]");
@@ -504,55 +514,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     CurrentPage = _totalPages;
                 }
             };
-            _jumpToText = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                Text = "跳转至第",
-                AutoSize = true,
-            };
-            _jumpToBox = new() {
-                Parent = _pageInfoContentPanel,
-                NumberOnly = true,
-                BorderColor = ColorConfigs.COLOR_TEXT_BOX_BORDER,
-                BorderColorError = ColorConfigs.COLOR_TEXT_BOX_BORDER_ERROR,
-            };
-            _jumpToBox.Box.KeyUp += async (sender, eventArgs) => {
-                if (eventArgs.KeyCode == Keys.Enter && !string.IsNullOrEmpty(_jumpToBox.Box.Text)) {
-                    int page = int.Parse(_jumpToBox.Box.Text);
-                    if (page >= 1 && page <= _totalPages) {
-                        _currentPage = page;
-                        Paging(page, _pageSize);
-                        eventArgs.Handled = true;
-                    } else {
-                        _jumpToBox.IsError = true;
-                        await Task.Delay(2000);
-                        _jumpToBox.IsError = false;
-                    }
-                    _jumpToBox.Box.Text = "";
-                }
-            };
-            _jumpToBox.Box.LostFocus += async (sender, eventArgs) => {
-                if (!string.IsNullOrEmpty(_jumpToBox.Box.Text)) {
-                    int page = int.Parse(_jumpToBox.Box.Text);
-                    if (page >= 1 && page <= _totalPages) {
-                        _currentPage = page;
-                        Paging(page, _pageSize);
-                    } else {
-                        _jumpToBox.IsError = true;
-                        await Task.Delay(2000);
-                        _jumpToBox.IsError = false;
-                    }
-                    _jumpToBox.Box.Text = "";
-                }
-            };
-            _jumpToTextRight = new() {
-                Parent = _pageInfoContentPanel,
-                Margin = new(0),
-                Padding = new(0),
-                Text = "页",
-                AutoSize = true,
-            };
         }
         private void InitializeOthers() {
             _blankPanel = new() {
@@ -584,10 +545,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _countPerPage.Text = $"{_pageSize} 条/页";
             _dataCountInfo.Text = $"共 {(_totalCount > 0 ? _totalCount : _dataSource.Count)} 条";
             _pageInfo.Text = $"{_currentPage}/{_totalPages}";
+            RestorePageButtons();
         }
         private void ResizePageInfoContent(Label label, int newPageInfoHeight) {
             label.Font = new(WidgetsConfigs.SystemFontFamily, newPageInfoHeight * .475F, FontStyle.Regular, GraphicsUnit.Pixel);
             label.Margin = new(0, (newPageInfoHeight - label.Height) / 2, 0, 0);
+        }
+        private void RestorePageButtons() {
+            if (IsDisposed) return;
+            _first.Enabled = _currentPage > 1;
+            _backward.Enabled = _currentPage > 1;
+            _forward.Enabled = _currentPage < _totalPages;
+            _last.Enabled = _currentPage < _totalPages;
         }
         private void DisplayPageData(List<T> data) {
             BeginInvoke(new Action(ClearAllToggleButtonCells));
@@ -597,18 +566,78 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
             BeginInvoke(new Action<BindingSource>(LoadDataAsync), bindingSource);
         }
-        private void Paging(int currentPage, int pageSize) {
-            if (IsHandleCreated) {
-                if (ServerFetch != null) {
-                    var (data, totalCount) = ServerFetch(currentPage, pageSize);
-                    _dataSource = data;
-                    _totalCount = totalCount;
-                    DisplayPageData(data);
-                } else {
-                    if (_dataSource.Count > 0) {
-                        DisplayPageData(_dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList());
-                    }
+        private async void Paging(int currentPage, int pageSize) {
+            if (!IsHandleCreated) return;
+            if (_isPaging) return;
+            _isPaging = true;
+
+            // Disable pagination buttons during load
+            BeginInvoke(new Action(() => {
+                _first.Enabled = _backward.Enabled = _forward.Enabled = _last.Enabled = false;
+            }));
+
+            if (ServerFetch != null) {
+                if (_pageCache.TryGetValue(currentPage, out var cached)) {
+                    _dataSource = cached.data;
+                    _firstId = cached.firstId;
+                    _lastId = cached.lastId;
+                    DisplayPageData(cached.data);
+                    _currentPage = currentPage;
+                    BeginInvoke(new Action(ResetPageInfo));
+                    _isPaging = false;
+                    return;
                 }
+
+                int? afterId = null;
+                if (currentPage > 1 && _pageCache.TryGetValue(currentPage - 1, out var prev)) {
+                    afterId = prev.lastId;
+                }
+
+                try {
+                    var (data, totalCount) = await Task.Run(() => ServerFetch(currentPage, pageSize, afterId));
+                    if (IsDisposed) { _isPaging = false; return; }
+                    if (data.Count == 0 && currentPage > 1) {
+                        // No more data — stay on previous page
+                        _currentPage = currentPage - 1;
+                        if (_pageCache.TryGetValue(_currentPage, out var fallback)) {
+                            _dataSource = fallback.data;
+                            _firstId = fallback.firstId;
+                            _lastId = fallback.lastId;
+                            DisplayPageData(fallback.data);
+                        }
+                        BeginInvoke(new Action(ResetPageInfo));
+                        _isPaging = false;
+                        return;
+                    }
+                    _dataSource = data;
+                    if (currentPage == 1) {
+                        _totalCount = totalCount;
+                        _totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+                        if (_totalPages == 0) _totalPages = 1;
+                        _pageCache.Clear();
+                    }
+                    _currentPage = currentPage;
+                    if (data.Count > 0) {
+                        _firstId = (int)typeof(T).GetProperty("id")!.GetValue(data[0])!;
+                        _lastId = (int)typeof(T).GetProperty("id")!.GetValue(data.Last())!;
+                        _pageCache[currentPage] = (data, _firstId.Value, _lastId.Value);
+                    }
+                    DisplayPageData(data);
+                } catch (Exception ex) {
+                    logger.Error($"Paging error: {ex.Message}", ex);
+                    if (!IsDisposed) {
+                        BeginInvoke(new Action(() => WidgetUtils.ShowErrorPopUp($"翻页失败：{ex.Message}")));
+                    }
+                } finally {
+                    _isPaging = false;
+                    BeginInvoke(new Action(RestorePageButtons));
+                }
+            } else {
+                if (_dataSource.Count > 0) {
+                    DisplayPageData(_dataSource.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList());
+                }
+                _isPaging = false;
+                BeginInvoke(new Action(RestorePageButtons));
             }
         }
         private void LoadDataAsync(BindingSource bindingSource) {
@@ -664,8 +693,6 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 ResizePageInfoContent(_dataCountInfo, newPageInfoHeight);
                 ResizePageInfoContent(_countPerPage, newPageInfoHeight);
                 ResizePageInfoContent(_pageInfo, newPageInfoHeight);
-                ResizePageInfoContent(_jumpToText, newPageInfoHeight);
-                ResizePageInfoContent(_jumpToTextRight, newPageInfoHeight);
                 // All buttons
                 int buttonSide = (int) (newPageInfoHeight * .7);
                 _first.Size = new(buttonSide, buttonSide);
@@ -680,15 +707,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _backward.Margin = new(buttonInnerHMargin, buttonMarginTop, buttonInnerHMargin, 0);
                 _last.Margin = new(0, buttonMarginTop, buttonOuterHMargin, 0);
                 // Text box
-                _jumpToBox.Size = new((int) (newPageInfoHeight * 1.8), (int) (newPageInfoHeight * .95));
-                _jumpToBox.Margin = new(0, (newPageInfoHeight - _jumpToBox.Height) / 2, 0, 0);
                 // All part width
                 int sumWidth = 0;
                 foreach (Control control in _pageInfoContentPanel.Controls) {
                     sumWidth += control.Width;
                     sumWidth += control.Margin.Size.Width;
                 }
-                _pageInfoContentPanel.Size = new(sumWidth, newPageInfoHeight);
+                _pageInfoContentPanel.Size = new(Math.Min(sumWidth, _pageInfoPanel.Width), newPageInfoHeight);
             }
             // Grid size
             _gridViewPanel.Size = new(Width - Padding.Size.Width, Height - Padding.Size.Height - newPageInfoHeight);

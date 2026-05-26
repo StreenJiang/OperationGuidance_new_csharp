@@ -8,5 +8,10 @@ namespace OperationGuidance_service.Models.DTOs {
         public string? parts_bar_code { get; set; }
         public int mission_result { get; set; }
         public int is_redo { get; set; }
+        // JOIN 填充的冗余字段
+        public string? mission_name { get; set; }
+        public int? is_challenge_mission { get; set; }
+        public int? workstation_id { get; set; }
+        public string? workstation_name { get; set; }
     }
 }
