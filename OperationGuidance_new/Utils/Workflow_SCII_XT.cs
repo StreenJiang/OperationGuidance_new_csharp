@@ -134,6 +134,23 @@ namespace OperationGuidance_new.Utils {
             return result;
         }
 
+        // 上盖码 → 追溯码
+        public static async Task<string?> GetUpperCode(string productCode) {
+            var api = $"/api/product/GetUpperCode/{productCode}";
+
+            try {
+                var rsp = await HttpUtils.SendGet_SCII_XT<SCII_XT_Response>(RequestPrefix + api);
+                if (rsp.code == (int) SCII_XT_ResponseCode.OK && rsp.dataInfo != null) {
+                    return rsp.dataInfo.ToString();
+                }
+                log.Warn($"GetUpperCode 失败，productCode = [{productCode}]，code = [{rsp.code}]，message = [{rsp.message}]");
+                return null;
+            } catch (Exception ex) {
+                log.Error($"GetUpperCode 异常，productCode = [{productCode}]", ex);
+                return null;
+            }
+        }
+
         // 5. 产品数据绑定(绑定扭力枪的数据)
         public static async Task<SCII_XT_BindProductDataDTO> BindProductData(SCII_XT_BindProductDataReq req) {
             var api = "/api/product-data/bind";

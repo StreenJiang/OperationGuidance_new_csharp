@@ -66,6 +66,32 @@ namespace OperationGuidance_new.Utils.IIPSC {
             return zpl.ToString();
         }
 
+        private string GenerateZplCommand(SciiXtPrinterConfig sProfile, string traceCode, DateTime date, int moduleSize = 5) {
+            if (string.IsNullOrEmpty(traceCode) || traceCode.Length != TRACE_CODE_LENGTH)
+                throw new ArgumentException($"追溯码必须是{TRACE_CODE_LENGTH}位", nameof(traceCode));
+
+            var zpl = new StringBuilder();
+            zpl.AppendLine("^XA");
+
+            zpl.AppendLine($"{sProfile.text_1}{sProfile.supplier_name}^FS");
+            zpl.AppendLine($"{sProfile.text_2}{sProfile.project_name}^FS");
+            zpl.AppendLine($"{sProfile.text_3}{date:yyyy/MM/dd}^FS");
+            zpl.AppendLine($"{sProfile.text_4}{sProfile.sn.ToString().PadLeft(4, '0')}^FS");
+            zpl.AppendLine($"{sProfile.text_5}{traceCode}^FS");
+
+            int labelWidthMm = 110;
+            int labelHeightMm = 50;
+            zpl.AppendLine($"^LH0,0");
+            zpl.AppendLine($"^PW{MmToDots(labelWidthMm, DPMM_203DPI)}");
+            zpl.AppendLine($"^LL{MmToDots(labelHeightMm, DPMM_203DPI)}");
+
+            zpl.AppendLine($"^FO{sProfile.sn_pos_x},{sProfile.sn_pos_y}^BQN,2,{moduleSize}");
+            zpl.AppendLine($"^FDQA,{traceCode}^FS");
+            zpl.AppendLine("^XZ");
+
+            return zpl.ToString();
+        }
+
         public string GenerateQrZpl(string qrContent,
                                     double dpmm = DPMM_300DPI,
                                     double labelSizeMm = 9,
@@ -99,6 +125,45 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
         private static int GetModuleCountForVersion(int version) {
             return (version - 1) * 4 + 21;
+        }
+
+        /// <summary>
+        /// 解析24位追溯码，提取流水号和日期。校验失败抛 ArgumentException。
+        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 0000(4) + 零件号(8)
+        /// </summary>
+        private static (int serialNumber, DateTime date) ParseTraceCode(string traceCode) {
+            if (string.IsNullOrEmpty(traceCode) || traceCode.Length != TRACE_CODE_LENGTH)
+                throw new ArgumentException($"追溯码必须为{TRACE_CODE_LENGTH}位");
+
+            if (traceCode.Substring(0, 2) != "00")
+                throw new ArgumentException("追溯码前两位必须为\"00\"");
+            if (traceCode.Substring(12, 4) != "0000")
+                throw new ArgumentException("追溯码第13-16位必须为\"0000\"");
+
+            if (!int.TryParse(traceCode.Substring(4, 1), out int yearDigit) || yearDigit < 0 || yearDigit > 9)
+                throw new ArgumentException("追溯码第5位年份尾号格式不正确");
+
+            if (!int.TryParse(traceCode.Substring(5, 3), out int dayOfYear) || dayOfYear < 1 || dayOfYear > 366)
+                throw new ArgumentException("追溯码第6-8位自然日格式不正确");
+
+            if (!int.TryParse(traceCode.Substring(8, 4), out int serialNumber) || serialNumber < 0 || serialNumber > 9999)
+                throw new ArgumentException("追溯码第9-12位流水号格式不正确");
+
+            int baseYear = DateTime.Now.Year / 10 * 10 + yearDigit;
+            if (baseYear > DateTime.Now.Year)
+                baseYear -= 10;
+
+            DateTime date;
+            try {
+                date = new DateTime(baseYear, 1, 1).AddDays(dayOfYear - 1);
+            } catch (ArgumentOutOfRangeException) {
+                throw new ArgumentException($"追溯码中日期无效：年份={baseYear}，日序={dayOfYear}");
+            }
+
+            if (date > DateTime.Now)
+                throw new ArgumentException($"追溯码中日期({date:yyyy/MM/dd})不能是未来日期");
+
+            return (serialNumber, date);
         }
 
         private static int MmToDots(double mm, double dpmm) {
@@ -136,6 +201,23 @@ namespace OperationGuidance_new.Utils.IIPSC {
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
                 log.Error($"Print fails! PrinterName = [{printerName}]：{ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 使用 API 返回的24位追溯码打印标签。解析追溯码、校验格式、提取流水号、组装ZPL并打印。
+        /// </summary>
+        public bool PrintWithTraceCode(SciiXtPrinterConfig config, string traceCode) {
+            try {
+                var (serialNumber, date) = ParseTraceCode(traceCode);
+
+                config.sn = serialNumber;
+
+                string zpl = GenerateZplCommand(config, traceCode, date);
+                return PrintViaZpl(config.printer_name, zpl);
+            } catch (Exception ex) {
+                log.Error($"PrintWithTraceCode 失败，traceCode = [{traceCode}]：{ex.Message}");
                 return false;
             }
         }

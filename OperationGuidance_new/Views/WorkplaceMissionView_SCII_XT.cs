@@ -59,6 +59,9 @@ namespace OperationGuidance_new.Views {
 
         private WaitDialog? _barcodeDialog;
         private volatile bool _canReceiveBarcode = false;
+        private bool _lidCodePrinted;
+        private SciiXtPrinterConfig? _lastPrintedConfig;
+        private DiverterCodeReprintPopUpForm? _reprintBarcodeDialog;
 
         public WaitDialog? BarcodeDialog { get => _barcodeDialog; set => _barcodeDialog = value; }
         public bool CanReceiveBarcode { get => _canReceiveBarcode; set => _canReceiveBarcode = value; }
@@ -101,8 +104,31 @@ namespace OperationGuidance_new.Views {
             _operationDataDTOs = new();
         }
 
+        protected override List<DeviceCategory>? CustomCategories() {
+            return new() { DeviceCategories.PRINTER };
+        }
+
+        protected override void CheckCustomConnections(DeviceBlock block, DeviceCategory category) {
+            if (category == DeviceCategories.PRINTER) {
+                var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+                if (config.enabled == (int) YesOrNo.NO) {
+                    block.ResetIconByStatus(DeviceStatus.EMPTY);
+                } else if (string.IsNullOrEmpty(config.printer_name)) {
+                    block.ResetIconByStatus(DeviceStatus.ERROR);
+                } else {
+                    block.ResetIconByStatus(DeviceStatus.NORMAL);
+                }
+            }
+        }
+
         protected override bool IsChallengeMission() {
             return false;
+        }
+
+        protected override void PrepareBeforeActivatingMission() {
+            base.PrepareBeforeActivatingMission();
+            _lidCodePrinted = false;
+            _lastPrintedConfig = null;
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
@@ -110,10 +136,14 @@ namespace OperationGuidance_new.Views {
 
             if (isPointInspection) {
                 _inBoundStationOk = false;
+                _lidCodePrinted = false;
+                _lastPrintedConfig = null;
                 await base.TerminateMission(status);
             } else {
                 await SendDataToMES(_operationDataDTOs);
                 _inBoundStationOk = false;
+                _lidCodePrinted = false;
+                _lastPrintedConfig = null;
                 if (await OutBound()) {
                     await base.TerminateMission(status);
                     SwitchMissionByRecipe(_getRecipeCode());
@@ -178,6 +208,32 @@ namespace OperationGuidance_new.Views {
             _missionSelectedName.DeleteButton<CommonButton>(0);
 
             SwitchMissionByRecipe(_getRecipeCode());
+
+            // 绑定打印机图标 → 移至最右侧 + 点击弹出 PrinterOperationPopUpForm
+            DeviceBlock? printerBlock = _deviceBlocks.Find(b => b.Category == DeviceCategories.PRINTER);
+            if (printerBlock != null) {
+                // RightToLeft 布局：index 0 = 最右侧
+                _bottom.Controls.SetChildIndex(printerBlock, 0);
+
+                printerBlock.Click += (s, e) => {
+                    if (printerBlock.PopUpForm == null || printerBlock.PopUpForm.IsDisposed) {
+                        var popUpForm = new PrinterOperationPopUpForm(this);
+                        printerBlock.PopUpForm = popUpForm;
+                        popUpForm.PretendToShowToCreateHandlesForChildren();
+
+                        int btnHeight = WidgetUtils.TextOrComboBoxHeight();
+                        int gap = btnHeight / 6;
+                        int contentHPadding = popUpForm.ContentPanel.Padding.Horizontal;
+                        int contentVPadding = popUpForm.ContentPanel.Padding.Vertical;
+                        int contentWidth = popUpForm.ContentWidth + contentHPadding;
+                        int contentHeight = btnHeight * 2 + gap + contentVPadding;
+                        Size contentSize = new(contentWidth, contentHeight);
+
+                        popUpForm.SetContentSizeAndSelfSize(contentSize);
+                        popUpForm.Show();
+                    }
+                };
+            }
         }
 
         private void SwitchMissionByRecipe(string recipeCode) {
@@ -257,6 +313,9 @@ namespace OperationGuidance_new.Views {
                                     WidgetUtils.ShowWarningPopUp("未找到指定配置的打印机，请检查配置或打印机。");
                                 } else if (!printer.QuickPrint(config)) {
                                     WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+                                } else {
+                                    _lidCodePrinted = true;
+                                    _lastPrintedConfig = config;
                                 }
                             } else {
                                 WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
@@ -266,6 +325,39 @@ namespace OperationGuidance_new.Views {
                 }
             }));
         }
+        public void OpenLidCodeReprintPopUp() {
+            var popUpForm = new LidCodeReprintPopUpForm(this, _lidCodePrinted, _lastPrintedConfig);
+            popUpForm.PretendToShowToCreateHandlesForChildren();
+
+            int btnHeight = WidgetUtils.TextOrComboBoxHeight();
+            int gap = btnHeight / 3;
+            int contentHPadding = popUpForm.ContentPanel.Padding.Horizontal;
+            int contentVPadding = popUpForm.ContentPanel.Padding.Vertical;
+            int contentWidth = popUpForm.ContentWidth + contentHPadding;
+            int contentHeight = _lidCodePrinted
+                ? btnHeight * 2 + gap + contentVPadding
+                : btnHeight + contentVPadding;
+            Size contentSize = new(contentWidth, contentHeight);
+            popUpForm.SetContentSizeAndSelfSize(contentSize);
+            popUpForm.Show();
+        }
+
+        public void OpenDiverterCodeReprintPopUp() {
+            var popUpForm = new DiverterCodeReprintPopUpForm(this);
+            _reprintBarcodeDialog = popUpForm;
+            popUpForm.FormClosed += (s, e) => _reprintBarcodeDialog = null;
+
+            popUpForm.PretendToShowToCreateHandlesForChildren();
+
+            int boxHeight = WidgetUtils.TextOrComboBoxHeight();
+            int boxMargin = boxHeight / 5;
+            Padding contentPadding = popUpForm.ContentPanel.Padding;
+            int contentWidth = (int) (WidgetUtils.MainSize.Width * .60);
+            int contentHeight = boxHeight + boxMargin * 2 + contentPadding.Size.Height;
+            popUpForm.SetContentSizeAndSelfSize(new(contentWidth, contentHeight));
+            popUpForm.Show();
+        }
+
         public async Task SendQRCodeToPrinter(string qrContent) {
             await Task.Run(() => BeginInvoke(() => {
                 var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
@@ -441,6 +533,10 @@ namespace OperationGuidance_new.Views {
                                     _barcodeDialog.TextBox.GetTextBox(0).Text = msg;
                                     ProcessSecondBarCode();
                                 }
+                                // 分流器重打弹窗
+                                else if (_reprintBarcodeDialog != null && !_reprintBarcodeDialog.IsDisposed) {
+                                    _reprintBarcodeDialog.FillBarcode(msg);
+                                }
                                 // 交给弹窗处理
                                 else if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
                                     OpenBarCodePopUpForm(msg);
@@ -452,6 +548,54 @@ namespace OperationGuidance_new.Views {
                     });
                 });
             };
+        }
+
+        public async void ProcessUpperCoverCode() {
+            if (_barcodeDialog == null) return;
+
+            string productCode = _barcodeDialog.TextBox.GetTextBox(0).Text;
+            if (string.IsNullOrEmpty(productCode)) {
+                WidgetUtils.ShowWarningPopUp("请输入或扫描上盖码");
+                return;
+            }
+
+            var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
+            if (string.IsNullOrEmpty(config.printer_name)) {
+                WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
+                return;
+            }
+
+            string? traceCode = await Workflow_SCII_XT.GetUpperCode(productCode);
+            if (string.IsNullOrEmpty(traceCode)) {
+                WidgetUtils.ShowWarningPopUp("获取追溯码失败，请检查上盖码是否正确或稍后重试。");
+                return;
+            }
+
+            bool ok = await Task.Run(() => {
+                using ZplQrCodePrinter printer = new();
+                List<string> list = printer.GetAvailablePrinters();
+                if (list.Count == 0) {
+                    WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
+                    return false;
+                }
+                string? printerName = list.Find(p => p == config.printer_name);
+                if (printerName == null) {
+                    WidgetUtils.ShowWarningPopUp("未找到指定配置的打印机，请检查配置或打印机。");
+                    return false;
+                }
+                return printer.PrintWithTraceCode(config, traceCode);
+            });
+
+            if (ok) {
+                _lidCodePrinted = true;
+                _lastPrintedConfig = config;
+                _barcodeDialog.SignalComplete();
+                _barcodeDialog.Dispose();
+                _barcodeDialog = null;
+                _canReceiveBarcode = false;
+            } else {
+                WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
+            }
         }
 
         public void ProcessSecondBarCode() {

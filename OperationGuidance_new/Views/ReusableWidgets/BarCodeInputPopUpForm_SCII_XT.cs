@@ -132,7 +132,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
             dialog.TextBox.GetTextBox(0).Box.KeyDown += (s, e) => {
                 if (e.KeyCode == Keys.Enter) {
-                    workplace.ProcessSecondBarCode();
+                    workplace.ProcessUpperCoverCode();
                 }
             };
 

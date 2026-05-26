@@ -21,6 +21,7 @@ namespace OperationGuidance_new.Constants {
         public static DeviceCategory SERIAL_PORT = AddNew<SERIAL_PORT>();
         public static DeviceCategory IOBOX_ARRANGER = AddNew<IOBOX_ARRANGER>();
         public static DeviceCategory IOBOX_SETTERSELECTOR = AddNew<IOBOX_SETTERSELECTOR>();
+        public static DeviceCategory PRINTER = new PRINTER();
 
         public static string? GetNameById(int id) {
             foreach (DeviceCategory type in Elements) {
@@ -90,6 +91,13 @@ namespace OperationGuidance_new.Constants {
             Properties.Resources.aneng_setter_selector,
             Properties.Resources.aneng_setter_selector_error,
             Properties.Resources.aneng_setter_selector_empty) { }
+    }
+
+    public class PRINTER: DeviceCategory {
+        public PRINTER(): base(99, "打印机",
+            Properties.Resources.printer,
+            Properties.Resources.printer_error,
+            Properties.Resources.printer_empty) {}
     }
 
     public class DeviceTypeBase {
