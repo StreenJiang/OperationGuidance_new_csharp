@@ -18,6 +18,7 @@ using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Attributes;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
+using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Utils;
 using OperationGuidance_new.Views.SubViews;
 using System.Reflection;
@@ -920,6 +921,20 @@ namespace OperationGuidance_new.Views {
                 WidgetUtils.ShowWarningPopUp(this, "【配方编码】未配置，请检查配置信息。");
             }
             return recipeCode;
+        }
+
+        protected override List<MissionRecordDTO> GetRecoreds(int? missionId = null) {
+            int mId = missionId ?? _mission.id;
+            logger.Debug($"[SCII_XT:GetRecoreds] Getting mission records for mission ID: {mId}");
+
+            QueryMissionRecordListReq req = new() {
+                MissionId = mId,
+                Date = DateTime.Now,
+            };
+
+            List<MissionRecordDTO> result = _apis.QueryMissionRecordList(req).MissionRecordDTOs;
+            logger.Debug($"[SCII_XT:GetRecoreds] Retrieved {result.Count} mission records");
+            return result;
         }
 
         private void NewAttribute(Dictionary<string, object> eachValue,

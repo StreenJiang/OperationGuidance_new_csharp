@@ -680,7 +680,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        private List<MissionRecordDTO> GetRecoreds(int? missionId = null) {
+        protected virtual List<MissionRecordDTO> GetRecoreds(int? missionId = null) {
             int mId = missionId ?? _mission.id;
             logger.Debug($"[SCII:GetRecoreds] Getting mission records for mission ID: {mId}");
 
