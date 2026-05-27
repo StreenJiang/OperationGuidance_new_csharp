@@ -550,54 +550,6 @@ namespace OperationGuidance_new.Views {
             };
         }
 
-        public async void ProcessUpperCoverCode() {
-            if (_barcodeDialog == null) return;
-
-            string productCode = _barcodeDialog.TextBox.GetTextBox(0).Text;
-            if (string.IsNullOrEmpty(productCode)) {
-                WidgetUtils.ShowWarningPopUp("请输入或扫描上盖码");
-                return;
-            }
-
-            var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
-            if (string.IsNullOrEmpty(config.printer_name)) {
-                WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
-                return;
-            }
-
-            string? traceCode = await Workflow_SCII_XT.GetUpperCode(productCode);
-            if (string.IsNullOrEmpty(traceCode)) {
-                WidgetUtils.ShowWarningPopUp("获取追溯码失败，请检查上盖码是否正确或稍后重试。");
-                return;
-            }
-
-            bool ok = await Task.Run(() => {
-                using ZplQrCodePrinter printer = new();
-                List<string> list = printer.GetAvailablePrinters();
-                if (list.Count == 0) {
-                    WidgetUtils.ShowWarningPopUp("未找到任何打印机设备！");
-                    return false;
-                }
-                string? printerName = list.Find(p => p == config.printer_name);
-                if (printerName == null) {
-                    WidgetUtils.ShowWarningPopUp("未找到指定配置的打印机，请检查配置或打印机。");
-                    return false;
-                }
-                return printer.PrintWithTraceCode(config, traceCode);
-            });
-
-            if (ok) {
-                _lidCodePrinted = true;
-                _lastPrintedConfig = config;
-                _barcodeDialog.SignalComplete();
-                _barcodeDialog.Dispose();
-                _barcodeDialog = null;
-                _canReceiveBarcode = false;
-            } else {
-                WidgetUtils.ShowWarningPopUp("发送指令至打印机失败！请检查日志信息定位问题。");
-            }
-        }
-
         public void ProcessSecondBarCode() {
             if (_barcodeDialog != null) {
                 string barcode = _barcodeDialog.TextBox.GetTextBox(0).Text;
