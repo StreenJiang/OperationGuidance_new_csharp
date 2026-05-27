@@ -574,8 +574,10 @@ namespace OperationGuidance_new.Views {
                 IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
                             .DistinctBy(dto => dto.product_bar_code);
                 sum = distinctData.Count();
-                okSum = distinctData
+                okSum = missionRecordDTOs
                             .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
+                            .Select(dto => dto.product_bar_code)
+                            .Distinct()
                             .Count();
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
