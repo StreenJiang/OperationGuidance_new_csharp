@@ -1269,10 +1269,10 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override async Task ActionAfterActivatingMission() {
+        protected override async Task<bool> ActionAfterActivatingMission() {
             logger.Debug($"[SCII:ActionAfterActivatingMission] Action after activating mission started");
 
-            await base.ActionAfterActivatingMission();
+            if (!await base.ActionAfterActivatingMission()) return false;
 
             // Clear data grid view
             _tighteningDataVOs.Clear();
@@ -1284,6 +1284,8 @@ namespace OperationGuidance_new.Views {
             logger.Debug($"[SCII:ActionAfterActivatingMission] Product batch set: {_missionRecord.product_batch}");
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             logger.Info($"[SCII:ActionAfterActivatingMission] Mission record updated with product batch");
+
+            return true;
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {

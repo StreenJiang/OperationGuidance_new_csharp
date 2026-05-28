@@ -47,13 +47,31 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             try {
                 string sql = GenerateInsertSql();
                 logger.Info("sql: " + sql);
-                string newEntitySql = GenerateQueryNewestSql(entity);
-                logger.Info("newEntitySql: " + newEntitySql);
+                string idSql = LastInsertIdSql;
+                logger.Info("idSql: " + idSql);
 
-                int result = ExecuteWithRetry(sql, entity);
-                entity.id = QueryFirstWithRetry(newEntitySql, entity);
+                if (_conn != null) {
+                    // 事务内：复用共享连接，保留死锁重试
+                    int result = ExecuteWithRetry(sql, entity);
+                    entity.id = QueryFirstWithRetry(idSql);
+                    logger.Info("Result: " + result);
+                } else {
+                    // 非事务：INSERT 和取 ID 必须在同一条连接上
+                    const int maxRetries = 5;
+                    for (int attempt = 0; attempt < maxRetries; attempt++) {
+                        try {
+                            using (DbConnection conn = DbConnector.GetConnection()) {
+                                int result = conn.Execute(sql, entity, commandTimeout: commandTimeout);
+                                entity.id = conn.QueryFirst<int>(idSql, null, commandTimeout: commandTimeout);
+                                logger.Info("Result: " + result);
+                            }
+                            break;
+                        } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
+                            Thread.Sleep(50 * (attempt + 1));
+                        }
+                    }
+                }
 
-                logger.Info("Result: " + result);
                 return entity;
             } catch (Exception e) {
                 logger.Error($"Failed to add entity to table {_tabelName}, please check error: e = {e}");
@@ -286,10 +304,12 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             return insertSql;
         }
 
-        private string GenerateQueryNewestSql(T entity) {
-            string tableName = GetTableName();
-            return $"select max(id) from {tableName} where {CommonCondition(entity)}";
-        }
+        private static readonly string LastInsertIdSql = SystemUtils.GetDBTypes() switch {
+            DBTypes.SQLITE => "SELECT last_insert_rowid()",
+            DBTypes.MYSQL => "SELECT LAST_INSERT_ID()",
+            DBTypes.SQLSERVER => "SELECT SCOPE_IDENTITY()",
+            _ => "SELECT last_insert_rowid()"
+        };
 
         private string GenerateUpdateSql(T entity) {
             string tableName = GetTableName();

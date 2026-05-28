@@ -99,10 +99,11 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override async Task ActionAfterActivatingMission() {
-            await base.ActionAfterActivatingMission();
+        protected override async Task<bool> ActionAfterActivatingMission() {
+            if (!await base.ActionAfterActivatingMission()) return false;
 
             _operationDataDTOs = new();
+            return true;
         }
 
         protected override List<DeviceCategory>? CustomCategories() {

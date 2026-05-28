@@ -5,7 +5,6 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using log4net;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
@@ -1463,7 +1462,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        protected virtual async Task ActionAfterActivatingMission() {
+        protected virtual async Task<bool> ActionAfterActivatingMission() {
             // Add a new record into: mission_record
             _missionRecord = new() {
                 mission_id = _mission.id,
@@ -1472,7 +1471,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 mission_result = (int) TighteningStatus.NG,
                 is_redo = _isRedo,
             };
-            _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+            var rsp = _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+            // 校验返回值
+            if (rsp.RsponseCode != HttpResponseCode.OK) {
+                WidgetUtils.ShowErrorPopUp(rsp.RsponseMessage);
+                return false;
+            }
+            if (_missionRecord.id == 0) {
+                WidgetUtils.ShowErrorPopUp($"Mission record id = {_missionRecord.id}");
+                return false;
+            }
 
             // 异步写入 parts_bar_code 新表（v2.1.x 重码校验依赖此表）
             if (_barCodeObj.PartsBarCodes.Count > 0) {
@@ -1494,7 +1503,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         } catch (Exception ex) {
                             logger.Warn($"Failed to sync parts barcodes (attempt {attempt + 1}/{maxRetries}): mission_record_id={missionRecordId}, e={ex.Message}");
                             if (attempt < maxRetries - 1) {
-                                await Task.Delay((int)Math.Pow(2, attempt) * 1000);
+                                await Task.Delay((int) Math.Pow(2, attempt) * 1000);
                             }
                         }
                     }
@@ -1563,6 +1572,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Start looping task if setter selector is needed
             StartSetterSelectorTask();
+
+            return true;
         }
 
         protected virtual async void ActivateMissionAutomatically() {
