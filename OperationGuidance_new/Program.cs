@@ -21,6 +21,10 @@ namespace OperationGuidance_new {
                 // Initialize dependencies injection 
                 DependencyInjector.Initialize();
 
+                // Background: clean old log files
+                int retentionDays = MainUtils.GetLogsRetentionDays();
+                Task.Run(() => LogsCleanupUtils.CleanOldLogs(retentionDays));
+
                 // Run main form
                 try {
                     MainForm mainForm = new MainForm();

@@ -696,6 +696,20 @@ namespace OperationGuidance_new.Utils {
         public static string GetDefaultAutoLoginInfo() => "";
         public static void SetAutoLoginInfo(string autoLoginInfo) => Settings.Write(IniFileKeys.AutoLoginInfo, autoLoginInfo);
 
+        // Logs retention days
+        public static int GetLogsRetentionDays() {
+            string value = Settings.Read(IniFileKeys.LogsRetentionDays);
+            if (string.IsNullOrEmpty(value)) {
+                int days = DefaultLogsRetentionDays();
+                SetLogsRetentionDays(days);
+                return days;
+            }
+            if (int.TryParse(value, out int result)) return result;
+            return DefaultLogsRetentionDays();
+        }
+        public static int DefaultLogsRetentionDays() => 10;
+        public static void SetLogsRetentionDays(int days) => Settings.Write(IniFileKeys.LogsRetentionDays, days + "");
+
         // Ping util method
         public static bool PingHost(string nameOrAddress) {
             Ping? pinger = null;
