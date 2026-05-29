@@ -388,3 +388,9 @@ omnisharp.json
 
 # Ignore superpowers plugin cache
 .superpowers/
+
+# Ignore CodeGraph index
+.codegraph/
+
+# Ignore Cursor IDE config
+.cursor/
