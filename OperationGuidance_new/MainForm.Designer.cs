@@ -265,7 +265,8 @@ namespace OperationGuidance_new {
             // SizeChanged handler
             SizeChanged += (sender, eventArgs) => {
                 if (WindowState == FormWindowState.Minimized) return;
-                adminView.Size = ((Form) sender!).ClientSize;
+                if (!adminView.IsDisposed)
+                    adminView.Size = ((Form) sender!).ClientSize;
             };
         }
 

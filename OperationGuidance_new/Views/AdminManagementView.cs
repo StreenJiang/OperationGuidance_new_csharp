@@ -241,6 +241,8 @@ namespace OperationGuidance_new.Views {
             int cardWidth = Math.Min(800, areaW - hPad * 2);
             int cardX = hPad;
 
+            if (_contentArea.Controls.Count < 2) return;
+
             // Header: back link left, page title right-aligned with card edge
             Control backLink = _contentArea.Controls[0];
             Control pageTitle = _contentArea.Controls[1];
