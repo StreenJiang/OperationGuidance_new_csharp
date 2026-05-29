@@ -43,6 +43,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private bool _autoLaunchOriginal;
         private ToggleButtonGroup _autoLoginToggle;
         private bool _autoLoginOriginal;
+        private CustomTextBoxButtonGroup _logsRetentionDaysBox;
+        private int _logsRetentionDaysOriginal;
         // Storage panel
         private CustomContentPanel _storagePanel;
         private TitlePanel _storageTitlePanel;
@@ -194,6 +196,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             || CheckSvedFuncSeparately(_autoLockToolToggle.Checked != _autoLockToolOriginal, "自动锁枪")
             || CheckSvedFuncSeparately(_autoLaunchToggle.Checked != _autoLaunchOriginal, "开机自动启动")
             || CheckSvedFuncSeparately(_autoLoginToggle.Checked != _autoLoginOriginal, "自动登录")
+            || CheckSvedFuncSeparately(_logsRetentionDaysBox.GetTextBox(0).Box.Text != _logsRetentionDaysOriginal + "", "日志保留天数")
             || CheckSvedFuncSeparately(_usbScannerEnabledToggle.Checked != _usbScannerEnabledOriginal, "USB扫码枪")
         );
         protected bool CheckSvedFuncSeparately(bool check, string msg) {
@@ -264,6 +267,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 Parent = _systemSettingsContentPanel,
                 Ratio = 6.95,
             };
+            _logsRetentionDaysBox = new("日志保留天数") {
+                Parent = _systemSettingsContentPanel,
+                Ratio = 6.95,
+                PositiveIntOnly = true,
+            };
         }
         protected virtual void SaveSystemSettings() {
             // Resolution
@@ -305,6 +313,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (!_autoLoginOriginal) {
                 MainUtils.SetAutoLoginInfo(MainUtils.GetDefaultAutoLoginInfo());
             }
+
+            // Logs retention days
+            int logsRetentionDays = int.Parse(_logsRetentionDaysBox.GetTextBox(0).Box.Text);
+            MainUtils.SetLogsRetentionDays(logsRetentionDays);
+            _logsRetentionDaysOriginal = logsRetentionDays;
 
             // Use asynchronous method to avoid UI fronzing
             async void _addAutoRun() {
@@ -875,7 +888,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Resize title
             _systemSettingsTitlePanel.Size = new(Width, _titleHeight);
             int boxVMargin = this._boxNBtnHeight / 2;
-            int contentHeight = _boxNBtnHeight * 2 + _contentVPadding * 2 + boxVMargin;
+            int contentHeight = _boxNBtnHeight * 3 + _contentVPadding * 2 + boxVMargin * 2;
             int boxWidth = (Width - _contentHPadding * 3) / 2;
             // Resize Content
             _systemSettingsContentPanel.Size = new(Width, contentHeight);
@@ -887,6 +900,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _autoLaunchToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             _autoLoginToggle.Size = new(boxWidth, this._boxNBtnHeight);
             _autoLoginToggle.Margin = new(0, boxVMargin, 0, 0);
+            _logsRetentionDaysBox.Size = new(boxWidth, _boxNBtnHeight);
+            _logsRetentionDaysBox.Margin = new(0, boxVMargin, 0, 0);
             // Resize outer panel
             _systemSettingsPanel.Size = new(Width, _systemSettingsTitlePanel.Height + _systemSettingsContentPanel.Height);
         }
@@ -984,6 +999,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _autoLoginOriginal = MainUtils.IsAutoLoginEnabled();
                     _autoLaunchToggle.Checked = _autoLaunchOriginal;
                     _autoLoginToggle.Checked = _autoLoginOriginal;
+                    _logsRetentionDaysOriginal = MainUtils.GetLogsRetentionDays();
+                    _logsRetentionDaysBox.SetValue(0, _logsRetentionDaysOriginal + "");
 
                     // Storage settings
                     _sortConfigOriginal = MainUtils.GetSortConfig();
@@ -1032,6 +1049,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                     _autoLaunchToggle.Checked = MainUtils.DefaultAutoLaunchEnabled();
                     _autoLoginToggle.Checked = MainUtils.DefaultAutoLoginEnabled();
+                    _logsRetentionDaysBox.SetValue(0, MainUtils.DefaultLogsRetentionDays() + "");
 
                     // Storage settings
                     SortConfig = MainUtils.GetDefaultSortConfig();
