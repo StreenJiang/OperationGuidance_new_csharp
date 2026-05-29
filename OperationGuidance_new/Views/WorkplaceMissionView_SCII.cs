@@ -4,6 +4,7 @@ using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
+using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
@@ -12,7 +13,6 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
-using Newtonsoft.Json;
 using OperationGuidance_service.Constants;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
@@ -555,21 +555,14 @@ namespace OperationGuidance_new.Views {
             HandleScrewBitCounter();
             ResizeChildren();
         }
-        private void SetTodayData(int? missionId = null) {
-            if (InvokeRequired) {
-                Invoke(() => SetTodayData(missionId));
-                return;
-            }
-            logger.Debug($"[SCII:SetTodayData] Setting today's data");
-
+        protected virtual (int sum, int okSum, double ngRate) ComputeTodayStats(int missionId) {
             int sum = 0;
             int okSum = 0;
             double ngRate = 0;
-            int mId = missionId ?? _mission.id;
 
-            if (mId > 0) {
-                List<MissionRecordDTO> missionRecordDTOs = GetRecoreds(mId);
-                logger.Debug($"[SCII:SetTodayData] Retrieved {missionRecordDTOs.Count} mission records");
+            if (missionId > 0) {
+                List<MissionRecordDTO> missionRecordDTOs = GetRecoreds(missionId);
+                logger.Debug($"[SCII:ComputeTodayStats] Retrieved {missionRecordDTOs.Count} mission records");
 
                 IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
                             .DistinctBy(dto => dto.product_bar_code);
@@ -580,12 +573,24 @@ namespace OperationGuidance_new.Views {
                             .Distinct()
                             .Count();
                 if (sum > 0) {
-                    ngRate = (sum - okSum) / (double) sum * 100;
+                    ngRate = Math.Max(0, (sum - okSum) / (double) sum * 100);
                 }
-                logger.Debug($"[SCII:SetTodayData] Calculated statistics - Total: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
+                logger.Debug($"[SCII:ComputeTodayStats] Calculated statistics - Total: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
             } else {
-                logger.Debug($"[SCII:SetTodayData] Mission ID is 0, skipping data retrieval");
+                logger.Debug($"[SCII:ComputeTodayStats] Mission ID is 0, skipping data retrieval");
             }
+
+            return (sum, okSum, ngRate);
+        }
+        private void SetTodayData(int? missionId = null) {
+            if (InvokeRequired) {
+                Invoke(() => SetTodayData(missionId));
+                return;
+            }
+            logger.Debug($"[SCII:SetTodayData] Setting today's data");
+
+            int mId = missionId ?? _mission.id;
+            var (sum, okSum, ngRate) = ComputeTodayStats(mId);
 
             _productSumPerDay.SetValue(0, sum + "");
             _okSumPerDay.SetValue(0, okSum + "");
@@ -609,7 +614,7 @@ namespace OperationGuidance_new.Views {
 
             double ngRate = 0;
             if (sum > 0) {
-                ngRate = Math.Max(0, (sum - okSum) / (double)sum * 100);
+                ngRate = Math.Max(0, (sum - okSum) / (double) sum * 100);
             }
 
             _productSumPerDay.SetValue(0, sum + "");
@@ -646,7 +651,8 @@ namespace OperationGuidance_new.Views {
                     SetTodayData(capturedMissionId);
                     logger.Debug($"[SCII:DelayedReconcileTodayData] Reconcile attempt {i + 1} completed");
 
-                    if (IsDisposed) return;
+                    if (IsDisposed)
+                        return;
 
                     int realOkSum = 0;
                     if (InvokeRequired) {
@@ -675,7 +681,8 @@ namespace OperationGuidance_new.Views {
         private async void DelayedRefreshTodayData() {
             try {
                 await Task.Delay(1500);
-                if (IsDisposed) return;
+                if (IsDisposed)
+                    return;
                 SetTodayData();
             } catch (Exception e) {
                 logger.Error($"[SCII:DelayedRefreshTodayData] Refresh failed: {e}");
@@ -1272,7 +1279,8 @@ namespace OperationGuidance_new.Views {
         protected override async Task<bool> ActionAfterActivatingMission() {
             logger.Debug($"[SCII:ActionAfterActivatingMission] Action after activating mission started");
 
-            if (!await base.ActionAfterActivatingMission()) return false;
+            if (!await base.ActionAfterActivatingMission())
+                return false;
 
             // Clear data grid view
             _tighteningDataVOs.Clear();

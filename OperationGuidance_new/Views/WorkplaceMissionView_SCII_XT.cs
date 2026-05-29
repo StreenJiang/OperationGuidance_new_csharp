@@ -57,6 +57,7 @@ namespace OperationGuidance_new.Views {
         private List<OperationDataDTO> _operationDataDTOs;
         private CancellationTokenSource? _plcLoopCts;
         private bool _inBoundStationOk = false;
+        private volatile bool _lastMissionResult;
 
         private WaitDialog? _barcodeDialog;
         private volatile bool _canReceiveBarcode = false;
@@ -134,6 +135,9 @@ namespace OperationGuidance_new.Views {
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            _lastMissionResult = _missionRecord != null &&
+                                 _missionRecord.mission_result == (int) TighteningStatus.OK;
+
             bool isPointInspection = _mission.is_challenge_mission == (int) YesOrNo.YES;
 
             if (isPointInspection) {
@@ -298,14 +302,15 @@ namespace OperationGuidance_new.Views {
         }
 
         public async Task SendToPrinter() {
+            int okSum = await Task.Run(() => ComputeTodayStats(_mission.id).okSum);
+
             await Task.Run(() => BeginInvoke(() => {
                 var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
                 if (config.enabled == (int) YesOrNo.YES) {
                     if (config.printer_name == null) {
                         WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
                     } else {
-                        int _okSumToday = int.Parse(_okSumPerDay.GetTextBox(0).Box.Text);
-                        config.sn = _okSumToday + 1;
+                        config.sn = okSum + 1;
 
                         using (ZplQrCodePrinter printer = new()) {
                             List<string> list = printer.GetAvailablePrinters();
@@ -472,8 +477,7 @@ namespace OperationGuidance_new.Views {
             while (!token.IsCancellationRequested) {
                 try {
                     if (await plcClient.IsReadyToWrite()) {
-                        bool result = !_activated && _missionRecord != null &&
-                                      _missionRecord.mission_result == (int) TighteningStatus.OK;
+                        bool result = _lastMissionResult;
                         await plcClient.WriteResult(result);
                     }
 
