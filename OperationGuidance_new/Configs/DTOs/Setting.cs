@@ -1,8 +1,5 @@
-using System.Reflection;
 using Newtonsoft.Json;
-using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Utils;
-using OperationGuidance_new.ViewObjects;
 using OperationGuidance_service.Constants;
 
 namespace OperationGuidance_new.Configs.DTOs {
@@ -12,7 +9,8 @@ namespace OperationGuidance_new.Configs.DTOs {
         public string data_storage_path { get; set; }
         public string data_storage_fields { get; set; }
         public string data_storage_fields_curr { get; set; }
-        public string data_storage_name_format { get; set; }
+        public int data_storage_excel_export_enabled { get; set; }
+        public int data_storage_txt_export_enabled { get; set; }
         public int data_storage_store_loosening_data { get; set; }
 
         public int mission_arm_locating_enabled { get; set; }
@@ -39,7 +37,8 @@ namespace OperationGuidance_new.Configs.DTOs {
             data_storage_path = GetDefaultStoragePath();
             data_storage_fields = GetDefaultSortConfigStr();
             data_storage_fields_curr = string.Empty;
-            data_storage_name_format = MainUtils.DATETIME_FORMAT_YYYY_MM_DD;
+            data_storage_excel_export_enabled = YesOrNo.NO.ToInt();
+            data_storage_txt_export_enabled = YesOrNo.NO.ToInt();
             data_storage_store_loosening_data = YesOrNo.YES.ToInt();
 
             mission_arm_locating_enabled = YesOrNo.YES.ToInt();
@@ -69,8 +68,8 @@ namespace OperationGuidance_new.Configs.DTOs {
 
         public List<int> GetSortConfig() {
             List<int>? list = JsonConvert.DeserializeObject<List<int>>(data_storage_fields);
-            if (list == null || list.Count == 0) {
-
+            if (list != null && list.Count > 0) {
+                return list;
             }
             return GetDefaultSortConfig();
         }
@@ -83,42 +82,6 @@ namespace OperationGuidance_new.Configs.DTOs {
 
         private string GetDefaultSortConfigStr() {
             return JsonConvert.SerializeObject(GetDefaultSortConfig());
-        }
-
-        public List<OperationDataField> GetOperationDataFields() {
-            List<PropertyInfo> props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
-            List<OperationDataField> fields = new();
-            int index = 1;
-            props.ForEach(p => {
-                IEnumerable<Attribute> enumerable = p.GetCustomAttributes();
-                foreach (Attribute attribute in enumerable) {
-                    if (attribute is GridColumnAttribute gridColumn) {
-                        string fieldName;
-                        if (gridColumn.ColumnName != null && gridColumn.ColumnName != string.Empty) {
-                            fieldName = gridColumn.ColumnName;
-                        } else {
-                            fieldName = p.Name;
-                        }
-                        string propertyName = p.Name;
-                        fields.Add(new(index++, fieldName, propertyName, false));
-                    }
-                }
-            });
-            // Get config
-            List<int> sortConfig = GetSortConfig();
-            fields = fields.OrderBy(f => {
-                int indexTemp = sortConfig.IndexOf(f.Id);
-                if (indexTemp == -1) {
-                    indexTemp = fields.Count;
-                }
-                return indexTemp;
-            }).ToList();
-            fields.ForEach(f => {
-                if (sortConfig.IndexOf(f.Id) != -1) {
-                    f.Visible = true;
-                }
-            });
-            return fields;
         }
 
         private string GetDefaultStoragePath() {

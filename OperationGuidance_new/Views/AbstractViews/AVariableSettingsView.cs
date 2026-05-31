@@ -12,6 +12,9 @@ using log4net;
 using Microsoft.Win32;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Constants;
+using OperationGuidance_new.ViewObjects;
+using OperationGuidance_service.Constants;
 using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Views.AbstractViews {
@@ -49,14 +52,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
         private CustomContentPanel _storagePanel;
         private TitlePanel _storageTitlePanel;
         private CustomContentPanel _storageContentPanel;
-        private CustomTextBoxGroup _storageFileNameTextBox;
-        private string _sotrageFileNameOriginal;
         private CustomTextBoxButtonGroup _storagePathTextBox;
         private string _sotragePathOriginal;
         private CommonButtonGroup _storageFieldsButton;
         private List<int> _sortConfigOriginal;
         private ToggleButtonGroup _storeLooseningDataToggle;
         private bool _sotrageLooseningDataOriginal;
+        private ToggleButtonGroup _enableExcelExportToggle;
+        private bool _enableExcelExportOriginal;
+        private ToggleButtonGroup _enableTxtExportToggle;
+        private bool _enableTxtExportOriginal;
+        private CommonButtonGroup _exportTestButton;
         // 操作配置
         private CustomContentPanel _workPanel;
         private TitlePanel _workTitlePanel;
@@ -99,14 +105,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomContentPanel StoragePanel { get => _storagePanel; set => _storagePanel = value; }
         public TitlePanel StorageTitlePanel { get => _storageTitlePanel; set => _storageTitlePanel = value; }
         public CustomContentPanel StorageContentPanel { get => _storageContentPanel; set => _storageContentPanel = value; }
-        public CustomTextBoxGroup StorageFileNameTextBox { get => _storageFileNameTextBox; set => _storageFileNameTextBox = value; }
-        public string SotrageFileNameOriginal { get => _sotrageFileNameOriginal; set => _sotrageFileNameOriginal = value; }
         public CustomTextBoxButtonGroup StoragePathTextBox { get => _storagePathTextBox; set => _storagePathTextBox = value; }
         public string SotragePathOriginal { get => _sotragePathOriginal; set => _sotragePathOriginal = value; }
         public CommonButtonGroup StorageFieldsButton { get => _storageFieldsButton; set => _storageFieldsButton = value; }
         public List<int> SortConfigOriginal { get => _sortConfigOriginal; set => _sortConfigOriginal = value; }
         public ToggleButtonGroup StoreLooseningDataToggle { get => _storeLooseningDataToggle; set => _storeLooseningDataToggle = value; }
         public bool SotrageLooseningDataOriginal { get => _sotrageLooseningDataOriginal; set => _sotrageLooseningDataOriginal = value; }
+        public ToggleButtonGroup EnableExcelExportToggle { get => _enableExcelExportToggle; set => _enableExcelExportToggle = value; }
+        public bool EnableExcelExportOriginal { get => _enableExcelExportOriginal; set => _enableExcelExportOriginal = value; }
+        public ToggleButtonGroup EnableTxtExportToggle { get => _enableTxtExportToggle; set => _enableTxtExportToggle = value; }
+        public bool EnableTxtExportOriginal { get => _enableTxtExportOriginal; set => _enableTxtExportOriginal = value; }
+        public CommonButtonGroup ExportTestButton { get => _exportTestButton; set => _exportTestButton = value; }
         public CustomContentPanel WorkPanel { get => _workPanel; set => _workPanel = value; }
         public TitlePanel WorkTitlePanel { get => _workTitlePanel; set => _workTitlePanel = value; }
         public CustomContentPanel WorkContentPanel { get => _workContentPanel; set => _workContentPanel = value; }
@@ -186,8 +195,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
         private bool CheckSavedFunc() => WidgetUtils.CurrentPanel != this || CheckSavedFunc_detail();
         protected virtual bool CheckSavedFunc_detail() => !(
-            CheckSvedFuncSeparately(_resolutionOptionsBox.Value.Key != _resolutionOriginal, "分辨率")
-            || CheckSvedFuncSeparately(_storageFileNameTextBox.GetTextBox(0).Box.Text != _sotrageFileNameOriginal, "文件名格式")
+            CheckSvedFuncSeparately(_enableExcelExportToggle.Checked != _enableExcelExportOriginal, "导出Excel开关")
+            || CheckSvedFuncSeparately(_enableTxtExportToggle.Checked != _enableTxtExportOriginal, "导出Txt开关")
+            || CheckSvedFuncSeparately(_resolutionOptionsBox.Value.Key != _resolutionOriginal, "分辨率")
             || CheckSvedFuncSeparately(_storagePathTextBox.GetTextBox(0).Box.Text != _sotragePathOriginal, "文件保存路径")
             || CheckSvedFuncSeparately(!SortConfig.SequenceEqual(_sortConfigOriginal), "字段排序")
             || CheckSvedFuncSeparately(_storeLooseningDataToggle.Checked != _sotrageLooseningDataOriginal, "存储字段")
@@ -352,9 +362,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _storageContentPanel = new() {
                 Parent = _storagePanel,
             };
-            _storageFileNameTextBox = new("数据文件名称") {
+            _enableExcelExportToggle = new ToggleButtonGroup("导出至Excel") {
                 Parent = _storageContentPanel,
                 Ratio = 8.5,
+                Checked = false,
             };
             _storagePathTextBox = new("数据存储路径") {
                 Parent = _storageContentPanel,
@@ -374,7 +385,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             };
             _storageFieldsButton = new("数据存储字段") {
                 Parent = _storageContentPanel,
-                Ratio = 8.5,
+                Ratio = 6.95,
             };
             CommonButton storageFieldsButton = _storageFieldsButton.GetButton(0);
             storageFieldsButton.Label = "配置字段";
@@ -384,26 +395,136 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _storageFieldsButton.AddButton("字段预览").MouseUp += (sender, eventArgs) => {
                 PopUpFieldsPreviewForm(Fields);
             };
+            _exportTestButton = new("导出测试") {
+                Parent = _storageContentPanel,
+                Ratio = 6.95,
+                Enabled = false,
+            };
+            CommonButton exportExcelBtn = _exportTestButton.GetButton(0);
+            exportExcelBtn.Label = "导出至Excel";
+            exportExcelBtn.Click += (s, e) => _ = RunExportTest(enableExcel: true, enableTxt: false);
+            var exportTxtBtn = _exportTestButton.AddButton("导出至Txt");
+            exportTxtBtn.Click += (s, e) => _ = RunExportTest(enableExcel: false, enableTxt: true);
+            exportTxtBtn.Hide(); // 默认隐藏，无场景使用
             _storeLooseningDataToggle = new("记录反松数据") {
                 Parent = _storageContentPanel,
                 Ratio = 8.5,
             };
+
+            _enableTxtExportToggle = new ToggleButtonGroup("导出至Txt") {
+                Parent = _storageContentPanel,
+                Ratio = 8.5,
+                Checked = false,
+            };
+
+            // 基类默认全部隐藏 — 子类显式 Show
+            _enableExcelExportToggle.Hide();
+            _enableTxtExportToggle.Hide();
+            _storagePathTextBox.Hide();
+            _storageFieldsButton.Hide();
+            _storeLooseningDataToggle.Hide();
+            _exportTestButton.Hide();
+
+            _enableExcelExportToggle.CheckedChanged += (s, e) => UpdateExportControlsEnabled();
+            _enableTxtExportToggle.CheckedChanged += (s, e) => UpdateExportControlsEnabled();
         }
         protected void SaveStorageSettings() {
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
-            string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
             // Save
-            MainUtils.SetStorageFileName(nameFormat);
             MainUtils.SetStoragePath(newPath);
             MainUtils.SetSortConfig(SortConfig);
             MainUtils.SetSortConfigCurr(null);
             MainUtils.SetStoreLooseningData(_storeLooseningDataToggle.Checked);
             // 修改原始值
             _sortConfigOriginal = SortConfig;
-            _sotrageFileNameOriginal = nameFormat;
             _sotragePathOriginal = newPath;
             _sotrageLooseningDataOriginal = _storeLooseningDataToggle.Checked;
+
+            ExportConfig.Instance.SetExcelExportEnabled(_enableExcelExportToggle.Checked);
+            ExportConfig.Instance.SetTxtExportEnabled(_enableTxtExportToggle.Checked);
+            ExportConfig.Instance.Reload();
         }
+        private void UpdateExportControlsEnabled() {
+            bool anyEnabled = _enableExcelExportToggle.Checked || _enableTxtExportToggle.Checked;
+            _storagePathTextBox.Enabled = anyEnabled;
+            _storageFieldsButton.Enabled = anyEnabled;
+            _exportTestButton.Enabled = anyEnabled;
+        }
+
+        private async Task RunExportTest(bool enableExcel, bool enableTxt) {
+            try {
+                var rng = new Random();
+                var fakeData = new List<OperationDataVO>();
+                for (int i = 1; i <= 5; i++) {
+                    var vo = new OperationDataVO {
+                        parameter_set_number = 10 + i,
+                        parameter_set_name = $"测试程序{i}",
+                        rundown_status = (int)TighteningCommonStatus.OK,
+                        rundown_torque_status = (int)TighteningCommonStatus.OK,
+                        rundown_angle_status = (int)TighteningCommonStatus.OK,
+                        rundown_torque = (float)(rng.NextDouble() * 10 + 20),
+                        rundown_torque_max = 35.0f,
+                        rundown_torque_target = 28.0f,
+                        rundown_torque_min = 20.0f,
+                        rundown_angle = rng.Next(30, 90),
+                        rundown_angle_max = 90,
+                        rundown_angle_target = 60,
+                        rundown_angle_min = 30,
+                        tightening_status = (int)TighteningStatus.OK,
+                        torque_status = (int)TighteningCommonStatus.OK,
+                        angle_status = (int)TighteningCommonStatus.OK,
+                        torque = (float)(rng.NextDouble() * 10 + 20),
+                        torque_max_limit = 35.0f,
+                        torque_final_target = 28.0f,
+                        torque_min_limit = 20.0f,
+                        angle = rng.Next(30, 90),
+                        angle_max = 90,
+                        angle_final_target = 60,
+                        angle_min = 30,
+                        batch_counter = i,
+                        batch_size = 5,
+                        batch_status = (int)BatchStatus.OK,
+                        job_id = 1,
+                        vin_number = "TEST_VIN_001",
+                        timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        tightening_id = 1000 + i,
+                        workstation_name = "测试站点",
+                        workstation_id = 1,
+                        tool_ip = "192.168.1.100",
+                        tool_name = "测试工具",
+                        tool_type = "PF",
+                        gun_num = "G1",
+                        tightening_count = i,
+                        bolt_serial_num = i,
+                        creator = "测试操作员",
+                        string_create_time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    };
+                    fakeData.Add(vo);
+                }
+
+                var fields = MainUtils.GetOperationDataFields(ExportConfig.Instance.SortConfig);
+                var request = new ExportRequest {
+                    Data = fakeData,
+                    Fields = fields,
+                    BasePath = ExportConfig.Instance.StoragePath,
+                    ProductBatch = "TEST_BATCH",
+                    ProductBarCode = "TEST_BARCODE",
+                    CompletedAt = DateTime.Now,
+                    Result = "OK",
+                    EnableExcel = enableExcel,
+                    EnableTxt = enableTxt,
+                };
+
+                await new DataExportService().ExportAsync(request);
+
+                string type = enableExcel ? "Excel" : "Txt";
+                WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{ExportConfig.Instance.StoragePath}");
+            } catch (Exception ex) {
+                logger.Error($"导出测试失败: {ex.Message}", ex);
+                WidgetUtils.ShowErrorPopUp($"导出测试失败: {ex.Message}");
+            }
+        }
+
         private void PopUpFieldsConfigurationForm(List<OperationDataField> fields) {
             FieldsConfiguration configPanel = new(fields);
             CustomPopUpForm form = new() {
@@ -876,10 +997,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (!Directory.Exists(newPath)) {
                 return "当前存储路径格式不正确或不存在";
             }
-            string nameFormat = _storageFileNameTextBox.GetTextBox(0).Box.Text;
-            if (string.IsNullOrEmpty(nameFormat)) {
-                return "存储文件名不能为空";
-            }
             return null;
         }
         #endregion
@@ -910,20 +1027,26 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Resize title
             _storageTitlePanel.Size = new(Width, _titleHeight);
             int boxWidth = (Width - _contentHPadding * 2);
+            int halfBoxWidth = (Width - _contentHPadding * 3) / 2;
             int boxVMargin = this._boxNBtnHeight / 2;
-            int contentHeight = this._boxNBtnHeight * 4 + _contentVPadding * 2 + boxVMargin * 3;
+            int contentHeight = this._boxNBtnHeight * 5 + _contentVPadding * 2 + boxVMargin * 4;
             // Resize Content
             _storageContentPanel.Size = new(Width, contentHeight);
             _storageContentPanel.Padding = new(_contentHPadding, _contentVPadding, _contentHPadding, _contentVPadding);
-            // Resize box
-            _storageFileNameTextBox.Size = new(boxWidth, this._boxNBtnHeight);
-            _storageFileNameTextBox.Margin = new(0, 0, _contentHGap / 2, 0);
+            // Resize box (matches initialization order)
+            _enableExcelExportToggle.Size = new(boxWidth, _boxNBtnHeight);
+            _enableExcelExportToggle.Margin = new(0, 0, _contentHGap / 2, 0);
             _storagePathTextBox.Size = new(boxWidth, this._boxNBtnHeight);
             _storagePathTextBox.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
-            _storageFieldsButton.Size = new(boxWidth, _boxNBtnHeight);
+            // 数据存储字段 + 导出测试 同行（各半宽，参照 MissionSettings 模式）
+            _storageFieldsButton.Size = new(halfBoxWidth, _boxNBtnHeight);
             _storageFieldsButton.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _exportTestButton.Size = new(halfBoxWidth, _boxNBtnHeight);
+            _exportTestButton.Margin = new(0, boxVMargin, 0, 0);
             _storeLooseningDataToggle.Size = new(boxWidth, _boxNBtnHeight);
             _storeLooseningDataToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
+            _enableTxtExportToggle.Size = new(boxWidth, _boxNBtnHeight);
+            _enableTxtExportToggle.Margin = new(0, boxVMargin, _contentHGap / 2, 0);
             // Resize outer panel
             _storagePanel.Size = new(Width, _storageTitlePanel.Height + _storageContentPanel.Height);
         }
@@ -1005,15 +1128,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                     // Storage settings
                     _sortConfigOriginal = MainUtils.GetSortConfig();
-                    _sotrageFileNameOriginal = MainUtils.GetStorageFileName();
                     _sotragePathOriginal = MainUtils.GetStoragePath();
                     _sotrageLooseningDataOriginal = MainUtils.GetStoreLooseningData();
+                    _enableExcelExportOriginal = ExportConfig.Instance.ExcelExportEnabled;
+                    _enableTxtExportOriginal = ExportConfig.Instance.TxtExportEnabled;
                     SortConfig.Clear();
                     _sortConfigOriginal.ForEach(id => SortConfig.Add(id));
                     Fields = MainUtils.GetOperationDataFields(SortConfig);
-                    _storageFileNameTextBox.SetValue(0, _sotrageFileNameOriginal);
                     _storagePathTextBox.SetValue(0, _sotragePathOriginal);
                     _storeLooseningDataToggle.Checked = _sotrageLooseningDataOriginal;
+                    _enableExcelExportToggle.Checked = _enableExcelExportOriginal;
+                    _enableTxtExportToggle.Checked = _enableTxtExportOriginal;
+                    UpdateExportControlsEnabled();
 
                     // Operation settings
                     _enableArmLocatingOriginal = MainUtils.IsArmLocatingEnabled();
@@ -1055,9 +1181,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     // Storage settings
                     SortConfig = MainUtils.GetDefaultSortConfig();
                     Fields = MainUtils.GetOperationDataFields(SortConfig);
-                    _storageFileNameTextBox.SetValue(0, MainUtils.GetDefaultStorageFileName());
                     _storagePathTextBox.SetValue(0, MainUtils.GetDefaultStoragePath());
                     _storeLooseningDataToggle.Checked = MainUtils.GetDefaultStoreLooseningData();
+                    _enableExcelExportToggle.Checked = MainUtils.GetDefaultExcelExportEnabled();
+                    _enableTxtExportToggle.Checked = MainUtils.GetDefaultTxtExportEnabled();
+                    UpdateExportControlsEnabled();
 
                     // Operation settings
                     _enableArmLocatingToggle.Checked = MainUtils.DefaultIsArmLocatingEnabled();

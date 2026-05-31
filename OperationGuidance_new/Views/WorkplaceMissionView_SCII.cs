@@ -95,6 +95,12 @@ namespace OperationGuidance_new.Views {
             _toolControlNeedAdminPasswor = true;
         }
 
+        // 导出开关 — SCII 从 ExportConfig 读取
+        protected override bool IsExcelExportEnabled => ExportConfig.Instance.ExcelExportEnabled;
+        protected override bool IsTxtExportEnabled => ExportConfig.Instance.TxtExportEnabled;
+        protected override string ExportBasePath => ExportConfig.Instance.StoragePath;
+        protected override List<int> ExportSortConfig => ExportConfig.Instance.SortConfig;
+
         protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
             logger.Debug($"[SCII:InitSerialPortTask] Initializing serial port task for device ID: {pair.Key}");
 

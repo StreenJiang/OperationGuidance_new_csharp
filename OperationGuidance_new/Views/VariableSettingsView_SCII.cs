@@ -11,11 +11,17 @@ namespace OperationGuidance_new.Views {
 
         public VariableSettingsView_SCII() {
             MissionSelfLoopingModeToggle.Hide();
-            StoreLooseningDataToggle.Hide();
+            StoreLooseningDataToggle.Hide();   // redundant (base hides it) but harmless
             AutoLockToolToggle.Hide();
             EnableArmLocatingToggle.Hide();
             ArmLocatingAccuracyBox.Hide();
             ErrorPromptForArmToggle.Show();
+
+            // 导出相关 — SCII 可见
+            EnableExcelExportToggle.Show();
+            StoragePathTextBox.Show();
+            StorageFieldsButton.Show();
+            ExportTestButton.Show();
         }
 
         protected override void InitializeMissionSettings() {

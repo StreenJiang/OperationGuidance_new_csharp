@@ -6,6 +6,7 @@ using log4net.Config;
 using Newtonsoft.Json;
 using OperationGuidance_new.Attributes;
 using OperationGuidance_new.Configs;
+using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.ViewObjects;
@@ -287,40 +288,8 @@ namespace OperationGuidance_new.Utils {
         public static Size GetDefaultSettingResolution() => WidgetUtils.GetScreenWorkingArea().Size;
         public static string GetResolution(Size size) => $"{size.Width}, {size.Height}";
         public static void SetSettingResolution(Size newSize) => Settings.Write(IniFileKeys.Resolution, $"{newSize.Width}, {newSize.Height}");
-        // Storage file name format
-        public static string GetStorageFileName() {
-            string nameFormat = Settings.Read(IniFileKeys.DataStorageNameFormat);
-            if (string.IsNullOrEmpty(nameFormat)) {
-                nameFormat = GetDefaultStorageFileName();
-                SetStorageFileName(nameFormat);
-            }
-            return nameFormat;
-        }
-        public static string GetDefaultStorageFileName() => DATETIME_FORMAT_YYYY_MM_DD;
-        public static void SetStorageFileName(string nameFormat) => Settings.Write(IniFileKeys.DataStorageNameFormat, nameFormat);
-        public static string GetStorageFormattedName() {
-            DateTime now = DateTime.Now;
-            string nameFormatted = GetStorageFileName();
-            if (Replace(DATETIME_FORMAT_YYYY_MM_DD_DDD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM_DD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM_DDD)) { } else if (Replace(DATETIME_FORMAT_YYYY_MM)) { }
-            return nameFormatted;
-
-            bool Replace(string formatPattern) {
-                if (nameFormatted.Contains(formatPattern)) {
-                    nameFormatted = nameFormatted.Replace(formatPattern, now.ToString(formatPattern)).Replace(" ", "");
-                    return true;
-                }
-                return false;
-            }
-        }
         // Storage path
-        public static string GetStoragePath() {
-            string dataStoragePath = Settings.Read(IniFileKeys.DataStoragePath);
-            if (string.IsNullOrEmpty(dataStoragePath)) {
-                dataStoragePath = GetDefaultStoragePath();
-                SetStoragePath(dataStoragePath);
-            }
-            return dataStoragePath;
-        }
+        public static string GetStoragePath() => ExportConfig.Instance.StoragePath;
         public static string GetDefaultStoragePath() {
             string defaultPath = GetBaseDirectory() + "OperationDataStorage\\";
             // 如果文件夹不存在，则创建文件夹
@@ -329,60 +298,70 @@ namespace OperationGuidance_new.Utils {
             }
             return defaultPath;
         }
-        public static void SetStoragePath(string newPath) => Settings.Write(IniFileKeys.DataStoragePath, newPath);
-        // Fields sort config
-        public static List<int> GetSortConfig() {
-            List<int>? sortConfig = null;
-            string dataStorageFields = Settings.Read(IniFileKeys.DataStorageFieldsSort);
-            sortConfig = JsonConvert.DeserializeObject<List<int>>(dataStorageFields);
-            if (sortConfig == null) {
-                sortConfig = GetDefaultSortConfig();
-                SetSortConfig(sortConfig);
-            }
-            return sortConfig;
+        public static void SetStoragePath(string newPath) {
+            var settings = ConfigUtils.LoadConfig<Settings>();
+            settings.data_storage_path = newPath;
+            ConfigUtils.SaveConfig(settings);
+            ExportConfig.Instance.Reload();
         }
+        // Fields sort config
+        public static List<int> GetSortConfig() => ExportConfig.Instance.SortConfig;
         public static List<int> GetDefaultSortConfig() => new List<int>() { 33, 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 47, 48 };
-        public static void SetSortConfig(List<int> fieldsSortConfig) => Settings.Write(IniFileKeys.DataStorageFieldsSort, JsonConvert.SerializeObject(fieldsSortConfig));
+        public static void SetSortConfig(List<int> fieldsSortConfig) {
+            var settings = ConfigUtils.LoadConfig<Settings>();
+            settings.data_storage_fields = JsonConvert.SerializeObject(fieldsSortConfig);
+            ConfigUtils.SaveConfig(settings);
+            ExportConfig.Instance.Reload();
+        }
         // Fields sort config current
-        public static List<int>? GetSortConfigCurr() => JsonConvert.DeserializeObject<List<int>>(Settings.Read(IniFileKeys.DataStorageFieldsSortCurr));
-        public static void SetSortConfigCurr(List<int>? fieldsSortConfigCurr) => Settings.Write(IniFileKeys.DataStorageFieldsSortCurr, JsonConvert.SerializeObject(fieldsSortConfigCurr));
-        public static List<OperationDataField> GetOperationDataFields(List<int>? sortConfig = null) {
-            List<PropertyInfo> props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
-            List<OperationDataField> fields = new();
+        public static List<int>? GetSortConfigCurr() {
+            var settings = ConfigUtils.LoadConfig<Settings>();
+            if (string.IsNullOrEmpty(settings.data_storage_fields_curr)) return null;
+            return JsonConvert.DeserializeObject<List<int>>(settings.data_storage_fields_curr);
+        }
+        public static void SetSortConfigCurr(List<int>? fieldsSortConfigCurr) {
+            var settings = ConfigUtils.LoadConfig<Settings>();
+            settings.data_storage_fields_curr = fieldsSortConfigCurr != null
+                ? JsonConvert.SerializeObject(fieldsSortConfigCurr)
+                : string.Empty;
+            ConfigUtils.SaveConfig(settings);
+        }
+        // 缓存 OperationDataVO 的字段元数据（属性+GridColumnAttribute，运行时不变）
+        private static readonly Lazy<(List<OperationDataField> AllFields, Dictionary<string, PropertyInfo> PropInfos)> _fieldMetaCache = new(() => {
+            var props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var fields = new List<OperationDataField>();
+            var propInfos = new Dictionary<string, PropertyInfo>();
             int index = 1;
-            props.ForEach(p => {
-                IEnumerable<Attribute> enumerable = p.GetCustomAttributes();
-                foreach (Attribute attribute in enumerable) {
+            foreach (var p in props) {
+                propInfos[p.Name] = p;
+                foreach (Attribute attribute in p.GetCustomAttributes()) {
                     if (attribute is GridColumnAttribute gridColumn) {
-                        string fieldName;
-                        if (gridColumn.ColumnName != null && gridColumn.ColumnName != string.Empty) {
-                            fieldName = gridColumn.ColumnName;
-                        } else {
-                            fieldName = p.Name;
-                        }
-                        string propertyName = p.Name;
-                        fields.Add(new(index++, fieldName, propertyName, false));
+                        string fieldName = !string.IsNullOrEmpty(gridColumn.ColumnName) ? gridColumn.ColumnName : p.Name;
+                        fields.Add(new(index++, fieldName, p.Name, false));
                     }
                 }
-            });
-            // Get config
+            }
+            return (fields, propInfos);
+        });
+
+        public static List<OperationDataField> GetOperationDataFields(List<int>? sortConfig = null) {
+            var (allFields, _) = _fieldMetaCache.Value;
+            // Clone since sort/visibility are mutated per call
+            var fields = allFields.Select(f => new OperationDataField(f.Id, f.FieldName, f.PropertyName, false)).ToList();
             if (sortConfig == null) {
                 sortConfig = GetSortConfig();
             }
             fields = fields.OrderBy(f => {
-                int indexTemp = sortConfig.IndexOf(f.Id);
-                if (indexTemp == -1) {
-                    indexTemp = fields.Count;
-                }
-                return indexTemp;
+                int idx = sortConfig.IndexOf(f.Id);
+                return idx == -1 ? fields.Count : idx;
             }).ToList();
-            fields.ForEach(f => {
-                if (sortConfig.IndexOf(f.Id) != -1) {
-                    f.Visible = true;
-                }
-            });
+            foreach (var f in fields) {
+                if (sortConfig.IndexOf(f.Id) != -1) f.Visible = true;
+            }
             return fields;
         }
+
+        internal static Dictionary<string, PropertyInfo> GetCachedOperationDataVOPropInfos() => _fieldMetaCache.Value.PropInfos;
         // Store loosening data
         public static bool GetStoreLooseningData() {
             string storeLooseningData = Settings.Read(IniFileKeys.DataStorageStoreLooseningData);
@@ -394,12 +373,12 @@ namespace OperationGuidance_new.Utils {
             return int.Parse(storeLooseningData) == (int) YesOrNo.YES;
         }
         public static bool GetDefaultStoreLooseningData() => true;
+        public static bool GetDefaultExcelExportEnabled() => false;
+        public static bool GetDefaultTxtExportEnabled() => false;
         public static void SetStoreLooseningData(bool flag) {
-            if (flag) {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.YES + "");
-            } else {
-                Settings.Write(IniFileKeys.DataStorageStoreLooseningData, (int) YesOrNo.NO + "");
-            }
+            var settings = ConfigUtils.LoadConfig<Settings>();
+            settings.data_storage_store_loosening_data = flag ? (int) YesOrNo.YES : (int) YesOrNo.NO;
+            ConfigUtils.SaveConfig(settings);
         }
         // Arm locating enabled
         public static bool IsArmLocatingEnabled() {
