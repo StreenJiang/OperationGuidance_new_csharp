@@ -18,6 +18,7 @@ namespace OperationGuidance_new.Views {
             ErrorPromptForArmToggle.Show();
 
             // 导出相关 — SCII 可见
+            StoragePanel.Show();
             EnableExcelExportToggle.Show();
             StoragePathTextBox.Show();
             StorageFieldsButton.Show();

@@ -424,11 +424,14 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _storageFieldsButton.Hide();
             _storeLooseningDataToggle.Hide();
             _exportTestButton.Hide();
+            _storagePanel.Hide();
 
             _enableExcelExportToggle.CheckedChanged += (s, e) => UpdateExportControlsEnabled();
             _enableTxtExportToggle.CheckedChanged += (s, e) => UpdateExportControlsEnabled();
         }
         protected void SaveStorageSettings() {
+            if (!_storagePanel.Visible) return;
+
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
             // Save
             MainUtils.SetStoragePath(newPath);
@@ -993,6 +996,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _usbScannerEnabledOriginal = _usbScannerEnabledToggle.Checked;
         }
         protected virtual string? CheckBeforeSave() {
+            if (!_storagePanel.Visible) return null;
+
             string newPath = _storagePathTextBox.GetTextBox(0).Box.Text;
             if (!Directory.Exists(newPath)) {
                 return "当前存储路径格式不正确或不存在";
@@ -1024,6 +1029,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _systemSettingsPanel.Size = new(Width, _systemSettingsTitlePanel.Height + _systemSettingsContentPanel.Height);
         }
         protected virtual void ResizeStoragePanel() {
+            if (!_storagePanel.Visible) return;
+
             // Resize title
             _storageTitlePanel.Size = new(Width, _titleHeight);
             int boxWidth = (Width - _contentHPadding * 2);
@@ -1077,7 +1084,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             NewHeight = _buttonsOuterPanel.Height + _buttonsOuterPanel.Margin.Size.Height;
             NewHeight += _systemSettingsPanel.Height + _systemSettingsPanel.Margin.Size.Height;
-            NewHeight += _storagePanel.Height + _storagePanel.Margin.Size.Height;
+            if (_storagePanel.Visible) {
+                NewHeight += _storagePanel.Height + _storagePanel.Margin.Size.Height;
+            }
             NewHeight += _workPanel.Height + _workPanel.Margin.Size.Height;
             return NewHeight > parentNewHeight;
         }
