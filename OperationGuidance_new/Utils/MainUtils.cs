@@ -326,6 +326,11 @@ namespace OperationGuidance_new.Utils {
                 : string.Empty;
             ConfigUtils.SaveConfig(settings);
         }
+        // 非 OperationDataVO 反射字段，通过预留 ID 段（1001+）保持 ID 稳定
+        private static readonly List<OperationDataField> _extendedFields = new() {
+            new(1001, "物料码", "parts_bar_code", false),
+        };
+
         // 缓存 OperationDataVO 的字段元数据（属性+GridColumnAttribute，运行时不变）
         private static readonly Lazy<(List<OperationDataField> AllFields, Dictionary<string, PropertyInfo> PropInfos)> _fieldMetaCache = new(() => {
             var props = typeof(OperationDataVO).GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -348,6 +353,8 @@ namespace OperationGuidance_new.Utils {
             var (allFields, _) = _fieldMetaCache.Value;
             // Clone since sort/visibility are mutated per call
             var fields = allFields.Select(f => new OperationDataField(f.Id, f.FieldName, f.PropertyName, false)).ToList();
+            // 追加非反射扩展字段（预留 ID 段 1001+）
+            fields.AddRange(_extendedFields.Select(f => new OperationDataField(f.Id, f.FieldName, f.PropertyName, false)));
             if (sortConfig == null) {
                 sortConfig = GetSortConfig();
             }

@@ -232,6 +232,7 @@ namespace OperationGuidance_new.ViewObjects {
             }
         }
         public int? mission_record_id { get; set; }                                         // 任务记录ID
+        public string? parts_bar_code { get; set; }                                          // 物料码（来自 mission_record JOIN）
 
         public DateTime? filter_create_time_min { get; set; }
         public DateTime? filter_create_time_max { get; set; }

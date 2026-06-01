@@ -76,7 +76,7 @@ namespace OperationGuidance_new.Configs.DTOs {
 
         private List<int> GetDefaultSortConfig() {
             return new List<int>() {
-                33, 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 47, 48
+                33, 1001, 44, 14, 20, 18, 17, 15, 24, 22, 21, 16, 13, 11, 10, 47, 48
             };
         }
 

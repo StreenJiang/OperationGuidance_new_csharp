@@ -499,6 +499,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         gun_num = "G1",
                         tightening_count = i,
                         bolt_serial_num = i,
+                        parts_bar_code = "TEST_PARTS_BAR_CODE",
                         creator = "测试操作员",
                         string_create_time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     };
@@ -516,6 +517,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     Result = "OK",
                     EnableExcel = enableExcel,
                     EnableTxt = enableTxt,
+                    MissionName = "TEST_MISSION",
+                    WorkstationName = "TEST_WORKSTATION",
                 };
 
                 await new DataExportService().ExportAsync(request);

@@ -2696,12 +2696,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 string result = status == WorkplaceProcessStatus.FINISHED_OK ? "OK" : "NG";
                 var fields = MainUtils.GetOperationDataFields(ExportSortConfig);
 
+                // 回填 parts_bar_code 到每个 VO（同一批次所有行共享同一个物料码）
+                if (_missionRecord?.parts_bar_code != null) {
+                    foreach (var vo in snapshot) {
+                        vo.parts_bar_code = _missionRecord.parts_bar_code;
+                    }
+                }
+
                 var request = new ExportRequest {
                     Data = snapshot, Fields = fields, BasePath = ExportBasePath,
                     ProductBatch = _missionRecord?.product_batch,
-                    ProductBarCode = _barCodeObj.ProductBarCode,
+                    ProductBarCode = _missionRecord?.product_bar_code,
                     CompletedAt = DateTime.Now, Result = result,
                     EnableExcel = IsExcelExportEnabled, EnableTxt = IsTxtExportEnabled,
+                    MissionName = _mission?.name,
+                    WorkstationName = snapshot[0].workstation_name,
                 };
 
                 await new DataExportService().ExportAsync(request);

@@ -14,6 +14,8 @@ namespace OperationGuidance_new.Utils {
         public string Result { get; init; }
         public bool EnableExcel { get; init; }
         public bool EnableTxt { get; init; }
+        public string MissionName { get; init; }
+        public string WorkstationName { get; init; }
     }
 
     public class DataExportService {
@@ -25,12 +27,14 @@ namespace OperationGuidance_new.Utils {
                 return;
             }
 
-            string dateFolder = Path.Combine(request.BasePath, request.CompletedAt.ToString("yyyy-MM-dd"));
+            string workstation = string.IsNullOrEmpty(request.WorkstationName) ? "null" : request.WorkstationName;
+            string mission = string.IsNullOrEmpty(request.MissionName) ? "null" : request.MissionName;
+            string date = request.CompletedAt.ToString("yyyy-MM-dd");
             string batch = string.IsNullOrEmpty(request.ProductBatch) ? "null" : request.ProductBatch;
-            string batchFolder = Path.Combine(dateFolder, batch);
+            string batchFolder = Path.Combine(request.BasePath, workstation, mission, date, batch);
             string barCode = string.IsNullOrEmpty(request.ProductBarCode) ? "null" : request.ProductBarCode;
             string timestamp = request.CompletedAt.ToString("yyyyMMdd_HHmmss");
-            string fileNameBody = $"{barCode}（{barCode}）_{timestamp}_{request.Result}";
+            string fileNameBody = $"{barCode}_{timestamp}_{request.Result}";
 
             try {
                 Directory.CreateDirectory(batchFolder);
