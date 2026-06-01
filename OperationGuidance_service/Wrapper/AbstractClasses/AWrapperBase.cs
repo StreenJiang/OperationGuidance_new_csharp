@@ -349,6 +349,10 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
         private List<string> GetFiedsList() {
             List<string> fields = new();
             foreach (PropertyInfo property in typeof(T).GetProperties()) {
+                // 跳过 [NotMapped] 属性，防止将非物理列写入 INSERT/UPDATE SQL
+                var notMapped = property.GetCustomAttribute<NotMappedAttribute>();
+                if (notMapped != null) continue;
+
                 string fieldsName = property.Name;
                 foreach (Attribute attribute in property.GetCustomAttributes()) {
                     if (attribute is ColumnAttribute) {

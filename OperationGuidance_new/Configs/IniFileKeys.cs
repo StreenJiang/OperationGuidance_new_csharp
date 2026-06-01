@@ -5,7 +5,6 @@ namespace OperationGuidance_new.Configs {
         public static string DataStoragePath => "data_storage_path";
         public static string DataStorageFieldsSort => "data_storage_fields";
         public static string DataStorageFieldsSortCurr => "data_storage_fields_curr";
-        public static string DataStorageNameFormat => "data_storage_name_format";
         public static string DataStorageStoreLooseningData => "data_storage_store_loosening_data";
 
         public static string MissionArmLocatingEnabled => "mission_arm_locating_enabled";

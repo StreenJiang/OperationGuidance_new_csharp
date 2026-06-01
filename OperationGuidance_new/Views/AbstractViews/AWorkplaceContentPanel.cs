@@ -60,9 +60,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected volatile bool _missionNGAdminConfirmed = true;
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
-        protected readonly object DataStorageLockObj = new();
         // 异步锁用于StoreTighteningData排队执行
         private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
+        private int _exportTriggered;
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -175,6 +175,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         public MissionRecordDTO? MissionRecord => _missionRecord;
         public Func<string, bool>? ActiveBarcodeInterceptor { get; set; }
+        protected virtual bool IsExcelExportEnabled => false;
+        protected virtual bool IsTxtExportEnabled => false;
+        protected virtual string ExportBasePath => MainUtils.GetDefaultStoragePath();
+        protected virtual List<int> ExportSortConfig => MainUtils.GetDefaultSortConfig();
         #endregion
 
         public AWorkplaceContentPanel() { }
@@ -855,7 +859,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 // Load serial port devices
                 _serialPortTasks = MainUtils.SerialPortTasks;
                 foreach (KeyValuePair<int, SerialPortTask> pair in _serialPortTasks) {
-                    InitSerialPortTasks(pair);
+                    InitSerialPortTask(pair);
                 }
 
                 // Load communication devices
@@ -868,7 +872,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Action after loading devices
             ActionAfterLoadingDevices();
         }
-        protected virtual void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
+        protected virtual void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
             SerialPortTask serialPortTask = pair.Value;
             serialPortTask.ActionAfterDataReceived = async msg => {
                 await Task.Run(() => {
@@ -1283,6 +1287,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Reset 'need loosening'
             _needLoosening = false;
+
+            // Reset export trigger
+            _exportTriggered = 0;
 
             // Reset all bolts
             foreach (int sideId in _allBolts.Keys) {
@@ -2604,37 +2611,31 @@ namespace OperationGuidance_new.Views.AbstractViews {
             logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - Start, bolt_serial={operationDataDTO.bolt_serial_num}, torque={operationDataDTO.torque}, angle={operationDataDTO.angle}");
 
             try {
-                // 并行执行数据库和文件存储操作，但文件存储有超时保护
-                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Starting parallel storage tasks (database + files)");
-                var dbTask = StoreDataToDatabaseAsync(operationDataDTO);
-                var fileTask = StoreDataToFilesAsyncWithTimeout(operationDataDTO, TimeSpan.FromSeconds(3)); // 3秒超时
+                // 数据库存储
+                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Starting database storage");
+                await StoreDataToDatabaseAsync(operationDataDTO);
+                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Database storage completed");
 
-                await Task.WhenAll(dbTask, fileTask);
-                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Parallel storage tasks completed");
+                // 数据转换（非UI线程安全操作）
+                Settings settings = ConfigUtils.LoadConfig<Settings>();
+                if (settings.hide_loosening_data_in_workplace.ToYesOrNoBool() && operationDataDTO.result_type != (int) TightenOrLoosen.TIGHTENING) {
+                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Skip current data because do not want to show loosening data(id={operationDataDTO.id})...");
+                } else {
+                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
+                    OperationDataVO dataFormatted = new();
+                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
 
-                // 转换数据并更新UI（在UI线程）
-                BeginInvoke(() => {
-                    try {
-                        Settings settings = ConfigUtils.LoadConfig<Settings>();
-                        if (settings.hide_loosening_data_in_workplace.ToYesOrNoBool() && operationDataDTO.result_type != (int) TightenOrLoosen.TIGHTENING) {
-                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Skip current data because do not want to show loosening data(id={operationDataDTO.id})...");
-                        } else {
-                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
-                            OperationDataVO dataFormatted = new();
-                            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
+                    // 使用线程安全的ConcurrentBag（在UI线程外添加）
+                    _tighteningDataVOs.Add(dataFormatted);
+                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
 
-                            // 使用线程安全的ConcurrentBag
-                            _tighteningDataVOs.Add(dataFormatted);
-                            logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
-
-                            // 创建快照用于UI显示
-                            RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                            logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
-                        }
-                    } catch (Exception e) {
-                        logger.Error($"[Workplace:{taskName}] StoreTighteningDataInternal - Error in data conversion or UI update: {e}");
-                    }
-                });
+                    // UI更新
+                    BeginInvoke(() => {
+                        // 创建快照用于UI显示
+                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
+                        logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
+                    });
+                }
             } catch (Exception e) {
                 logger.Error($"[Workplace:{taskName}] StoreTighteningDataInternal - Error during data storage operations: {e}");
             } finally {
@@ -2658,108 +2659,51 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
-        protected virtual async Task StoreDataToFilesAsync(OperationDataDTO operationDataDTO) {
+        protected virtual async Task OnMissionCompleted(WorkplaceProcessStatus status) {
+            if (status != WorkplaceProcessStatus.FINISHED_OK && status != WorkplaceProcessStatus.FINISHED_NG) return;
+            if (Interlocked.Exchange(ref _exportTriggered, 1) == 1) return;
+            if (!IsExcelExportEnabled && !IsTxtExportEnabled) return;
+
             string taskName = _mission?.name ?? "Unknown";
-            logger.Info($"[Workplace:{taskName}] StoreDataToFilesAsync - Start, bolt_serial={operationDataDTO.bolt_serial_num}");
+            logger.Info($"[Workplace:{taskName}] OnMissionCompleted - Start, status={status}");
 
             try {
-                // 直接执行，让 BeginInvoke 处理UI线程异步性
-                // 避免多余的 Task.Run 包装，减少线程池压力
-                logger.Debug($"[Workplace:{taskName}] StoreDataToFilesAsync - Calling StoreDataToFilesCore");
-                StoreDataToFilesCore(operationDataDTO);
-                logger.Info($"[Workplace:{taskName}] StoreDataToFilesAsync - Files stored successfully");
-            } catch (Exception e) {
-                logger.Error($"[Workplace:{taskName}] StoreDataToFilesAsync - Error: {e}");
-                throw; // 重新抛出异常以便调用者处理
-            }
-        }
-
-        protected virtual async Task StoreDataToFilesAsyncWithTimeout(OperationDataDTO operationDataDTO, TimeSpan timeout) {
-            string taskName = _mission?.name ?? "Unknown";
-            logger.Info($"[Workplace:{taskName}] StoreDataToFilesAsyncWithTimeout - Start, bolt_serial={operationDataDTO.bolt_serial_num}, timeout={timeout.TotalSeconds}s");
-
-            using var cts = new CancellationTokenSource(timeout);
-
-            try {
-                // 直接执行，让 BeginInvoke 处理UI线程异步性
-                // 避免多余的 Task.Run 包装，减少线程池压力
-                logger.Debug($"[Workplace:{taskName}] StoreDataToFilesAsyncWithTimeout - Calling StoreDataToFilesCore");
-                StoreDataToFilesCore(operationDataDTO);
-                logger.Info($"[Workplace:{taskName}] StoreDataToFilesAsyncWithTimeout - Files stored successfully");
-            } catch (Exception e) {
-                logger.Error($"[Workplace:{taskName}] StoreDataToFilesAsyncWithTimeout - Error (not throwing): {e}");
-                // 不抛出异常，避免阻塞主流程
-            }
-        }
-
-        // 核心文件存储逻辑（在UI线程中执行）
-        private void StoreDataToFilesCore(OperationDataDTO operationDataDTO) {
-            string taskName = _mission?.name ?? "Unknown";
-            logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - Entry, bolt_serial={operationDataDTO.bolt_serial_num}");
-
-            // 使用BeginInvoke确保在UI线程中执行（因为涉及UI相关操作）
-            BeginInvoke(() => {
-                try {
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - UI thread execution started");
-                    OperationDataVO dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - Data converted to OperationDataVO");
-
-                    List<string>? headers = null;
-                    string textFileName = $"{MainUtils.GetStorageFormattedName()}.txt";
-                    string excelFileName = $"{MainUtils.GetStorageFormattedName()}.xlsx";
-                    string textFilePath = MainUtils.GetStoragePath() + textFileName;
-                    string excelFilePath = MainUtils.GetStoragePath() + excelFileName;
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - File paths: text={textFilePath}, excel={excelFilePath}");
-
-                    // 检查当前文件是否存在
-                    bool textFileExists = File.Exists(textFilePath);
-                    bool excelFileExists = File.Exists(excelFilePath);
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - File exists: text={textFileExists}, excel={excelFileExists}");
-
-                    // 从配置文件读取配置
-                    List<int> sortConfig = MainUtils.GetSortConfig();
-                    List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                    List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                    List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - Config loaded, visible fields count={propertyNames.Count}");
-
-                    // 检查当前是否存在正在使用的字段配置
-                    if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !textFileExists || !excelFileExists) {
-                        sortConfigCurr = sortConfig;
-                        MainUtils.SetSortConfigCurr(sortConfigCurr);
-                        headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                        logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - New config applied, headers count={headers?.Count}");
-                    }
-                    // 组装数据
-                    List<Dictionary<int, object?>> dataWithConfigFields = new();
-                    // 先根据每个字段的排序，将排序值和数据值作为一个dictionary存入一个集合
-                    Dictionary<int, object?> record = new();
-                    for (int i = 0; i < propertyNames.Count; i++) {
-                        string pName = propertyNames[i];
-                        PropertyInfo? propertyInfo = dataFormatted.GetType().GetProperty(pName);
-                        if (propertyInfo != null) {
-                            record.Add(i, propertyInfo.GetValue(CommonUtils.CannotBeNull(dataFormatted)));
-                        }
-                    }
-                    dataWithConfigFields.Add(record);
-                    // 组装最终数据
-                    List<List<object?>> finalData = new();
-                    dataWithConfigFields.ForEach(dict => {
-                        IOrderedEnumerable<KeyValuePair<int, object?>> orderedEnumerable = from pair in dict orderby pair.Key select pair;
-                        finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
-                    });
-
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - Exporting to text file");
-                    finalData.ExportToTextFile(headers, textFilePath, textFileExists);
-                    logger.Debug($"[Workplace:{taskName}] StoreDataToFilesCore - Exporting to excel file");
-                    finalData.ExportToExcelFile(headers, excelFilePath, excelFileExists);
-                    logger.Info($"[Workplace:{taskName}] StoreDataToFilesCore - Files exported successfully");
-                } catch (Exception e) {
-                    logger.Error($"[Workplace:{taskName}] StoreDataToFilesCore - Error: {e}");
-                    throw; // 重新抛出到外部catch块
+                if (await _storeTighteningDataLock.WaitAsync(TimeSpan.FromSeconds(5))) {
+                    _storeTighteningDataLock.Release();
+                } else {
+                    logger.Warn($"[Workplace:{taskName}] OnMissionCompleted - Drain timeout");
                 }
-            });
+
+                var snapshot = GetTighteningDataSnapshot();
+                if (snapshot.Count == 0) return;
+
+                string result = status == WorkplaceProcessStatus.FINISHED_OK ? "OK" : "NG";
+                var fields = MainUtils.GetOperationDataFields(ExportSortConfig);
+
+                // 回填 parts_bar_code 到每个 VO（同一批次所有行共享同一个物料码）
+                if (_missionRecord?.parts_bar_code != null) {
+                    foreach (var vo in snapshot) {
+                        vo.parts_bar_code = _missionRecord.parts_bar_code;
+                    }
+                }
+
+                var request = new ExportRequest {
+                    Data = snapshot, Fields = fields, BasePath = ExportBasePath,
+                    ProductBatch = _missionRecord?.product_batch,
+                    ProductBarCode = _missionRecord?.product_bar_code,
+                    CompletedAt = DateTime.Now, Result = result,
+                    EnableExcel = IsExcelExportEnabled, EnableTxt = IsTxtExportEnabled,
+                    MissionName = _mission?.name,
+                    WorkstationName = snapshot[0].workstation_name,
+                };
+
+                await new DataExportService().ExportAsync(request);
+                _tighteningDataVOs.Clear();
+                BeginInvoke(() => RefreshTighteningDataPanel(new List<OperationDataVO>()));
+                logger.Info($"[Workplace:{taskName}] OnMissionCompleted - Done");
+            } catch (Exception ex) {
+                logger.Error($"[Workplace:{taskName}] OnMissionCompleted - Error: {ex}");
+            }
         }
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
@@ -2852,6 +2796,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _barCodeObj.Reset();
             _ruleIdsCheckedCached = null;
             _isRedo = (int) YesOrNo.NO;
+
+            await OnMissionCompleted(status);
 
             // If it's not challenge mission, then check auto activation logic
             if (!IsChallengeMission()

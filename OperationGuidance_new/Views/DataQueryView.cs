@@ -6,7 +6,7 @@ using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Extensions;
+using ClosedXML.Excel;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -145,7 +145,26 @@ namespace OperationGuidance_new.Views {
                     finalData.Add(orderedEnumerable.Select(pair => pair.Value).ToList());
                 });
                 // 写入数据
-                finalData.ExportToExcelFile(headers, filePath, excelFileExists);
+                try {
+                    XLWorkbook xlWorkbook;
+                    string sheetName = "TighteningData";
+                    if (excelFileExists) { xlWorkbook = new XLWorkbook(filePath); }
+                    else { xlWorkbook = new XLWorkbook(); }
+                    IXLWorksheet sheet1;
+                    if (!xlWorkbook.Worksheets.Contains(sheetName)) { sheet1 = xlWorkbook.Worksheets.Add(sheetName); }
+                    else { sheet1 = xlWorkbook.Worksheet(sheetName); }
+                    int rowCount = sheet1.Rows().Count();
+                    if (headers != null) {
+                        if (rowCount > 0) { rowCount++; }
+                        sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
+                    }
+                    sheet1.Cell(rowCount + 1, 1).InsertData(finalData);
+                    xlWorkbook.SaveAs(filePath);
+                    xlWorkbook.Dispose();
+                } catch (Exception ex) {
+                    logger.Error($"导出Excel失败: {ex.Message}", ex);
+                    WidgetUtils.ShowErrorPopUp("导出Excel失败，请检查文件是否被其他程序占用");
+                }
             };
 
             // 按钮逻辑

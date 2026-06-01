@@ -295,9 +295,6 @@ namespace OperationGuidance_new.Views {
             RefreshTighteningDataPanel(_tighteningDataVOs);
             logger.Info("StoreTighteningData showing to panel end ........");
 
-            // 最后再存进本地文件
-            await StoreDataToFilesAsync(operationDataDTO);
-
             logger.Info("StoreTighteningData end ........");
         }
 
@@ -492,7 +489,7 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void InitSerialPortTasks(KeyValuePair<int, SerialPortTask> pair) {
+        protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
             SerialPortTask serialPortTask = pair.Value;
             serialPortTask.ActionAfterDataReceived = async msg => {
                 await Task.Run(() => {
