@@ -96,6 +96,7 @@ namespace OperationGuidance_new.Views {
             EnableArmLocatingToggle.Hide();
             ArmLocatingAccuracyBox.Hide();
             ErrorPromptForArmToggle.Show();
+            StoragePanel.Hide();
         }
 
         protected ToggleButtonGroup EnablePrinterToggle { get => _enablePrinter; set => _enablePrinter = value; }
