@@ -566,24 +566,28 @@ namespace OperationGuidance_new.Views {
             int okSum = 0;
             double ngRate = 0;
 
-            if (missionId > 0) {
-                List<MissionRecordDTO> missionRecordDTOs = GetRecoreds(missionId);
-                logger.Debug($"[SCII:ComputeTodayStats] Retrieved {missionRecordDTOs.Count} mission records");
+            try {
+                if (missionId > 0) {
+                    List<MissionRecordDTO> missionRecordDTOs = GetRecoreds(missionId);
+                    logger.Debug($"[SCII:ComputeTodayStats] Retrieved {missionRecordDTOs.Count} mission records");
 
-                IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
-                            .DistinctBy(dto => dto.product_bar_code);
-                sum = distinctData.Count();
-                okSum = missionRecordDTOs
-                            .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
-                            .Select(dto => dto.product_bar_code)
-                            .Distinct()
-                            .Count();
-                if (sum > 0) {
-                    ngRate = Math.Max(0, (sum - okSum) / (double) sum * 100);
+                    IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
+                                .DistinctBy(dto => dto.product_bar_code);
+                    sum = distinctData.Count();
+                    okSum = missionRecordDTOs
+                                .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
+                                .Select(dto => dto.product_bar_code)
+                                .Distinct()
+                                .Count();
+                    if (sum > 0) {
+                        ngRate = Math.Max(0, (sum - okSum) / (double) sum * 100);
+                    }
+                    logger.Debug($"[SCII:ComputeTodayStats] Calculated statistics - Total: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
+                } else {
+                    logger.Debug($"[SCII:ComputeTodayStats] Mission ID is 0, skipping data retrieval");
                 }
-                logger.Debug($"[SCII:ComputeTodayStats] Calculated statistics - Total: {sum}, OK: {okSum}, NG Rate: {ngRate:F2}%");
-            } else {
-                logger.Debug($"[SCII:ComputeTodayStats] Mission ID is 0, skipping data retrieval");
+            } catch (Exception ex) {
+                logger.Error($"[SCII:ComputeTodayStats] Failed to compute today stats: {ex.Message}", ex);
             }
 
             return (sum, okSum, ngRate);

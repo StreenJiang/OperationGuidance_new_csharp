@@ -299,7 +299,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public async Task SendToPrinter() {
-            int okSum = await Task.Run(() => ComputeTodayStats(_mission.id).okSum);
+            int okSum = await Task.Run(() => ComputeTodayOkCount(_mission.id));
 
             await Task.Run(() => BeginInvoke(() => {
                 var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
@@ -329,6 +329,22 @@ namespace OperationGuidance_new.Views {
                 }
             }));
         }
+        private int ComputeTodayOkCount(int missionId) {
+            if (missionId <= 0) return 0;
+
+            try {
+                List<MissionRecordDTO> records = GetRecoreds(missionId);
+                logger.Debug($"[SCII_XT:ComputeTodayOkCount] Retrieved {records.Count} mission records");
+
+                int okCount = records.Count(dto => dto.mission_result == (int)TighteningStatus.OK);
+                logger.Debug($"[SCII_XT:ComputeTodayOkCount] OK count (non-distinct): {okCount}");
+                return okCount;
+            } catch (Exception ex) {
+                logger.Error($"[SCII_XT:ComputeTodayOkCount] Failed to compute OK count: {ex.Message}", ex);
+                return 0;
+            }
+        }
+
         public void OpenLidCodeReprintPopUp() {
             var popUpForm = new LidCodeReprintPopUpForm(this, _lidCodePrinted, _lastPrintedConfig);
             popUpForm.PretendToShowToCreateHandlesForChildren();
