@@ -148,7 +148,7 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Enabled = true;
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
-                    logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active, requesting admin password");
+                    logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active — _missionRecord=[id={_missionRecord?.id}, barcode={_missionRecord?.product_bar_code}], requesting admin password");
                     if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码")) {
                         logger.Info($"[SCII:ActionAfterAllInitialized] Admin password confirmed, terminating mission with NG status");
                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
@@ -1108,6 +1108,7 @@ namespace OperationGuidance_new.Views {
             // Set product batch
             _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
             logger.Debug($"[SCII:ActionAfterActivatingMission] Product batch set: {_missionRecord.product_batch}");
+            logger.Info($"[SCII:ActionAfterActivatingMission] Before update — _missionRecord.id={_missionRecord.id}");
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             logger.Info($"[SCII:ActionAfterActivatingMission] Mission record updated with product batch");
         }
@@ -1342,8 +1343,9 @@ namespace OperationGuidance_new.Views {
 
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                        logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Before OK update — _missionRecord.id={_missionRecord.id}");
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-                                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Mission record updated with OK result");
+                                        logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Mission record updated with OK result");
 
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
@@ -1432,19 +1434,13 @@ namespace OperationGuidance_new.Views {
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
+            logger.Info($"[SCII:TerminateMission] State — _missionRecord=[id={_missionRecord?.id}, barcode={_missionRecord?.product_bar_code}, result={_missionRecord?.mission_result}], _activated={_activated}");
 
             ResetMissionDetails();
 
             await base.TerminateMission(status);
 
             logger.Debug($"[SCII:TerminateMission] Base termination completed");
-
-            // // If it's challenge mission, then switch mission automatically
-            // if (_mission.is_challenge_mission == (int) YesOrNo.YES
-            //         && _missionRecord != null
-            //         && _missionRecord.mission_result == (int) TighteningStatus.OK) {
-            //     _view.OpenWorkplaceView(_mission.challenge_mission_id);
-            // }
             logger.Debug($"[SCII:TerminateMission] Mission termination completed");
         }
 

@@ -393,7 +393,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
         public void ValidateProductBarCode(string barCode) {
-            logger.Info($"Checking product barcode [{barCode}]...");
+            _workplace.ProductScanCount++;
+            logger.Info($"Product scan #{_workplace.ProductScanCount}: [{barCode}]");
 
             // 先回填，不然校验不到
             _productBarCodeBox.SetValue(0, barCode);
@@ -411,7 +412,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
         public async void ValidatePartsBarCode(CustomTextBoxButtonGroup box) {
             string barCode = box.GetTextBox(0).Box.Text;
-            logger.Info($"Checking parts barcode = [{barCode}] for mission [id = {_mission.id}]...");
+            _workplace.PartsScanCount++;
+            logger.Info($"Parts scan #{_workplace.PartsScanCount}: [{barCode}]");
 
             if (string.IsNullOrEmpty(barCode)) {
                 WidgetUtils.ShowWarningPopUp($"请输入或扫描条码");
@@ -585,7 +587,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             return true;
         }
         public void ValidatePartsBarCode(string barCode) {
-            logger.Info($"Checking parts barcode [{barCode}]...");
+            _workplace.PartsScanCount++;
+            logger.Info($"Parts scan #{_workplace.PartsScanCount}: [{barCode}]");
 
             try {
                 logger.Info($"Count on PopUp: {_partsBarCodeContentPanel.Controls.Count}");

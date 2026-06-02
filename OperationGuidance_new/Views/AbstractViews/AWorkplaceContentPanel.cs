@@ -171,6 +171,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public BarCodeObj BarCodeObj => _barCodeObj;
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         public MissionRecordDTO? MissionRecord => _missionRecord;
+
+        // 诊断用：追溯码/物料码分开计数，随 workplace 生命周期，按需归零
+        public int ProductScanCount { get; set; } = 0;
+        public int PartsScanCount { get; set; } = 0;
         protected virtual bool IsExcelExportEnabled => false;
         protected virtual bool IsTxtExportEnabled => false;
         protected virtual string ExportBasePath => MainUtils.GetDefaultStoragePath();
@@ -1536,6 +1540,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual async Task ActionAfterActivatingMission() {
+            // 重置扫码计数
+            ProductScanCount = 0;
+            PartsScanCount = 0;
+
             // Add a new record into: mission_record
             _missionRecord = new() {
                 mission_id = _mission.id,
@@ -1545,6 +1553,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 is_redo = _isRedo,
             };
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+            logger.Info($"[Workplace:{_mission.name}] Mission record created — id={_missionRecord.id}, barcode={_missionRecord.product_bar_code}, result={_missionRecord.mission_result}");
 
             // Send barcode to PF series tools
             List<int> toolIds = new();
@@ -1607,6 +1616,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // Start looping task if setter selector is needed
             StartSetterSelectorTask();
+
+            logger.Debug($"[Workplace:{_mission.name}] ActionAfterActivatingMission end — _missionRecord.id={_missionRecord.id}");
         }
 
         protected virtual async void ActivateMissionAutomatically() {
