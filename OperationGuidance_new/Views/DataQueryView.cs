@@ -6,7 +6,7 @@ using CustomLibrary.Utils;
 using log4net;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
-using OperationGuidance_new.Extensions;
+using ClosedXML.Excel;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_new.Views.ReusableWidgets;
@@ -145,7 +145,32 @@ namespace OperationGuidance_new.Views {
                                 finalData.Add(row);
                             }
 
-                            finalData.ExportToExcelFile(headers, filePath, !firstBatch);
+                            try {
+                                XLWorkbook xlWorkbook;
+                                string sheetName = "TighteningData";
+                                if (firstBatch && !excelFileExists) {
+                                    xlWorkbook = new();
+                                } else {
+                                    xlWorkbook = new XLWorkbook(filePath);
+                                }
+                                IXLWorksheet sheet1;
+                                if (!xlWorkbook.Worksheets.Contains(sheetName)) {
+                                    sheet1 = xlWorkbook.Worksheets.Add(sheetName);
+                                } else {
+                                    sheet1 = xlWorkbook.Worksheet(sheetName);
+                                }
+                                int rowCount = sheet1.Rows().Count();
+                                if (headers != null && firstBatch) {
+                                    if (rowCount > 0) rowCount++;
+                                    sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
+                                }
+                                sheet1.Cell(rowCount + 1, 1).InsertData(finalData);
+                                xlWorkbook.SaveAs(filePath);
+                                xlWorkbook.Dispose();
+                            } catch (Exception ex) {
+                                logger.Error($"export batch failed: {ex.Message}", ex);
+                                throw;
+                            }
                             firstBatch = false;
                             afterId = batch.Last().id;
 
