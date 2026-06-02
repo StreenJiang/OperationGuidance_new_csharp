@@ -299,7 +299,7 @@ namespace OperationGuidance_new.Views {
         }
 
         public async Task SendToPrinter() {
-            int okSum = await Task.Run(() => ComputeTodayOkCount(_mission.id));
+            int totalCount = await Task.Run(() => ComputeTodayTotalCount(_mission.id));
 
             await Task.Run(() => BeginInvoke(() => {
                 var config = ConfigUtils.LoadConfig<SciiXtPrinterConfig>();
@@ -307,7 +307,7 @@ namespace OperationGuidance_new.Views {
                     if (config.printer_name == null) {
                         WidgetUtils.ShowWarningPopUp("打印机名称配置未设置，请先配置打印机。");
                     } else {
-                        config.sn = okSum + 1;
+                        config.sn = totalCount + 1;
 
                         using (ZplQrCodePrinter printer = new()) {
                             List<string> list = printer.GetAvailablePrinters();
@@ -329,18 +329,15 @@ namespace OperationGuidance_new.Views {
                 }
             }));
         }
-        private int ComputeTodayOkCount(int missionId) {
+        private int ComputeTodayTotalCount(int missionId) {
             if (missionId <= 0) return 0;
 
             try {
                 List<MissionRecordDTO> records = GetRecoreds(missionId);
-                logger.Debug($"[SCII_XT:ComputeTodayOkCount] Retrieved {records.Count} mission records");
-
-                int okCount = records.Count(dto => dto.mission_result == (int)TighteningStatus.OK);
-                logger.Debug($"[SCII_XT:ComputeTodayOkCount] OK count (non-distinct): {okCount}");
-                return okCount;
+                logger.Debug($"[SCII_XT:ComputeTodayTotalCount] Retrieved {records.Count} mission records");
+                return records.Count;
             } catch (Exception ex) {
-                logger.Error($"[SCII_XT:ComputeTodayOkCount] Failed to compute OK count: {ex.Message}", ex);
+                logger.Error($"[SCII_XT:ComputeTodayTotalCount] Failed to compute total count: {ex.Message}", ex);
                 return 0;
             }
         }
