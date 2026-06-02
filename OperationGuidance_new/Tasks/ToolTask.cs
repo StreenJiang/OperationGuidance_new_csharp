@@ -539,6 +539,7 @@ namespace OperationGuidance_new.Tasks {
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
                 PerformLock();
+                UpdateInternalLockState(true);
             }
         }
 
@@ -595,6 +596,7 @@ namespace OperationGuidance_new.Tasks {
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
                 PerformUnlock();
+                UpdateInternalLockState(false);
             }
         }
 

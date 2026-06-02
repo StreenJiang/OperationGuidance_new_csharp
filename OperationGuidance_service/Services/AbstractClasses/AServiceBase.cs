@@ -34,7 +34,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.FindBySql($"select * from {Wrapper.TableName} where {Wrapper.ConditionWithoutUserId()}");
         }
 
-        public T AddEntity(T entity) {
+        public T? AddEntity(T entity) {
             return this.Wrapper.Add(entity);
         }
 
@@ -42,7 +42,11 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return this.Wrapper.AddBatch(entities);
         }
 
-        public T UpdateEntity(T entity) {
+        public int AddBatchBulk(List<T> entities, int rowsPerInsert = 500) {
+            return this.Wrapper.AddBatchBulk(entities, rowsPerInsert);
+        }
+
+        public T? UpdateEntity(T entity) {
             return this.Wrapper.Update(entity);
         }
 
@@ -58,7 +62,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return t;
         }
 
-        public T InsertOrUpdate(T entity) {
+        public T? InsertOrUpdate(T entity) {
             if (entity.id > 0) {
                 return UpdateEntity(entity);
             } else {
@@ -85,7 +89,7 @@ namespace OperationGuidance_service.Services.AbstractClasses {
             return Wrapper.FindBySql(sql, parameterObj);
         }
 
-        public int ExecuteSql(string sql, object? param = null) => Wrapper.ExecuteWithRetry(sql);
+        public int ExecuteSql(string sql, object? param = null) => Wrapper.ExecuteWithRetry(sql, param);
         public int ExecuteScalar(string sql, Dictionary<string, object>? @params = null) => Wrapper.ExecuteScalar(sql, @params);
     }
 }

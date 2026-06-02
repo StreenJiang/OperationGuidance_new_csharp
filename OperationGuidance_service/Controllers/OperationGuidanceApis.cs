@@ -897,7 +897,8 @@ namespace OperationGuidance_service.Controllers {
             }
             condition += BuildPaginationClause(req.Page ?? 1, req.PageSize ?? 20, req.AfterId, parameters: parameters);
 
-            List<OperationData> operationDatas = _operationDataService.FindBySql(sql + condition, parameters);
+            string joinedSql = $"select o.*, m.parts_bar_code from ({sql} {condition}) o left join {_missionRecordService.TableName} m on o.mission_record_id = m.id";
+            List<OperationData> operationDatas = _operationDataService.FindBySql(joinedSql, parameters);
             List<OperationDataDTO> operationDataDTOs = new();
             CommonUtils.ObjectConverter<OperationData, OperationDataDTO>(operationDatas, operationDataDTOs);
 

@@ -78,5 +78,7 @@ namespace OperationGuidance_service.Models {
         public string? parameter_set_name { get; set; }                                     // 程序名
         public int? torque_values_unit { get; set; }                                        // 
         public int? result_type { get; set; }                                               //
+        [NotMapped]
+        public string? parts_bar_code { get; set; }                                          // 物料码（来自 mission_record JOIN，非 operationdata 物理列）
     }
 }
