@@ -387,7 +387,19 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("modify_mysql_20250625", resourceCulture);
             }
         }
-        
+
+        internal static string modify_mysql_20260526 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_mysql_20260602 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260602", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to ALTER TABLE &quot;product_mission&quot; RENAME TO &quot;_product_mission_old_20240407&quot;;
         ///
@@ -757,7 +769,19 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("modify_sqlite_20250625", resourceCulture);
             }
         }
-        
+
+        internal static string modify_sqlite_20260526 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlite_20260602 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260602", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to -- ----------------------------
         ///-- Table structure for screw_bit_counter
@@ -847,6 +871,18 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20250625 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20250625", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260526 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260602 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260602", resourceCulture);
             }
         }
     }
