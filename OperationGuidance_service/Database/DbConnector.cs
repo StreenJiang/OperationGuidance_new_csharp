@@ -11,6 +11,12 @@ namespace OperationGuidance_service.Database {
         private static ILog logger = SystemUtils.GetLogger(typeof(DbConnector));
         private static readonly ADbConnector connector;
 
+        /// <summary>
+        /// 当检测到待执行的数据库脚本时触发。参数为脚本文件名列表。
+        /// 客户端可订阅此回调以显示非模态提示窗。
+        /// </summary>
+        public static Action<List<string>>? BeforeScriptsExecution;
+
         static DbConnector() {
             SystemUtils.InitMySqlAndSqlServerConfigs();
             SystemUtils.InitSQLiteConfigs();

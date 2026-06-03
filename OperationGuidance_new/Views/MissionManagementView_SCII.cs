@@ -19,6 +19,13 @@ namespace OperationGuidance_new.Views {
             get {
                 if (_editionView == null) {
                     _editionView = WidgetUtils.GetView<MissionEditionView_SCII>();
+                    _editionView.MissionSaved += (missionId, dto) => {
+                        if (dto != null) {
+                            MissionListPanel.RefreshAllBlocksById(missionId, dto, OpenEditionPageView);
+                        } else {
+                            _missionListPanel.InvalidateCache();
+                        }
+                    };
                 }
                 return _editionView;
             }

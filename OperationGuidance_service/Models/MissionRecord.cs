@@ -10,5 +10,7 @@ namespace OperationGuidance_service.Models {
         public string? parts_bar_code { get; set; }
         public int mission_result { get; set; }
         public int is_redo { get; set; }
+        public int? workstation_id { get; set; }
+        public string? workstation_name { get; set; }
     }
 }

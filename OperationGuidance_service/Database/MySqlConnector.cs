@@ -74,30 +74,37 @@ namespace OperationGuidance_service.Database {
                     List<string> newExecutedSqlFileName = new();
                     using (MySqlCommand command = conn.CreateCommand()) {
                         List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                        foreach (string fileName in fileNames) {
+                        // 收集本轮待执行的脚本
+                        List<string> pendingScripts = fileNames
+                            .Where(f => f.Contains(sqlScriptPrefix) && !executedFileNames.Contains(f))
+                            .ToList();
+
+                        if (pendingScripts.Count > 0) {
+                            DbConnector.BeforeScriptsExecution?.Invoke(pendingScripts);
+                        }
+
+                        foreach (string fileName in pendingScripts) {
                             try {
-                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                    string? fileText = Resource.ResourceManager.GetString(fileName);
-                                    if (!string.IsNullOrEmpty(fileText)) {
-                                        logger.Info($"Not executed sql script[{fileName}] found");
-                                        bool allOk = true;
-                                        foreach (string stmt in fileText.Split(';')) {
-                                            string s = stmt.Trim();
-                                            if (string.IsNullOrEmpty(s)) continue;
-                                            try {
-                                                command.CommandText = s;
-                                                command.ExecuteNonQuery();
-                                            } catch (Exception stmtEx) {
-                                                logger.Warn($"Statement in [{fileName}] failed: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
-                                                allOk = false;
-                                            }
+                                string? fileText = Resource.ResourceManager.GetString(fileName);
+                                if (!string.IsNullOrEmpty(fileText)) {
+                                    logger.Info($"Not executed sql script[{fileName}] found");
+                                    bool allOk = true;
+                                    foreach (string stmt in fileText.Split(';')) {
+                                        string s = stmt.Trim();
+                                        if (string.IsNullOrEmpty(s)) continue;
+                                        try {
+                                            command.CommandText = s;
+                                            command.ExecuteNonQuery();
+                                        } catch (Exception stmtEx) {
+                                            logger.Warn($"Statement in [{fileName}] failed: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
+                                            allOk = false;
                                         }
-                                        if (allOk) {
-                                            logger.Info($"Execute sql script[{fileName}] successfully");
-                                            newExecutedSqlFileName.Add(fileName);
-                                        } else {
-                                            logger.Warn($"Execute sql script[{fileName}] completed with errors — will retry on next startup");
-                                        }
+                                    }
+                                    if (allOk) {
+                                        logger.Info($"Execute sql script[{fileName}] successfully");
+                                        newExecutedSqlFileName.Add(fileName);
+                                    } else {
+                                        logger.Warn($"Execute sql script[{fileName}] completed with errors — will retry on next startup");
                                     }
                                 }
                             } catch (Exception e) {

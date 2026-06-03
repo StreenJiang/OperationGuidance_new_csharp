@@ -1170,6 +1170,16 @@ namespace OperationGuidance_new.Views {
 
                 // Minimal init — skip base.ActionAfterActivatingMission() to avoid
                 // 500ms delay, tool lock, arm listening, and background tasks
+
+                // 从 _allBolts 获取第一个点位的站点信息（与基类路径一致，避免 3 次 DB 查询）
+                int? workstationId = _allBolts.Values
+                    .SelectMany(b => b)
+                    .Select(b => b.BoltDTO.workstation_id)
+                    .FirstOrDefault();
+                string? workstationName = workstationId != null
+                    ? _workstationsDTOs.FirstOrDefault(dto => dto.id == workstationId.Value)?.name
+                    : null;
+
                 _missionRecord = new() {
                     mission_id = _mission.id,
                     product_bar_code = _barCodeObj.ProductBarCode,
@@ -1177,6 +1187,8 @@ namespace OperationGuidance_new.Views {
                     mission_result = (int)TighteningStatus.OK,
                     is_redo = _isRedo,
                     product_batch = _productBatch.GetTextBox(0).Box.Text,
+                    workstation_id = workstationId,
+                    workstation_name = workstationName,
                 };
                 _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 

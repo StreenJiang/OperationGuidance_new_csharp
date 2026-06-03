@@ -30,6 +30,7 @@ namespace OperationGuidance_new.Views {
 
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage_SCII? EditionPage { get => _editionPage; set => _editionPage = value; }
+        public event Action<int, ProductMissionDTO?>? MissionSaved;
 
         public MissionEditionView_SCII() {
             apis = SystemUtils.GetApis();
@@ -397,6 +398,16 @@ namespace OperationGuidance_new.Views {
                             warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限及每次任务计数也不能为空\r\n";
                         }
 
+                        // 跳过螺丝点位时，必须至少配置一个点位以获取站点信息
+                        if (check && _detialPopUpForm.SkipScrewPoints.Checked) {
+                            bool hasAnyBolt = _sideButtons.Count > 0 && _sideButtons.Any(side =>
+                                side.BoltButtons != null && side.BoltButtons.Values.Any(bolts => bolts.Count > 0));
+                            if (!hasAnyBolt) {
+                                check = false;
+                                warningMsg += $"{warningIndex++}. 已开启\"跳过螺丝点位\"，但未配置任何螺丝点位。请至少添加一个产品面及点位以确定站点信息\r\n";
+                            }
+                        }
+
                         // Check if can save
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
@@ -492,6 +503,7 @@ namespace OperationGuidance_new.Views {
                             ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                         }
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
 
                         // 保存后跳转至任务列表界面
                         WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
@@ -528,6 +540,7 @@ namespace OperationGuidance_new.Views {
                             DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
                             if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                _parentView.MissionSaved?.Invoke(_parentView.MissionDTO.id, null);
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
                                 Modified = false;
                                 // 删除后跳转至任务列表界面
@@ -635,6 +648,7 @@ namespace OperationGuidance_new.Views {
                                     ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                                 }
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                                 // 复制成功后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                                 Dispose();

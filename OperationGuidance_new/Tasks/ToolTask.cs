@@ -247,6 +247,7 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection to trigger reconnection...");
             _currentPSet = -1;  // 连接断开后缓存不可信，下次发送时强制真实下发
             socketClient?.Close();
+            socketClient = null;
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;

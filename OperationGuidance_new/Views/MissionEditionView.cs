@@ -27,6 +27,8 @@ namespace OperationGuidance_new.Views {
         private ProductMissionDTO? _missionDTO;
         private MissionEditionPage? _editionPage;
 
+        public event Action<int, ProductMissionDTO?>? MissionSaved;
+
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage? EditionPage { get => _editionPage; set => _editionPage = value; }
 
@@ -297,6 +299,8 @@ namespace OperationGuidance_new.Views {
                             ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                         }
                         MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        // 保存后触发事件
+                        _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                         // 保存后跳转至任务列表界面
                         WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                         Dispose();
@@ -332,6 +336,8 @@ namespace OperationGuidance_new.Views {
                             DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
                             if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                // 删除后触发事件
+                                _parentView.MissionSaved?.Invoke(_parentView.MissionDTO.id, null);
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
                                 Modified = false;
                                 // 删除后跳转至任务列表界面
@@ -438,6 +444,8 @@ namespace OperationGuidance_new.Views {
                                     ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                                 }
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                // 复制后触发事件
+                                _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                                 // 复制成功后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                                 Dispose();

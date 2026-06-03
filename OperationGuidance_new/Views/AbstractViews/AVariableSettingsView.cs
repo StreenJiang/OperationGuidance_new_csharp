@@ -446,6 +446,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
             ExportConfig.Instance.SetExcelExportEnabled(_enableExcelExportToggle.Checked);
             ExportConfig.Instance.SetTxtExportEnabled(_enableTxtExportToggle.Checked);
             ExportConfig.Instance.Reload();
+
+            _enableExcelExportOriginal = _enableExcelExportToggle.Checked;
+            _enableTxtExportOriginal = _enableTxtExportToggle.Checked;
         }
         private void UpdateExportControlsEnabled() {
             bool anyEnabled = _enableExcelExportToggle.Checked || _enableTxtExportToggle.Checked;
@@ -743,8 +746,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _upImageRect = new(imageUpLocation, imageSize);
                     _downImageRect = new(imageDownLocation, imageSize);
 
-                    _upImageShowing = WidgetUtils.ResizeImage(_upImage, imageSize);
-                    _downImageShowing = WidgetUtils.ResizeImage(_downImage, imageSize);
+                    var newUp = WidgetUtils.ResizeImage(_upImage, imageSize);
+                    var newDown = WidgetUtils.ResizeImage(_downImage, imageSize);
+                    _upImageShowing?.Dispose();
+                    _downImageShowing?.Dispose();
+                    _upImageShowing = newUp;
+                    _downImageShowing = newDown;
                 }
                 private void ClickUpAnimation(bool goDown) {
                     if (_upImageRect != null) {
@@ -780,7 +787,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     base.OnMouseLeave(e);
                     _upImageRect = null;
                     _downImageRect = null;
+                    _upImageShowing?.Dispose();
                     _upImageShowing = null;
+                    _downImageShowing?.Dispose();
                     _downImageShowing = null;
                     Invalidate();
                 }

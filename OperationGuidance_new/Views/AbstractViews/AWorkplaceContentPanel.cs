@@ -1545,12 +1545,23 @@ namespace OperationGuidance_new.Views.AbstractViews {
             PartsScanCount = 0;
 
             // Add a new record into: mission_record
+            // 从任务的螺栓点位中获取站点信息
+            int? workstationId = _allBolts.Values
+                .SelectMany(b => b)
+                .Select(b => b.BoltDTO.workstation_id)
+                .FirstOrDefault();
+            string? workstationName = workstationId != null
+                ? _workstationsDTOs.FirstOrDefault(dto => dto.id == workstationId.Value)?.name
+                : null;
+
             _missionRecord = new() {
                 mission_id = _mission.id,
                 product_bar_code = _barCodeObj.ProductBarCode,
                 parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
                 mission_result = (int) TighteningStatus.NG,
                 is_redo = _isRedo,
+                workstation_id = workstationId,
+                workstation_name = workstationName,
             };
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             logger.Info($"[Workplace:{_mission.name}] Mission record created — id={_missionRecord.id}, barcode={_missionRecord.product_bar_code}, result={_missionRecord.mission_result}");

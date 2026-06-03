@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class MissionListPanel: CustomContentPanel {
+        private static readonly List<MissionListPanel> _instances = new();
         private TitlePanel? _titlePanel;
         private CustomVScrollingContentPanel _contentOuterPanel;
         private ContentPanel _contentPanel;
@@ -53,6 +54,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Parent = this,
                 NeedsPadding = false,
             };
+            _instances.Add(this);
         }
 
         private bool CalculateAndCheckScrollBar(int parentNewHeight) {
@@ -150,6 +152,79 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _contentPanel.ResizeCells();
         }
 
+        /// <summary>
+        /// 按 mission_id 精准刷新单个任务块。适用场景：任务属性变更但 ID 列表不变。
+        /// </summary>
+        public void RefreshMissionBlockById(int missionId, ProductMissionDTO updatedMission, Action<int?>? blockClickAction, bool toggleBlock = false) {
+            // 更新缓存数据
+            int idx = _missionDTOs.FindIndex(m => m.id == missionId);
+            if (idx >= 0) {
+                _missionDTOs[idx] = updatedMission;
+            }
+
+            // 找到对应的 UI block 并重建
+            var oldBlock = MissionBlocks.FirstOrDefault(b => b.Entity.id == missionId);
+            if (oldBlock == null) return;
+
+            int ctrlIndex = _contentPanel.MissionsTable.Controls.IndexOf((Control)oldBlock);
+            oldBlock.Dispose();
+
+            ProductMissionBlock<ProductMissionDTO> newBlock = new(
+                updatedMission,
+                null,
+                Properties.Resources.image_choose,
+                updatedMission.name,
+                ColorConfigs.COLOR_MISSION_BLOCK_BORDER,
+                ColorConfigs.COLOR_MISSION_BLOCK_BACKGROUND,
+                ColorConfigs.COLOR_MISSION_BLOCK_IMAGE_BORDER
+            ) {
+                Parent = _contentPanel.MissionsTable,
+            };
+            newBlock.InnerButton.ToggledButton = toggleBlock;
+            newBlock.InnerButton.MouseUp += (sender, eventArgs) => {
+                if (newBlock.InnerButton.ToggledButton) {
+                    if (_currentToggledMission == null) {
+                        _currentToggledMission = newBlock;
+                    } else {
+                        _currentToggledMission.InnerButton.SetToggle(false);
+                        if (_currentToggledMission == newBlock) {
+                            _currentToggledMission = null;
+                        } else {
+                            _currentToggledMission = newBlock;
+                            _currentToggledMission.InnerButton.SetToggle(true);
+                        }
+                    }
+                }
+                if (blockClickAction != null) {
+                    blockClickAction(newBlock.Entity.id);
+                }
+            };
+
+            _contentPanel.MissionsTable.Controls.Add(newBlock);
+            _contentPanel.MissionsTable.Controls.SetChildIndex(newBlock, ctrlIndex);
+
+            // 异步加载封面
+            _ = LoadOneCoverAsync(newBlock, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// 清空缓存，强制下次 RefreshMissionBlocks 执行全量刷新。
+        /// 适用场景：删除任务后 ID 列表变更，需要全量重建。
+        /// </summary>
+        public void InvalidateCache() {
+            _missionDTOs.Clear();
+        }
+
+        /// <summary>
+        /// 向所有 MissionListPanel 实例广播精准刷新。
+        /// 适用场景：编辑保存/删除后，管理面板和工作台的面板同时更新。
+        /// </summary>
+        public static void RefreshAllBlocksById(int missionId, ProductMissionDTO updatedMission, Action<int?>? blockClickAction) {
+            foreach (var panel in _instances) {
+                panel.RefreshMissionBlockById(missionId, updatedMission, blockClickAction);
+            }
+        }
+
         private void StartLoadingCoverImages(CancellationToken ct) {
             var blocks = MissionBlocks;
             foreach (var block in blocks) {
@@ -198,6 +273,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _loadCts?.Dispose();
                 // _loadSemaphore intentionally NOT disposed — pending async tasks may Release() after Cancel
             }
+            _instances.Remove(this);
             base.Dispose(disposing);
         }
 

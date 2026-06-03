@@ -70,25 +70,31 @@ namespace OperationGuidance_service.Database {
                     List<string> newExecutedSqlFileName = new();
                     using (SqlCommand command = conn.CreateCommand()) {
                         List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                        foreach (string fileName in fileNames) {
+                        // 收集本轮待执行的脚本
+                        List<string> pendingScripts = fileNames
+                            .Where(f => f.Contains(sqlScriptPrefix) && !executedFileNames.Contains(f))
+                            .ToList();
+
+                        if (pendingScripts.Count > 0) {
+                            DbConnector.BeforeScriptsExecution?.Invoke(pendingScripts);
+                        }
+
+                        foreach (string fileName in pendingScripts) {
                             try {
-                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                    string? fileText = Resource.ResourceManager.GetString(fileName);
-                                    if (!string.IsNullOrEmpty(fileText)) {
-                                        logger.Info($"Not executed sql script[{fileName}] found");
+                                string? fileText = Resource.ResourceManager.GetString(fileName);
+                                if (!string.IsNullOrEmpty(fileText)) {
+                                    logger.Info($"Not executed sql script[{fileName}] found");
 
-
-                                        string[] batches = fileText.Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
-                                        foreach (string batch in batches) {
-                                            if (!string.IsNullOrWhiteSpace(batch)) {
-                                                command.CommandText = batch;
-                                                command.ExecuteNonQuery();
-                                            }
+                                    string[] batches = fileText.Split(new[] { "GO\r\n", "GO\n" }, StringSplitOptions.RemoveEmptyEntries);
+                                    foreach (string batch in batches) {
+                                        if (!string.IsNullOrWhiteSpace(batch)) {
+                                            command.CommandText = batch;
+                                            command.ExecuteNonQuery();
                                         }
-
-                                        logger.Info($"Execute sql script[{fileName}] successfully");
-                                        newExecutedSqlFileName.Add(fileName);
                                     }
+
+                                    logger.Info($"Execute sql script[{fileName}] successfully");
+                                    newExecutedSqlFileName.Add(fileName);
                                 }
                             } catch (Exception e) {
                                 logger.Warn($"Execute sql script[{fileName}] failed, e: {e}");
