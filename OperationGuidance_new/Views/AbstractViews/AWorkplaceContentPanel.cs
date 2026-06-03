@@ -2036,57 +2036,76 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     return;
                 }
 
-                // === 使用新的通用重试策略 ===
-                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 200);
+                // === 每次尝试前断连+重连，保证干净连接 ===
+                var retryStrategy = RetryStrategy.FixedDelay(_resendPsetMaxTimes, 0);
 
-                bool success = false;
-                try {
-                    success = await retryStrategy.ExecuteAsync(
-                        async () => await task.SendPSetAsync(pset.Value),
-                        (currentAttempt, maxAttempts) => {
-                            // === 实时显示重试进度 ===
-                            this.SafeInvoke(() => {
-                                _pset.SetValue(0, $"程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
-                                logger.Info($"【工作台】程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
-                            });
-                        },
-                        () => {
-                            this.SafeInvoke(() => {
-                                // === 下发成功 ===
-                                RemoveLockMsg(lockFailedMsg);
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                boltButton.CurrentParameterSet = pset;
-                                _pset.SetValue(0, $"程序号 {pset} (发送成功)");
-                                logger.Info($"【工作台】程序号[{pset}]发送成功");
-                            });
-                        },
-                        () => {
-                            // === 每次失败时更新UI（但不阻塞） ===
-                            this.SafeInvoke(() => {
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                AddLockMsg(lockFailedMsg);
-                                _pset.SetValue(0, $"程序号[{pset}]下发失败...");
-                                logger.Info($"【工作台】程序号[{pset}]下发失败...");
-                            });
-                        },
-                        _activeMissionCts.Token);
-                } catch (RetryException ex) {
-                    // 处理重试异常
-                    logger.Warn($"程序号{pset}发送失败，已重试{_resendPsetMaxTimes}次: {ex.Message}");
-                    success = false;
+                // 提取共享的 UI 回调，避免快速路径与重试轮中重复
+                void OnPsetSuccess(string label) {
+                    this.SafeInvoke(() => {
+                        RemoveLockMsg(lockFailedMsg);
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                        boltButton.CurrentParameterSet = pset;
+                        _pset.SetValue(0, $"程序号 {pset} ({label})");
+                        logger.Info($"【工作台】程序号[{pset}]{label}");
+                    });
+                }
+                void OnPsetFailure(string label) {
+                    this.SafeInvoke(() => {
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                        AddLockMsg(lockFailedMsg);
+                        _pset.SetValue(0, $"程序号[{pset}]{label}");
+                        logger.Info($"【工作台】程序号[{pset}]{label}");
+                    });
                 }
 
-                // === 失败后处理（无对话框，改为状态提示） ===
-                if (!success && boltButton.CurrentParameterSet == null) {
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                    AddLockMsg(lockFailedMsg);
+                async Task<bool> RunPsetRetryRound(string progressLabel, string successLabel, string failLabel) {
+                    try {
+                        return await retryStrategy.ExecuteAsync(
+                            async () => await task.ReconnectAndResendPset(pset.Value, _activeMissionCts.Token),
+                            (currentAttempt, maxAttempts) => {
+                                this.SafeInvoke(() => {
+                                    _pset.SetValue(0, $"程序号[{pset}]{progressLabel} 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                    logger.Info($"【工作台】程序号[{pset}]{progressLabel} 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                });
+                            },
+                            () => OnPsetSuccess(successLabel),
+                            () => OnPsetFailure(failLabel),
+                            _activeMissionCts.Token);
+                    } catch (RetryException ex) {
+                        logger.Warn($"程序号{pset}重试失败: {ex.Message}");
+                        return false;
+                    }
+                }
 
-                    logger.Info($"程序号 {pset} 下发失败，添加阻塞失败提示");
+                // 首次尝试：直接用现有连接，不断连（快速路径）
+                this.SafeInvoke(() => {
+                    _pset.SetValue(0, $"程序号[{pset}]下发中...");
+                    logger.Info($"【工作台】程序号[{pset}]下发中...");
+                });
+                bool success = await task.SendPSetAsync(pset.Value);
 
-                    this.SafeInvoke(() => {
-                        _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
-                        WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
-                    });
+                if (success) {
+                    OnPsetSuccess("发送成功");
+                } else {
+                    // 首次失败 → 断连重连重试
+                    success = await RunPsetRetryRound("下发中...", "发送成功", "下发失败，正在重连重试...");
+                }
+
+                // === 自动重试全部失败 → 弹窗让用户选择是否继续 ===
+                while (!success && boltButton.CurrentParameterSet == null && !_activeMissionCts.Token.IsCancellationRequested) {
+                    this.SafeInvoke(() => _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)"));
+                    // 必须用同步 Invoke 捕获返回值，SafeInvoke 是 BeginInvoke（fire-and-forget）
+                    bool userRetry = (bool)this.Invoke(new Func<bool>(() =>
+                        WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次。是否重新尝试？")));
+
+                    if (!userRetry) {
+                        OnPsetFailure("失败 - 用户放弃");
+                        logger.Info($"程序号 {pset} 下发失败，用户选择放弃");
+                        break;
+                    }
+
+                    logger.Info($"程序号 {pset} 用户选择重试，开始额外一轮...");
+                    success = await RunPsetRetryRound("重试中...", "重试后发送成功", "重试失败...");
                 }
             } catch (OperationCanceledException ex) {
                 logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);

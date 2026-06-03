@@ -5,6 +5,7 @@ using OperationGuidance_new.Utils;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
@@ -244,6 +245,7 @@ namespace OperationGuidance_new.Tasks {
         }
         public void CloseToTriggerReconnection() {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection to trigger reconnection...");
+            _currentPSet = -1;  // 连接断开后缓存不可信，下次发送时强制真实下发
             socketClient?.Close();
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
@@ -491,8 +493,6 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         isSuccess = false;
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send failed");
-
-                        CloseToTriggerReconnection();
                     }
 
                     return isSuccess;
@@ -506,6 +506,59 @@ namespace OperationGuidance_new.Tasks {
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 断开当前连接 → 重连 → 单次发送 PSet，作为一次原子重试
+        /// </summary>
+        public async Task<bool> ReconnectAndResendPset(int pSetNumber, CancellationToken token) {
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset pSetNumber={pSetNumber} start");
+
+            // 1. 阻止 TaskCheckingLoop 并发重连
+            Status = CONNECTING;
+
+            // 2. 关闭旧连接
+            CloseToTriggerReconnection();
+
+            // 3. 等待 RunTask 主循环感知断连并退出
+            try {
+                await Task.Delay(100, token);
+            } catch (OperationCanceledException) {
+                Status = DISCONNECTED;
+                return false;
+            }
+
+            // 4. 启动重连
+            Connect();
+
+            // 5. 轮询等待重连完成（200ms × 50 = 10s）
+            int pollCount = 0;
+            int pollMax = 50;
+            while (!Connected && pollCount < pollMax && !token.IsCancellationRequested) {
+                pollCount++;
+                try {
+                    await Task.Delay(200, token);
+                } catch (OperationCanceledException) {
+                    Status = DISCONNECTED;
+                    return false;
+                }
+            }
+
+            if (!Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnect timeout after {pollMax * 200}ms");
+                Status = DISCONNECTED;  // 恢复状态，让 TaskCheckingLoop 接管
+                return false;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnected after {pollCount * 200}ms");
+
+            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 CloseToTriggerReconnection 中重置）
+            try {
+                return await SendPSetAsync(pSetNumber);
+            } catch {
+                Status = DISCONNECTED;  // 异常退出时恢复状态
+                throw;
+            }
         }
 
         public void SendLock() {
