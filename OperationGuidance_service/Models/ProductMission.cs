@@ -17,5 +17,6 @@ namespace OperationGuidance_service.Models {
         public int? is_challenge_mission { get; set; } = (int) YesOrNo.NO;
         public int? is_first_mission { get; set; } = (int) YesOrNo.NO;
         public int? challenge_mission_id { get; set; }
+        public int? skip_screw_points { get; set; } = (int) YesOrNo.NO;
     }
 }

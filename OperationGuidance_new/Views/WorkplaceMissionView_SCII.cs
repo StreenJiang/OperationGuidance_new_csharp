@@ -164,6 +164,9 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async void ActivateMissionAutomatically() {
+            if (SkipScrewPoints) {
+                return;
+            }
             logger.Debug($"[SCII:ActivateMissionAutomatically] Checking if USB scanner is enabled");
 
             if (MainUtils.IsUSBScannerEnabled()) {
@@ -1114,6 +1117,9 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
+            if (SkipScrewPoints) {
+                return true;
+            }
             logger.Debug($"[SCII:ValidationBeforeActivatingMission] Validating before activating mission");
 
             if (await base.ValidationBeforeActivatingMission()) {
@@ -1144,6 +1150,40 @@ namespace OperationGuidance_new.Views {
             }
             logger.Warn($"[SCII:ValidationBeforeActivatingMission] Base validation failed");
             return false;
+        }
+
+        private bool SkipScrewPoints => _mission.skip_screw_points == (int)YesOrNo.YES;
+
+        public override async void ActivateMission() {
+            if (SkipScrewPoints) {
+                _backgroundTaskCts.ForEach(cts => {
+                    cts.Cancel();
+                    cts.Dispose();
+                });
+                _backgroundTaskCts.Clear();
+                _activeMissionCts.Cancel();
+                _activeMissionCts.Dispose();
+                _activeMissionCts = new CancellationTokenSource();
+
+                PrepareBeforeActivatingMission();
+                _activated = true;
+
+                // Minimal init — skip base.ActionAfterActivatingMission() to avoid
+                // 500ms delay, tool lock, arm listening, and background tasks
+                _missionRecord = new() {
+                    mission_id = _mission.id,
+                    product_bar_code = _barCodeObj.ProductBarCode,
+                    parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
+                    mission_result = (int)TighteningStatus.OK,
+                    is_redo = _isRedo,
+                    product_batch = _productBatch.GetTextBox(0).Box.Text,
+                };
+                _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+
+                TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+                return;
+            }
+            base.ActivateMission();
         }
 
         private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {

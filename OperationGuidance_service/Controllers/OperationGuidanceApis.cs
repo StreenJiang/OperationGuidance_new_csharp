@@ -411,7 +411,8 @@ namespace OperationGuidance_service.Controllers {
                         }
                     }
 
-                    if (noSide || (!isEditing && (hasNullImageSide || hasNullBoltSide))) {
+                    bool skipScrewPoints = missionDTO.skip_screw_points == (int)YesOrNo.YES;
+                    if (noSide || (!isEditing && !skipScrewPoints && (hasNullImageSide || hasNullBoltSide))) {
                         productMissionDTOs.Remove(missionDTO);
                     } else {
                         ProductSideDTO productSideDTO = new();

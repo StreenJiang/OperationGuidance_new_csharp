@@ -405,6 +405,7 @@ namespace OperationGuidance_new.Views {
                             _missionDTO.name = missionName;
                             _missionDTO.is_challenge_mission = (int) (_detialPopUpForm.IsChallengeMission.Checked ? YesOrNo.YES : YesOrNo.NO);
                             _missionDTO.is_first_mission = (int) (_detialPopUpForm.IsFirstMission.Checked ? YesOrNo.YES : YesOrNo.NO);
+                            _missionDTO.skip_screw_points = (int) (_detialPopUpForm.SkipScrewPoints.Checked ? YesOrNo.YES : YesOrNo.NO);
                             _missionDTO.challenge_mission_id = _detialPopUpForm.ChallengMission.Value;
                             _missionDTO.max_ng_num = int.Parse(maxNGNum);
                             _missionDTO.password_need_time = int.Parse(passwordNeedTime);
@@ -559,6 +560,7 @@ namespace OperationGuidance_new.Views {
                                 predecessor_mission_id = _missionDTO.predecessor_mission_id,
                                 predecessor_part_mission_ids = _missionDTO.predecessor_part_mission_ids,
                                 multi_device_independence = _missionDTO.multi_device_independence,
+                                skip_screw_points = _missionDTO.skip_screw_points,
                             };
 
                             if (_missionDTO.ProductSides != null && _missionDTO.ProductSides.Count > 0) {
@@ -1542,6 +1544,7 @@ namespace OperationGuidance_new.Views {
             private CustomTextBoxGroup _missionName;
             private ToggleButtonGroup _isChallengeMission;
             private ToggleButtonGroup _isFirstMission;
+            private ToggleButtonGroup _skipScrewPoints;
             private CustomComboBoxGroup<int> _challengMission;
             private CustomTextBoxGroup _maxNGNum;
             private CustomTextBoxGroup _passwordNeedTime;
@@ -1566,6 +1569,7 @@ namespace OperationGuidance_new.Views {
             public List<CustomTextBoxButtonGroup> ScrewBitCounters { get => _screwBitCounters; set => _screwBitCounters = value; }
             public ToggleButtonGroup IsChallengeMission { get => _isChallengeMission; set => _isChallengeMission = value; }
             public ToggleButtonGroup IsFirstMission { get => _isFirstMission; set => _isFirstMission = value; }
+            public ToggleButtonGroup SkipScrewPoints { get => _skipScrewPoints; set => _skipScrewPoints = value; }
             public CustomComboBoxGroup<int> ChallengMission { get => _challengMission; set => _challengMission = value; }
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs, List<ScrewBitCounterDTO> screwBitCounterDTOs) {
                 _missionDTO = missionDTO;
@@ -1598,6 +1602,11 @@ namespace OperationGuidance_new.Views {
                     Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
                     Enabled = false,
+                };
+                _skipScrewPoints = new("跳过螺丝点位") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
                 };
                 _maxNGNum = new("最大NG数") {
                     Parent = _tablePanel,
@@ -1738,6 +1747,7 @@ namespace OperationGuidance_new.Views {
 
                 _tablePanel.SetColumnSpan(_missionName, _columnCount);
                 _tablePanel.SetColumnSpan(_challengMission, _columnCount);
+                _tablePanel.SetColumnSpan(_skipScrewPoints, _columnCount);
                 _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
                 _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
                 _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
@@ -1758,6 +1768,7 @@ namespace OperationGuidance_new.Views {
             protected override void AfterShown() {
                 _missionName.SetValue(0, _missionDTO.name);
                 _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
+                _skipScrewPoints.Checked = _missionDTO.skip_screw_points == (int) YesOrNo.YES;
                 _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");
                 if (_missionDTO.predecessor_mission_id != null) {
