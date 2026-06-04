@@ -2732,7 +2732,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 }
 
                 var snapshot = GetTighteningDataSnapshot();
-                if (snapshot.Count == 0) return;
 
                 string result = status == WorkplaceProcessStatus.FINISHED_OK ? "OK" : "NG";
                 var fields = MainUtils.GetOperationDataFields(ExportSortConfig);
@@ -2744,6 +2743,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     }
                 }
 
+                // WorkstationName：优先从 snapshot 取，空数据时回退到 _missionRecord
+                string workstationName = snapshot.Count > 0
+                    ? snapshot[0].workstation_name
+                    : _missionRecord?.workstation_name ?? _mission?.name ?? "Unknown";
+
                 var request = new ExportRequest {
                     Data = snapshot, Fields = fields, BasePath = ExportBasePath,
                     ProductBatch = _missionRecord?.product_batch,
@@ -2751,7 +2755,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     CompletedAt = DateTime.Now, Result = result,
                     EnableExcel = IsExcelExportEnabled, EnableTxt = IsTxtExportEnabled,
                     MissionName = _mission?.name,
-                    WorkstationName = snapshot[0].workstation_name,
+                    WorkstationName = workstationName,
                 };
 
                 await new DataExportService().ExportAsync(request);

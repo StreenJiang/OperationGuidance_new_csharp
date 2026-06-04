@@ -47,8 +47,10 @@
             if (form is not null && form.WindowState == FormWindowState.Minimized) {
                 return;
             }
-            // Rescale image
+            // Rescale image — save and dispose old ImageShowing (ResizeImage always creates new Bitmap)
+            var oldShowing = ImageShowing;
             ResizeIconImage();
+            oldShowing?.Dispose();
         }
 
         protected abstract void ResizeIconImage();

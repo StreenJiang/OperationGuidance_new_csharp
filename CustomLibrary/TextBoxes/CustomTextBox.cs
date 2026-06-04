@@ -263,8 +263,12 @@ namespace CustomLibrary.TextBoxes {
         private void ResetErrorIcon() {
             Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
             if (_iconShowing == null || _iconShowing.Size != newIconSize) {
+                _iconShowing?.Dispose();
                 _iconShowing = WidgetUtils.ResizeImage(CustomResources.input_error, newIconSize);
-                _errorProvider.Icon = Icon.FromHandle(new Bitmap(_iconShowing).GetHicon());
+                _errorProvider.Icon?.Dispose();
+                using (Bitmap bmp = new Bitmap(_iconShowing)) {
+                    _errorProvider.Icon = Icon.FromHandle(bmp.GetHicon());
+                }
                 _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
             }
             int boxErrorNewWidth = _boxOriginalWidth - newIconSize.Width;

@@ -187,6 +187,16 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular),
             };
         }
+        private void HideLoadingOverlay() {
+            if (_loadingOverlay.Visible) {
+                _loadingOverlay.Visible = false;
+                _loadingOverlay.Region?.Dispose();
+                _loadingOverlay.Region = null;
+                _loadingOverlay.BackgroundImage?.Dispose();
+                _loadingOverlay.BackgroundImage = null;
+                _loadingLabel.Visible = true;
+            }
+        }
         #endregion
 
         #region Reusable methods
@@ -271,7 +281,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _loadingOverlay.BringToFront();
 
                 var result = await Task.Run(() => _queryData(_filterParametersVO));
-                if (IsDisposed) return;
+                if (IsDisposed || !Visible) return;
                 _voGridView.DataSource = result;
             } catch (Exception ex) {
                 if (!IsDisposed) {
@@ -281,11 +291,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 if (!IsDisposed) {
                     _searchButton.Enabled = true;
                     _resetButton.Enabled = true;
-                    _loadingOverlay.Visible = false;
-                    _loadingOverlay.Region = null;
-                    _loadingOverlay.BackgroundImage?.Dispose();
-                    _loadingOverlay.BackgroundImage = null;
-                    _loadingLabel.Visible = true;
+                    HideLoadingOverlay();
                 }
                 _isQuerying = 0;
             }
@@ -431,6 +437,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             ResizeContents(contentSize);
             ResizeFiltersPanel(contentSize);
             ResizeButtonsPanel();
+        }
+        protected override void OnVisibleChanged(EventArgs e) {
+            base.OnVisibleChanged(e);
+            if (!Visible) {
+                HideLoadingOverlay();
+            }
         }
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             return false;

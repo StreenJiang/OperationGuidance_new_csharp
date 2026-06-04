@@ -398,17 +398,7 @@ namespace OperationGuidance_new.Views {
                             warningMsg += $"{warningIndex++}. 套筒位不为空时，批头使用上限及每次任务计数也不能为空\r\n";
                         }
 
-                        // 跳过螺丝点位时，必须至少配置一个点位以获取站点信息
-                        if (check && _detialPopUpForm.SkipScrewPoints.Checked) {
-                            bool hasAnyBolt = _sideButtons.Count > 0 && _sideButtons.Any(side =>
-                                side.BoltButtons != null && side.BoltButtons.Values.Any(bolts => bolts.Count > 0));
-                            if (!hasAnyBolt) {
-                                check = false;
-                                warningMsg += $"{warningIndex++}. 已开启\"跳过螺丝点位\"，但未配置任何螺丝点位。请至少添加一个产品面及点位以确定站点信息\r\n";
-                            }
-                        }
-
-                        // Check if can save
+                        // Check if can save (detail popup)
                         if (!check) {
                             WidgetUtils.ShowWarningPopUp($"保存失败：\r\n{warningMsg}");
                         } else {
@@ -487,6 +477,17 @@ namespace OperationGuidance_new.Views {
                 };
                 _buttonSave.Click += (sender, eventArgs) => {
                     _currentProductImageFile.SaveSideInfo();
+
+                    // 跳过螺丝点位时，必须至少配置一个点位以获取站点信息
+                    if (_missionDTO.skip_screw_points == (int)YesOrNo.YES) {
+                        bool hasAnyBolt = _sideButtons.Count > 0 && _sideButtons.Any(side =>
+                            side.BoltButtons != null && side.BoltButtons.Values.Any(bolts => bolts.Count > 0));
+                        if (!hasAnyBolt) {
+                            WidgetUtils.ShowWarningPopUp("已开启\"跳过螺丝点位\"，但未配置任何螺丝点位。请至少添加一个产品面及点位以确定站点信息");
+                            return;
+                        }
+                    }
+
                     // Store to database
                     AddOrUpdateProductMissionReq req = new(_missionDTO);
                     AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);

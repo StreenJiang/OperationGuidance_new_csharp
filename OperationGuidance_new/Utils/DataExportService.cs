@@ -22,11 +22,11 @@ namespace OperationGuidance_new.Utils {
         private static readonly ILog _logger = MainUtils.GetLogger(typeof(DataExportService));
 
         public async Task ExportAsync(ExportRequest request) {
-            if (request.Data == null || request.Data.Count == 0) {
+            var data = request.Data ?? new List<OperationDataVO>();
+            if (data.Count == 0) {
                 _logger.Warn("[DataExport] ExportAsync skipped: no data");
                 return;
             }
-
             string workstation = string.IsNullOrEmpty(request.WorkstationName) ? "null" : request.WorkstationName;
             string mission = string.IsNullOrEmpty(request.MissionName) ? "null" : request.MissionName;
             string date = request.CompletedAt.ToString("yyyy-MM-dd");
@@ -49,7 +49,7 @@ namespace OperationGuidance_new.Utils {
                 _logger.Warn("[DataExport] No visible fields configured — export may produce empty columns");
             }
 
-            var rows = BuildRows(request.Data, propertyNames);
+            var rows = BuildRows(data, propertyNames);
             _logger.Info($"[DataExport] Exporting {rows.Count} rows x {propertyNames.Count} cols to {batchFolder}");
 
             var exceptions = new List<Exception>();

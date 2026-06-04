@@ -21,7 +21,7 @@ namespace OperationGuidance_new.Views {
                     _editionView = WidgetUtils.GetView<MissionEditionView>();
                     _editionView.MissionSaved += (missionId, dto) => {
                         if (dto != null) {
-                            MissionListPanel.RefreshAllBlocksById(missionId, dto, OpenEditionPageView);
+                            MissionListPanel.RefreshAllBlocksById(missionId, dto);
                         } else {
                             _missionListPanel.InvalidateCache();
                         }

@@ -23,9 +23,11 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public Image? CoverImage {
             get => _coverImage;
             set {
+                var oldCover = _coverImage;
                 _coverImage = value;
                 _innerButton.Icon = value;
                 _innerButton.RefreshImage();
+                oldCover?.Dispose();
             }
         }
         public string MissionName {
@@ -109,6 +111,14 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
 
         public void PerformClick(EventArgs e) {
             OnClick(e);
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                _coverImage?.Dispose();
+                _coverImage = null;
+            }
+            base.Dispose(disposing);
         }
     }
 

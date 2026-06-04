@@ -16,6 +16,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private ContentPanel _contentPanel;
         private List<ProductMissionDTO> _missionDTOs;
         private ProductMissionBlock<ProductMissionDTO>? _currentToggledMission = null;
+        private Action<int?>? _blockClickAction;
         private int _titleHeight;
         private CancellationTokenSource? _loadCts;
         private readonly SemaphoreSlim _loadSemaphore = new(4);
@@ -84,6 +85,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void RefreshMissionBlocks(List<ProductMissionDTO> missionDTOs, Action<int?>? blockClickAction, bool toggleBlock = false) {
+            _blockClickAction = blockClickAction;
             // Skip rebuild if data is identical
             if (_missionDTOs.Count > 0 && missionDTOs.Select(m => m.id).SequenceEqual(_missionDTOs.Select(m => m.id)))
                 return;
@@ -155,12 +157,15 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         /// <summary>
         /// 按 mission_id 精准刷新单个任务块。适用场景：任务属性变更但 ID 列表不变。
         /// </summary>
-        public void RefreshMissionBlockById(int missionId, ProductMissionDTO updatedMission, Action<int?>? blockClickAction, bool toggleBlock = false) {
+        public void RefreshMissionBlockById(int missionId, ProductMissionDTO updatedMission, Action<int?>? blockClickAction = null, bool toggleBlock = false) {
             // 更新缓存数据
             int idx = _missionDTOs.FindIndex(m => m.id == missionId);
             if (idx >= 0) {
                 _missionDTOs[idx] = updatedMission;
             }
+
+            // 若未指定 click 行为，沿用本面板初始化时的行为
+            var clickAction = blockClickAction ?? _blockClickAction;
 
             // 找到对应的 UI block 并重建
             var oldBlock = MissionBlocks.FirstOrDefault(b => b.Entity.id == missionId);
@@ -195,8 +200,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         }
                     }
                 }
-                if (blockClickAction != null) {
-                    blockClickAction(newBlock.Entity.id);
+                if (clickAction != null) {
+                    clickAction(newBlock.Entity.id);
                 }
             };
 
@@ -216,12 +221,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         /// <summary>
-        /// 向所有 MissionListPanel 实例广播精准刷新。
+        /// 向所有 MissionListPanel 实例广播精准刷新（各面板沿用自身点击行为）。
         /// 适用场景：编辑保存/删除后，管理面板和工作台的面板同时更新。
         /// </summary>
-        public static void RefreshAllBlocksById(int missionId, ProductMissionDTO updatedMission, Action<int?>? blockClickAction) {
+        public static void RefreshAllBlocksById(int missionId, ProductMissionDTO updatedMission) {
             foreach (var panel in _instances) {
-                panel.RefreshMissionBlockById(missionId, updatedMission, blockClickAction);
+                panel.RefreshMissionBlockById(missionId, updatedMission);
             }
         }
 
@@ -245,6 +250,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                 if (loaded != null) {
                                     if (side.rotate_angle != null) {
                                         loaded = WidgetUtils.RotateImage(loaded, side.rotate_angle.Value);
+                                        // 旋转后已是新对象（owned）
+                                    } else {
+                                        // 共享缓存引用，clone 为 owned copy（new Bitmap 即深拷贝，无 Base64 开销）
+                                        loaded = new Bitmap(loaded);
                                     }
                                     break;
                                 }

@@ -513,11 +513,15 @@ namespace OperationGuidance_new.Views {
                 List<MissionRecordDTO> missionRecordDTOs = GetRecoreds();
                 logger.Debug($"[SCII:SetTodayData] Retrieved {missionRecordDTOs.Count} mission records");
 
-                IEnumerable<MissionRecordDTO> distinctData = missionRecordDTOs
-                            .DistinctBy(dto => dto.product_bar_code);
-                sum = distinctData.Count();
-                okSum = distinctData
+                // sum = 不同产品数（按 product_bar_code 去重）
+                sum = missionRecordDTOs
+                            .DistinctBy(dto => dto.product_bar_code)
+                            .Count();
+
+                // okSum = 有 OK 结果的不同产品数（全量筛选 OK → 去重）
+                okSum = missionRecordDTOs
                             .Where(dto => dto.mission_result == (int) TighteningStatus.OK)
+                            .DistinctBy(dto => dto.product_bar_code)
                             .Count();
                 if (sum > 0) {
                     ngRate = (sum - okSum) / (double) sum * 100;
@@ -537,6 +541,7 @@ namespace OperationGuidance_new.Views {
 
             QueryMissionRecordListReq req = new() {
                 MissionId = _mission.id,
+                PageSize = int.MaxValue,
             };
 
             // 如果打开了《班次配置》，则根据班次计算

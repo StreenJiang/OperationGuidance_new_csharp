@@ -12,8 +12,8 @@ namespace OperationGuidance_new.Tasks {
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
-        private static readonly object SyncObject = new();
-        private static readonly object LockSyncObject = new();
+        private readonly object SyncObject = new();
+        private readonly object LockSyncObject = new();
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
@@ -21,6 +21,8 @@ namespace OperationGuidance_new.Tasks {
         private readonly int PSetWaitTimesMax = 5;
         private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
+        private Task? _runTaskTask;
+        private volatile int _connectInProgress;
         private volatile bool _locked = false;
         private volatile bool _lockStatusSending = false;
         private readonly object _pSetLock = new object();
@@ -62,7 +64,7 @@ namespace OperationGuidance_new.Tasks {
 
         #region Override methods
         protected override void RunTask() {
-            Task.Run(async () => {
+            _runTaskTask = Task.Run(async () => {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread started");
                 try {
                     while (Connected) {
@@ -201,8 +203,12 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public override void Connect() {
-            lock (SyncObject) {
-                Task.Run(async () => {
+            if (Interlocked.Exchange(ref _connectInProgress, 1) == 1) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect already in progress, skipping");
+                return;
+            }
+            Task.Run(async () => {
+                try {
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Initiating connection");
                     HeartBeatCounter = 0;
                     CloseConnectionManually = false;
@@ -229,8 +235,11 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed after {retryCount} attempt(s)");
                     }
-                });
-            }
+                } finally {
+                    _connectInProgress = 0;
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect task exiting, _connectInProgress released, Connected={Connected}");
+                }
+            });
         }
         public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
@@ -248,6 +257,31 @@ namespace OperationGuidance_new.Tasks {
             _currentPSet = -1;  // 连接断开后缓存不可信，下次发送时强制真实下发
             socketClient?.Close();
             socketClient = null;
+        }
+        public async Task CloseToTriggerReconnectionAsync(CancellationToken token = default) {
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync start, _currentPSet={_currentPSet}, hasRunTask={_runTaskTask != null}");
+            _currentPSet = -1;
+            socketClient?.Close();
+            socketClient = null;
+            _connectInProgress = 0;
+
+            if (_runTaskTask != null) {
+                var runTask = _runTaskTask;
+                _runTaskTask = null;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                try {
+                    await runTask.WaitAsync(TimeSpan.FromSeconds(3), token);
+                    sw.Stop();
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Old RunTask exited cleanly after {sw.ElapsedMilliseconds}ms");
+                } catch (TimeoutException) {
+                    sw.Stop();
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Old RunTask did not exit within 3s timeout (elapsed={sw.ElapsedMilliseconds}ms)");
+                } catch (OperationCanceledException) {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync cancelled after {sw.ElapsedMilliseconds}ms");
+                }
+            } else {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] No RunTask to wait for, proceeding directly");
+            }
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;
@@ -398,12 +432,18 @@ namespace OperationGuidance_new.Tasks {
                         data = new byte[0];
                     }
 
-                    // Send command to controller
-                    socketClient.Send(data);
-
-                    // Receive data
+                    // Send command and receive response under lock for socket safety
                     byte[] msgBytes = new byte[1024 * 1024];
-                    int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                    int msgLen;
+                    lock (SyncObject) {
+                        if (!Connected) {
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake send/receive aborted - disconnected");
+                            return null;
+                        }
+                        socketClient.Send(data);
+                        msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                    }
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake response received, len={msgLen}");
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
                     if (_toolType is ToolPFSeries) {
                         result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
@@ -484,7 +524,7 @@ namespace OperationGuidance_new.Tasks {
 
                         if (!_psetSentOk) {
                             isSuccess = false;
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending timeout");
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending timeout after {waitTimes * PSetWaitTime}ms (waited={waitTimes}, psetSentOk=false → tool rejected or no response within window)");
                         } else {
                             isSuccess = true;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet success: {_currentPSet} -> {pSetNumber}");
@@ -504,6 +544,7 @@ namespace OperationGuidance_new.Tasks {
                 logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet error", e);
             } finally {
                 _sendingPSet = -1;
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendPSetAsync finally, _sendingPSet reset to -1");
             }
 
             return false;
@@ -518,19 +559,17 @@ namespace OperationGuidance_new.Tasks {
             // 1. 阻止 TaskCheckingLoop 并发重连
             Status = CONNECTING;
 
-            // 2. 关闭旧连接
-            CloseToTriggerReconnection();
-
-            // 3. 等待 RunTask 主循环感知断连并退出
+            // 2. 关闭旧连接并等待 RunTask 彻底退出（保证 finally 已执行）
             try {
-                await Task.Delay(100, token);
+                await CloseToTriggerReconnectionAsync(token);
             } catch (OperationCanceledException) {
                 Status = DISCONNECTED;
                 return false;
             }
 
-            // 4. 启动重连
+            // 3. 启动重连
             Connect();
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect() returned, polling for connection...");
 
             // 5. 轮询等待重连完成（200ms × 50 = 10s）
             int pollCount = 0;
@@ -553,13 +592,13 @@ namespace OperationGuidance_new.Tasks {
 
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnected after {pollCount * 200}ms");
 
-            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 CloseToTriggerReconnection 中重置）
-            try {
-                return await SendPSetAsync(pSetNumber);
-            } catch {
-                Status = DISCONNECTED;  // 异常退出时恢复状态
-                throw;
+            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 CloseToTriggerReconnectionAsync 中重置）
+            bool psetResult = await SendPSetAsync(pSetNumber);
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset SendPSetAsync result={psetResult}, pSetNumber={pSetNumber}");
+            if (!psetResult) {
+                Status = DISCONNECTED;  // PSet 失败视为本次重试整体失败，恢复状态让 TaskCheckingLoop 接管
             }
+            return psetResult;
         }
 
         public void SendLock() {
