@@ -89,3 +89,17 @@ Must call `_contentPanel.ResizeChildren()` BEFORE `_contentPanel.CheckNeedsScrol
 
 - `docs/superpowers/specs/` — Design specs
 - `docs/superpowers/plans/` — Implementation plans
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues（`StreenJiang/OperationGuidance_new_csharp`），通过 `gh` CLI 操作。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用标准默认标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文仓库（single-context）——`CONTEXT.md` + `docs/adr/` 位于仓库根目录。详见 `docs/agents/domain.md`。
