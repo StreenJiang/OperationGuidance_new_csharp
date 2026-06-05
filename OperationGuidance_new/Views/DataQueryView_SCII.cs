@@ -32,7 +32,7 @@ namespace OperationGuidance_new.Views {
         // Add new pop up form
         private EditEntityPopUpForm<MissionRecordDTO> _editEntityPopUpForm;
         private List<WorkstationDTO> _workstations;
-        private CustomComboBoxGroup<List<int?>> _workstationNameComboBox;
+        private CustomComboBoxGroup<int?> _workstationNameComboBox;
         private CustomComboBoxGroup<bool?> _isChallengMissionComboBox;
         #endregion
 
@@ -83,13 +83,8 @@ namespace OperationGuidance_new.Views {
                 }
             };
             _dataGridView.AddTextBox("任务名称", false, (MissionRecordVO vo, string? value) => vo.mission_name = value);
-            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, List<int?>? value) => {
-                vo.ids = new();
-                if (value != null) {
-                    value.ForEach(v => vo.ids.Add(v));
-                } else {
-                    vo.ids.Add(null);
-                }
+            _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, int? value) => {
+                vo.workstation_id = value;
             }, new());
             Dictionary<String, bool?> yesOrNos = new() {
                 { "是", true }, { "否", false }
@@ -121,12 +116,11 @@ namespace OperationGuidance_new.Views {
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
                 _wsCache.Clear();
-                // Snapshot ids at query time. RefreshWorkstationOptions runs async and
-                // may mutate vo.ids via combo auto-select, corrupting keyset paging.
-                var queryIds = vo.ids;
+                // Snapshot workstation_id at query time to prevent async mutation by RefreshWorkstationOptions
+                var queryWorkstationId = vo.workstation_id;
                 _dataGridView.VoGridView.ServerFetch = (page, pageSize, afterId) => {
-                    var saved = vo.ids;
-                    vo.ids = queryIds;
+                    var saved = vo.workstation_id;
+                    vo.workstation_id = queryWorkstationId;
                     try {
                         var pageReq = BuildQueryMissionRecordListReq(page, pageSize, vo, afterId);
                         var pageRsp = apis.QueryMissionRecordList(pageReq);
@@ -136,7 +130,7 @@ namespace OperationGuidance_new.Views {
                         EnrichWorkstationBatch(pageVos);
                         return (pageVos, pageRsp.TotalCount);
                     } finally {
-                        vo.ids = saved;
+                        vo.workstation_id = saved;
                     }
                 };
                 var req = BuildQueryMissionRecordListReq(1, _dataGridView.VoGridView.PageSize, vo, null);
@@ -166,21 +160,13 @@ namespace OperationGuidance_new.Views {
         private async void RefreshWorkstationOptions() {
             _workstationNameComboBox.Enabled = false;
             try {
-                var (ws, missionRecordIds) = await Task.Run(() => {
-                    var w = apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs;
-                    if (w.Count == 0) return (w, new Dictionary<int, List<int>>());
-                    var m = apis.QueryMissionRecordsByWorkstationIds(new(w.Select(x => x.id).ToList())).MissionRecordsDict;
-                    return (w, m);
-                });
+                var workstations = await Task.Run(() =>
+                    apis.QueryWorkstationList(new(SystemUtils.MacAddressesDTO.id)).WorkstationsDTOs);
                 if (IsDisposed) return;
-                _workstations = ws;
+                _workstations = workstations;
                 _workstationNameComboBox.ClearItem();
                 foreach (WorkstationDTO workstation in _workstations) {
-                    if (missionRecordIds.ContainsKey(workstation.id)) {
-                        List<int?> ids = new();
-                        missionRecordIds[workstation.id].ForEach(id => ids.Add(id));
-                        _workstationNameComboBox.AddItem(workstation.name, ids);
-                    }
+                    _workstationNameComboBox.AddItem(workstation.name, workstation.id);
                 }
                 _workstationNameComboBox.AddItem("无", null);
                 _workstationNameComboBox.SetCurrent(_workstationNameComboBox.Items.Count - 1);
@@ -225,9 +211,7 @@ namespace OperationGuidance_new.Views {
                 CreateTimeMax = vo.filter_create_time_max,
                 MissionName = vo.mission_name,
                 IsChallengeMission = vo.is_challenge_mission,
-                Ids = (vo.ids != null && vo.ids.Count > 0 && vo.ids[0] != null)
-                    ? vo.ids.Where(i => i.HasValue).Select(i => i.Value).ToList()
-                    : null,
+                WorkstationId = vo.workstation_id,
             };
         }
         private void OpenOperationDataDetailsPopUpForm(List<OperationDataVO> vos) {

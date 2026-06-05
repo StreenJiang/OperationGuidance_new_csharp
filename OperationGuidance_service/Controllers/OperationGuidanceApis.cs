@@ -680,14 +680,30 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
-        // 根据任务记录 ids 查询对应的站点id和站点名称
+        // 根据任务记录 ids 查询对应的站点id和站点名称（双源合并: operation_data + mission_record）
         public QueryWorkstationInfoByMissionRecordIdsRsp QueryWorkstationInfoByMissionRecordIds(QueryWorkstationInfoByMissionRecordIdsReq req) {
-            // 先查询到每条任务记录对应的 workstation_id
             Dictionary<int, Dictionary<int, string>> workstationInfos = new();
             if (req.MissionRecordIds.Count > 0) {
+                // 源1: operation_data — 有拧紧数据的记录（向后兼容）
                 workstationInfos = _operationDataService.GetWorkstationInfoByMissionRecordIds(req.MissionRecordIds);
 
-                // 根据所有 workstation_ids 查询到每个 id 对应的 name
+                // 源2: mission_record — 跳过螺丝点位等无拧紧数据的记录
+                string sqlMr = $"select id, workstation_id from {_missionRecordService.TableName} " +
+                               "where id in @ids and workstation_id is not null and deleted = @deleted";
+                var mrList = _missionRecordService.FindBySql(sqlMr,
+                    new() { { "ids", req.MissionRecordIds }, { "deleted", (int)YesOrNo.NO } });
+
+                foreach (var mr in mrList) {
+                    if (mr.workstation_id != null) {
+                        if (!workstationInfos.TryGetValue(mr.id, out var inner)) {
+                            workstationInfos[mr.id] = new() { { mr.workstation_id.Value, "" } };
+                        } else if (!inner.ContainsKey(mr.workstation_id.Value)) {
+                            inner[mr.workstation_id.Value] = "";
+                        }
+                    }
+                }
+
+                // 根据所有 workstation_ids 查询到每个 id 对应的 name（后续逻辑不变）
                 List<int> workstationIds = new();
                 workstationInfos.Values.ToList().ForEach(dict => workstationIds.AddRange(dict.Keys));
                 Dictionary<int, string> workstationInfo = _workstationService.GetWorkstationNamesByIds(workstationIds);
@@ -715,6 +731,30 @@ namespace OperationGuidance_service.Controllers {
                 : $"{_missionRecordService.TableName} mr";
             string fromClauseNoForce = $"{_missionRecordService.TableName} mr";
 
+            // Resolve workstation filter into Ids to keep SQL simple and index-friendly.
+            // Dual-source: mission_record.workstation_id (new data) + operation_data (history).
+            if (req.WorkstationId != null && (req.Ids == null || req.Ids.Count == 0)) {
+                var idSet = new HashSet<int>();
+
+                // Source 1: mission_record with matching workstation_id
+                string sqlMrWs = $"select id from {_missionRecordService.TableName} " +
+                                 "where workstation_id = @ws_id and deleted = @ws_del";
+                var mrList = _missionRecordService.FindBySql(sqlMrWs,
+                    new() { { "ws_id", req.WorkstationId.Value }, { "ws_del", (int)YesOrNo.NO } });
+                foreach (var mr in mrList) idSet.Add(mr.id);
+
+                // Source 2: mission_record_ids from operation_data for this workstation
+                string sqlOdWs = $"select distinct mission_record_id from {_operationDataService.TableName} " +
+                                 "where workstation_id = @ws_id and deleted = @ws_del and mission_record_id is not null";
+                var odList = _operationDataService.FindBySql(sqlOdWs,
+                    new() { { "ws_id", req.WorkstationId.Value }, { "ws_del", (int)YesOrNo.NO } });
+                foreach (var od in odList) {
+                    if (od.mission_record_id != null) idSet.Add(od.mission_record_id.Value);
+                }
+
+                req.Ids = idSet.ToList();
+            }
+
             string sql = $@"
         SELECT mr.*,
                pm.name AS mission_name,
@@ -730,6 +770,9 @@ namespace OperationGuidance_service.Controllers {
             if (req.Ids != null && req.Ids.Count > 0) {
                 condition += " and mr.id in @ids";
                 parameters.Add("ids", req.Ids);
+            } else if (req.WorkstationId != null && req.Ids != null && req.Ids.Count == 0) {
+                // No matching mission records for this workstation → force empty result
+                condition += " and 1 = 0";
             }
             if (req.Date != null) {
                 condition += " and mr.create_time between @date1 and @date2";
@@ -853,11 +896,28 @@ namespace OperationGuidance_service.Controllers {
             }
             return rsp;
         }
-        // 根据站点 ids 查询对应的任务记录列表
+        // 根据站点 ids 查询对应的任务记录列表（双源合并: operation_data + mission_record）
         public QueryMissionRecordsByWorkstationIdsRsp QueryMissionRecordsByWorkstationIds(QueryMissionRecordsByWorkstationIdsReq req) {
-            Dictionary<int, List<int>> result = new();
+            var result = new Dictionary<int, List<int>>();
             if (req.WorkstationIds.Count > 0) {
+                // 源1: operation_data — 有拧紧数据的任务（向后兼容）
                 result = _operationDataService.GetMissionRecordIdsByWorkstationIds(req.WorkstationIds);
+
+                // 源2: mission_record — 跳过螺丝点位等无拧紧数据的任务
+                string sqlMr = $"select id, workstation_id from {_missionRecordService.TableName} " +
+                               "where workstation_id in @ids and deleted = @deleted";
+                var mrList = _missionRecordService.FindBySql(sqlMr,
+                    new() { { "ids", req.WorkstationIds }, { "deleted", (int)YesOrNo.NO } });
+
+                foreach (var mr in mrList) {
+                    if (mr.workstation_id != null) {
+                        if (!result.TryGetValue(mr.workstation_id.Value, out var list)) {
+                            result[mr.workstation_id.Value] = new() { mr.id };
+                        } else if (!list.Contains(mr.id)) {
+                            list.Add(mr.id);
+                        }
+                    }
+                }
             }
             return new(result);
         }

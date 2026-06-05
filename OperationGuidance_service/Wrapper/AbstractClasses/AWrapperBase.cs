@@ -11,16 +11,21 @@ using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Common;
 using System.Reflection;
+using Newtonsoft.Json;
+using System.Diagnostics;
+using OperationGuidance_service.Services;
 
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
         protected ILog logger = SystemUtils.GetLogger(typeof(T));
 
+        private static readonly LocalDataCache _localCache = LocalCacheHolder.Instance;
         private string _tabelName;
         private DbConnection? _conn;
         private DbTransaction? _transaction;
         private const int commandTimeout = 10;
+        private const int fastCommandTimeout = 3;   // INSERT / ID queries — fast path
 
         public string TableName { get => _tabelName; }
 
@@ -43,41 +48,114 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             }
         }
 
+        /// <summary>
+        /// Before each Add(), try to flush any pending cached items for this entity type.
+        /// Respects backoff — if previous flush timed out, wait before retrying.
+        /// </summary>
+        private void FlushCache() {
+            string tableName = GetTableName();
+            var pending = _localCache.DequeuePending(10, tableName);
+            if (pending.Count == 0) {
+                _localCache.ResetBackoff();
+                return;
+            }
+
+            int backoff = _localCache.GetBackoffMs();
+            if (backoff > 0) {
+                Thread.Sleep(backoff);
+            }
+
+            var confirmed = new List<int>();
+            var sw = Stopwatch.StartNew();
+            string sql = InsertSql;
+            string combinedSql = sql + "; " + LastInsertIdSql;
+            using (var conn = DbConnector.GetConnection()) {
+                foreach (var (id, _, entityJson) in pending) {
+                    if (sw.ElapsedMilliseconds > 500) break;
+                    try {
+                        var entity = JsonConvert.DeserializeObject<T>(entityJson);
+                        using (var tx = conn.BeginTransaction()) {
+                            conn.ExecuteScalar<int>(combinedSql, entity, tx, commandTimeout: fastCommandTimeout);
+                            tx.Commit();
+                        }
+                        confirmed.Add(id);
+                    } catch (Exception ex) {
+                        logger.Warn(
+                            $"[LocalCache] Flush item {id} failed: {ex.Message}, stopping batch");
+                        break;
+                    }
+                }
+            }
+
+            _localCache.ConfirmDequeued(confirmed);
+            if (confirmed.Count < pending.Count) {
+                _localCache.IncreaseBackoff();
+            } else {
+                _localCache.ResetBackoff();
+            }
+        }
+
         public T? Add(T entity) {
             try {
-                string sql = GenerateInsertSql();
-                logger.Info("sql: " + sql);
-                string idSql = LastInsertIdSql;
-                logger.Info("idSql: " + idSql);
+                FlushCache();
+
+                string sql = InsertSql;
+                logger.Info($"sql: {sql}");
+                string combinedSql = sql + "; " + LastInsertIdSql;
 
                 if (_conn != null) {
-                    // 事务内：复用共享连接，保留死锁重试
-                    int result = ExecuteWithRetry(sql, entity);
-                    entity.id = QueryFirstWithRetry(idSql);
-                    logger.Info("Result: " + result);
+                    entity.id = _conn.ExecuteScalar<int>(
+                        combinedSql, entity, _transaction, commandTimeout: commandTimeout);
                 } else {
-                    // 非事务：INSERT 和取 ID 必须在同一条连接上
-                    const int maxRetries = 5;
+                    const int maxRetries = 3;
                     for (int attempt = 0; attempt < maxRetries; attempt++) {
                         try {
-                            using (DbConnection conn = DbConnector.GetConnection()) {
-                                int result = conn.Execute(sql, entity, commandTimeout: commandTimeout);
-                                entity.id = conn.QueryFirst<int>(idSql, null, commandTimeout: commandTimeout);
-                                logger.Info("Result: " + result);
-                            }
+                            entity.id = ExecuteInsert(combinedSql, entity);
                             break;
-                        } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
-                            Thread.Sleep(50 * (attempt + 1));
+                        } catch (Exception ex) {
+                            logger.Warn(
+                                $"Add attempt {attempt + 1}/{maxRetries} failed: {ex.Message}");
+                            if (attempt < maxRetries - 1) {
+                                Thread.Sleep(100 * (attempt + 1));
+                            } else {
+                                throw;
+                            }
                         }
                     }
                 }
 
                 return entity;
             } catch (Exception e) {
-                logger.Error($"Failed to add entity to table {_tabelName}, please check error: e = {e}");
+                logger.Error(
+                    $"Failed to add entity to table {_tabelName}, saving to local cache: {e.Message}", e);
+                try {
+                    _localCache.Enqueue(GetTableName(), entity);
+                    logger.Info(
+                        $"Entity saved to local cache, table={GetTableName()}");
+                } catch (Exception cacheEx) {
+                    logger.Error(
+                        $"CRITICAL: Failed to save entity to local cache: {cacheEx}", cacheEx);
+                }
                 return null;
             }
         }
+
+        /// <summary>Execute INSERT+ID query on a fresh connection with explicit transaction.</summary>
+        private int ExecuteInsert(string combinedSql, T entity) {
+            using (var conn = DbConnector.GetConnection())
+            using (var tx = conn.BeginTransaction()) {
+                int id = conn.ExecuteScalar<int>(
+                    combinedSql, entity, tx, commandTimeout: fastCommandTimeout);
+                tx.Commit();
+                return id;
+            }
+        }
+
+        private static readonly ConcurrentDictionary<Type, string> _insertSqlCache = new();
+
+        /// <summary>Cached INSERT SQL (table schema is immutable at runtime).</summary>
+        private string InsertSql =>
+            _insertSqlCache.GetOrAdd(typeof(T), _ => GenerateInsertSql());
 
         public int AddBatch(List<T> entities) {
             int result = 0;
@@ -459,34 +537,6 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             }
         }
 
-        private int QueryFirstWithRetry(string sql, object? param = null) {
-            const int maxRetries = 5;
-
-            for (int attempt = 0; attempt < maxRetries; attempt++) {
-                try {
-                    if (_conn == null) {
-                        using (DbConnection conn = DbConnector.GetConnection()) {
-                            return conn.QueryFirst<int>(sql, param, commandTimeout: commandTimeout);
-                        }
-                    } else {
-                        return _conn.QueryFirst<int>(sql, param, _transaction, commandTimeout: commandTimeout);
-                    }
-                } catch (Exception ex) when (IsDeadlockOrLockTimeout(ex) && attempt < maxRetries - 1) {
-                    int delayMs = 50 * (attempt + 1);
-                    Thread.Sleep(delayMs);
-                }
-            }
-
-            // 最终尝试（保持原有逻辑）
-            if (_conn == null) {
-                using (DbConnection conn = DbConnector.GetConnection()) {
-                    return conn.QueryFirst<int>(sql, param, commandTimeout: commandTimeout);
-                }
-            } else {
-                return _conn.QueryFirst<int>(sql, param, _transaction, commandTimeout: commandTimeout);
-            }
-        }
-
         private bool IsDeadlockOrLockTimeout(Exception ex) {
             // MySQL 错误处理
             if (ex is MySql.Data.MySqlClient.MySqlException mySqlEx) {
@@ -504,5 +554,10 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             // }
             return false;
         }
+    }
+
+    /// <summary>Holds the single LocalDataCache instance shared by all AWrapperBase&lt;T&gt; specializations.</summary>
+    internal static class LocalCacheHolder {
+        public static readonly LocalDataCache Instance = new();
     }
 }

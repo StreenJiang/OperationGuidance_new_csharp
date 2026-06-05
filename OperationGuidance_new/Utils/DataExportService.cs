@@ -23,10 +23,6 @@ namespace OperationGuidance_new.Utils {
 
         public async Task ExportAsync(ExportRequest request) {
             var data = request.Data ?? new List<OperationDataVO>();
-            if (data.Count == 0) {
-                _logger.Warn("[DataExport] ExportAsync skipped: no data");
-                return;
-            }
             string workstation = string.IsNullOrEmpty(request.WorkstationName) ? "null" : request.WorkstationName;
             string mission = string.IsNullOrEmpty(request.MissionName) ? "null" : request.MissionName;
             string date = request.CompletedAt.ToString("yyyy-MM-dd");
@@ -36,11 +32,16 @@ namespace OperationGuidance_new.Utils {
             string timestamp = request.CompletedAt.ToString("yyyyMMdd_HHmmss");
             string fileNameBody = $"{barCode}_{timestamp}_{request.Result}";
 
+            // Always create directory — even for skip-screw missions with no tightening data
             try {
                 Directory.CreateDirectory(batchFolder);
             } catch (Exception ex) {
                 _logger.Error($"[DataExport] Failed to create directory: {batchFolder}", ex);
                 throw new IOException($"无法创建导出目录: {batchFolder}", ex);
+            }
+
+            if (data.Count == 0) {
+                _logger.Info("[DataExport] No data rows — writing header-only file(s)");
             }
 
             var propertyNames = request.Fields.Where(f => f.Visible).Select(f => f.PropertyName).ToList();

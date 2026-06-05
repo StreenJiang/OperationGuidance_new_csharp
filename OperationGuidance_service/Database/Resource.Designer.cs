@@ -903,5 +903,23 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("modify_sqlserver_20260603", resourceCulture);
             }
         }
+
+        internal static string modify_mysql_20260605 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260605", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlite_20260605 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260605", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260605 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260605", resourceCulture);
+            }
+        }
     }
 }

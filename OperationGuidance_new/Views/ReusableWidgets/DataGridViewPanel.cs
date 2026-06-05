@@ -10,7 +10,7 @@ using log4net;
 using OperationGuidance_new.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase {
+    public class DataGridViewPanel<T>: CustomContentPanel where T : AVOBase, new() {
         private ILog logger = MainUtils.GetLogger(typeof(DataGridViewPanel<T>));
 
         #region Feilds 
@@ -570,6 +570,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (!IsHandleCreated) return;
             if (_isPaging) return;
             _isPaging = true;
+            var group = this.Parent as DataGridViewGroup<T>;
 
             // Disable pagination buttons during load
             BeginInvoke(new Action(() => {
@@ -592,6 +593,9 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 if (currentPage > 1 && _pageCache.TryGetValue(currentPage - 1, out var prev)) {
                     afterId = prev.lastId;
                 }
+
+                // Show mask only when actually fetching from server (skip on cache hit)
+                group?.ShowLoadingOverlay();
 
                 try {
                     var (data, totalCount) = await Task.Run(() => ServerFetch(currentPage, pageSize, afterId));
@@ -630,7 +634,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 } finally {
                     _isPaging = false;
-                    BeginInvoke(new Action(RestorePageButtons));
+                    BeginInvoke(new Action(() => {
+                        RestorePageButtons();
+                        group?.HideLoadingOverlay();
+                    }));
                 }
             } else {
                 if (_dataSource.Count > 0) {

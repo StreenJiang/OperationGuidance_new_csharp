@@ -26,11 +26,11 @@ namespace OperationGuidance_service.Database {
                     $"user={User}",
                     $"password={Password}",
                     "charset=utf8",
-                    "Connection Timeout=2",
+                    "Connection Timeout=5",
                     "Allow User Variables=True",
                     "AllowBatch=True",
                     "Pooling=true",
-                    "Max Pool Size=200",
+                    "Max Pool Size=50",
                     "Connection Lifetime=300"
                 );
                 MySqlConnection conn = new(connStr);

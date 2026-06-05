@@ -372,10 +372,8 @@ namespace OperationGuidance_new.Tasks {
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection successful");
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed");
-                    if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
-                        socketClient.Close();
-                        socketClient = null;
-                    }
+                    socketClient?.Close();
+                    socketClient = null;
                 }
                 return isConnected;
             } catch (Exception e) {
@@ -432,17 +430,12 @@ namespace OperationGuidance_new.Tasks {
                         data = new byte[0];
                     }
 
-                    // Send command and receive response under lock for socket safety
+                    // Send under lock for socket safety, ReceiveAsync outside lock (no timeout)
                     byte[] msgBytes = new byte[1024 * 1024];
-                    int msgLen;
                     lock (SyncObject) {
-                        if (!Connected) {
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake send/receive aborted - disconnected");
-                            return null;
-                        }
                         socketClient.Send(data);
-                        msgLen = socketClient.Receive(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                     }
+                    int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
                     logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake response received, len={msgLen}");
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
                     if (_toolType is ToolPFSeries) {
@@ -454,8 +447,8 @@ namespace OperationGuidance_new.Tasks {
                     }
                     return result;
                 } catch (Exception e) {
-                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Send/receive error", e);
-                    return await SendAndReceiveOnlyForPreparingAsync(command);
+                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake send/receive error", e);
+                    return null;
                 }
             } else {
                 if (!Connected) {

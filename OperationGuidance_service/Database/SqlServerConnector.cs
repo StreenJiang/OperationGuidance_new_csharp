@@ -24,7 +24,7 @@ namespace OperationGuidance_service.Database {
                         Database={Database}; 
                         User Id={User}; 
                         Password={Password}; 
-                        Connect Timeout=2;
+                        Connect Timeout=5;
                     ");
                 conn.Open();
 
@@ -125,7 +125,7 @@ namespace OperationGuidance_service.Database {
 
         public override DbConnection? GetOuterDbConnection(string host, int port, string databaseName, string? username = null, string? password = null) {
             try {
-                SqlConnection conn = new($"Server={host},{port}; Database={databaseName}; User Id={username}; Password={password}; Connect Timeout=2;");
+                SqlConnection conn = new($"Server={host},{port}; Database={databaseName}; User Id={username}; Password={password}; Connect Timeout=5;");
                 conn.Open();
                 return conn;
             } catch (Exception e) {

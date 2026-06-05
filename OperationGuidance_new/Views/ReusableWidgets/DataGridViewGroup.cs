@@ -187,7 +187,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular),
             };
         }
-        private void HideLoadingOverlay() {
+        internal void HideLoadingOverlay() {
             if (_loadingOverlay.Visible) {
                 _loadingOverlay.Visible = false;
                 _loadingOverlay.Region?.Dispose();
@@ -196,6 +196,52 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 _loadingOverlay.BackgroundImage = null;
                 _loadingLabel.Visible = true;
             }
+        }
+        /// <summary>Show loading overlay on the grid area during async operations (query, paging).</summary>
+        internal void ShowLoadingOverlay() {
+            if (_loadingOverlay.Visible) return;
+            // Position overlay using screen coordinates so it works regardless of
+            // whether parent is this DataGridViewGroup or the top-level Form.
+            Form? form = this.FindForm();
+            if (form != null) {
+                if (_loadingOverlay.Parent != form) {
+                    _loadingOverlay.Parent?.Controls.Remove(_loadingOverlay);
+                    form.Controls.Add(_loadingOverlay);
+                }
+                Point gridScreen = _voGridView.PointToScreen(Point.Empty);
+                _loadingOverlay.Location = form.PointToClient(gridScreen);
+            } else {
+                _loadingOverlay.Location = _voGridView.Location;
+            }
+            _loadingOverlay.Size = _voGridView.Size;
+            if (_loadingOverlay.Width > 0 && _loadingOverlay.Height > 0) {
+                try {
+                    // Do NOT dispose bmp — _loadingOverlay.BackgroundImage holds the reference.
+                    // HideLoadingOverlay disposes it when the mask is removed.
+                    Bitmap bmp = new(_loadingOverlay.Width, _loadingOverlay.Height);
+                    _voGridView.DrawToBitmap(bmp, new(0, 0, _loadingOverlay.Width, _loadingOverlay.Height));
+                    using (Graphics g = Graphics.FromImage(bmp)) {
+                        using (Brush brush = new SolidBrush(Color.FromArgb(120, 0, 0, 0))) {
+                            g.FillRectangle(brush, 0, 0, bmp.Width, bmp.Height);
+                        }
+                        using (Font font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular))
+                        using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
+                            g.DrawString("加载中...", font, Brushes.White, new RectangleF(0, 0, bmp.Width, bmp.Height), sf);
+                        }
+                    }
+                    _loadingOverlay.BackgroundImage = bmp;
+                } catch {
+                    // DrawToBitmap failed — fallback to label
+                }
+            }
+            if (_loadingOverlay.BackgroundImage == null) {
+                _loadingLabel.Size = new(_loadingOverlay.Width, 40);
+                _loadingLabel.Location = new(0, (_loadingOverlay.Height - 40) / 2);
+            }
+            _loadingLabel.Visible = (_loadingOverlay.BackgroundImage == null);
+            if (_loadingOverlay.Width <= 0 || _loadingOverlay.Height <= 0) return;
+            _loadingOverlay.Visible = true;
+            _loadingOverlay.BringToFront();
         }
         #endregion
 
@@ -231,54 +277,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _searchButton.Enabled = false;
             _resetButton.Enabled = false;
             try {
-                // Attach overlay to top-level Form so it escapes ALL FlowLayoutPanels.
-                // FlowLayoutPanel overrides child Location; only Form-level children
-                // can be freely positioned via screen coordinates.
-                Form? form = this.FindForm();
-                if (form != null && _loadingOverlay.Parent != form) {
-                    _loadingOverlay.Parent?.Controls.Remove(_loadingOverlay);
-                    form.Controls.Add(_loadingOverlay);
-                }
-                if (form != null) {
-                    Point gridScreen = _voGridView.PointToScreen(Point.Empty);
-                    Point formPos = form.PointToClient(gridScreen);
-                    _loadingOverlay.Location = formPos;
-                    _loadingOverlay.Size = _voGridView.Size;
-                }
-                // Match gridview rounded corners
-                int radius = WidgetUtils.ControlRadius();
-                _loadingOverlay.Region?.Dispose();
-                _loadingOverlay.Region = new Region(WidgetUtils.RoundedRect(
-                    new Rectangle(0, 0, _loadingOverlay.Width, _loadingOverlay.Height), radius));
-                // Capture grid screenshot, tint it, and draw loading text for semi-transparent mask effect
-                _loadingOverlay.BackgroundImage?.Dispose();
-                _loadingOverlay.BackgroundImage = null;
-                if (_voGridView.Width > 0 && _voGridView.Height > 0) {
-                    try {
-                        Bitmap bmp = new Bitmap(_voGridView.Width, _voGridView.Height);
-                        _voGridView.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
-                        using (Graphics g = Graphics.FromImage(bmp)) {
-                            using (Brush brush = new SolidBrush(Color.FromArgb(120, 0, 0, 0))) {
-                                g.FillRectangle(brush, 0, 0, bmp.Width, bmp.Height);
-                            }
-                            using (Font font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular))
-                            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
-                                g.DrawString("加载中...", font, Brushes.White, new RectangleF(0, 0, bmp.Width, bmp.Height), sf);
-                            }
-                        }
-                        _loadingOverlay.BackgroundImage = bmp;
-                    } catch {
-                        // DrawToBitmap failed — fallback to label below
-                    }
-                }
-                // Show label only if bitmap capture failed or grid has no size yet
-                if (_loadingOverlay.BackgroundImage == null) {
-                    _loadingLabel.Size = new(_loadingOverlay.Width, 40);
-                    _loadingLabel.Location = new(0, (_loadingOverlay.Height - 40) / 2);
-                }
-                _loadingLabel.Visible = (_loadingOverlay.BackgroundImage == null);
-                _loadingOverlay.Visible = true;
-                _loadingOverlay.BringToFront();
+                ShowLoadingOverlay();
 
                 var result = await Task.Run(() => _queryData(_filterParametersVO));
                 if (IsDisposed || !Visible) return;
