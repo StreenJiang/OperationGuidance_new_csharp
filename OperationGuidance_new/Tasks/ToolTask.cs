@@ -9,6 +9,8 @@ using System.Threading;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
+        private enum PendingLockCommand { None, Lock, Unlock }
+
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
@@ -19,7 +21,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
-        private readonly int LockingCooldownPeriod = 5000;
+        private const int LockCooldownMs = 5000;
         private int SendMessageRecevingCount = 0;
         private Task? _runTaskTask;
         private volatile int _connectInProgress;
@@ -36,6 +38,7 @@ namespace OperationGuidance_new.Tasks {
         private int HeartBeatCounter;
         private long _lastLockTimestamp = 0;
         private long _lastUnlockTimestamp = 0;
+        private volatile PendingLockCommand _pendingLockCommand = PendingLockCommand.None;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived;
         #endregion
@@ -600,18 +603,13 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
                     return;
                 }
-
-                // 检查是否在lock冷却期内
-                if (IsInCooldown(Volatile.Read(ref _lastLockTimestamp))) {
-                    return;
-                }
-
-                // 检查当前状态是否允许lock操作
-                if (_locked) {
-                    return;
-                }
+                if (_locked) return;
+                var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                if ((now - Volatile.Read(ref _lastLockTimestamp)) < LockCooldownMs) return;
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
+                _lastLockTimestamp = now;
+                _pendingLockCommand = PendingLockCommand.Lock;
                 PerformLock();
             }
         }
@@ -626,6 +624,7 @@ namespace OperationGuidance_new.Tasks {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
                 PerformLock();
                 UpdateInternalLockState(true);
+                _lastLockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
         }
 
@@ -657,18 +656,13 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
                     return;
                 }
-
-                // 检查是否在unlock冷却期内
-                if (IsInCooldown(Volatile.Read(ref _lastUnlockTimestamp))) {
-                    return;
-                }
-
-                // 检查当前状态是否允许unlock操作
-                if (!_locked) {
-                    return;
-                }
+                if (!_locked) return;
+                var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                if ((now - Volatile.Read(ref _lastUnlockTimestamp)) < LockCooldownMs) return;
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
+                _lastUnlockTimestamp = now;
+                _pendingLockCommand = PendingLockCommand.Unlock;
                 PerformUnlock();
             }
         }
@@ -683,6 +677,7 @@ namespace OperationGuidance_new.Tasks {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
                 PerformUnlock();
                 UpdateInternalLockState(false);
+                _lastUnlockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
         }
 
@@ -726,41 +721,23 @@ namespace OperationGuidance_new.Tasks {
             SendCommand(command);
         }
 
-        /// <summary>
-        /// 检查指定时间戳是否在冷却期内
-        /// </summary>
-        /// <param name="timestamp">操作时间戳（毫秒）</param>
-        /// <returns>如果在冷却期内返回true，否则返回false</returns>
-        private bool IsInCooldown(long timestamp) {
-            // 等于 0 直接表示可以继续操作，跳过计算流程，提高性能
-            if (timestamp == 0) {
-                return false;
-            }
-
-            long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            return (currentTime - timestamp) < LockingCooldownPeriod;
-        }
-
-        /// <summary>
-        /// 当设备状态改变时，更新内部锁定状态
-        /// </summary>
-        /// <param name="newLockedState">新的锁定状态</param>
         private void UpdateInternalLockState(bool newLockedState) {
             bool oldLocked = _locked;
             _locked = newLockedState;
+            var expected = _pendingLockCommand;
 
-            // 重置相应的冷却时间戳
-            if (newLockedState) // 如果现在是锁定状态
-            {
-                Volatile.Write(ref _lastLockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
-                Volatile.Write(ref _lastUnlockTimestamp, 0); // 立刻重置 unlock 计时为 0 以保证锁定后可以随时解锁
-            } else // 如果现在是解锁状态
-            {
-                Volatile.Write(ref _lastUnlockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
-                Volatile.Write(ref _lastLockTimestamp, 0); // 立刻重置 lock 计时为 0 以保证解锁后可以随时锁定
+            if (expected == PendingLockCommand.Lock && !newLockedState) {
+                _lastLockTimestamp = 0;
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed (tool reports unlocked), cooldown reset");
+            } else if (expected == PendingLockCommand.Unlock && newLockedState) {
+                _lastUnlockTimestamp = 0;
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed (tool reports locked), cooldown reset");
             }
+            _pendingLockCommand = PendingLockCommand.None;
 
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
+            if (oldLocked != _locked) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
+            }
         }
         #endregion
     }

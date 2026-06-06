@@ -2752,6 +2752,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     Data = snapshot, Fields = fields, BasePath = ExportBasePath,
                     ProductBatch = _missionRecord?.product_batch,
                     ProductBarCode = _missionRecord?.product_bar_code,
+                    PartsBarCode = _missionRecord?.parts_bar_code,
                     CompletedAt = DateTime.Now, Result = result,
                     EnableExcel = IsExcelExportEnabled, EnableTxt = IsTxtExportEnabled,
                     MissionName = _mission?.name,

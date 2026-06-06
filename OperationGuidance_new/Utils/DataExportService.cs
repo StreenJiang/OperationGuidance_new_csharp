@@ -10,6 +10,7 @@ namespace OperationGuidance_new.Utils {
         public string BasePath { get; init; }
         public string ProductBatch { get; init; }
         public string ProductBarCode { get; init; }
+        public string? PartsBarCode { get; init; }
         public DateTime CompletedAt { get; init; }
         public string Result { get; init; }
         public bool EnableExcel { get; init; }
@@ -51,6 +52,16 @@ namespace OperationGuidance_new.Utils {
             }
 
             var rows = BuildRows(data, propertyNames);
+
+            if (rows.Count == 0 && !string.IsNullOrEmpty(request.PartsBarCode)) {
+                int partsColIndex = propertyNames.IndexOf("parts_bar_code");
+                if (partsColIndex >= 0) {
+                    var materialRow = new List<object?>(new object?[propertyNames.Count]);
+                    materialRow[partsColIndex] = request.PartsBarCode;
+                    rows.Add(materialRow);
+                }
+            }
+
             _logger.Info($"[DataExport] Exporting {rows.Count} rows x {propertyNames.Count} cols to {batchFolder}");
 
             var exceptions = new List<Exception>();

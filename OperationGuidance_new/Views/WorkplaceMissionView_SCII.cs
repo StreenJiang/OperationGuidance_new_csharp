@@ -1195,7 +1195,19 @@ namespace OperationGuidance_new.Views {
                     workstation_id = workstationId,
                     workstation_name = workstationName,
                 };
-                _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+                logger.Info($"[SCII:SkipScrew] Saving mission_record: mission_id={_missionRecord.mission_id}, " +
+                    $"parts_bar_code={_missionRecord.parts_bar_code}, product_batch={_missionRecord.product_batch}, " +
+                    $"workstation_id={_missionRecord.workstation_id}, workstation_name={_missionRecord.workstation_name}");
+                try {
+                    var rsp = _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+                    if (rsp?.MissionRecordDTO != null) {
+                        logger.Info($"[SCII:SkipScrew] mission_record saved OK, id={rsp.MissionRecordDTO.id}");
+                    } else {
+                        logger.Warn($"[SCII:SkipScrew] mission_record save returned null response");
+                    }
+                } catch (Exception ex) {
+                    logger.Error($"[SCII:SkipScrew] mission_record save FAILED: {ex}", ex);
+                }
 
                 TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
                 return;

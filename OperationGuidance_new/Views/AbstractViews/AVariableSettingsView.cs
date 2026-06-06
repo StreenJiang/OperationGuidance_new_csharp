@@ -516,6 +516,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     BasePath = ExportConfig.Instance.StoragePath,
                     ProductBatch = "TEST_BATCH",
                     ProductBarCode = "TEST_BARCODE",
+                    PartsBarCode = null,
                     CompletedAt = DateTime.Now,
                     Result = "OK",
                     EnableExcel = enableExcel,
