@@ -28,5 +28,6 @@ namespace OperationGuidance_new.Configs {
         public static string AutoLoginEnabled => "auto_login";
         public static string AutoLoginInfo => "auto_login_info";
         public static string LogsRetentionDays => "logs_retention_days";
+        public static string StaleResponseDelayMs => "stale_response_delay_ms";
     }
 }

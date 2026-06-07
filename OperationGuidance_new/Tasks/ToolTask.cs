@@ -22,6 +22,7 @@ namespace OperationGuidance_new.Tasks {
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
         private const int LockCooldownMs = 5000;
+        private static readonly int StaleResponseThresholdMs = MainUtils.GetStaleResponseDelayMs();
         private int SendMessageRecevingCount = 0;
         private Task? _runTaskTask;
         private volatile int _connectInProgress;
@@ -623,6 +624,7 @@ namespace OperationGuidance_new.Tasks {
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
                 PerformLock();
+                _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(true);
                 _lastLockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
@@ -676,6 +678,7 @@ namespace OperationGuidance_new.Tasks {
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
                 PerformUnlock();
+                _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(false);
                 _lastUnlockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
@@ -723,16 +726,36 @@ namespace OperationGuidance_new.Tasks {
 
         private void UpdateInternalLockState(bool newLockedState) {
             bool oldLocked = _locked;
-            _locked = newLockedState;
             var expected = _pendingLockCommand;
+            long now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
             if (expected == PendingLockCommand.Lock && !newLockedState) {
-                _lastLockTimestamp = 0;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed (tool reports unlocked), cooldown reset");
+                long lockAge = now - Volatile.Read(ref _lastLockTimestamp);
+                if (lockAge < StaleResponseThresholdMs) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Stale Unlock response discarded (expecting Lock, lock sent {lockAge}ms ago)");
+                    return;
+                }
+                if (lockAge >= LockCooldownMs) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock response timeout after {lockAge}ms, clearing pending state");
+                } else {
+                    _lastLockTimestamp = 0;
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed (tool reports unlocked), cooldown reset");
+                }
             } else if (expected == PendingLockCommand.Unlock && newLockedState) {
-                _lastUnlockTimestamp = 0;
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed (tool reports locked), cooldown reset");
+                long unlockAge = now - Volatile.Read(ref _lastUnlockTimestamp);
+                if (unlockAge < StaleResponseThresholdMs) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Stale Lock response discarded (expecting Unlock, unlock sent {unlockAge}ms ago)");
+                    return;
+                }
+                if (unlockAge >= LockCooldownMs) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock response timeout after {unlockAge}ms, clearing pending state");
+                } else {
+                    _lastUnlockTimestamp = 0;
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed (tool reports locked), cooldown reset");
+                }
             }
+
+            _locked = newLockedState;
             _pendingLockCommand = PendingLockCommand.None;
 
             if (oldLocked != _locked) {

@@ -2761,7 +2761,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                 await new DataExportService().ExportAsync(request);
                 _tighteningDataVOs.Clear();
-                BeginInvoke(() => RefreshTighteningDataPanel(new List<OperationDataVO>()));
+                if (!IsDisposed) {
+                    BeginInvoke(() => RefreshTighteningDataPanel(new List<OperationDataVO>()));
+                }
                 logger.Info($"[Workplace:{taskName}] OnMissionCompleted - Done");
             } catch (Exception ex) {
                 logger.Error($"[Workplace:{taskName}] OnMissionCompleted - Error: {ex}");
@@ -2963,7 +2965,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
         protected override void OnHandleDestroyed(EventArgs e) {
-            // 取消所有后台任务
+            // 先取消后台任务，释放可能持有的 _storeTighteningDataLock
             _activeMissionCts.Cancel();
             _backgroundTaskCts.ForEach(cts => {
                 cts.Cancel();
@@ -2971,6 +2973,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
             _backgroundTaskCts.Clear();
             _activeMissionCts.Dispose();
+
+            // "返回"或"退出登录"时，如果导出从未触发，补充 NG 导出
+            if (_missionRecord != null
+                    && (IsExcelExportEnabled || IsTxtExportEnabled)
+                    && Volatile.Read(ref _exportTriggered) == 0) {
+                OnMissionCompleted(WorkplaceProcessStatus.FINISHED_NG).Wait();
+            }
 
             base.OnHandleDestroyed(e);
 
