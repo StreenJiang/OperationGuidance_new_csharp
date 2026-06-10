@@ -224,6 +224,7 @@ namespace OperationGuidance_new.Tasks {
 
                         if (await ConnectToServer()) {
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection established");
+                            _toolType.ClearResidual();  // 清除旧连接残留
                             RunTask();
                             Status = CONNECTED;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Status: CONNECTED");
@@ -252,6 +253,7 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 socketClient.Close();
                 socketClient = null;
+                _toolType.ClearResidual();  // 清除残留
             }
 
             CloseConnectionManually = true;
