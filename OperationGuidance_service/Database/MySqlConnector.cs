@@ -95,6 +95,16 @@ namespace OperationGuidance_service.Database {
                                         try {
                                             command.CommandText = s;
                                             command.ExecuteNonQuery();
+                                        } catch (MySqlException stmtEx) when (
+                                            stmtEx.Number == 1060  // Duplicate column name
+                                            || stmtEx.Number == 1061  // Duplicate key name
+                                            || stmtEx.Number == 1091  // Can't DROP; column/key doesn't exist
+                                        ) {
+                                            // Idempotency: treat "already exists / already gone" as success.
+                                            // MySQL 5.7 does not support ALTER TABLE in PREPARE, so the
+                                            // engine must tolerate these errors rather than requiring
+                                            // idempotency wrappers in every SQL script.
+                                            logger.Info($"Statement in [{fileName}] is a no-op (already applied): {stmtEx.Message}");
                                         } catch (Exception stmtEx) {
                                             logger.Warn($"Statement in [{fileName}] failed: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
                                             allOk = false;
