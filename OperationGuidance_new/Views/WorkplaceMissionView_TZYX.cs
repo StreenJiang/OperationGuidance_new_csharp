@@ -56,6 +56,10 @@ namespace OperationGuidance_new.Views {
     }
 
     public class WorkplaceContentPanel_TZYX: WorkplaceContentPanel {
+        // TZYX 不启用导出 — 显式封死，防止继承 STANDARD 的 ExportConfig 行为
+        protected override bool IsExcelExportEnabled => false;
+        protected override bool IsTxtExportEnabled => false;
+
         private const int HEART_BEATING_TIME = 5000;
         private readonly object _syncLock = new object();
         private readonly CancellationTokenSource _cts = new();

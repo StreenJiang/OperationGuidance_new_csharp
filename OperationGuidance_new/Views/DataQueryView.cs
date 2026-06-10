@@ -102,91 +102,83 @@ namespace OperationGuidance_new.Views {
                 }
             };
 
-            CommonButton exportBtn = _dataGridView.AddExtraButton("导出");
-            exportBtn.Click += async (sender, eventArgs) => {
-                string filePath = ShowSaveFileDialog();
-                if (string.IsNullOrEmpty(filePath)) return;
-
-                exportBtn.Enabled = false;
-                var filterVO = _dataGridView.FilterParametersVO;
-
-                try {
-                    await Task.Run(() => {
-                        List<string>? headers = null;
-                        bool excelFileExists = File.Exists(filePath);
-                        List<int> sortConfig = MainUtils.GetSortConfig();
-                        List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
-                        List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
-                        List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
-
-                        if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
-                            sortConfigCurr = sortConfig;
-                            MainUtils.SetSortConfigCurr(sortConfigCurr);
-                            headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
-                        }
-
-                        int pageSize = 5000;
-                        int? afterId = null;
-                        bool firstBatch = true;
-
-                        while (true) {
-                            var exportReq = BuildQueryOperationDataListReq(null, pageSize, filterVO, afterId);
-                            var exportRsp = apis.QueryOperationDataList(exportReq);
-                            var batch = exportRsp.OperationDataDTOs;
-                            if (batch.Count == 0) break;
-
-                            List<List<object?>> finalData = new();
-                            foreach (var dto in batch) {
-                                List<object?> row = new();
-                                foreach (string pName in propertyNames) {
-                                    var prop = typeof(OperationDataDTO).GetProperty(pName);
-                                    row.Add(prop?.GetValue(dto));
-                                }
-                                finalData.Add(row);
-                            }
-
-                            try {
-                                XLWorkbook xlWorkbook;
-                                string sheetName = "TighteningData";
-                                if (firstBatch && !excelFileExists) {
-                                    xlWorkbook = new();
-                                } else {
-                                    xlWorkbook = new XLWorkbook(filePath);
-                                }
-                                IXLWorksheet sheet1;
-                                if (!xlWorkbook.Worksheets.Contains(sheetName)) {
-                                    sheet1 = xlWorkbook.Worksheets.Add(sheetName);
-                                } else {
-                                    sheet1 = xlWorkbook.Worksheet(sheetName);
-                                }
-                                int rowCount = sheet1.Rows().Count();
-                                if (headers != null && firstBatch) {
-                                    if (rowCount > 0) rowCount++;
-                                    sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
-                                }
-                                sheet1.Cell(rowCount + 1, 1).InsertData(finalData);
-                                xlWorkbook.SaveAs(filePath);
-                                xlWorkbook.Dispose();
-                            } catch (Exception ex) {
-                                logger.Error($"export batch failed: {ex.Message}", ex);
-                                throw;
-                            }
-                            firstBatch = false;
-                            afterId = batch.Last().id;
-
-                            if (batch.Count < pageSize) break;
-                        }
-                    });
-
-                    WidgetUtils.ShowNoticePopUp("导出完成！");
-                } catch (Exception ex) {
-                    WidgetUtils.ShowErrorPopUp($"导出失败：{ex.Message}");
-                } finally {
-                    if (!IsDisposed) {
-                        exportBtn.Enabled = true;
-                    }
-                }
-            };
+            // 导出按钮（暂时屏蔽 — 2026-06-10）
+            // CommonButton exportBtn = _dataGridView.AddExtraButton("导出");
+            // exportBtn.Click += async (sender, eventArgs) => {
+            //     string filePath = ShowSaveFileDialog();
+            //     if (string.IsNullOrEmpty(filePath)) return;
+            //     exportBtn.Enabled = false;
+            //     var filterVO = _dataGridView.FilterParametersVO;
+            //     try {
+            //         await Task.Run(() => {
+            //             List<string>? headers = null;
+            //             bool excelFileExists = File.Exists(filePath);
+            //             List<int> sortConfig = MainUtils.GetSortConfig();
+            //             List<int>? sortConfigCurr = MainUtils.GetSortConfigCurr();
+            //             List<OperationDataField> fieldsConfig = MainUtils.GetOperationDataFields(sortConfigCurr);
+            //             List<string> propertyNames = fieldsConfig.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
+            //             if (sortConfigCurr == null || !sortConfig.SequenceEqual(sortConfigCurr) || !excelFileExists) {
+            //                 sortConfigCurr = sortConfig;
+            //                 MainUtils.SetSortConfigCurr(sortConfigCurr);
+            //                 headers = fieldsConfig.Where(f => f.Visible).Select(f => f.FieldName).ToList();
+            //             }
+            //             int pageSize = 5000;
+            //             int? afterId = null;
+            //             bool firstBatch = true;
+            //             while (true) {
+            //                 var exportReq = BuildQueryOperationDataListReq(null, pageSize, filterVO, afterId);
+            //                 var exportRsp = apis.QueryOperationDataList(exportReq);
+            //                 var batch = exportRsp.OperationDataDTOs;
+            //                 if (batch.Count == 0) break;
+            //                 List<List<object?>> finalData = new();
+            //                 foreach (var dto in batch) {
+            //                     List<object?> row = new();
+            //                     foreach (string pName in propertyNames) {
+            //                         var prop = typeof(OperationDataDTO).GetProperty(pName);
+            //                         row.Add(prop?.GetValue(dto));
+            //                     }
+            //                     finalData.Add(row);
+            //                 }
+            //                 try {
+            //                     XLWorkbook xlWorkbook;
+            //                     string sheetName = "TighteningData";
+            //                     if (firstBatch && !excelFileExists) {
+            //                         xlWorkbook = new();
+            //                     } else {
+            //                         xlWorkbook = new XLWorkbook(filePath);
+            //                     }
+            //                     IXLWorksheet sheet1;
+            //                     if (!xlWorkbook.Worksheets.Contains(sheetName)) {
+            //                         sheet1 = xlWorkbook.Worksheets.Add(sheetName);
+            //                     } else {
+            //                         sheet1 = xlWorkbook.Worksheet(sheetName);
+            //                     }
+            //                     int rowCount = sheet1.Rows().Count();
+            //                     if (headers != null && firstBatch) {
+            //                         if (rowCount > 0) rowCount++;
+            //                         sheet1.Cell(++rowCount, 1).InsertData(new List<List<string>>() { headers });
+            //                     }
+            //                     sheet1.Cell(rowCount + 1, 1).InsertData(finalData);
+            //                     xlWorkbook.SaveAs(filePath);
+            //                     xlWorkbook.Dispose();
+            //                 } catch (Exception ex) {
+            //                     logger.Error($"export batch failed: {ex.Message}", ex);
+            //                     throw;
+            //                 }
+            //                 firstBatch = false;
+            //                 afterId = batch.Last().id;
+            //                 if (batch.Count < pageSize) break;
+            //             }
+            //         });
+            //         WidgetUtils.ShowNoticePopUp("导出完成！");
+            //     } catch (Exception ex) {
+            //         WidgetUtils.ShowErrorPopUp($"导出失败：{ex.Message}");
+            //     } finally {
+            //         if (!IsDisposed) {
+            //             exportBtn.Enabled = true;
+            //         }
+            //     }
+            // };
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {

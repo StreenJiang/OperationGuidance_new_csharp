@@ -451,7 +451,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _enableTxtExportOriginal = _enableTxtExportToggle.Checked;
         }
         private void UpdateExportControlsEnabled() {
-            bool anyEnabled = _enableExcelExportToggle.Checked || _enableTxtExportToggle.Checked;
+            bool anyEnabled = _enableExcelExportToggle.Checked
+                || (_enableTxtExportToggle.Checked && _enableTxtExportToggle.Visible);
             _storagePathTextBox.Enabled = anyEnabled;
             _storageFieldsButton.Enabled = anyEnabled;
             _exportTestButton.Enabled = anyEnabled;
@@ -513,7 +514,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 var request = new ExportRequest {
                     Data = fakeData,
                     Fields = fields,
-                    BasePath = ExportConfig.Instance.StoragePath,
+                    BasePath = _storagePathTextBox.GetTextBox(0).Box.Text,
                     ProductBatch = "TEST_BATCH",
                     ProductBarCode = "TEST_BARCODE",
                     PartsBarCode = null,
@@ -528,7 +529,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 await new DataExportService().ExportAsync(request);
 
                 string type = enableExcel ? "Excel" : "Txt";
-                WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{ExportConfig.Instance.StoragePath}");
+                WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{_storagePathTextBox.GetTextBox(0).Box.Text}");
             } catch (Exception ex) {
                 logger.Error($"导出测试失败: {ex.Message}", ex);
                 WidgetUtils.ShowErrorPopUp($"导出测试失败: {ex.Message}");

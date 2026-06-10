@@ -27,8 +27,9 @@ namespace OperationGuidance_new.Utils {
             string workstation = string.IsNullOrEmpty(request.WorkstationName) ? "null" : request.WorkstationName;
             string mission = string.IsNullOrEmpty(request.MissionName) ? "null" : request.MissionName;
             string date = request.CompletedAt.ToString("yyyy-MM-dd");
-            string batch = string.IsNullOrEmpty(request.ProductBatch) ? "null" : request.ProductBatch;
-            string batchFolder = Path.Combine(request.BasePath, workstation, mission, date, batch);
+            string batchFolder = string.IsNullOrEmpty(request.ProductBatch)
+                ? Path.Combine(request.BasePath, workstation, mission, date)
+                : Path.Combine(request.BasePath, workstation, mission, date, request.ProductBatch);
             string barCode = string.IsNullOrEmpty(request.ProductBarCode) ? "null" : request.ProductBarCode;
             string timestamp = request.CompletedAt.ToString("yyyyMMdd_HHmmss");
             string fileNameBody = $"{barCode}_{timestamp}_{request.Result}";

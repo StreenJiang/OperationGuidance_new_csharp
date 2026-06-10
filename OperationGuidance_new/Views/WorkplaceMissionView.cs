@@ -3,6 +3,7 @@ using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
 using OperationGuidance_new.Views.AbstractViews;
+using OperationGuidance_new.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
 
@@ -46,6 +47,11 @@ namespace OperationGuidance_new.Views {
         // 下方
         protected WorkplacePiece _bottom;
 
+        // 导出开关 — 标准版从 ExportConfig 读取
+        protected override bool IsExcelExportEnabled => ExportConfig.Instance.ExcelExportEnabled;
+        protected override bool IsTxtExportEnabled => ExportConfig.Instance.TxtExportEnabled;
+        protected override string ExportBasePath => ExportConfig.Instance.StoragePath;
+        protected override List<int> ExportSortConfig => ExportConfig.Instance.SortConfig;
 
         // private Label _productSideTitle;
         // private List<Image?> _smallSideImagesForShowing;

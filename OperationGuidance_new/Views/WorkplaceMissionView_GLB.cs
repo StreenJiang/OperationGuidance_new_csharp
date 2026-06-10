@@ -30,6 +30,10 @@ namespace OperationGuidance_new.Views {
         private List<OuterDatabaseConfigGlbDTO>? _outerDatabases = null;
         private List<OperationDataDTO> _operationDatasCached = new();
 
+        // GLB 不启用导出 — 显式封死，防止继承 STANDARD 的 ExportConfig 行为
+        protected override bool IsExcelExportEnabled => false;
+        protected override bool IsTxtExportEnabled => false;
+
         public WorkplaceContentPanel_GLB() { }
         public WorkplaceContentPanel_GLB(int? missionId, Action<string> resetMissionName) : base(missionId, resetMissionName) {
             _outerDatabases = _apis.QueryOuterDatabaseConfigGlbList(new(SystemUtils.MacAddressesDTO.id)).OuterDatabaseConfigGlbDTOs;

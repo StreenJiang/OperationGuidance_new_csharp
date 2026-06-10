@@ -115,6 +115,7 @@ namespace OperationGuidance_new.Configs {
                     new(id: 509, name: "系统设置", icon: Properties.Resources.variable_settings) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(VariableSettingsView)},
+                            {AppVersion.YF, typeof(VariableSettingsView_YF)},
                             {AppVersion.SCII, typeof(VariableSettingsView_SCII)},
                             {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
                             {AppVersion.WHYC, typeof(VariableSettingsView_WHYC)},
