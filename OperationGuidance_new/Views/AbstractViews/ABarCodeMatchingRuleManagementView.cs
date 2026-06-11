@@ -89,12 +89,28 @@ namespace OperationGuidance_new.Views.AbstractViews {
         #endregion
 
         #region Reusable methods
+        /// <summary>
+        /// 将 _missions 按名称去重填充到下拉框。同名不同 ID 的用 "name (id)" 格式保留。
+        /// </summary>
+        protected void PopulateMissionComboBox<T>(CustomComboBoxGroup<T> comboBox) {
+            var groups = _missions.GroupBy(m => m.name);
+            foreach (var group in groups) {
+                if (group.Count() == 1) {
+                    var m = group.First();
+                    comboBox.AddItem(m.name, ConvertToT<T>(m.id));
+                } else {
+                    foreach (var m in group) {
+                        comboBox.AddItem($"{m.name} ({m.id})", ConvertToT<T>(m.id));
+                    }
+                }
+            }
+        }
+
+        private static T? ConvertToT<T>(int value) => (T?)(object)value;
         protected void RefreshMissionOptions() {
             _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
             _missionNameComboBox.ClearItem();
-            foreach (ProductMissionDTO mission in _missions) {
-                _missionNameComboBox.AddItem(mission.name, mission.id);
-            }
+            PopulateMissionComboBox(_missionNameComboBox);
         }
         protected virtual void OpenEditEntityPopUpForm(string title, BarCodeMatchingRuleDTO dto, Action callBackAction) {
             _editEntityPopUpForm = new(dto) {
@@ -113,9 +129,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             CustomComboBoxGroup<int> missionName = _editEntityPopUpForm.AddComboBox("应用任务",
                 (BarCodeMatchingRuleDTO dto, int value) => dto.mission_id = value, new());
-            foreach (ProductMissionDTO mission in _missions) {
-                missionName.AddItem(mission.name, mission.id);
-            }
+            PopulateMissionComboBox(missionName);
             if (missionName.IndexOf(dto.mission_id) >= 0) {
                 missionName.SetCurrent(missionName.IndexOf(dto.mission_id));
             } else if (dto.id > 0) {

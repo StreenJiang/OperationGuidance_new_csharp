@@ -231,6 +231,12 @@ namespace OperationGuidance_new.Views {
                             _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
                         }
+                        List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                        if (allMissions.Any(m => m.name == missionName && m.id != _missionDTO.id)) {
+                            check = false;
+                            _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 任务名称已存在，请修改\r\n";
+                        }
 
                         string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
                         if (string.IsNullOrEmpty(maxNGNum)) {
@@ -287,6 +293,11 @@ namespace OperationGuidance_new.Views {
                 };
                 _buttonSave.Click += (sender, eventArgs) => {
                     _currentProductImageFile.SaveSideInfo();
+                    List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                    if (allMissions.Any(m => m.name == _missionDTO.name && m.id != _missionDTO.id)) {
+                        WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
+                        return;
+                    }
                     // Store to database
                     AddOrUpdateProductMissionReq req = new(_missionDTO);
                     AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);

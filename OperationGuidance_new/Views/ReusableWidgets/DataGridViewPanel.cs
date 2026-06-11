@@ -788,7 +788,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     }
                 };
                 _vScrollBar.Show();
-                _vScrollBar.Maximum = Math.Max(0, _gridView.RowCount - 1);
+                _vScrollBar.Maximum = Math.Max(0, _gridView.RowCount + 1);
                 _vScrollBar.LargeChange = _gridView.DisplayedRowCount(true);
                 _vScrollBar.SmallChange = 1;
                 if (AutoDown && _gridView.RowCount > 0) {

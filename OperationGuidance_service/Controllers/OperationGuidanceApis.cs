@@ -486,6 +486,20 @@ namespace OperationGuidance_service.Controllers {
                 }
                 // 将请求中的数据转移到entity中
                 CommonUtils.ObjectConverter<ProductMissionDTO, ProductMission>(missionDTOReq, mission);
+                string checkSql = $"select id from {_productMissionService.TableName} " +
+                    "where deleted = @deleted and macs_id = @macs_id and name = @name and id != @id";
+                List<ProductMission> existing = _productMissionService.FindBySql(checkSql, new Dictionary<string, object> {
+                    {"deleted", (int)YesOrNo.NO},
+                    {"macs_id", mission.macs_id},
+                    {"name", mission.name},
+                    {"id", mission.id}
+                });
+                if (existing.Count > 0) {
+                    rsp.RsponseCode = HttpResponseCode.ERROR;
+                    rsp.RsponseMessage = "任务名称已存在，请修改";
+                    transaction.Rollback();
+                    return rsp;
+                }
                 // 执行插入或者更新操作
                 mission = _productMissionService.InsertOrUpdate(mission);
 

@@ -25,9 +25,7 @@ namespace OperationGuidance_new.Views {
 
             CustomComboBoxGroup<int> missionName = _editEntityPopUpForm.AddComboBox("应用任务",
                 (BarCodeMatchingRuleDTO dto, int value) => dto.mission_id = value, new());
-            foreach (ProductMissionDTO mission in _missions) {
-                missionName.AddItem(mission.name, mission.id);
-            }
+            PopulateMissionComboBox(missionName);
             missionName.ItemSelected += () => {
                 missionName.SetError(missionName.IsDefaultValue());
             };
