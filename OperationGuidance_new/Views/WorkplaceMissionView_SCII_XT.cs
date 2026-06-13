@@ -637,14 +637,6 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override void DoAfterTighteningOk() {
-            int counts = int.Parse(_screwBitCounterBoxes[-1].GetTextBox(0).Box.Text);
-            _screwBitCounterBoxes[-1].GetTextBox(0).Box.Text = ++counts + "";
-            ScrewBitCounterDTO dto = _screwBitCounterDtos[-1];
-            dto.current_counts = counts;
-            _apis.AddOrUpdateScrewBitCounter(new(dto));
-        }
-
         protected override Task<bool> CheckScrewBitCount() => Task.FromResult(true);
 
         protected override void HandleScrewBitCounter() {
@@ -654,14 +646,15 @@ namespace OperationGuidance_new.Views {
 
             if (_screwBitCounterBoxes != null && _screwBitCounterBoxes.Count > 0) {
                 foreach (var pair in _screwBitCounterBoxes) {
-                    _topRightBottom.Controls.Remove(_screwBitCounterBoxes[pair.Key]);
+                    _topRightBottom.Controls.Remove(pair.Value);
                 }
             }
 
             _screwBitCounterBoxes = new();
             _screwBitCounterDtos = new();
 
-            screwBitCounterDTOsCached = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs;
+            screwBitCounterDTOsCached = _apis.FindScrewBitCounterByMissionId(new(_mission.id)).ScrewBitCounterDTOs
+                .Where(d => d.bit_position > 0).ToList();
             if (screwBitCounterDTOsCached.Count > 0) {
                 for (int i = 0; i < screwBitCounterDTOsCached.Count; i++) {
                     ScrewBitCounterDTO dto = screwBitCounterDTOsCached[i];
@@ -684,26 +677,6 @@ namespace OperationGuidance_new.Views {
                     _screwBitCounterBoxes.Add(dto.bit_position, boxGroup);
                     _topRightBottom.Controls.Add(boxGroup);
                 }
-            } else {
-                CustomTextBoxGroup boxGroup = new("批头计数") {
-                    ReadOnly = true,
-                    Enabled = false,
-                    NameAlignment = HorizontalAlignment.Right,
-                    Ratio = 6.8,
-                };
-                boxGroup.GetTextBox(0).Box.Text = "0";
-
-                _screwBitCounterBoxes.Add(-1, boxGroup);
-                _topRightBottom.Controls.Add(boxGroup);
-
-                ScrewBitCounterDTO dto = new() {
-                    mission_id = _mission.id,
-                    bit_position = -1,
-                    count_each_time = 1,
-                    current_counts = 0,
-                };
-                _apis.AddOrUpdateScrewBitCounter(new(dto));
-                _screwBitCounterDtos.Add(dto.bit_position, dto);
             }
 
             _productSumPerDay.Ratio = 6.8;
