@@ -15,7 +15,7 @@ A logical station created within the application. One machine can host multiple 
 ### Mission / ProductMission (任务)
 A manufacturing task assigned to a station. The central entity of the system. Each mission belongs to one machine (`macs_id`) and contains:
 - **ProductSide (产品面)**: A side/view of the product being assembled
-- **ProductBolt (螺丝点位)**: A bolt/screw position on a product side
+- **ProductBolt (螺丝点位)**: A bolt/screw position on a product side. Every bolt is a screw position — the term "螺丝点位" does NOT imply the presence of an arranger (排列机). Optional equipment includes arranger (`specification`/`arranger_id` for screw feeding) and setter selector (`bit_specification`/`setter_selector_id` for bit switching). Material codes bound to a bolt are stored in `parts_bar_code_ids` (comma-separated barcode matching rule IDs); these rules must be scanned when that bolt becomes active.
 
 Missions can have dependencies: predecessor missions (`predecessor_mission_id`), challenge missions (`challenge_mission_id`), and part-specific predecessor missions.
 

@@ -368,11 +368,20 @@ namespace OperationGuidance_new.Views {
                     logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission not activated, getting general excluded rules");
                 }
 
+                // 汇总所有点位绑定的物料码规则 ID（螺丝点位跳过顺序校验用）
+                HashSet<int> boltBoundRuleIds = (_mission.ProductSides ?? Enumerable.Empty<ProductSideDTO>())
+                    .Where(s => s.Bolts != null)
+                    .SelectMany(s => s.Bolts)
+                    .Where(b => !string.IsNullOrEmpty(b.parts_bar_code_ids))
+                    .SelectMany(b => CommonUtils.StringToList(b.parts_bar_code_ids))
+                    .ToHashSet();
+
                 _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
                         _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded, CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode)) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
+                ((BarCodeInputPopUpForm_SCII)_barCodePopUpForm).SetBoltBoundRuleIds(boltBoundRuleIds);
                 if (!_activated) {
                     logger.Debug($"[SCII:OpenBarCodePopUpForm] Adding 'Activate Mission' button");
                     _barCodePopUpForm.AddButton("激活任务").Click += (sender, eventArgs) => {
@@ -392,7 +401,6 @@ namespace OperationGuidance_new.Views {
                             } else {
                                 logger.Info($"[SCII:OpenBarCodePopUpForm] Activating mission");
                                 ActivateMission();
-                                _barCodePopUpForm.Dispose();
                             }
                         } else {
                             logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission already activated, closing popup");

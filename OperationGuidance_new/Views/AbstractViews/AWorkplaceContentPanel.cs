@@ -161,6 +161,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected List<String> lockMsgs = new();
         protected List<String> informationMsgs = new();
         protected OperationDataDTO? currentOperationData;
+        private bool _isActivating;
+        private bool _pendingBoltBarCodePopup;
         #endregion
 
         #region Properties
@@ -1143,7 +1145,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
                             } else {
                                 ActivateMission();
-                                _barCodePopUpForm.Dispose();
                             }
                         } else {
                             _barCodePopUpForm.Dispose();
@@ -1329,14 +1330,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // 1. Check can activate mission
             if (await ValidationBeforeActivatingMission()) {
-                // 2. Initialize variables
-                InitializeBeforeActivatingMission();
-
-                // 3. Activate mission
+                // 2. Activate mission — must precede InitializeBeforeActivatingMission
+                // so CheckBoltBoundPartsBarCode -> OpenBarCodePopUpForm sees _activated=true
                 _activated = true;
+                _isActivating = true;
+
+                // 3. Initialize variables
+                InitializeBeforeActivatingMission();
 
                 // 4. Action after activating mission
                 await ActionAfterActivatingMission();
+
+                _isActivating = false;
+                _barCodePopUpForm?.Dispose();
+                if (_pendingBoltBarCodePopup) {
+                    _pendingBoltBarCodePopup = false;
+                    // 关闭激活前的弹窗，用当前点位的物料码规则重建
+                    OpenBarCodePopUpForm(null);
+                }
             } else {
                 // Clear current bolts
                 _currentWorkingBolt = null;
@@ -1494,20 +1505,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 foreach (int key in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
                     BoltButton boltButton = SwitchBolt(key, 0);
 
+                    // Cache it — must precede ChangeBoltStatusToWorking so
+                    // OpenBarCodePopUpForm sees the current bolt for _rulesExcluded
+                    _currentWorkingBoltIndependence.Add(key, boltButton);
+
                     // Change status of bolt
                     ChangeBoltStatusToWorking(boltButton);
-
-                    // Cache it
-                    _currentWorkingBoltIndependence.Add(key, boltButton);
                 }
             } else {
                 BoltButton boltButton = SwitchBolt(0);
 
+                // Cache it — must precede ChangeBoltStatusToWorking so
+                // OpenBarCodePopUpForm sees the current bolt for _rulesExcluded
+                _currentWorkingBolt = boltButton;
+
                 // Change status of bolt
                 ChangeBoltStatusToWorking(boltButton);
-
-                // Cache it
-                _currentWorkingBolt = boltButton;
             }
 
             // Reset current operation data
@@ -2004,18 +2017,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // Check if any parts bar code bound to current bolt
-        protected virtual async void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
-            await Task.Run(() => {
-                BeginInvoke(() => {
-                    if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
-                        List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
-                        if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
-                            AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
-                            OpenBarCodePopUpForm(null);
-                        }
+        protected virtual void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
+            if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
+                List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
+                if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
+                    AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                    if (_isActivating) {
+                        _pendingBoltBarCodePopup = true;
+                    } else {
+                        OpenBarCodePopUpForm(null);
                     }
-                });
-            });
+                }
+            }
         }
 
         // Send pset to controller
