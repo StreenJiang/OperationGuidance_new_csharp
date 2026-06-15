@@ -6,6 +6,7 @@ using CustomLibrary.Panels;
 using CustomLibrary.ComboBoxes;
 using System.Collections.Concurrent;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Reflection;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Panels.BaseClasses;
@@ -14,7 +15,8 @@ using log4net;
 
 namespace CustomLibrary.Utils {
     public static class WidgetUtils {
-        private static readonly Object _imageLocker = new();
+        private static readonly object _resizeLocker = new();
+        private static readonly object _rotateLocker = new();
         private static Dictionary<int, CustomMainMenuButton> _mainMenus = new();
         private static Dictionary<int, CustomChildMenuFirstButton> _childMenus = new();
         private static List<CustomContentPanel> _views = new();
@@ -199,27 +201,46 @@ namespace CustomLibrary.Utils {
         /// <param name="image">Image will be rescaled.</param>
         /// <param name="newWidth">New width of new Image.</param>
         /// <param name="newHeight">New height of new Image.</param>
-        /// <returns>New image witdh new size.</returns>        
-        public static Image ResizeImage(Image image, int newWidth, int newHeight) {
-            lock (_imageLocker) {
-                if (newWidth <= 0) newWidth = 1;
-                if (newHeight <= 0) newHeight = 1;
+        /// <returns>New image witdh new size.</returns>
+        public static Image ResizeImage(Image image, int newWidth, int newHeight, bool dispose = false) {
+            lock (_resizeLocker) {
+                if (newWidth <= 0 || newHeight <= 0) {
+                    Bitmap bitmap = new Bitmap(image);
+                    if (dispose) {
+                        image.Dispose();
+                    }
+                    return bitmap;
+                }
+
                 Bitmap resultImage = new Bitmap(newWidth, newHeight);
                 using (Graphics g = Graphics.FromImage(resultImage)) {
                     g.CompositingMode = CompositingMode.SourceCopy;
                     g.CompositingQuality = CompositingQuality.HighQuality;
                     g.SmoothingMode = SmoothingMode.HighQuality;
-                    // g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.InterpolationMode = InterpolationMode.Bilinear; // 用这个效率高很多，并且图片质量也不错
-                    // g.InterpolationMode = InterpolationMode.NearestNeighbor; // 用这个效率更高，只是质量差些
+                    g.InterpolationMode = InterpolationMode.Bilinear;
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
+                    try {
+                        g.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight));
+                    } catch (ArgumentException) {
+                        // 源图 GDI+ 句柄可能已损坏，通过 PNG 流往返修复
+                        var normalized = NormalizeImageHandle(image, null);
+                        if (normalized != null) {
+                            g.DrawImage(normalized, new Rectangle(0, 0, newWidth, newHeight));
+                            normalized.Dispose();
+                        } else {
+                            resultImage = new Bitmap(newWidth, newHeight);
+                        }
+                    }
+                }
+
+                if (dispose) {
+                    image.Dispose();
                 }
                 return resultImage;
             }
         }
-        public static Image ResizeImage(Image image, Size newSize) {
-            return ResizeImage(image, newSize.Width, newSize.Height);
+        public static Image ResizeImage(Image image, Size newSize, bool dispose = false) {
+            return ResizeImage(image, newSize.Width, newSize.Height, dispose);
         }
 
         /// <summary>
@@ -255,6 +276,21 @@ namespace CustomLibrary.Utils {
                 newSize.Height = 1;
             }
             return WidgetUtils.ResizeImage(image, newSize);
+        }
+
+        public static Image? NormalizeImageHandle(Image image, ILog? logger) {
+            try {
+                using (var ms = new MemoryStream()) {
+                    image.Save(ms, ImageFormat.Png);
+                    ms.Position = 0;
+                    using (var temp = Image.FromStream(ms)) {
+                        return new Bitmap(temp);
+                    }
+                }
+            } catch (Exception ex) {
+                logger?.Warn($"NormalizeImageHandle: PNG stream round-trip failed. ex = {ex}");
+                return null;
+            }
         }
 
         /// <summary>
@@ -344,17 +380,29 @@ namespace CustomLibrary.Utils {
             return new(rect.Location, newSize);
         }
 
-        public static Image RotateImage(Image image, float angle, ILog? logger = null) {
-            lock (_imageLocker) {
-                // 原图的宽和高
-                int w = image.Width;
-                int h = image.Height;
-
+        public static Image RotateImage(Image image, float angle, ILog? logger = null, bool dispose = true) {
+            lock (_rotateLocker) {
+                int w;
+                int h;
+                try {
+                    w = image.Width;
+                    h = image.Height;
+                } catch (ArgumentException ex) {
+                    logger?.Warn($"RotateImage: image handle invalid, attempting PNG stream fix. ex = {ex}");
+                    var normalized = NormalizeImageHandle(image, logger);
+                    if (normalized != null) {
+                        if (dispose) image.Dispose();
+                        return RotateImage(normalized, angle, logger, true);
+                    }
+                    logger?.Error("RotateImage: PNG stream fix also failed, returning original image");
+                    if (dispose) image.Dispose();
+                    return image;
+                }
+                Image? dsImage = null;
                 int W = w;
                 int H = h;
-                Image? dsImage = null;
                 try {
-                    angle = angle % 360; // 弧度转换
+                    angle = angle % 360;
                     double radian = angle * Math.PI / 180.0;
                     double cos = Math.Cos(radian);
                     double sin = Math.Sin(radian);
@@ -382,25 +430,38 @@ namespace CustomLibrary.Utils {
 
                     dsImage = new Bitmap(W, H);
                 } catch (Exception e) {
-                    dsImage?.Dispose();
                     if (logger != null) {
                         logger.Error($"Error while rotating image, e = {e}");
                     }
+                    dsImage?.Dispose();
                     throw;
                 }
 
-                using (Graphics g = Graphics.FromImage(dsImage)) {
-                    g.InterpolationMode = InterpolationMode.Bilinear;
-                    g.SmoothingMode = SmoothingMode.HighQuality;
+                try {
+                    using (Graphics g = Graphics.FromImage(dsImage)) {
+                        g.InterpolationMode = InterpolationMode.Bilinear;
+                        g.SmoothingMode = SmoothingMode.HighQuality;
 
-                    Point Offset = new((W - w) / 2, (H - h) / 2);
-                    Rectangle rect = new(Offset.X, Offset.Y, w, h);
-                    Point center = new(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
-                    g.TranslateTransform(center.X, center.Y);
-                    g.RotateTransform(360 + angle);
-                    g.TranslateTransform(-center.X, -center.Y);
-                    g.DrawImage(image, rect);
-                    g.ResetTransform();
+                        Point Offset = new Point((W - w) / 2, (H - h) / 2);
+                        Rectangle rect = new Rectangle(Offset.X, Offset.Y, w, h);
+                        Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+                        g.TranslateTransform(center.X, center.Y);
+                        g.RotateTransform(360 + angle);
+                        g.TranslateTransform(-center.X, -center.Y);
+                        g.DrawImage(image, rect);
+                        g.ResetTransform();
+                        g.Save();
+                    }
+                } catch (Exception e) {
+                    if (logger != null) {
+                        logger.Error($"Error while rotating image in finally block, e = {e}");
+                    }
+                    dsImage.Dispose();
+                    throw;
+                }
+
+                if (dispose) {
+                    image.Dispose();
                 }
                 return dsImage;
             }
