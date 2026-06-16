@@ -3,6 +3,7 @@ using MySql.Data.MySqlClient;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Utils;
+using System.Data;
 using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
@@ -73,6 +74,7 @@ namespace OperationGuidance_service.Database {
                     // Execute scripts that didn't execute
                     List<string> newExecutedSqlFileName = new();
                     using (MySqlCommand command = conn.CreateCommand()) {
+                        command.CommandTimeout = 600; // 迁移 DDL 在大表上可能耗时数分钟
                         List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
                         // 收集本轮待执行的脚本
                         List<string> pendingScripts = fileNames
@@ -105,9 +107,28 @@ namespace OperationGuidance_service.Database {
                                             // engine must tolerate these errors rather than requiring
                                             // idempotency wrappers in every SQL script.
                                             logger.Info($"Statement in [{fileName}] is a no-op (already applied): {stmtEx.Message}");
+                                        } catch (MySqlException stmtEx) when (
+                                            conn.State != ConnectionState.Open
+                                        ) {
+                                            // Connection-level fatal error (e.g., timeout on large table).
+                                            // Break out to try reconnect — skip this script, continue next.
+                                            logger.Error($"Connection lost during [{fileName}]: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
+                                            allOk = false;
+                                            break;
                                         } catch (Exception stmtEx) {
+                                            // Ordinary SQL error (syntax, constraint, etc.) — log and continue.
                                             logger.Warn($"Statement in [{fileName}] failed: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
                                             allOk = false;
+                                        }
+                                    }
+                                    // 连接断开 → 重连一次，跳过当前脚本，继续后续脚本
+                                    if (conn.State != ConnectionState.Open) {
+                                        try {
+                                            conn.Open();
+                                            logger.Info($"Reconnected successfully after connection loss during [{fileName}] — skipping current script, continuing remaining scripts");
+                                        } catch (Exception reconnectEx) {
+                                            logger.Error($"Reconnect failed after connection loss during [{fileName}]: {reconnectEx.Message}. Requires manual intervention.");
+                                            break; // 中止全部脚本
                                         }
                                     }
                                     if (allOk) {
