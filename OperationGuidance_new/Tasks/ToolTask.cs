@@ -393,7 +393,7 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
-        private bool SendCommand(string command) {
+        protected virtual bool SendCommand(string command) {
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command not sent - not connected");
                 return false;
@@ -612,8 +612,14 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
                     return;
                 }
-                if (_pendingLockCommand == PendingLockCommand.Lock) return;
-                if (_locked && _pendingLockCommand != PendingLockCommand.Unlock) return;
+                if (_pendingLockCommand == PendingLockCommand.Lock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendLock skipped — pending Lock already in flight");
+                    return;
+                }
+                if (_locked && _pendingLockCommand != PendingLockCommand.Unlock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendLock skipped — already locked (locked={_locked}, pending={_pendingLockCommand})");
+                    return;
+                }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
                 _pendingLockCommand = PendingLockCommand.Lock;
@@ -636,25 +642,27 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformLock() {
+            bool sent = false;
             if (_toolType is ToolPFSeries toolPF) {
-                SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                sent = SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
                 string cmd = toolX7.GetLockCommand();
-                bool sentOk = SendCommand(cmd);
+                SendCommand(cmd);
                 Thread.Sleep(200);
-                sentOk = SendCommand(cmd);
+                sent = SendCommand(cmd);
 
-                if (sentOk) {
+                if (sent) {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(true);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                 _lockStatusSending = true;
-                SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
+                sent = SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                return;
             }
+
+            ClearPendingOnSendFailure(sent, PendingLockCommand.Lock);
         }
 
         public void SendUnlock() {
@@ -663,8 +671,14 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
                     return;
                 }
-                if (_pendingLockCommand == PendingLockCommand.Unlock) return;
-                if (!_locked && _pendingLockCommand != PendingLockCommand.Lock) return;
+                if (_pendingLockCommand == PendingLockCommand.Unlock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendUnlock skipped — pending Unlock already in flight");
+                    return;
+                }
+                if (!_locked && _pendingLockCommand != PendingLockCommand.Lock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendUnlock skipped — already unlocked (locked={_locked}, pending={_pendingLockCommand})");
+                    return;
+                }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
                 _pendingLockCommand = PendingLockCommand.Unlock;
@@ -687,24 +701,38 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformUnlock() {
+            bool sent = false;
             if (_toolType is ToolPFSeries toolPF) {
-                SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                sent = SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
                 string cmd = toolX7.GetUnlockCommand();
-                bool sentOk = SendCommand(cmd);
+                SendCommand(cmd);
                 Thread.Sleep(200);
-                sentOk = SendCommand(cmd);
+                sent = SendCommand(cmd);
 
-                if (sentOk) {
+                if (sent) {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(false);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                 _lockStatusSending = false;
-                SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
+                sent = SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                return;
+            }
+
+            ClearPendingOnSendFailure(sent, PendingLockCommand.Unlock);
+        }
+
+        /// <summary>Rollback _pendingLockCommand on send failure, only if it still matches expected (guards against race with concurrent lock/unlock).</summary>
+        private void ClearPendingOnSendFailure(bool sent, PendingLockCommand expected) {
+            if (!sent) {
+                lock (LockSyncObject) {
+                    if (_pendingLockCommand == expected) {
+                        _pendingLockCommand = PendingLockCommand.None;
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] {expected} command send failed, pending cleared");
+                    }
+                }
             }
         }
 

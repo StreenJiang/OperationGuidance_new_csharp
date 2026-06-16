@@ -1666,6 +1666,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             BeginInvoke(() => {
                 Task.Run(async () => {
+                    bool lastIterationWasLock = false;
                     while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
                             // Skip if _currentWorkingBolt is null
@@ -1680,8 +1681,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             CheckCurrentPSetForLockMsg();
                             CheckAdminConfirmationForLockMsg();
 
+                            bool shouldLock = lockMsgs.Count > 0;
+
+                            // Log only on state change to avoid log spam (50ms loop)
+                            if (shouldLock != lastIterationWasLock) {
+                                logger.Debug($"[LockCheck:{_mission?.name}] lockMsgs={(shouldLock ? $"【{string.Join(" | ", lockMsgs)}】" : "empty")} → calling {(shouldLock ? "SendLock" : "SendUnlock")}, tool locked={toolTask.Locked}");
+                                lastIterationWasLock = shouldLock;
+                            }
+
                             string statusDesc = string.Empty;
-                            if (lockMsgs.Count > 0) {
+                            if (shouldLock) {
                                 statusDesc = string.Join("\r\n", lockMsgs);
                                 statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
                                 // Set status to working proccess panel
