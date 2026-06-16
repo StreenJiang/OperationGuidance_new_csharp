@@ -7,7 +7,12 @@ namespace OperationGuidance_new.Utils {
 
         public static Image? GetOrLoad(string fileName) {
             if (string.IsNullOrEmpty(fileName)) return null;
-            return _cache.GetOrAdd(fileName, key => MainUtils.LoadProductImageFromDisk(key));
+            if (_cache.TryGetValue(fileName, out var cached)) return cached;
+            var loaded = MainUtils.LoadProductImageFromDisk(fileName);
+            if (loaded != null) {
+                _cache.TryAdd(fileName, loaded);
+            }
+            return loaded;
         }
 
         public static void Invalidate(string fileName) {

@@ -1,4 +1,5 @@
-﻿using CustomLibrary.Utils;
+using CustomLibrary.Utils;
+using log4net;
 using OperationGuidance_new.Configs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_service.Constants;
@@ -6,7 +7,9 @@ using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Utils;
 
 namespace OperationGuidance_new.Views.ReusableWidgets {
-    public class ProductImageFile {
+    public class ProductImageFile: IDisposable {
+        private ILog logger = LogManager.GetLogger(typeof(ProductImageFile));
+
         private AProductImageDisplayPanel _container;
         private ProductSideDTO _sideDTO;
         private string? _filePath;
@@ -23,17 +26,21 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private Stack<ProductImageFile> _undoBuffer;
         private int _undoBufferLength;
         private Rectangle? _imageRange;
-
+        private bool _ownsImage = true;
         public AProductImageDisplayPanel Container { get => _container; set => _container = value; }
         public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
         public string? FilePath { get => _filePath; set => _filePath = value; }
         public Image? Image {
             get => _image;
             set {
+                var old = _image;
+                var oldOwns = _ownsImage;
                 _image = value;
+                _ownsImage = value != null;
                 if (value == null) {
                     _imageRange = null;
                 }
+                if (oldOwns) old?.Dispose();
             }
         }
         public string? ImageFileName { get => _imageFileName; set => _imageFileName = value; }
@@ -56,7 +63,8 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             Image? image = MainUtils.GetProductImage(sideDTO.image);
             if (image != null) {
                 _imageFileName = sideDTO.image;
-                _image = image;
+                Image = image;
+                _ownsImage = false;  // cache reference, must not dispose
                 if (sideDTO.max_rectangle_width != null && sideDTO.max_rectangle_height != null) {
                     _containerMaxRect = new(CommonUtils.PointStringToPoint(sideDTO.max_rectangle_location), new(sideDTO.max_rectangle_width.Value, sideDTO.max_rectangle_height.Value));
                     _centerLocation = CommonUtils.PointStringToPoint(sideDTO.center_location);
@@ -71,10 +79,31 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public ProductImageFile Copy() {
+            // 添加安全检查
+            Image? newImage = null;
+            if (_image != null) {
+                try {
+                    // 检查图像是否仍然有效
+                    if (_image.Width > 0 && _image.Height > 0) {
+                        newImage = new Bitmap(_image);
+                    } else {
+                        logger.Warn($"警告: 图像尺寸无效 - Width: {_image.Width}, Height: {_image.Height}");
+                    }
+                } catch (ArgumentException ex) {
+                    logger.Warn($"复制图像失败: {ex.Message}");
+                    // 尝试重新加载
+                    newImage = ReloadImage();
+                } catch (ObjectDisposedException ex) {
+                    logger.Warn($"图像已被释放: {ex.Message}");
+                    // 尝试重新加载
+                    newImage = ReloadImage();
+                }
+            }
+
             return new(_container, _sideDTO, _undoBufferLength) {
                 FilePath = _filePath,
                 ImageFileName = _imageFileName,
-                Image = _image != null ? new Bitmap(_image) : null,
+                Image = newImage,
                 CenterLocation = _centerLocation,
                 LocationOffset = _locationOffset,
                 LocationOffsetMoving = _locationOffsetMoving,
@@ -84,11 +113,106 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Cropped = _cropped,
             };
         }
+        private Image? ReloadImage() {
+            Image? reloadedImage = null;
+
+            // 首先尝试从 _filePath 加载图像（如果已设置）
+            if (!string.IsNullOrEmpty(_filePath)) {
+                try {
+                    if (File.Exists(_filePath)) {
+                        logger.Info($"正在从文件路径重新加载图像: {_filePath}");
+                        reloadedImage = Image.FromFile(_filePath);
+                        logger.Info($"成功从文件路径加载图像 - 尺寸: {reloadedImage.Width}x{reloadedImage.Height}");
+                    } else {
+                        logger.Warn($"文件路径不存在: {_filePath}");
+                    }
+                } catch (ArgumentException ex) {
+                    logger.Warn($"从文件路径加载图像失败 (参数无效): {_filePath}, 错误: {ex.Message}");
+                } catch (FileNotFoundException ex) {
+                    logger.Warn($"文件未找到: {_filePath}, 错误: {ex.Message}");
+                } catch (DirectoryNotFoundException ex) {
+                    logger.Warn($"目录未找到: {_filePath}, 错误: {ex.Message}");
+                } catch (UnauthorizedAccessException ex) {
+                    logger.Warn($"无权限访问文件: {_filePath}, 错误: {ex.Message}");
+                } catch (IOException ex) {
+                    logger.Warn($"I/O错误，从文件路径加载图像失败: {_filePath}, 错误: {ex.Message}");
+                } catch (Exception ex) {
+                    logger.Error($"从文件路径加载图像时发生未知错误: {_filePath}", ex);
+                }
+            }
+
+            // 如果从 _filePath 加载失败或未设置，则尝试使用 _imageFileName
+            if (reloadedImage == null && !string.IsNullOrEmpty(_imageFileName)) {
+                try {
+                    logger.Info($"正在通过图像文件名重新加载图像: {_imageFileName}");
+                    var cached = MainUtils.GetProductImage(_imageFileName);
+                    if (cached != null) {
+                        try {
+                            reloadedImage = new Bitmap(cached);
+                            logger.Info($"成功通过图像文件名加载图像 - 尺寸: {reloadedImage.Width}x{reloadedImage.Height}");
+                        } catch (ArgumentException) {
+                            logger.Warn($"通过图像文件名加载图像失败 (缓存图片已损坏): {_imageFileName}");
+                        } catch (ObjectDisposedException) {
+                            logger.Warn($"通过图像文件名加载图像失败 (缓存图片已释放): {_imageFileName}");
+                        }
+                    } else {
+                        logger.Warn($"通过图像文件名未能加载图像: {_imageFileName}");
+                    }
+                } catch (ArgumentException ex) {
+                    logger.Warn($"通过图像文件名加载图像失败 (参数无效): {_imageFileName}, 错误: {ex.Message}");
+                } catch (FileNotFoundException ex) {
+                    logger.Warn($"图像文件未找到: {_imageFileName}, 错误: {ex.Message}");
+                } catch (Exception ex) {
+                    logger.Error($"通过图像文件名加载图像时发生未知错误: {_imageFileName}", ex);
+                }
+            }
+
+            if (reloadedImage == null) {
+                logger.Warn("重新加载图像失败：既无法从文件路径加载，也无法通过图像文件名加载");
+            }
+
+            return reloadedImage;
+        }
+
+        /// <summary>
+        /// 检查图像是否有效
+        /// </summary>
+        private bool IsImageValid(Image? image) {
+            if (image == null) {
+                return false;
+            }
+
+            try {
+                _ = image.Width;
+                _ = image.Height;
+                return true;
+            } catch (ArgumentException) {
+                return false;
+            } catch (ObjectDisposedException) {
+                return false;
+            }
+        }
 
         public void CopyFrom(ProductImageFile from) {
             _filePath = from.FilePath;
             _imageFileName = from.ImageFileName;
-            _image = from.Image != null ? new Bitmap(from.Image) : null;
+
+            if (from.Image != null && IsImageValid(from.Image)) {
+                try {
+                    Image = new Bitmap(from.Image);
+                } catch (ArgumentException ex) {
+                    logger.Warn($"复制图像失败: {ex.Message}");
+                    Image = ReloadImage();
+                } catch (ObjectDisposedException ex) {
+                    logger.Warn($"图像已被释放: {ex.Message}");
+                    Image = ReloadImage();
+                }
+            } else {
+                // 源图像无效或为 null，尝试重新加载
+                logger.Info("源图像无效或为 null，正在尝试重新加载...");
+                Image = ReloadImage();
+            }
+
             _centerLocation = from.CenterLocation;
             _locationOffset = from.LocationOffset;
             _locationOffsetMoving = from.LocationOffsetMoving;
@@ -106,7 +230,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             if (dialog.ShowDialog() == DialogResult.OK) {
                 ClearBuffer();
                 _filePath = dialog.FileName;
-                _image = Image.FromFile(_filePath);
+                Image = System.Drawing.Image.FromFile(_filePath);
                 _centerLocation = new(0, 0);
                 _locationOffset = new(0, 0);
                 _locationOffsetMoving = new(0, 0);
@@ -126,7 +250,13 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         public void RecalculateZoomingRatio() {
             if (_image != null && (_containerMaxRect.Size != _container.MaxRectSize || _zoomingRatio == 0)) {
                 _containerMaxRect = _container.MaxRect;
-                _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                try {
+                    _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                } catch (ArgumentException) {
+                    Image = ReloadImage();
+                    if (_image != null)
+                        _zoomingRatio = MainUtils.GetZoomingRatio(_image.Size, _container.MaxRectSize);
+                }
             }
         }
 
@@ -189,7 +319,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 Point croppingRectLocation = new(_container.MaxRectLocation.X - _centerLocation.X, _container.MaxRectLocation.Y - _centerLocation.Y);
                 Point lowerRightConer = new(_centerLocation.X + imageDisplay.Width, _centerLocation.Y + imageDisplay.Height);
                 if (!_container.MaxRect.Contains(_centerLocation) || !_container.MaxRect.Contains(lowerRightConer)) {
-                    _image = MainUtils.CropImage(imageDisplay, new(croppingRectLocation, _container.MaxRectSize));
+                    Image = MainUtils.CropImage(imageDisplay, new(croppingRectLocation, _container.MaxRectSize));
                     _locationOffset = new(0, 0);
                     _locationOffsetMoving = new(0, 0);
                     _zoomingRatio = 1;
@@ -218,28 +348,75 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public Image? GetDisplayImage() {
-            if (_image != null) {
-                float finalRatio = _zoomingRatio * (1 + _zoomingRatioExtra);
-                Image imageTemp = MainUtils.ResizeImageByZoomingRatio(_image, finalRatio);
-                if (_rotateAngle == 0) {
-                    return imageTemp;
+            try {
+                Image? result = TryCreateDisplayImage();
+                if (result != null)
+                    return result;
+
+                const int maxRetries = 5;
+                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                    logger.Info($"图像处理失败，第 {attempt} 次重试：重新加载源图像...");
+                    Image = ReloadImage();
+
+                    result = TryCreateDisplayImage();
+                    if (result != null)
+                        return result;
                 }
-                return WidgetUtils.RotateImage(imageTemp, _rotateAngle);
+            } catch (Exception ex) {
+                logger.Error("图像处理异常", ex);
             }
+
+            logger.Warn("图像处理失败：已达到最大重试次数（5次），放弃生成图像。");
+            return null;
+        }
+
+        private Image? TryCreateDisplayImage() {
+            if (_image == null || !IsImageValid(_image))
+                return null;
+
+            try {
+                float finalRatio = _zoomingRatio * (1 + _zoomingRatioExtra);
+                using var originalCopy = (Image) _image.Clone(); // 安全起见，操作副本
+                var resized = MainUtils.ResizeImageByZoomingRatio(originalCopy, finalRatio);
+
+                if (_rotateAngle == 0)
+                    return resized;
+
+                // 注意：RotateImage 应返回新图像，且不 dispose 输入
+                return WidgetUtils.RotateImage(resized, _rotateAngle, logger);
+            } catch (ArgumentException ex) {
+                logger.Warn($"图像参数无效: {ex.Message}");
+            } catch (ObjectDisposedException ex) {
+                logger.Warn($"图像已被释放: {ex.Message}");
+            } catch (Exception ex) {
+                logger.Error("处理图像时发生未预期错误", ex);
+            }
+
             return null;
         }
 
         public void RefreshImage() {
-            Image? imageDisplay = GetDisplayImage();
-            if (imageDisplay != null) {
-                _centerLocation = new((_container.Width - imageDisplay.Width) / 2, (_container.Height - imageDisplay.Height) / 2);
-                _centerLocation.X += _locationOffset.X;
-                _centerLocation.Y += _locationOffset.Y;
-                _centerLocation.X += _locationOffsetMoving.X;
-                _centerLocation.Y += _locationOffsetMoving.Y;
-                _container.SetImage(imageDisplay, _centerLocation);
-                _imageRange = new(_centerLocation, imageDisplay.Size);
-            } else {
+            try {
+                Image? imageDisplay = GetDisplayImage();
+                if (imageDisplay != null && IsImageValid(imageDisplay)) {
+                    _centerLocation = new((_container.Width - imageDisplay.Width) / 2, (_container.Height - imageDisplay.Height) / 2);
+                    _centerLocation.X += _locationOffset.X;
+                    _centerLocation.Y += _locationOffset.Y;
+                    _centerLocation.X += _locationOffsetMoving.X;
+                    _centerLocation.Y += _locationOffsetMoving.Y;
+                    _container.SetImage(imageDisplay, _centerLocation);
+                    _imageRange = new(_centerLocation, imageDisplay.Size);
+                } else {
+                    _container.SetImage(null, null);
+                }
+            } catch (ArgumentException ex) {
+                logger.Warn($"刷新图像失败: {ex.Message}");
+                _container.SetImage(null, null);
+            } catch (ObjectDisposedException ex) {
+                logger.Warn($"图像已被释放: {ex.Message}");
+                _container.SetImage(null, null);
+            } catch (Exception ex) {
+                logger.Error("Error while refreshing image...", ex);
                 _container.SetImage(null, null);
             }
             // WARN: this will cause extra time wastes, so can move to save button
@@ -258,6 +435,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _sideDTO.location_offset_moving = _locationOffsetMoving.ToString();
             _sideDTO.rotate_angle = _rotateAngle;
             _sideDTO.cropped = _cropped ? (int) YesOrNo.YES : (int) YesOrNo.NO;
+        }
+
+        public void Dispose() {
+            if (_ownsImage) {
+                _image?.Dispose();
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// using CustomLibrary.Constants;
+// using CustomLibrary.Constants;
 
 using OperationGuidance_service.Models.DTOs;
 
@@ -38,6 +38,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
 
         public void SetImage(Image? productImage, Point? imageLocation) {
+            _productImage?.Dispose();
             _productImage = productImage;
             _imageLocation = imageLocation;
             Invalidate();

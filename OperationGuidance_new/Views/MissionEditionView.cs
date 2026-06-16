@@ -470,7 +470,7 @@ namespace OperationGuidance_new.Views {
                 };
 
                 // 设置图片编辑时可撤回的次数（即可以回溯多少次操作）
-                _imageOperationBufferLength = 20;
+                _imageOperationBufferLength = 0;
                 _imageButtonChoose = GenerateImageButton("选择图片", Properties.Resources.image_choose, (sender, eventArgs) => {
                     _currentProductImageFile.ImageSelect(() => Modified = true);
                     _currentSideButton.ProductImageFile = _currentProductImageFile.Copy();
@@ -512,7 +512,8 @@ namespace OperationGuidance_new.Views {
                     _currentProductImageFile.ImageCrop();
                 });
                 _imageButtonUndo = GenerateImageButton("撤回操作", Properties.Resources.image_undo, (sender, eventArgs) => _currentProductImageFile.ImageUndo());
-                _imageButtonReset = GenerateImageButton("重置图片", Properties.Resources.image_reset, (sender, eventArgs) => {
+                _imageButtonUndo.Hide();
+                _imageButtonReset= GenerateImageButton("重置图片", Properties.Resources.image_reset, (sender, eventArgs) => {
                     _currentProductImageFile.ClearBuffer();
                     _currentSideButton.ImageReset();
                 });
@@ -1604,7 +1605,7 @@ namespace OperationGuidance_new.Views {
 
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
-            public ProductImageFile ProductImageFile { set => _productImageFile = value; }
+            public ProductImageFile ProductImageFile { set { _productImageFile?.Dispose(); _productImageFile = value; } }
             public ProductImageFile ProductImageFileNew { get => _productImageFileNew; }
             // Separate by workstation id, key of inner sorted list is serial num of each bolt
             public SortedList<int, List<BoltButton>> BoltButtons { get => _boltButtons; }
