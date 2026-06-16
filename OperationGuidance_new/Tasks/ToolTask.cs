@@ -16,13 +16,12 @@ namespace OperationGuidance_new.Tasks {
         #region Fields
         private readonly object SyncObject = new();
         private readonly object LockSyncObject = new();
+        private readonly object _sendLock = new();
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
-        private const int LockCooldownMs = 5000;
-        private static readonly int StaleResponseThresholdMs = MainUtils.GetStaleResponseDelayMs();
         private int SendMessageRecevingCount = 0;
         private Task? _runTaskTask;
         private volatile int _connectInProgress;
@@ -36,9 +35,7 @@ namespace OperationGuidance_new.Tasks {
         private string _ip;
         private int _port;
         private DeviceTypeTool _toolType;
-        private int HeartBeatCounter;
-        private long _lastLockTimestamp = 0;
-        private long _lastUnlockTimestamp = 0;
+        private volatile int HeartBeatCounter;
         private volatile PendingLockCommand _pendingLockCommand = PendingLockCommand.None;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived;
@@ -79,16 +76,12 @@ namespace OperationGuidance_new.Tasks {
                                 // Send heart beat command to controller
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
                                 SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                                // Reset heart beat counter even no command has been sent
-                                HeartBeatCounter = 0;
                             }
                         } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                             if (HeartBeatCounter >= toolFitFTC6.HEART_BEAT_PERIOD) {
                                 // Send heart beat command to controller
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
                                 SendCommand(toolFitFTC6.GetHeartBeatCommand());
-                                // Reset heart beat counter even no command has been sent
-                                HeartBeatCounter = 0;
                             }
                         }
 
@@ -314,6 +307,7 @@ namespace OperationGuidance_new.Tasks {
                     try {
                         socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         socketClient.ReceiveTimeout = ReceiveTimeout;
+                        socketClient.SendTimeout = 500;
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connected");
@@ -405,10 +399,11 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 int? num;
-                lock (SyncObject) {
+                lock (_sendLock) {
                     num = socketClient?.Send(data);
                 }
                 if (num.HasValue && num.Value > 0) {
+                    HeartBeatCounter = 0;
                     return true;
                 }
 
@@ -438,7 +433,7 @@ namespace OperationGuidance_new.Tasks {
 
                     // Send under lock for socket safety, ReceiveAsync outside lock (no timeout)
                     byte[] msgBytes = new byte[1024 * 1024];
-                    lock (SyncObject) {
+                    lock (_sendLock) {
                         socketClient.Send(data);
                     }
                     int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
@@ -606,15 +601,13 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
                     return;
                 }
-                if (_locked) return;
-                var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                if ((now - Volatile.Read(ref _lastLockTimestamp)) < LockCooldownMs) return;
+                if (_pendingLockCommand == PendingLockCommand.Lock) return;
+                if (_locked && _pendingLockCommand != PendingLockCommand.Unlock) return;
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
-                _lastLockTimestamp = now;
                 _pendingLockCommand = PendingLockCommand.Lock;
-                PerformLock();
             }
+            PerformLock();
         }
 
         public void ForceSendLock() {
@@ -625,11 +618,10 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
-                PerformLock();
                 _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(true);
-                _lastLockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
+            PerformLock();
         }
 
         private void PerformLock() {
@@ -660,15 +652,13 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
                     return;
                 }
-                if (!_locked) return;
-                var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                if ((now - Volatile.Read(ref _lastUnlockTimestamp)) < LockCooldownMs) return;
+                if (_pendingLockCommand == PendingLockCommand.Unlock) return;
+                if (!_locked && _pendingLockCommand != PendingLockCommand.Lock) return;
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
-                _lastUnlockTimestamp = now;
                 _pendingLockCommand = PendingLockCommand.Unlock;
-                PerformUnlock();
             }
+            PerformUnlock();
         }
 
         public void ForceSendUnlock() {
@@ -679,11 +669,10 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
-                PerformUnlock();
                 _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(false);
-                _lastUnlockTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             }
+            PerformUnlock();
         }
 
         private void PerformUnlock() {
@@ -728,35 +717,6 @@ namespace OperationGuidance_new.Tasks {
 
         private void UpdateInternalLockState(bool newLockedState) {
             bool oldLocked = _locked;
-            var expected = _pendingLockCommand;
-            long now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-
-            if (expected == PendingLockCommand.Lock && !newLockedState) {
-                long lockAge = now - Volatile.Read(ref _lastLockTimestamp);
-                if (lockAge < StaleResponseThresholdMs) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Stale Unlock response discarded (expecting Lock, lock sent {lockAge}ms ago)");
-                    return;
-                }
-                if (lockAge >= LockCooldownMs) {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock response timeout after {lockAge}ms, clearing pending state");
-                } else {
-                    _lastLockTimestamp = 0;
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed (tool reports unlocked), cooldown reset");
-                }
-            } else if (expected == PendingLockCommand.Unlock && newLockedState) {
-                long unlockAge = now - Volatile.Read(ref _lastUnlockTimestamp);
-                if (unlockAge < StaleResponseThresholdMs) {
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Stale Lock response discarded (expecting Unlock, unlock sent {unlockAge}ms ago)");
-                    return;
-                }
-                if (unlockAge >= LockCooldownMs) {
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock response timeout after {unlockAge}ms, clearing pending state");
-                } else {
-                    _lastUnlockTimestamp = 0;
-                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed (tool reports locked), cooldown reset");
-                }
-            }
-
             _locked = newLockedState;
             _pendingLockCommand = PendingLockCommand.None;
 

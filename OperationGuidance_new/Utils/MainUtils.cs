@@ -719,15 +719,6 @@ namespace OperationGuidance_new.Utils {
         public static int DefaultLogsRetentionDays() => 10;
         public static void SetLogsRetentionDays(int days) => Settings.Write(IniFileKeys.LogsRetentionDays, days + "");
 
-        public static int GetStaleResponseDelayMs() {
-            string value = Settings.Read(IniFileKeys.StaleResponseDelayMs);
-            if (string.IsNullOrEmpty(value)) {
-                Settings.Write(IniFileKeys.StaleResponseDelayMs, "100");
-                return 100;
-            }
-            return int.TryParse(value, out int result) ? result : 100;
-        }
-
         // Ping util method
         public static bool PingHost(string nameOrAddress) {
             Ping? pinger = null;
