@@ -27,7 +27,16 @@ namespace OperationGuidance_service.Database {
                 logger.Info($"Connecting: {dataSource}");
                 conn = new($"Data source = {dataSource}; UseUTF16Encoding = True; Connection Timeout=5;");
                 conn.Open();
-                bool tableExists = ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName());
+                bool tableExists;
+                string tableName = new UserAccountInfo().TableName();
+                using (SQLiteCommand cmd = new SQLiteCommand())
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText = "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name=@name";
+                    cmd.Parameters.AddWithValue("@name", tableName);
+                    object? result = cmd.ExecuteScalar();
+                    tableExists = result != null && Convert.ToInt32(result) > 0;
+                }
                 needToInit = !tableExists;
             } else {
                 needToInit = true;

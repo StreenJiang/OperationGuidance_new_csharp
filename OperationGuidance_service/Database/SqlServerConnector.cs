@@ -30,7 +30,18 @@ namespace OperationGuidance_service.Database {
 
                 if (!ConnectionUtils.HealthChecked) {
                     string sqlScriptPrefix = "modify_sqlserver";
-                    if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
+                    bool tableExists;
+                    string tableName = new UserAccountInfo().TableName();
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.Connection = conn;
+                        cmd.CommandText = "SELECT COUNT(1) FROM information_schema.tables WHERE table_schema=@db AND table_name=@name";
+                        cmd.Parameters.AddWithValue("@db", Database);
+                        cmd.Parameters.AddWithValue("@name", tableName);
+                        object? result = cmd.ExecuteScalar();
+                        tableExists = result != null && Convert.ToInt32(result) > 0;
+                    }
+                    if (!tableExists) {
                         if (!doubleChecked) {
                             if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
                                 if (SystemUtils.GetDBInitEnabled()) {

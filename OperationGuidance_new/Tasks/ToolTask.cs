@@ -320,9 +320,13 @@ namespace OperationGuidance_new.Tasks {
                                 if (result1 != null) {
                                     string mid1 = toolPF.GetMid(result1);
                                     sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect response: {mid1}");
+                                    if (sendConnectMsgSuceess) {
+                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake OK, MID={mid1}");
+                                    } else {
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: expected MID 0002/0005, got {mid1}");
+                                    }
                                 } else {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No connect response");
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: no response from device");
                                     sendConnectMsgSuceess = false;
                                 }
 
@@ -333,9 +337,13 @@ namespace OperationGuidance_new.Tasks {
                                     if (result2 != null) {
                                         string mid2 = toolPF.GetMid(result2);
                                         dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable response: {mid2}");
+                                        if (dataEnableMsgSuccess) {
+                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake OK, MID={mid2}");
+                                        } else {
+                                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: expected MID 0002/0005, got {mid2}");
+                                        }
                                     } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No data enable response");
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: no response from device");
                                         dataEnableMsgSuccess = false;
                                     }
 
@@ -362,6 +370,9 @@ namespace OperationGuidance_new.Tasks {
                         }
                     } catch (Exception e) {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connection error", e);
+                        socketClient?.Close();
+                        socketClient = null;
+                        connectSuccess = false;
                     }
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Ping failed");

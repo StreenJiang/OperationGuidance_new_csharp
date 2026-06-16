@@ -1486,7 +1486,22 @@ namespace OperationGuidance_service.Controllers {
                     if (configDto.database_type == (int) DBTypes.SQLSERVER) {
                         database = "dbo";
                     }
-                    if (!ConnectionUtils.CheckTableExists(conn, database, tableName)) {
+                    bool tableExists;
+                    using (DbCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT COUNT(1) FROM information_schema.tables WHERE table_schema=@db AND table_name=@name";
+                        DbParameter dbParam = cmd.CreateParameter();
+                        dbParam.ParameterName = "@db";
+                        dbParam.Value = database;
+                        cmd.Parameters.Add(dbParam);
+                        DbParameter nameParam = cmd.CreateParameter();
+                        nameParam.ParameterName = "@name";
+                        nameParam.Value = tableName;
+                        cmd.Parameters.Add(nameParam);
+                        object? result = cmd.ExecuteScalar();
+                        tableExists = result != null && Convert.ToInt32(result) > 0;
+                    }
+                    if (!tableExists) {
                         logger.Info($"Outer database[{tableName}] does not exsit, trying to create one...");
 
                         string fieldSql = "";
