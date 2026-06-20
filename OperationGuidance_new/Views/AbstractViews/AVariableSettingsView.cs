@@ -526,7 +526,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     WorkstationName = "TEST_WORKSTATION",
                 };
 
-                await new DataExportService().ExportAsync(request);
+                await ExportTestAsync(request);
 
                 string type = enableExcel ? "Excel" : "Txt";
                 WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{_storagePathTextBox.GetTextBox(0).Box.Text}");
@@ -534,6 +534,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 logger.Error($"导出测试失败: {ex.Message}", ex);
                 WidgetUtils.ShowErrorPopUp($"导出测试失败: {ex.Message}");
             }
+        }
+
+        protected virtual async Task ExportTestAsync(ExportRequest request) {
+            await new DataExportService().ExportAsync(request);
         }
 
         private void PopUpFieldsConfigurationForm(List<OperationDataField> fields) {

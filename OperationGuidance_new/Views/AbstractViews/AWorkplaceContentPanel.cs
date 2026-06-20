@@ -2780,7 +2780,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     WorkstationName = workstationName,
                 };
 
-                await new DataExportService().ExportAsync(request);
+                await ExportDataAsync(request);
                 _tighteningDataVOs.Clear();
                 if (!IsDisposed) {
                     BeginInvoke(() => RefreshTighteningDataPanel(new List<OperationDataVO>()));
@@ -2789,6 +2789,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } catch (Exception ex) {
                 logger.Error($"[Workplace:{taskName}] OnMissionCompleted - Error: {ex}");
             }
+        }
+
+        protected virtual async Task ExportDataAsync(ExportRequest request) {
+            await new DataExportService().ExportAsync(request);
         }
 
         protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
