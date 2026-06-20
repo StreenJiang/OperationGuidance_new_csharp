@@ -21,8 +21,9 @@ using OperationGuidance_service.Controllers;
 using OperationGuidance_service.Models.DTOs;
 using OperationGuidance_service.Models.Requests;
 using OperationGuidance_service.Utils;
-using System.Collections.Concurrent;
 using System.Reflection;
+using OperationGuidance_new.Utils.DataStorage;
+using System.Threading.Channels;
 
 namespace OperationGuidance_new.Views.AbstractViews {
     public abstract class AWorkplaceContentPanel: CustomContentPanel {
@@ -54,15 +55,19 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected Dictionary<string, IoBoxTask> _ioBoxTasks;
         protected CommunicationTask? _communicationTask;
         protected MissionRecordDTO? _missionRecord;
+        internal ProductMissionDTO? Mission => _mission;
         protected bool _needLoosening = false;
         protected bool? _adminConfirmed = null;
         protected CustomPopUpForm? _adminPasswordPopUpForm;
         protected volatile bool _missionNGAdminConfirmed = true;
         protected int _isRedo = (int) YesOrNo.NO;
         protected Coordinates3D? _realTimeArmCoordinates;
-        // 异步锁用于StoreTighteningData排队执行
-        private readonly SemaphoreSlim _storeTighteningDataLock = new SemaphoreSlim(1, 1);
         private int _exportTriggered;
+        // 消息队列
+        protected ChannelMessageQueue<DataStorageMessage> _messageQueue;
+        private DataStorageConsumer _consumer;
+        private CancellationTokenSource _consumerCts;
+        private int _disposeSignaled;
 
         protected bool _locating_enabled;
         protected int _armLocatingAccuracy;
@@ -100,7 +105,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected CustomTextBoxButtonGroup _currentSideName;
 
         protected DataGridViewPanel<OperationDataVO> _tighteningDataPanel;
-        protected ConcurrentBag<OperationDataVO> _tighteningDataVOs = new();
+        internal List<OperationDataVO> _tighteningDataVOs = new();
+        internal List<OperationDataVO> TighteningDataVOs => _tighteningDataVOs;
 
         protected WorkingProcessPanel _workingProcessPanel;
 
@@ -163,7 +169,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
         // 任务相关
         protected List<String> lockMsgs = new();
         protected List<String> informationMsgs = new();
-        protected OperationDataDTO? currentOperationData;
+        internal OperationDataDTO? currentOperationData;
         #endregion
 
         #region Properties
@@ -175,10 +181,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         public MissionRecordDTO? MissionRecord => _missionRecord;
         public Func<string, bool>? ActiveBarcodeInterceptor { get; set; }
-        protected virtual bool IsExcelExportEnabled => false;
-        protected virtual bool IsTxtExportEnabled => false;
-        protected virtual string ExportBasePath => MainUtils.GetDefaultStoragePath();
+        internal virtual bool IsExcelExportEnabled => false;
+        internal virtual bool IsTxtExportEnabled => false;
+        internal virtual string ExportBasePath => MainUtils.GetDefaultStoragePath();
+        internal virtual List<OperationDataField> ExportFields =>
+            MainUtils.GetOperationDataFields(ExportSortConfig);
         protected virtual List<int> ExportSortConfig => MainUtils.GetDefaultSortConfig();
+        protected internal virtual Task OnTighteningDataStored(OperationDataDTO dto) => Task.CompletedTask;
+
+        /// <summary>安全入队，Channel 关闭时记录 Warn 而非抛异常。</summary>
+        protected async ValueTask EnqueueSafelyAsync(DataStorageMessage msg) {
+            try {
+                await _messageQueue.EnqueueAsync(msg);
+            } catch (ChannelClosedException) {
+                logger.Warn($"[{_mission?.name ?? "Unknown"}] Channel closed, {msg.GetType().Name} discarded");
+            }
+        }
         #endregion
 
         public AWorkplaceContentPanel() { }
@@ -1291,6 +1309,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Reset export trigger
             _exportTriggered = 0;
 
+            // 消息队列初始化
+            _disposeSignaled = 0;
+            _consumerCts?.Cancel();
+            if (_consumer?.ConsumeTask != null) {
+                // 等待旧 consumer 退出（500ms），防止与 Clear() 并发
+                Task.WhenAny(_consumer.ConsumeTask, Task.Delay(500)).GetAwaiter().GetResult();
+            }
+            _consumerCts?.Dispose();
+            _consumerCts = new CancellationTokenSource();
+            _tighteningDataVOs.Clear();
+            _messageQueue = new ChannelMessageQueue<DataStorageMessage>();
+            _consumer = new DataStorageConsumer(MainUtils.GetLogger(GetType()), this, _messageQueue.Channel);
+            _consumer.Crashed += () => {
+                if (!IsDisposed)
+                    BeginInvoke(() => WidgetUtils.ShowErrorPopUp("数据存储服务异常中断，请联系管理员"));
+            };
+            _consumer.Start(_consumerCts.Token);
+
             // Reset all bolts
             foreach (int sideId in _allBolts.Keys) {
                 // Sort all bolts
@@ -2238,11 +2274,11 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // 读取到控制器传回的数据后进行处理
-        protected virtual void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
+        protected virtual async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Entry, deviceId={deviceId}, torque={data.torque}, angle={data.angle}, tightening_status={data.tightening_status}, result_type={data.result_type}");
 
-            BeginInvoke(() => {
+            BeginInvoke(async () => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
                     logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Task not activated, ignoring data");
@@ -2451,7 +2487,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 // Store data
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
                                 logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Storing tightening data (OK)");
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                 if (nextIndex < currentSideBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
@@ -2520,7 +2556,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
                                 // 记录数据
                                 logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Storing tightening data (NG)");
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                 // Should not lock in the first place when it has error
                                 if (MainUtils.IsArmLocatingEnabled()) {
@@ -2543,7 +2579,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             if (MainUtils.GetStoreLooseningData()) {
                                 logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Storing loosening data");
                                 // 记录数据
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                             }
                         }
                     } else {
@@ -2556,94 +2592,17 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
         protected virtual async Task DoAfterRecevingCurveDataAsync(CurveDataTemp data, int deviceId) {
             string taskName = _mission?.name ?? "Unknown";
-            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, time_stamp={data.time_stamp}, result_data_identifier={data.result_data_identifier}, data_type={data.data_type}");
+            logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Entry, deviceId={deviceId}, identifier={data.result_data_identifier}");
 
-            await Task.Run(async () => {
-                try {
-                    int max = 50;
-                    int count = 0;
-                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Waiting for currentOperationData, max attempts={max}");
-                    while (currentOperationData == null && count < max) {
-                        await Task.Delay(200);
-                        count++;
-                    }
-                    logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Wait completed, attempts={count}, hasData={currentOperationData != null}");
-
-                    if (currentOperationData != null) {
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Converting CurveDataTemp to CurveDataDTO");
-                        CurveDataDTO dataDTO = new();
-                        CommonUtils.ObjectConverter<CurveDataTemp, CurveDataDTO>(data, dataDTO);
-
-                        dataDTO.operation_data_id = currentOperationData.id;
-                        logger.Debug($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Storing curve data, operation_data_id={currentOperationData.id}");
-                        _apis.AddOrUpdateCurveData(new(dataDTO));
-                        logger.Info($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Curve data stored successfully");
-                    } else {
-                        string errorMsg = $"Can't get current operation data after receiving curve data, data time stamp = {data.time_stamp}, id = {data.result_data_identifier}, type = {data.data_type}";
-                        logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - {errorMsg}");
-                        throw new System.IO.InvalidDataException(errorMsg);
-                    }
-                } catch (Exception e) {
-                    logger.Error($"[Workplace:{taskName}] DoAfterRecevingCurveDataAsync - Error occurred while handling curve data, e: {e}");
-                }
+            // 必须通过 BeginInvoke 入队，确保与 TighteningData 的 UI 线程入队顺序一致。
+            // TighteningData 在 DoAfterRecevingTighteningDataAsync 的 BeginInvoke 中入队，
+            // 若此处直接入队（非 UI 线程），会导致曲线先于拧紧到达消费者，currentOperationData 为 null。
+            BeginInvoke(async () => {
+                await EnqueueSafelyAsync(new CurveDataMessage(data, deviceId));
             });
         }
 
-        protected virtual async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            string taskName = _mission?.name ?? "Unknown";
-            logger.Debug($"[Workplace:{taskName}] StoreTighteningData - Entry, bolt_serial={operationDataDTO.bolt_serial_num}, torque={operationDataDTO.torque}, angle={operationDataDTO.angle}, status={operationDataDTO.tightening_status}");
-
-            // 等待锁，确保排队执行
-            logger.Debug($"[Workplace:{taskName}] StoreTighteningData - Waiting for lock");
-            await _storeTighteningDataLock.WaitAsync();
-            logger.Debug($"[Workplace:{taskName}] StoreTighteningData - Lock acquired");
-            try {
-                await StoreTighteningDataInternal(operationDataDTO);
-            } finally {
-                // 确保锁总是被释放
-                _storeTighteningDataLock.Release();
-                logger.Debug($"[Workplace:{taskName}] StoreTighteningData - Lock released");
-            }
-        }
-
-        protected virtual async Task StoreTighteningDataInternal(OperationDataDTO operationDataDTO) {
-            string taskName = _mission?.name ?? "Unknown";
-            logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - Start, bolt_serial={operationDataDTO.bolt_serial_num}, torque={operationDataDTO.torque}, angle={operationDataDTO.angle}");
-
-            try {
-                // 数据库存储
-                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Starting database storage");
-                await StoreDataToDatabaseAsync(operationDataDTO);
-                logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Database storage completed");
-
-                // 数据转换（非UI线程安全操作）
-                Settings settings = ConfigUtils.LoadConfig<Settings>();
-                if (settings.hide_loosening_data_in_workplace.ToYesOrNoBool() && operationDataDTO.result_type != (int) TightenOrLoosen.TIGHTENING) {
-                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Skip current data because do not want to show loosening data(id={operationDataDTO.id})...");
-                } else {
-                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Converting OperationDataDTO to OperationDataVO for UI");
-                    OperationDataVO dataFormatted = new();
-                    CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-
-                    // 使用线程安全的ConcurrentBag（在UI线程外添加）
-                    _tighteningDataVOs.Add(dataFormatted);
-                    logger.Debug($"[Workplace:{taskName}] StoreTighteningDataInternal - Data added to ConcurrentBag, total count={_tighteningDataVOs.Count}");
-
-                    // UI更新
-                    BeginInvoke(() => {
-                        // 创建快照用于UI显示
-                        RefreshTighteningDataPanel(_tighteningDataVOs.ToList());
-                        logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - UI panel refreshed successfully");
-                    });
-                }
-            } catch (Exception e) {
-                logger.Error($"[Workplace:{taskName}] StoreTighteningDataInternal - Error during data storage operations: {e}");
-            } finally {
-                logger.Info($"[Workplace:{taskName}] StoreTighteningDataInternal - End");
-            }
-        }
-
-        protected virtual async Task StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
+        internal virtual async Task<OperationDataDTO> StoreDataToDatabaseAsync(OperationDataDTO operationDataDTO) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Info($"[Workplace:{taskName}] StoreDataToDatabaseAsync - Start, bolt_serial={operationDataDTO.bolt_serial_num}");
 
@@ -2657,6 +2616,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
             } finally {
                 logger.Debug($"[Workplace:{taskName}] StoreDataToDatabaseAsync - End");
             }
+
+            return currentOperationData;
         }
 
         protected virtual async Task OnMissionCompleted(WorkplaceProcessStatus status) {
@@ -2665,51 +2626,29 @@ namespace OperationGuidance_new.Views.AbstractViews {
             if (!IsExcelExportEnabled && !IsTxtExportEnabled) return;
 
             string taskName = _mission?.name ?? "Unknown";
-            logger.Info($"[Workplace:{taskName}] OnMissionCompleted - Start, status={status}");
+            string result = status == WorkplaceProcessStatus.FINISHED_OK ? "OK" : "NG";
+            await EnqueueSafelyAsync(new ExportDataMessage(result));
+            logger.Info($"[Workplace:{taskName}] Export message enqueued, result={result}");
+        }
 
-            try {
-                if (await _storeTighteningDataLock.WaitAsync(TimeSpan.FromSeconds(5))) {
-                    _storeTighteningDataLock.Release();
-                } else {
-                    logger.Warn($"[Workplace:{taskName}] OnMissionCompleted - Drain timeout");
+        internal async Task StopMessageQueueAsync() {
+            if (_messageQueue == null) return;
+            _messageQueue.TryComplete();
+            if (_consumer?.ConsumeTask != null) {
+                var timeout = Task.Delay(3000);
+                var completed = await Task.WhenAny(_consumer.ConsumeTask, timeout);
+                if (ReferenceEquals(completed, timeout)) {
+                    logger.Warn("[StopMessageQueue] Drain timeout (3s), cancelling consumer — remaining messages may be lost");
+                    _consumerCts?.Cancel();
+                    await Task.WhenAny(_consumer.ConsumeTask, Task.Delay(500));
                 }
-
-                var snapshot = GetTighteningDataSnapshot();
-                if (snapshot.Count == 0) return;
-
-                string result = status == WorkplaceProcessStatus.FINISHED_OK ? "OK" : "NG";
-                var fields = MainUtils.GetOperationDataFields(ExportSortConfig);
-
-                // 回填 parts_bar_code 到每个 VO（同一批次所有行共享同一个物料码）
-                if (_missionRecord?.parts_bar_code != null) {
-                    foreach (var vo in snapshot) {
-                        vo.parts_bar_code = _missionRecord.parts_bar_code;
-                    }
-                }
-
-                var request = new ExportRequest {
-                    Data = snapshot, Fields = fields, BasePath = ExportBasePath,
-                    ProductBatch = _missionRecord?.product_batch,
-                    ProductBarCode = _missionRecord?.product_bar_code,
-                    CompletedAt = DateTime.Now, Result = result,
-                    EnableExcel = IsExcelExportEnabled, EnableTxt = IsTxtExportEnabled,
-                    MissionName = _mission?.name,
-                    WorkstationName = snapshot[0].workstation_name,
-                };
-
-                await new DataExportService().ExportAsync(request);
-                _tighteningDataVOs.Clear();
-                BeginInvoke(() => RefreshTighteningDataPanel(new List<OperationDataVO>()));
-                logger.Info($"[Workplace:{taskName}] OnMissionCompleted - Done");
-            } catch (Exception ex) {
-                logger.Error($"[Workplace:{taskName}] OnMissionCompleted - Error: {ex}");
             }
         }
 
-        protected void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
+        internal void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] RefreshTighteningDataPanel - Entry");
-            // 提前创建快照，避免在UI线程中多次枚举ConcurrentBag
+            // 快照已在消费者线程创建，此处仅绑定到 UI 控件
             if (vos == null) {
                 logger.Debug($"[Workplace:{taskName}] RefreshTighteningDataPanel - vos is null, returning");
                 return;
@@ -2718,11 +2657,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
             logger.Debug($"[Workplace:{taskName}] RefreshTighteningDataPanel - Snapshot created, count={snapshot.Count}");
             _tighteningDataPanel.DataSource = snapshot;
             logger.Debug($"[Workplace:{taskName}] RefreshTighteningDataPanel - DataSource updated");
-        }
-
-        // 获取_tighteningDataVOs的线程安全快照
-        protected List<OperationDataVO> GetTighteningDataSnapshot() {
-            return _tighteningDataVOs.ToList();
         }
 
         protected virtual void ResetMissionToDefault() => TerminateMission(WorkplaceProcessStatus.UNACTIVATED);
@@ -2798,6 +2732,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             _isRedo = (int) YesOrNo.NO;
 
             await OnMissionCompleted(status);
+            await StopMessageQueueAsync();
 
             // If it's not challenge mission, then check auto activation logic
             if (!IsChallengeMission()
@@ -2880,11 +2815,21 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual void InitializeAfterHandelCreated() { }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing && Interlocked.Exchange(ref _disposeSignaled, 1) == 0) {
+                _messageQueue?.TryComplete();
+                _consumerCts?.Cancel();
+                _consumerCts?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
         #endregion
 
         #region Events
         protected override async void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
+
             BeginInvoke(new Action(GetBarCodeMatchingRules));
 
             await Task.Run(() => {

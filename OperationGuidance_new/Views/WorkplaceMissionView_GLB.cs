@@ -3,6 +3,7 @@ using CustomLibrary.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.DataStorage;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
@@ -44,15 +45,19 @@ namespace OperationGuidance_new.Views {
             _operationDatasCached = new();
         }
 
-        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            await base.StoreTighteningData(operationDataDTO);
-            _operationDatasCached.Add(operationDataDTO);
+        protected internal override Task OnTighteningDataStored(OperationDataDTO dto) {
+            _operationDatasCached.Add(dto);
+            return Task.CompletedTask;
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
+            // 先排空（base），确保 OnTighteningDataStored 全部触发
+            await base.TerminateMission(status);
+
+            // 批量写入外部数据库（此时数据完整）
             StoreTighteningDataToOuterDatabase();
 
-            // Send job finished signal to plc
+            // PLC 信号（保持原有逻辑）
             if (_communicationTask != null && _communicationTask.Connected
                 && _communicationTask.CommunicationType is CommunicationSiemensPlc && _communicationTask.PlcServer != null
                 && _communicationTask.PlcServer.Plc != null && _communicationTask.PlcServer.Plc.IsConnected) {
@@ -61,12 +66,14 @@ namespace OperationGuidance_new.Views {
                 plcServer.SendJobFinished(true);
                 plcServer.SendJobResult(result);
             }
-
-            await base.TerminateMission(status);
         }
 
         protected override void OnHandleDestroyed(EventArgs e) {
-            StoreTighteningDataToOuterDatabase();
+            // 安全网：窗体异常关闭时尝试排空队列并写入外部数据库
+            // 正常路径下 TerminateMission 已处理，此处防止异常关闭导致数据丢失
+            if (_operationDatasCached.Count > 0) {
+                StoreTighteningDataToOuterDatabase();
+            }
             base.OnHandleDestroyed(e);
         }
 
@@ -233,7 +240,7 @@ namespace OperationGuidance_new.Views {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Entry, deviceId={deviceId}, torque={data.torque}, angle={data.angle}, tightening_status={data.tightening_status}, result_type={data.result_type}");
 
-            BeginInvoke(() => {
+            BeginInvoke(async () => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
                     logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Task not activated, ignoring data");
@@ -442,7 +449,7 @@ namespace OperationGuidance_new.Views {
                                 // Store data
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
                                 logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Storing tightening data (OK)");
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                 if (nextIndex < currentSideBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
@@ -514,7 +521,7 @@ namespace OperationGuidance_new.Views {
                                     logger.Error($"[GLB:DoAfterRecevingTighteningDataAsync] Max NG count reached, terminating mission");
 
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                     // Stop the mission
                                     TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
@@ -528,7 +535,7 @@ namespace OperationGuidance_new.Views {
                                     logger.Debug($"[GLB:DoAfterRecevingTighteningDataAsync] Setting mode to LOOSENING for retry");
 
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                     // 需要管理员密码弹窗
                                     if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
@@ -556,7 +563,7 @@ namespace OperationGuidance_new.Views {
                             if (MainUtils.GetStoreLooseningData()) {
                                 logger.Debug($"[Workplace:{taskName}] DoAfterRecevingTighteningDataAsync - Storing loosening data");
                                 // 记录数据
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                             }
                         }
                     } else {

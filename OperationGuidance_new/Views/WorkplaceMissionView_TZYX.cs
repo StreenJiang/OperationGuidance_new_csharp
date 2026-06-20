@@ -6,6 +6,7 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.DataStorage;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
@@ -515,9 +516,9 @@ namespace OperationGuidance_new.Views {
             }
         }
 
-        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            OperationDataDTOs.Add(operationDataDTO);
-            await base.StoreTighteningData(operationDataDTO);
+        protected internal override Task OnTighteningDataStored(OperationDataDTO dto) {
+            OperationDataDTOs.Add(dto);
+            return Task.CompletedTask;
         }
 
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
@@ -569,7 +570,7 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
-            BeginInvoke(() => {
+            BeginInvoke(async () => {
                 // Nonactivated or finished will not handle any received data
                 if (!_activated) {
                     return;
@@ -753,7 +754,7 @@ namespace OperationGuidance_new.Views {
 
                                 // Store data
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                 if (nextIndex < currentSideBolts.Count) {
                                     if (CheckIfIsMultiDeviceIndependenceMode()) {
@@ -817,7 +818,7 @@ namespace OperationGuidance_new.Views {
                                 dataDTO.tightening_status = (int) TighteningStatus.NG;
 
                                 // 记录数据
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                 // Should not lock in the first place when it has error
                                 if (MainUtils.IsArmLocatingEnabled()) {
@@ -837,7 +838,7 @@ namespace OperationGuidance_new.Views {
 
                             if (MainUtils.GetStoreLooseningData()) {
                                 // 记录数据
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                             }
                         }
                     }

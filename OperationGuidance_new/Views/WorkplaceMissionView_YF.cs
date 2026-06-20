@@ -7,6 +7,7 @@ using OperationGuidance_new.Configs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.DataStorage;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
@@ -1042,7 +1043,7 @@ namespace OperationGuidance_new.Views {
 
                                 // Store data
                                 dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                             } else {
                                 // Lock first
                                 if (_locating_enabled) {
@@ -1063,7 +1064,7 @@ namespace OperationGuidance_new.Views {
                                     _workingProcessPanel.NGReasons = errorMsg;
 
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                     TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
 
@@ -1075,7 +1076,7 @@ namespace OperationGuidance_new.Views {
                                     AddLockMsg(_workingProcessPanel.NGReasons);
 
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                                 }
 
                                 // Set status of data to ng
@@ -1094,7 +1095,7 @@ namespace OperationGuidance_new.Views {
 
                             if (MainUtils.GetStoreLooseningData()) {
                                 // 记录数据
-                                StoreTighteningData(dataDTO);
+                                await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                             }
                         }
                     }

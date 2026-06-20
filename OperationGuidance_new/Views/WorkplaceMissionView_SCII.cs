@@ -10,6 +10,7 @@ using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.DataStorage;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
@@ -101,9 +102,9 @@ namespace OperationGuidance_new.Views {
         }
 
         // 导出开关 — SCII 从 ExportConfig 读取
-        protected override bool IsExcelExportEnabled => ExportConfig.Instance.ExcelExportEnabled;
-        protected override bool IsTxtExportEnabled => ExportConfig.Instance.TxtExportEnabled;
-        protected override string ExportBasePath => ExportConfig.Instance.StoragePath;
+        internal override bool IsExcelExportEnabled => ExportConfig.Instance.ExcelExportEnabled;
+        internal override bool IsTxtExportEnabled => ExportConfig.Instance.TxtExportEnabled;
+        internal override string ExportBasePath => ExportConfig.Instance.StoragePath;
         protected override List<int> ExportSortConfig => ExportConfig.Instance.SortConfig;
 
         protected override void InitSerialPortTask(KeyValuePair<int, SerialPortTask> pair) {
@@ -1389,7 +1390,7 @@ namespace OperationGuidance_new.Views {
             logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Received tightening data, device ID: {deviceId}, torque: {data.torque}, angle: {data.angle}, status: {data.tightening_status}");
 
             await Task.Run(() => {
-                BeginInvoke(() => {
+                BeginInvoke(async () => {
                     // Nonactivated or finished will not handle any received data
                     if (!_activated) {
                         logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Mission not activated, skipping data");
@@ -1529,7 +1530,7 @@ namespace OperationGuidance_new.Views {
 
                                     // Store data
                                     dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                                     logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Stored tightening data with OK status");
 
                                     if (nextIndex < currentSideBolts.Count) {
@@ -1573,7 +1574,7 @@ namespace OperationGuidance_new.Views {
                                         logger.Error($"[SCII:DoAfterRecevingTighteningDataAsync] Max NG count reached, terminating mission");
 
                                         // 记录数据
-                                        StoreTighteningData(dataDTO);
+                                        await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                         // Stop the mission
                                         TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
@@ -1587,7 +1588,7 @@ namespace OperationGuidance_new.Views {
                                         logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Setting mode to LOOSENING for retry");
 
                                         // 记录数据
-                                        StoreTighteningData(dataDTO);
+                                        await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                         // 需要管理员密码弹窗
                                         if (_mission.password_need_time != 0 && currentBolt.NgTimes >= _mission.password_need_time) {
@@ -1617,7 +1618,7 @@ namespace OperationGuidance_new.Views {
 
                                 if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                                     logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Stored loosening data");
                                 } else {
                                     logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Skipping loosening data storage based on configuration");

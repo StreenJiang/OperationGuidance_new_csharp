@@ -140,20 +140,19 @@ namespace OperationGuidance_new.Views {
 
             bool isPointInspection = _mission.is_challenge_mission == (int) YesOrNo.YES;
 
-            if (isPointInspection) {
-                _inBoundStationOk = false;
-                _lidCodePrinted = false;
-                _lastPrintedConfig = null;
-                await base.TerminateMission(status);
-            } else {
+            // 排空 → 钩子全部触发（包括 SetPset, HandleScrewBitCounter, ResizeChildren, DelayedReconcile/Refresh）
+            await base.TerminateMission(status);
+
+            // 重置状态（原代码两个分支都执行，无论点检模式）
+            _inBoundStationOk = false;
+            _lidCodePrinted = false;
+            _lastPrintedConfig = null;
+
+            // MES 发送必须在 base 之后（排空完成，_operationDataDTOs 完整）
+            if (!isPointInspection) {
                 await SendDataToMES(_operationDataDTOs);
-                _inBoundStationOk = false;
-                _lidCodePrinted = false;
-                _lastPrintedConfig = null;
-                if (await OutBound()) {
-                    await base.TerminateMission(status);
+                if (await OutBound())
                     SwitchMissionByRecipe(_getRecipeCode());
-                }
             }
         }
 
@@ -278,24 +277,9 @@ namespace OperationGuidance_new.Views {
             await Task.CompletedTask;
         }
 
-        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            logger.Info("StoreTighteningData start ........");
-
-            // Use task to store data asynchronously
-            await StoreDataToDatabaseAsync(operationDataDTO);
-
-            // 将数据暂存，用于发送给 MES
-            _operationDataDTOs.Add(operationDataDTO);
-
-            // 先将VOs加入到实时显示数据列表中
-            OperationDataVO dataFormatted = new();
-            CommonUtils.ObjectConverter<OperationDataDTO, OperationDataVO>(operationDataDTO, dataFormatted);
-            _tighteningDataVOs.Add(dataFormatted);
-
-            RefreshTighteningDataPanel(_tighteningDataVOs);
-            logger.Info("StoreTighteningData showing to panel end ........");
-
-            logger.Info("StoreTighteningData end ........");
+        protected internal override Task OnTighteningDataStored(OperationDataDTO dto) {
+            _operationDataDTOs.Add(dto);
+            return Task.CompletedTask;
         }
 
         public async Task SendToPrinter() {

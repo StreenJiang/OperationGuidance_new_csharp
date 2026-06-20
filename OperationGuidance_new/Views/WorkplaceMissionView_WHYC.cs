@@ -7,6 +7,7 @@ using OperationGuidance_new.HttpObjects.Requests;
 using OperationGuidance_new.HttpObjects.Response;
 using OperationGuidance_new.Tasks;
 using OperationGuidance_new.Utils;
+using OperationGuidance_new.Utils.DataStorage;
 using OperationGuidance_new.Views.AbstractViews;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_new.Views.SubViews;
@@ -203,7 +204,7 @@ namespace OperationGuidance_new.Views {
 
         protected override async void DoAfterRecevingTighteningDataAsync(TighteningData data, int deviceId) {
             await Task.Run(() => {
-                BeginInvoke(() => {
+                BeginInvoke(async () => {
                     // Nonactivated or finished will not handle any received data
                     if (!_activated) {
                         return;
@@ -392,7 +393,7 @@ namespace OperationGuidance_new.Views {
 
                                     // Store data
                                     dataDTO.tightening_status = (int) TighteningStatus.OK;
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                     if (nextIndex < currentSideBolts.Count) {
                                         if (CheckIfIsMultiDeviceIndependenceMode()) {
@@ -452,7 +453,7 @@ namespace OperationGuidance_new.Views {
                                     _errorMsg = errorMsg;
 
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
 
                                     // Set status of data to ng
                                     dataDTO.tightening_status = (int) TighteningStatus.NG;
@@ -470,7 +471,7 @@ namespace OperationGuidance_new.Views {
 
                                 if (MainUtils.GetStoreLooseningData()) {
                                     // 记录数据
-                                    StoreTighteningData(dataDTO);
+                                    await EnqueueSafelyAsync(new TighteningDataMessage(dataDTO));
                                 }
                             }
                         }
@@ -529,6 +530,11 @@ namespace OperationGuidance_new.Views {
             }
         }
 
+        protected internal override Task OnTighteningDataStored(OperationDataDTO dto) {
+            UploadDataToMES(dto);
+            return Task.CompletedTask;
+        }
+
         private async void UploadDataToMES(OperationDataDTO operationDataDTO) {
             string uploadDataUri = MainUtils.GetUploadDataApi();
 
@@ -574,11 +580,6 @@ namespace OperationGuidance_new.Views {
 
                 return "0.000";
             }
-        }
-
-        protected override async Task StoreTighteningData(OperationDataDTO operationDataDTO) {
-            await base.StoreTighteningData(operationDataDTO);
-            UploadDataToMES(operationDataDTO);
         }
 
         // Action after receving bar code msg
