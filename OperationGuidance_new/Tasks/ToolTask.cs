@@ -204,6 +204,7 @@ namespace OperationGuidance_new.Tasks {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect already in progress, skipping");
                 return;
             }
+            _currentPSet = -1;  // 重连后缓存失效，强制下次 SendPSetAsync 真实下发
             Task.Run(async () => {
                 try {
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Initiating connection");
@@ -253,13 +254,11 @@ namespace OperationGuidance_new.Tasks {
         }
         public void CloseToTriggerReconnection() {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection to trigger reconnection...");
-            _currentPSet = -1;  // 连接断开后缓存不可信，下次发送时强制真实下发
             socketClient?.Close();
             socketClient = null;
         }
         public async Task CloseToTriggerReconnectionAsync(CancellationToken token = default) {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync start, _currentPSet={_currentPSet}, hasRunTask={_runTaskTask != null}");
-            _currentPSet = -1;
             socketClient?.Close();
             socketClient = null;
             _connectInProgress = 0;
@@ -597,7 +596,7 @@ namespace OperationGuidance_new.Tasks {
 
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnected after {pollCount * 200}ms");
 
-            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 CloseToTriggerReconnectionAsync 中重置）
+            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 Connect 中重置）
             bool psetResult = await SendPSetAsync(pSetNumber);
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset SendPSetAsync result={psetResult}, pSetNumber={pSetNumber}");
             if (!psetResult) {
