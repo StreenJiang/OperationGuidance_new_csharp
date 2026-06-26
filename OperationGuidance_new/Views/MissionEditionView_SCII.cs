@@ -31,6 +31,7 @@ namespace OperationGuidance_new.Views {
 
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage_SCII? EditionPage { get => _editionPage; set => _editionPage = value; }
+        public event Action<int, ProductMissionDTO?>? MissionSaved;
 
         public MissionEditionView_SCII() {
             apis = SystemUtils.GetApis();
@@ -253,6 +254,7 @@ namespace OperationGuidance_new.Views {
                             DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
                             if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                _parentView.MissionSaved?.Invoke(_parentView.MissionDTO.id, null);
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
                                 Modified = false;
                                 // 删除后跳转至任务列表界面
@@ -285,6 +287,7 @@ namespace OperationGuidance_new.Views {
                                 predecessor_mission_id = _missionDTO.predecessor_mission_id,
                                 predecessor_part_mission_ids = _missionDTO.predecessor_part_mission_ids,
                                 multi_device_independence = _missionDTO.multi_device_independence,
+                                skip_screw_points = _missionDTO.skip_screw_points,
                             };
 
                             if (_missionDTO.ProductSides != null && _missionDTO.ProductSides.Count > 0) {
@@ -359,6 +362,7 @@ namespace OperationGuidance_new.Views {
                                     ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                                 }
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                                 // 复制成功后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                                 Dispose();
@@ -432,6 +436,23 @@ namespace OperationGuidance_new.Views {
                 _missionName.GetTextBox(0).IsError = false;
 
                 _currentProductImageFile.SaveSideInfo();
+
+                List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                if (allMissions.Any(m => m.name == _missionDTO.name && m.id != _missionDTO.id)) {
+                    WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
+                    return;
+                }
+
+                // 跳过螺丝点位时，必须至少配置一个点位以获取站点信息
+                if (_missionDTO.skip_screw_points == (int)YesOrNo.YES) {
+                    bool hasAnyBolt = _sideButtons.Count > 0 && _sideButtons.Any(side =>
+                        side.BoltButtons != null && side.BoltButtons.Values.Any(bolts => bolts.Count > 0));
+                    if (!hasAnyBolt) {
+                        WidgetUtils.ShowWarningPopUp("已开启\"跳过螺丝点位\"，但未配置任何螺丝点位。请至少添加一个产品面及点位以确定站点信息");
+                        return;
+                    }
+                }
+
                 // Store to database
                 AddOrUpdateProductMissionReq req = new(_missionDTO);
                 AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
@@ -452,6 +473,7 @@ namespace OperationGuidance_new.Views {
                         ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                     }
                     MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
 
                     // 保存后跳转至任务列表界面
                     WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
@@ -478,6 +500,13 @@ namespace OperationGuidance_new.Views {
                         check = false;
                         _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
+                    }
+
+                    List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                    if (allMissions.Any(m => m.name == missionName && m.id != _missionDTO.id)) {
+                        check = false;
+                        _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                        warningMsg += $"{warningIndex++}. 任务名称已存在，请修改\r\n";
                     }
 
                     string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
@@ -649,6 +678,7 @@ namespace OperationGuidance_new.Views {
                         _missionDTO.name = missionName;
                         _missionDTO.is_challenge_mission = (int) (_detialPopUpForm.IsChallengeMission.Checked ? YesOrNo.YES : YesOrNo.NO);
                         _missionDTO.is_first_mission = (int) (_detialPopUpForm.IsFirstMission.Checked ? YesOrNo.YES : YesOrNo.NO);
+                        _missionDTO.skip_screw_points = (int) (_detialPopUpForm.SkipScrewPoints.Checked ? YesOrNo.YES : YesOrNo.NO);
                         _missionDTO.challenge_mission_id = _detialPopUpForm.ChallengMission.Value;
                         _missionDTO.max_ng_num = int.Parse(maxNGNum);
                         _missionDTO.password_need_time = int.Parse(passwordNeedTime);
@@ -1555,12 +1585,13 @@ namespace OperationGuidance_new.Views {
             protected readonly int _columnCount = 2;
             protected readonly double _boxRatioOneLine = 7.9;
             protected readonly double _boxRatio = 5.75;
-            protected int _screwBitCounterMax = 10;
+            protected readonly int _screwBitCounterMax = 10;
             protected ProductMissionDTO _missionDTO;
             protected TableLayoutPanel _tablePanel;
             protected CustomTextBoxGroup _missionName;
             protected ToggleButtonGroup _isChallengeMission;
             protected ToggleButtonGroup _isFirstMission;
+            protected ToggleButtonGroup _skipScrewPoints;
             protected CustomComboBoxGroup<int> _challengMission;
             protected CustomTextBoxGroup _maxNGNum;
             protected CustomTextBoxGroup _passwordNeedTime;
@@ -1585,6 +1616,7 @@ namespace OperationGuidance_new.Views {
             public List<CustomTextBoxButtonGroup> ScrewBitCounters { get => _screwBitCounters; set => _screwBitCounters = value; }
             public ToggleButtonGroup IsChallengeMission { get => _isChallengeMission; set => _isChallengeMission = value; }
             public ToggleButtonGroup IsFirstMission { get => _isFirstMission; set => _isFirstMission = value; }
+            public ToggleButtonGroup SkipScrewPoints { get => _skipScrewPoints; set => _skipScrewPoints = value; }
             public CustomComboBoxGroup<int> ChallengMission { get => _challengMission; set => _challengMission = value; }
             public MissionDetailPopUpForm(ProductMissionDTO missionDTO, List<ProductMissionDTO> allOtherMissions, List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs, List<ScrewBitCounterDTO> screwBitCounterDTOs) {
                 Settings settings = ConfigUtils.LoadConfig<Settings>();
@@ -1600,6 +1632,11 @@ namespace OperationGuidance_new.Views {
                 };
 
                 _missionName = new("任务名称") {
+                    Parent = _tablePanel,
+                    Ratio = _boxRatioOneLine,
+                    NameAlignment = HorizontalAlignment.Right,
+                };
+                _skipScrewPoints = new("跳过螺丝点位") {
                     Parent = _tablePanel,
                     Ratio = _boxRatioOneLine,
                     NameAlignment = HorizontalAlignment.Right,
@@ -1742,6 +1779,25 @@ namespace OperationGuidance_new.Views {
                 SignButton addButton = _screwBitCounters[0].AddButton<SignButton>();
                 addButton.Icon = Properties.Resources.sign_plus;
                 addButton.Click += (s, e) => AddScrewBitCounter();
+
+                _tablePanel.SetColumnSpan(_missionName, _columnCount);
+                _tablePanel.SetColumnSpan(_challengMission, _columnCount);
+                _tablePanel.SetColumnSpan(_skipScrewPoints, _columnCount);
+                _tablePanel.SetColumnSpan(_productsBarCodeNum, _columnCount);
+                _tablePanel.SetColumnSpan(_predecessorMission, _columnCount);
+                _tablePanel.SetColumnSpan(_partsBarCodeNum, _columnCount);
+                _tablePanel.SetColumnSpan(_screwBitCounters[0], _columnCount);
+
+                async void ShowWarningIfHasAsync(string errorMsg) {
+                    if (!string.IsNullOrEmpty(errorMsg)) {
+                        await Task.Run(() => {
+                            WidgetUtils.MainForm.BeginInvoke(async () => {
+                                await Task.Delay(500);
+                                WidgetUtils.ShowWarningPopUp($"物料前置任务配置有误：\r\n{errorMsg}");
+                            });
+                        });
+                    }
+                }
             }
 
             protected virtual void InitChallengeControls() {
@@ -1790,6 +1846,7 @@ namespace OperationGuidance_new.Views {
 
             protected virtual void FillChallengeFields() {
                 _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
+                _skipScrewPoints.Checked = _missionDTO.skip_screw_points == (int) YesOrNo.YES;
                 _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");
                 if (_missionDTO.predecessor_mission_id != null) {
@@ -2053,7 +2110,7 @@ namespace OperationGuidance_new.Views {
 
             public ProductMissionDTO MissionDTO { get => _missionDTO; set => _missionDTO = value; }
             public ProductSideDTO SideDTO { get => _sideDTO; set => _sideDTO = value; }
-            public ProductImageFile ProductImageFile { set => _productImageFile = value; }
+            public ProductImageFile ProductImageFile { set { _productImageFile?.Dispose(); _productImageFile = value; } }
             public ProductImageFile ProductImageFileNew { get => _productImageFileNew; }
             // Separate by workstation id, key of inner sorted list is serial num of each bolt
             public SortedList<int, List<BoltButton>> BoltButtons { get => _boltButtons; }

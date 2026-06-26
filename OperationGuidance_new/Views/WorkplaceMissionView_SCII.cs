@@ -154,7 +154,7 @@ namespace OperationGuidance_new.Views {
             terminateMissionBtn.Enabled = true;
             terminateMissionBtn.Click += (s, e) => {
                 if (_activated) {
-                    logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active, requesting admin password");
+                    logger.Info($"[SCII:ActionAfterAllInitialized] Interrupt button clicked, mission is active — _missionRecord=[id={_missionRecord?.id}, barcode={_missionRecord?.product_bar_code}], requesting admin password");
                     if (OpenAdminPasswordPopUpForm("任务异常重置任务，请管理员输入权限密码", allowCancel: false)) {
                         logger.Info($"[SCII:ActionAfterAllInitialized] Admin password confirmed, terminating mission with NG status");
                         _ = TerminateMission(WorkplaceProcessStatus.FINISHED_NG);
@@ -170,6 +170,9 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async void ActivateMissionAutomatically() {
+            if (SkipScrewPoints) {
+                return;
+            }
             logger.Debug($"[SCII:ActivateMissionAutomatically] Checking if USB scanner is enabled");
 
             if (MainUtils.IsUSBScannerEnabled()) {
@@ -371,11 +374,20 @@ namespace OperationGuidance_new.Views {
                     logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission not activated, getting general excluded rules");
                 }
 
+                // 汇总所有点位绑定的物料码规则 ID（螺丝点位跳过顺序校验用）
+                HashSet<int> boltBoundRuleIds = (_mission.ProductSides ?? Enumerable.Empty<ProductSideDTO>())
+                    .Where(s => s.Bolts != null)
+                    .SelectMany(s => s.Bolts)
+                    .Where(b => !string.IsNullOrEmpty(b.parts_bar_code_ids))
+                    .SelectMany(b => CommonUtils.StringToList(b.parts_bar_code_ids))
+                    .ToHashSet();
+
                 _barCodePopUpForm = new BarCodeInputPopUpForm_SCII(this, ConfigsVariables.BAR_CODE_NOTE, _mission, _activated,
                         _productBarCodeMatchingRules, _partsBarCodeMatchingRules, barCode, _rulesExcluded, CheckLockMsg(WorkingProcessPanel.LockedBoltBarCode)) {
                     Title = "录入条码",
                     BorderColor = ColorConfigs.COLOR_POP_UP_BORDER,
                 };
+                ((BarCodeInputPopUpForm_SCII)_barCodePopUpForm).SetBoltBoundRuleIds(boltBoundRuleIds);
                 if (!_activated) {
                     logger.Debug($"[SCII:OpenBarCodePopUpForm] Adding 'Activate Mission' button");
                     _barCodePopUpForm.AddButton("激活任务").Click += (sender, eventArgs) => {
@@ -395,7 +407,6 @@ namespace OperationGuidance_new.Views {
                             } else {
                                 logger.Info($"[SCII:OpenBarCodePopUpForm] Activating mission");
                                 ActivateMission();
-                                _barCodePopUpForm.Dispose();
                             }
                         } else {
                             logger.Debug($"[SCII:OpenBarCodePopUpForm] Mission already activated, closing popup");
@@ -706,6 +717,7 @@ namespace OperationGuidance_new.Views {
 
             QueryMissionRecordListReq req = new() {
                 MissionId = mId,
+                PageSize = int.MaxValue,
             };
 
             // 如果打开了《班次配置》，则根据班次计算
@@ -1301,6 +1313,7 @@ namespace OperationGuidance_new.Views {
             // Set product batch
             _missionRecord.product_batch = _productBatch.GetTextBox(0).Box.Text;
             logger.Debug($"[SCII:ActionAfterActivatingMission] Product batch set: {_missionRecord.product_batch}");
+            logger.Info($"[SCII:ActionAfterActivatingMission] Before update — _missionRecord.id={_missionRecord.id}");
             _apis.AddOrUpdateMissionRecord(new(_missionRecord));
             logger.Info($"[SCII:ActionAfterActivatingMission] Mission record updated with product batch");
 
@@ -1308,6 +1321,9 @@ namespace OperationGuidance_new.Views {
         }
 
         protected override async Task<bool> ValidationBeforeActivatingMission() {
+            if (SkipScrewPoints) {
+                return true;
+            }
             logger.Debug($"[SCII:ValidationBeforeActivatingMission] Validating before activating mission");
 
             if (await base.ValidationBeforeActivatingMission()) {
@@ -1328,6 +1344,64 @@ namespace OperationGuidance_new.Views {
                 return false;
             }
             return false;
+        }
+
+        private bool SkipScrewPoints => _mission.skip_screw_points == (int)YesOrNo.YES;
+
+        public override async void ActivateMission() {
+            if (SkipScrewPoints) {
+                _backgroundTaskCts.ForEach(cts => {
+                    cts.Cancel();
+                    cts.Dispose();
+                });
+                _backgroundTaskCts.Clear();
+                _activeMissionCts.Cancel();
+                _activeMissionCts.Dispose();
+                _activeMissionCts = new CancellationTokenSource();
+
+                PrepareBeforeActivatingMission();
+                _activated = true;
+
+                // Minimal init — skip base.ActionAfterActivatingMission() to avoid
+                // 500ms delay, tool lock, arm listening, and background tasks
+
+                // 从 _allBolts 获取第一个点位的站点信息（与基类路径一致，避免 3 次 DB 查询）
+                int? workstationId = _allBolts.Values
+                    .SelectMany(b => b)
+                    .Select(b => b.BoltDTO.workstation_id)
+                    .FirstOrDefault();
+                string? workstationName = workstationId != null
+                    ? _workstationsDTOs.FirstOrDefault(dto => dto.id == workstationId.Value)?.name
+                    : null;
+
+                _missionRecord = new() {
+                    mission_id = _mission.id,
+                    product_bar_code = _barCodeObj.ProductBarCode,
+                    parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
+                    mission_result = (int)TighteningStatus.OK,
+                    is_redo = _isRedo,
+                    product_batch = _productBatch.GetTextBox(0).Box.Text,
+                    workstation_id = workstationId,
+                    workstation_name = workstationName,
+                };
+                logger.Info($"[SCII:SkipScrew] Saving mission_record: mission_id={_missionRecord.mission_id}, " +
+                    $"parts_bar_code={_missionRecord.parts_bar_code}, product_batch={_missionRecord.product_batch}, " +
+                    $"workstation_id={_missionRecord.workstation_id}, workstation_name={_missionRecord.workstation_name}");
+                try {
+                    var rsp = _apis.AddOrUpdateMissionRecord(new(_missionRecord));
+                    if (rsp?.MissionRecordDTO != null) {
+                        logger.Info($"[SCII:SkipScrew] mission_record saved OK, id={rsp.MissionRecordDTO.id}");
+                    } else {
+                        logger.Warn($"[SCII:SkipScrew] mission_record save returned null response");
+                    }
+                } catch (Exception ex) {
+                    logger.Error($"[SCII:SkipScrew] mission_record save FAILED: {ex}", ex);
+                }
+
+                TerminateMission(WorkplaceProcessStatus.FINISHED_OK);
+                return;
+            }
+            base.ActivateMission();
         }
 
         protected virtual async Task<bool> CheckScrewBitCount() {
@@ -1353,7 +1427,7 @@ namespace OperationGuidance_new.Views {
         private bool CountScrewBitUsedTime(out ScrewBitCounterDTO screwBitCounter) {
             // Check first
             foreach (ScrewBitCounterDTO sbc in screwBitCounterDTOsCached) {
-                if (sbc.current_counts + sbc.count_each_time > sbc.max_num) {
+                if (sbc.max_num > 0 && sbc.current_counts + sbc.count_each_time > sbc.max_num) {
                     screwBitCounter = sbc;
                     logger.Warn($"[SCII:CountScrewBitUsedTime] Screw bit at position {sbc.bit_position} will exceed usage limit");
                     return false;
@@ -1542,8 +1616,9 @@ namespace OperationGuidance_new.Views {
 
                                         // Update mission result to ok
                                         _missionRecord.mission_result = (int) TighteningStatus.OK;
+                                        logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Before OK update — _missionRecord.id={_missionRecord.id}");
                                         _apis.AddOrUpdateMissionRecord(new(_missionRecord));
-                                        logger.Debug($"[SCII:DoAfterRecevingTighteningDataAsync] Mission record updated with OK result");
+                                        logger.Info($"[SCII:DoAfterRecevingTighteningDataAsync] Mission record updated with OK result");
 
                                         // Checks for challenge mission
                                         if (_mission.is_challenge_mission == (int) YesOrNo.YES) {
@@ -1635,6 +1710,7 @@ namespace OperationGuidance_new.Views {
         protected virtual void DoAfterTighteningOk() { }
         public override async Task TerminateMission(WorkplaceProcessStatus status) {
             logger.Info($"[SCII:TerminateMission] Terminating mission with status: {status}");
+            logger.Info($"[SCII:TerminateMission] State — _missionRecord=[id={_missionRecord?.id}, barcode={_missionRecord?.product_bar_code}, result={_missionRecord?.mission_result}], _activated={_activated}");
 
             SetPset();
             HandleScrewBitCounter();

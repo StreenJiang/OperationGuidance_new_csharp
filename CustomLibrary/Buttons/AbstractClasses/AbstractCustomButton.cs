@@ -43,6 +43,7 @@ namespace CustomLibrary.Buttons.AbstractClasses {
             set {
                 this._label = value;
                 ResizeTextLabel();
+                Invalidate();
             }
         }
         public int? LabelX {

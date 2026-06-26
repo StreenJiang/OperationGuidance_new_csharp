@@ -27,6 +27,8 @@ namespace OperationGuidance_new.Views {
         private ProductMissionDTO? _missionDTO;
         private MissionEditionPage? _editionPage;
 
+        public event Action<int, ProductMissionDTO?>? MissionSaved;
+
         public ProductMissionDTO? MissionDTO { get => _missionDTO; set => _missionDTO = value; }
         public MissionEditionPage? EditionPage { get => _editionPage; set => _editionPage = value; }
 
@@ -229,6 +231,12 @@ namespace OperationGuidance_new.Views {
                             _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                             warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
                         }
+                        List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                        if (allMissions.Any(m => m.name == missionName && m.id != _missionDTO.id)) {
+                            check = false;
+                            _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
+                            warningMsg += $"{warningIndex++}. 任务名称已存在，请修改\r\n";
+                        }
 
                         string maxNGNum = _detialPopUpForm.MaxNGNum.GetTextBox(0).Box.Text;
                         if (string.IsNullOrEmpty(maxNGNum)) {
@@ -312,6 +320,8 @@ namespace OperationGuidance_new.Views {
                             DeleteProductMissionRsp rsp = _apis.DeleteProductMission(req);
                             if (rsp.RsponseCode == (int) HttpResponseCode.OK) {
                                 MessageBox.Show(null, "删除成功！", "删除任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                // 删除后触发事件
+                                _parentView.MissionSaved?.Invoke(_parentView.MissionDTO.id, null);
                                 _parentView.MissionDTO.deleted = (int) YesOrNo.YES;
                                 Modified = false;
                                 // 删除后跳转至任务列表界面
@@ -418,6 +428,8 @@ namespace OperationGuidance_new.Views {
                                     ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                                 }
                                 MessageBox.Show(null, "复制成功！", "复制任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                // 复制后触发事件
+                                _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                                 // 复制成功后跳转至任务列表界面
                                 WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                                 Dispose();
@@ -491,6 +503,11 @@ namespace OperationGuidance_new.Views {
                 _missionName.GetTextBox(0).IsError = false;
 
                 _currentProductImageFile.SaveSideInfo();
+                List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
+                if (allMissions.Any(m => m.name == _missionDTO.name && m.id != _missionDTO.id)) {
+                    WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
+                    return;
+                }
                 // Store to database
                 AddOrUpdateProductMissionReq req = new(_missionDTO);
                 AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
@@ -503,6 +520,8 @@ namespace OperationGuidance_new.Views {
                         ProductImageCache.Invalidate(sideBtn.ProductImageFileNew.ImageFileName);
                     }
                     MessageBox.Show(null, "保存成功！", "保存任务", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // 保存后触发事件
+                    _parentView.MissionSaved?.Invoke(_missionDTO.id, _missionDTO);
                     // 保存后跳转至任务列表界面
                     WidgetUtils.GetChildMenu(101).TriggerClick(EventArgs.Empty);
                     Dispose();

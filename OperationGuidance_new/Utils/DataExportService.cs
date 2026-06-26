@@ -10,6 +10,7 @@ namespace OperationGuidance_new.Utils {
         public string BasePath { get; init; }
         public string ProductBatch { get; init; }
         public string ProductBarCode { get; init; }
+        public string? PartsBarCode { get; init; }
         public DateTime CompletedAt { get; init; }
         public string Result { get; init; }
         public bool EnableExcel { get; init; }
@@ -22,25 +23,27 @@ namespace OperationGuidance_new.Utils {
         private static readonly ILog _logger = MainUtils.GetLogger(typeof(DataExportService));
 
         public async Task ExportAsync(ExportRequest request) {
-            if (request.Data == null || request.Data.Count == 0) {
-                _logger.Warn("[DataExport] ExportAsync skipped: no data");
-                return;
-            }
-
+            var data = request.Data ?? new List<OperationDataVO>();
             string workstation = string.IsNullOrEmpty(request.WorkstationName) ? "null" : request.WorkstationName;
             string mission = string.IsNullOrEmpty(request.MissionName) ? "null" : request.MissionName;
             string date = request.CompletedAt.ToString("yyyy-MM-dd");
-            string batch = string.IsNullOrEmpty(request.ProductBatch) ? "null" : request.ProductBatch;
-            string batchFolder = Path.Combine(request.BasePath, workstation, mission, date, batch);
+            string batchFolder = string.IsNullOrEmpty(request.ProductBatch)
+                ? Path.Combine(request.BasePath, workstation, mission, date)
+                : Path.Combine(request.BasePath, workstation, mission, date, request.ProductBatch);
             string barCode = string.IsNullOrEmpty(request.ProductBarCode) ? "null" : request.ProductBarCode;
             string timestamp = request.CompletedAt.ToString("yyyyMMdd_HHmmss");
             string fileNameBody = $"{barCode}_{timestamp}_{request.Result}";
 
+            // Always create directory — even for skip-screw missions with no tightening data
             try {
                 Directory.CreateDirectory(batchFolder);
             } catch (Exception ex) {
                 _logger.Error($"[DataExport] Failed to create directory: {batchFolder}", ex);
                 throw new IOException($"无法创建导出目录: {batchFolder}", ex);
+            }
+
+            if (data.Count == 0) {
+                _logger.Info("[DataExport] No data rows — writing header-only file(s)");
             }
 
             var propertyNames = request.Fields.Where(f => f.Visible).Select(f => f.PropertyName).ToList();
@@ -49,7 +52,17 @@ namespace OperationGuidance_new.Utils {
                 _logger.Warn("[DataExport] No visible fields configured — export may produce empty columns");
             }
 
-            var rows = BuildRows(request.Data, propertyNames);
+            var rows = BuildRows(data, propertyNames);
+
+            if (rows.Count == 0 && !string.IsNullOrEmpty(request.PartsBarCode)) {
+                int partsColIndex = propertyNames.IndexOf("parts_bar_code");
+                if (partsColIndex >= 0) {
+                    var materialRow = new List<object?>(new object?[propertyNames.Count]);
+                    materialRow[partsColIndex] = request.PartsBarCode;
+                    rows.Add(materialRow);
+                }
+            }
+
             _logger.Info($"[DataExport] Exporting {rows.Count} rows x {propertyNames.Count} cols to {batchFolder}");
 
             var exceptions = new List<Exception>();

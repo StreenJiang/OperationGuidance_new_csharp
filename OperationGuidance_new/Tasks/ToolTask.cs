@@ -5,21 +5,26 @@ using OperationGuidance_new.Utils;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace OperationGuidance_new.Tasks {
     public class ToolTask: ATaskBase {
+        private enum PendingLockCommand { None, Lock, Unlock }
+
         private ILog logger = MainUtils.GetLogger(typeof(ToolTask));
 
         #region Fields
-        private static readonly object SyncObject = new();
-        private static readonly object LockSyncObject = new();
+        private readonly object SyncObject = new();
+        private readonly object LockSyncObject = new();
+        private readonly object _sendLock = new();
         private readonly int SendMessageRecevingTimes = 5;
         private readonly int ReceiveTimeout = 200;
         private readonly int HeartBeatDelay = 5000;
         private readonly int PSetWaitTime = 200;
         private readonly int PSetWaitTimesMax = 5;
-        private readonly int LockingCooldownPeriod = 5000;
         private int SendMessageRecevingCount = 0;
+        private Task? _runTaskTask;
+        private volatile int _connectInProgress;
         private volatile bool _locked = false;
         private volatile bool _lockStatusSending = false;
         private readonly object _pSetLock = new object();
@@ -30,9 +35,8 @@ namespace OperationGuidance_new.Tasks {
         private string _ip;
         private int _port;
         private DeviceTypeTool _toolType;
-        private int HeartBeatCounter;
-        private long _lastLockTimestamp = 0;
-        private long _lastUnlockTimestamp = 0;
+        private volatile int HeartBeatCounter;
+        private volatile PendingLockCommand _pendingLockCommand = PendingLockCommand.None;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived;
         #endregion
@@ -61,7 +65,7 @@ namespace OperationGuidance_new.Tasks {
 
         #region Override methods
         protected override void RunTask() {
-            Task.Run(async () => {
+            _runTaskTask = Task.Run(async () => {
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Task thread started");
                 try {
                     while (Connected) {
@@ -72,16 +76,12 @@ namespace OperationGuidance_new.Tasks {
                                 // Send heart beat command to controller
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
                                 SendCommand(toolPF.COMMAND_HEART_ASCII.GetMessage());
-                                // Reset heart beat counter even no command has been sent
-                                HeartBeatCounter = 0;
                             }
                         } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                             if (HeartBeatCounter >= toolFitFTC6.HEART_BEAT_PERIOD) {
                                 // Send heart beat command to controller
                                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending heartbeat command");
                                 SendCommand(toolFitFTC6.GetHeartBeatCommand());
-                                // Reset heart beat counter even no command has been sent
-                                HeartBeatCounter = 0;
                             }
                         }
 
@@ -200,8 +200,13 @@ namespace OperationGuidance_new.Tasks {
         }
 
         public override void Connect() {
-            lock (SyncObject) {
-                Task.Run(async () => {
+            if (Interlocked.Exchange(ref _connectInProgress, 1) == 1) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect already in progress, skipping");
+                return;
+            }
+            _currentPSet = -1;  // 重连后缓存失效，强制下次 SendPSetAsync 真实下发
+            Task.Run(async () => {
+                try {
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Initiating connection");
                     HeartBeatCounter = 0;
                     CloseConnectionManually = false;
@@ -213,6 +218,7 @@ namespace OperationGuidance_new.Tasks {
 
                         if (await ConnectToServer()) {
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection established");
+                            _toolType.ClearResidual();  // 清除旧连接残留
                             RunTask();
                             Status = CONNECTED;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Status: CONNECTED");
@@ -228,8 +234,11 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed after {retryCount} attempt(s)");
                     }
-                });
-            }
+                } finally {
+                    _connectInProgress = 0;
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect task exiting, _connectInProgress released, Connected={Connected}");
+                }
+            });
         }
         public override Task ConnectAsync() => Task.Run(() => Connect());
         public override void CloseConnection() {
@@ -238,6 +247,7 @@ namespace OperationGuidance_new.Tasks {
             if (Connected) {
                 socketClient.Close();
                 socketClient = null;
+                _toolType.ClearResidual();  // 清除残留
             }
 
             CloseConnectionManually = true;
@@ -245,6 +255,31 @@ namespace OperationGuidance_new.Tasks {
         public void CloseToTriggerReconnection() {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Closing connection to trigger reconnection...");
             socketClient?.Close();
+            socketClient = null;
+        }
+        public async Task CloseToTriggerReconnectionAsync(CancellationToken token = default) {
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync start, _currentPSet={_currentPSet}, hasRunTask={_runTaskTask != null}");
+            socketClient?.Close();
+            socketClient = null;
+            _connectInProgress = 0;
+
+            if (_runTaskTask != null) {
+                var runTask = _runTaskTask;
+                _runTaskTask = null;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                try {
+                    await runTask.WaitAsync(TimeSpan.FromSeconds(3), token);
+                    sw.Stop();
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Old RunTask exited cleanly after {sw.ElapsedMilliseconds}ms");
+                } catch (TimeoutException) {
+                    sw.Stop();
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Old RunTask did not exit within 3s timeout (elapsed={sw.ElapsedMilliseconds}ms)");
+                } catch (OperationCanceledException) {
+                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync cancelled after {sw.ElapsedMilliseconds}ms");
+                }
+            } else {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] No RunTask to wait for, proceeding directly");
+            }
         }
         // public override bool WorkplaceCheckConnection() => Connected && MainUtils.PingHost(_ip);
         public override bool WorkplaceCheckConnection() => Connected;
@@ -271,6 +306,7 @@ namespace OperationGuidance_new.Tasks {
                     try {
                         socketClient = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         socketClient.ReceiveTimeout = ReceiveTimeout;
+                        socketClient.SendTimeout = 500;
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
                         logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connected");
@@ -283,9 +319,13 @@ namespace OperationGuidance_new.Tasks {
                                 if (result1 != null) {
                                     string mid1 = toolPF.GetMid(result1);
                                     sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect response: {mid1}");
+                                    if (sendConnectMsgSuceess) {
+                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake OK, MID={mid1}");
+                                    } else {
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: expected MID 0002/0005, got {mid1}");
+                                    }
                                 } else {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No connect response");
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: no response from device");
                                     sendConnectMsgSuceess = false;
                                 }
 
@@ -296,9 +336,13 @@ namespace OperationGuidance_new.Tasks {
                                     if (result2 != null) {
                                         string mid2 = toolPF.GetMid(result2);
                                         dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable response: {mid2}");
+                                        if (dataEnableMsgSuccess) {
+                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake OK, MID={mid2}");
+                                        } else {
+                                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: expected MID 0002/0005, got {mid2}");
+                                        }
                                     } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] No data enable response");
+                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: no response from device");
                                         dataEnableMsgSuccess = false;
                                     }
 
@@ -325,6 +369,9 @@ namespace OperationGuidance_new.Tasks {
                         }
                     } catch (Exception e) {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connection error", e);
+                        socketClient?.Close();
+                        socketClient = null;
+                        connectSuccess = false;
                     }
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Ping failed");
@@ -335,10 +382,8 @@ namespace OperationGuidance_new.Tasks {
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection successful");
                 } else {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connection failed");
-                    if (socketClient != null && socketClient.Connected && MainUtils.PingHost(_ip)) {
-                        socketClient.Close();
-                        socketClient = null;
-                    }
+                    socketClient?.Close();
+                    socketClient = null;
                 }
                 return isConnected;
             } catch (Exception e) {
@@ -347,7 +392,7 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
-        private bool SendCommand(string command) {
+        protected virtual bool SendCommand(string command) {
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Command not sent - not connected");
                 return false;
@@ -364,10 +409,11 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 int? num;
-                lock (SyncObject) {
+                lock (_sendLock) {
                     num = socketClient?.Send(data);
                 }
                 if (num.HasValue && num.Value > 0) {
+                    HeartBeatCounter = 0;
                     return true;
                 }
 
@@ -395,12 +441,13 @@ namespace OperationGuidance_new.Tasks {
                         data = new byte[0];
                     }
 
-                    // Send command to controller
-                    socketClient.Send(data);
-
-                    // Receive data
+                    // Send under lock for socket safety, ReceiveAsync outside lock (no timeout)
                     byte[] msgBytes = new byte[1024 * 1024];
+                    lock (_sendLock) {
+                        socketClient.Send(data);
+                    }
                     int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake response received, len={msgLen}");
                     string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
                     if (_toolType is ToolPFSeries) {
                         result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
@@ -411,8 +458,8 @@ namespace OperationGuidance_new.Tasks {
                     }
                     return result;
                 } catch (Exception e) {
-                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Send/receive error", e);
-                    return await SendAndReceiveOnlyForPreparingAsync(command);
+                    logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake send/receive error", e);
+                    return null;
                 }
             } else {
                 if (!Connected) {
@@ -481,7 +528,7 @@ namespace OperationGuidance_new.Tasks {
 
                         if (!_psetSentOk) {
                             isSuccess = false;
-                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending timeout");
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending timeout after {waitTimes * PSetWaitTime}ms (waited={waitTimes}, psetSentOk=false → tool rejected or no response within window)");
                         } else {
                             isSuccess = true;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet success: {_currentPSet} -> {pSetNumber}");
@@ -491,8 +538,6 @@ namespace OperationGuidance_new.Tasks {
                     } else {
                         isSuccess = false;
                         logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send failed");
-
-                        CloseToTriggerReconnection();
                     }
 
                     return isSuccess;
@@ -503,9 +548,61 @@ namespace OperationGuidance_new.Tasks {
                 logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet error", e);
             } finally {
                 _sendingPSet = -1;
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendPSetAsync finally, _sendingPSet reset to -1");
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 断开当前连接 → 重连 → 单次发送 PSet，作为一次原子重试
+        /// </summary>
+        public async Task<bool> ReconnectAndResendPset(int pSetNumber, CancellationToken token) {
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset pSetNumber={pSetNumber} start");
+
+            // 1. 阻止 TaskCheckingLoop 并发重连
+            Status = CONNECTING;
+
+            // 2. 关闭旧连接并等待 RunTask 彻底退出（保证 finally 已执行）
+            try {
+                await CloseToTriggerReconnectionAsync(token);
+            } catch (OperationCanceledException) {
+                Status = DISCONNECTED;
+                return false;
+            }
+
+            // 3. 启动重连
+            Connect();
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect() returned, polling for connection...");
+
+            // 5. 轮询等待重连完成（200ms × 50 = 10s）
+            int pollCount = 0;
+            int pollMax = 50;
+            while (!Connected && pollCount < pollMax && !token.IsCancellationRequested) {
+                pollCount++;
+                try {
+                    await Task.Delay(200, token);
+                } catch (OperationCanceledException) {
+                    Status = DISCONNECTED;
+                    return false;
+                }
+            }
+
+            if (!Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnect timeout after {pollMax * 200}ms");
+                Status = DISCONNECTED;  // 恢复状态，让 TaskCheckingLoop 接管
+                return false;
+            }
+
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnected after {pollCount * 200}ms");
+
+            // 6. 在新连接上单次发送 PSet（_currentPSet 已在 Connect 中重置）
+            bool psetResult = await SendPSetAsync(pSetNumber);
+            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset SendPSetAsync result={psetResult}, pSetNumber={pSetNumber}");
+            if (!psetResult) {
+                Status = DISCONNECTED;  // PSet 失败视为本次重试整体失败，恢复状态让 TaskCheckingLoop 接管
+            }
+            return psetResult;
         }
 
         public void SendLock() {
@@ -514,20 +611,19 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock failed - not connected");
                     return;
                 }
-
-                // 检查是否在lock冷却期内
-                if (IsInCooldown(Volatile.Read(ref _lastLockTimestamp))) {
+                if (_pendingLockCommand == PendingLockCommand.Lock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendLock skipped — pending Lock already in flight");
                     return;
                 }
-
-                // 检查当前状态是否允许lock操作
-                if (_locked) {
+                if (_locked && _pendingLockCommand != PendingLockCommand.Unlock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendLock skipped — already locked (locked={_locked}, pending={_pendingLockCommand})");
                     return;
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Locking");
-                PerformLock();
+                _pendingLockCommand = PendingLockCommand.Lock;
             }
+            PerformLock();
         }
 
         public void ForceSendLock() {
@@ -538,31 +634,34 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force locking");
-                PerformLock();
+                _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(true);
             }
+            PerformLock();
         }
 
         private void PerformLock() {
+            bool sent = false;
             if (_toolType is ToolPFSeries toolPF) {
-                SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                sent = SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
                 string cmd = toolX7.GetLockCommand();
-                bool sentOk = SendCommand(cmd);
+                SendCommand(cmd);
                 Thread.Sleep(200);
-                sentOk = SendCommand(cmd);
+                sent = SendCommand(cmd);
 
-                if (sentOk) {
+                if (sent) {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(true);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                 _lockStatusSending = true;
-                SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
+                sent = SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                return;
             }
+
+            ClearPendingOnSendFailure(sent, PendingLockCommand.Lock);
         }
 
         public void SendUnlock() {
@@ -571,20 +670,19 @@ namespace OperationGuidance_new.Tasks {
                     logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock failed - not connected");
                     return;
                 }
-
-                // 检查是否在unlock冷却期内
-                if (IsInCooldown(Volatile.Read(ref _lastUnlockTimestamp))) {
+                if (_pendingLockCommand == PendingLockCommand.Unlock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendUnlock skipped — pending Unlock already in flight");
                     return;
                 }
-
-                // 检查当前状态是否允许unlock操作
-                if (!_locked) {
+                if (!_locked && _pendingLockCommand != PendingLockCommand.Lock) {
+                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendUnlock skipped — already unlocked (locked={_locked}, pending={_pendingLockCommand})");
                     return;
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Unlocking");
-                PerformUnlock();
+                _pendingLockCommand = PendingLockCommand.Unlock;
             }
+            PerformUnlock();
         }
 
         public void ForceSendUnlock() {
@@ -595,30 +693,45 @@ namespace OperationGuidance_new.Tasks {
                 }
 
                 logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Force unlocking");
-                PerformUnlock();
+                _pendingLockCommand = PendingLockCommand.None;
                 UpdateInternalLockState(false);
             }
+            PerformUnlock();
         }
 
         private void PerformUnlock() {
+            bool sent = false;
             if (_toolType is ToolPFSeries toolPF) {
-                SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                sent = SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
             } else if (_toolType is ToolSudongX7 toolX7) {
                 string cmd = toolX7.GetUnlockCommand();
-                bool sentOk = SendCommand(cmd);
+                SendCommand(cmd);
                 Thread.Sleep(200);
-                sentOk = SendCommand(cmd);
+                sent = SendCommand(cmd);
 
-                if (sentOk) {
+                if (sent) {
                     // 速动没有 解/锁枪 反馈，因此发完就自己设置
                     UpdateInternalLockState(false);
                 }
             } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                 _lockStatusSending = false;
-                SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
+                sent = SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
             } else {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
-                return;
+            }
+
+            ClearPendingOnSendFailure(sent, PendingLockCommand.Unlock);
+        }
+
+        /// <summary>Rollback _pendingLockCommand on send failure, only if it still matches expected (guards against race with concurrent lock/unlock).</summary>
+        private void ClearPendingOnSendFailure(bool sent, PendingLockCommand expected) {
+            if (!sent) {
+                lock (LockSyncObject) {
+                    if (_pendingLockCommand == expected) {
+                        _pendingLockCommand = PendingLockCommand.None;
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] {expected} command send failed, pending cleared");
+                    }
+                }
             }
         }
 
@@ -640,41 +753,14 @@ namespace OperationGuidance_new.Tasks {
             SendCommand(command);
         }
 
-        /// <summary>
-        /// 检查指定时间戳是否在冷却期内
-        /// </summary>
-        /// <param name="timestamp">操作时间戳（毫秒）</param>
-        /// <returns>如果在冷却期内返回true，否则返回false</returns>
-        private bool IsInCooldown(long timestamp) {
-            // 等于 0 直接表示可以继续操作，跳过计算流程，提高性能
-            if (timestamp == 0) {
-                return false;
-            }
-
-            long currentTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            return (currentTime - timestamp) < LockingCooldownPeriod;
-        }
-
-        /// <summary>
-        /// 当设备状态改变时，更新内部锁定状态
-        /// </summary>
-        /// <param name="newLockedState">新的锁定状态</param>
         private void UpdateInternalLockState(bool newLockedState) {
             bool oldLocked = _locked;
             _locked = newLockedState;
+            _pendingLockCommand = PendingLockCommand.None;
 
-            // 重置相应的冷却时间戳
-            if (newLockedState) // 如果现在是锁定状态
-            {
-                Volatile.Write(ref _lastLockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
-                Volatile.Write(ref _lastUnlockTimestamp, 0); // 立刻重置 unlock 计时为 0 以保证锁定后可以随时解锁
-            } else // 如果现在是解锁状态
-            {
-                Volatile.Write(ref _lastUnlockTimestamp, DateTimeOffset.Now.ToUnixTimeMilliseconds());
-                Volatile.Write(ref _lastLockTimestamp, 0); // 立刻重置 lock 计时为 0 以保证解锁后可以随时锁定
+            if (oldLocked != _locked) {
+                logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
             }
-
-            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Lock state: {oldLocked} -> {_locked}");
         }
         #endregion
     }

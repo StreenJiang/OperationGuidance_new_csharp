@@ -234,7 +234,13 @@ namespace CustomLibrary.ComboBoxes {
                         }
 
                         Point point = PointToScreen(Point.Empty);
-                        _itemsOuterForm.Location = _itemsOuterForm.PointToClient(new(point.X, point.Y + Height));
+                        Point location = new(point.X, point.Y + Height);
+
+                        if (location.Y + _itemsScrollPanelHeight > Screen.GetWorkingArea(this).Bottom) {
+                            location.Y = point.Y - _itemsScrollPanelHeight;
+                        }
+
+                        _itemsOuterForm.Location = location;
                         _itemsOuterForm.Show();
                     }
                     if (_itemsInnerPanel != null && !_itemsInnerPanel.IsDisposed && _itemsInnerPanel.Controls.Count == 0) {

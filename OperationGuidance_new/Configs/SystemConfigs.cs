@@ -39,6 +39,7 @@ namespace OperationGuidance_new.Configs {
                     {AppVersion.WHYC, typeof(WorkplaceMissionView_WHYC)},
                     {AppVersion.TZYX, typeof(WorkplaceMissionView_TZYX)},
                     {AppVersion.SCII_XT, typeof(WorkplaceMissionView_SCII_XT)},
+                    {AppVersion.YMT, typeof(WorkplaceMissionView_YMT)},
                 },
                 OpenFirst = true,
             },
@@ -121,11 +122,13 @@ namespace OperationGuidance_new.Configs {
                     new(id: 509, name: "系统设置", icon: Properties.Resources.variable_settings) {
                         ViewTypes = new() {
                             {AppVersion.STANDARD, typeof(VariableSettingsView)},
+                            {AppVersion.YF, typeof(VariableSettingsView_YF)},
                             {AppVersion.SCII, typeof(VariableSettingsView_SCII)},
                             {AppVersion.GLB, typeof(VariableSettingsView_GLB)},
                             {AppVersion.WHYC, typeof(VariableSettingsView_WHYC)},
                             {AppVersion.TZYX, typeof(VariableSettingsView_TZYX)},
                             {AppVersion.SCII_XT, typeof(VariableSettingsView_SCII_XT)},
+                            {AppVersion.YMT, typeof(VariableSettingsView_YMT)},
                         },
                     },
                 },

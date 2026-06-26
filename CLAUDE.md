@@ -1,3 +1,16 @@
+---
+allowed-tools:
+  - mcp__codegraph__codegraph_search
+  - mcp__codegraph__codegraph_context
+  - mcp__codegraph__codegraph_callers
+  - mcp__codegraph__codegraph_callees
+  - mcp__codegraph__codegraph_impact
+  - mcp__codegraph__codegraph_node
+  - mcp__codegraph__codegraph_explore
+  - mcp__codegraph__codegraph_files
+  - mcp__codegraph__codegraph_status
+---
+
 # OperationGuidance_new
 
 WinForms-based operation guidance system with multi-site support (WHYC, SCII, GLB, YF, TZYX).
@@ -26,7 +39,27 @@ OperationGuidance_new/
     └── Models/DTOs/           # ProductMissionDTO, ProductSideDTO
 ```
 
-## Key Patterns
+## Database
+
+### MySQL minimum version: 5.7
+
+All SQL migration scripts in `OperationGuidance_service/Database/sqls/modify_mysql_*.sql` MUST be
+compatible with MySQL 5.7. Key implications:
+
+- **`ALTER TABLE` is NOT preparable.** `PREPARE stmt FROM @sql` only supports `CREATE INDEX`,
+  `DROP INDEX`, `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE TABLE`, `DROP TABLE`, `SET`.
+  Any `ALTER TABLE` wrapped in `PREPARE`/`EXECUTE` will fail on MySQL 5.7.
+- **No `CREATE INDEX IF NOT EXISTS`.** Use direct `CREATE INDEX`; idempotency is provided by
+  the engine layer (`MySqlConnector.cs` catches error codes 1060/1061/1091 as benign).
+- **No `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.** Use direct `ADD COLUMN`; engine layer
+  handles `Duplicate column name` (1060).
+- **`datetime` type without fsp precision is safe.** `datetime` = `datetime(0)` on 5.7.
+- **Migration scripts are split by `;`** in `MySqlConnector.cs:92`. Do NOT put semicolons
+  inside SQL comments or string literals in migration files.
+- **Write plain DDL — no `INFORMATION_SCHEMA` + `PREPARE`/`EXECUTE` wrappers.** The engine
+  layer catches MySQL error codes 1060 (Duplicate column), 1061 (Duplicate key), and 1091
+  (Can't DROP) as benign and logs them at INFO level. Migration scripts do not need their
+  own idempotency logic.
 
 ### Image Loading (v1.5.7+)
 

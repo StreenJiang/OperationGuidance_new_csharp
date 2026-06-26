@@ -32,6 +32,10 @@ namespace OperationGuidance_new.Views {
     }
 
     public class WorkplaceContentPanel_WHYC: WorkplaceContentPanel {
+        // WHYC 不启用导出 — 显式封死，防止继承 STANDARD 的 ExportConfig 行为
+        internal override bool IsExcelExportEnabled => false;
+        internal override bool IsTxtExportEnabled => false;
+
         private CustomTextBoxGroup _lineBox;
         private CustomTextBoxGroup _operatorBox;
 

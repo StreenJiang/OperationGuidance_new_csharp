@@ -248,6 +248,20 @@ namespace CustomLibrary.TextBoxes {
 
             UpdateErrorState(hasError);
         }
+
+        public bool IsEmpty() => string.IsNullOrEmpty(_box.Text) || _box.Text == _defaultText;
+        private void ResetErrorIcon() {
+            Size newIconSize = new((int) (Height / 2), (int) (Height / 2));
+            if (_iconShowing == null || _iconShowing.Size != newIconSize) {
+                _iconShowing?.Dispose();
+                _iconShowing = WidgetUtils.ResizeImage(CustomResources.input_error, newIconSize);
+                _errorProvider.Icon?.Dispose();
+                using (Bitmap bmp = new Bitmap(_iconShowing)) {
+                    _errorProvider.Icon = Icon.FromHandle(bmp.GetHicon());
+                }
+                _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * .5));
+            }
+        }
         private string FilterNumberText(string text) {
             if (string.IsNullOrEmpty(text))
                 return text;
@@ -347,33 +361,6 @@ namespace CustomLibrary.TextBoxes {
                     count++;
             }
             return count;
-        }
-        public bool IsEmpty() => string.IsNullOrEmpty(_box?.Text) || _box?.Text == _defaultText;
-        private void ResetErrorIcon() {
-            if (_box == null) return;
-
-            Size newIconSize = new((int) (Height / 2.0), (int) (Height / 2.0));
-
-            // 只有在图标不存在或尺寸不匹配时才重新创建
-            if (_iconShowing == null || _iconShowing.Size != newIconSize) {
-                using (Image imageTemp = ResxUtils.Load("input_error")) {
-                    if (imageTemp != null) {
-                        _iconShowing = WidgetUtils.ResizeImage(imageTemp, newIconSize, true);
-                        // 使用 using 确保 Icon 被正确释放
-                        using (var bitmap = new Bitmap(_iconShowing))
-                        using (var icon = Icon.FromHandle(bitmap.GetHicon())) {
-                            _errorProvider.Icon = (Icon) icon.Clone(); // 克隆图标避免资源冲突
-                        }
-                    }
-                }
-            }
-
-            int boxErrorNewWidth = _boxOriginalWidth - (int) (Height / 2.0);
-            if (_boxErrorWidth != boxErrorNewWidth) {
-                _boxErrorWidth = boxErrorNewWidth;
-            }
-
-            _errorProvider.SetIconPadding(_box, (int) (_box.Padding.Right * 0.5));
         }
         private void ShowErrorToolTip() {
             if (IsDisposed || _box == null) return;

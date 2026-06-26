@@ -170,6 +170,8 @@ namespace OperationGuidance_new.Views.AbstractViews {
         protected List<String> lockMsgs = new();
         protected List<String> informationMsgs = new();
         internal OperationDataDTO? currentOperationData;
+        private bool _isActivating;
+        private bool _pendingBoltBarCodePopup;
         #endregion
 
         #region Properties
@@ -181,6 +183,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
         public CustomTextBox BarCodeTextBox { get => _barCodeTextBox; set => _barCodeTextBox = value; }
         public MissionRecordDTO? MissionRecord => _missionRecord;
         public Func<string, bool>? ActiveBarcodeInterceptor { get; set; }
+
+        // 诊断用：追溯码/物料码分开计数，随 workplace 生命周期，按需归零
+        public int ProductScanCount { get; set; } = 0;
+        public int PartsScanCount { get; set; } = 0;
         internal virtual bool IsExcelExportEnabled => false;
         internal virtual bool IsTxtExportEnabled => false;
         internal virtual string ExportBasePath => MainUtils.GetDefaultStoragePath();
@@ -1161,7 +1167,6 @@ namespace OperationGuidance_new.Views.AbstractViews {
                                 WidgetUtils.ShowWarningPopUp("条码录入完成后才可激活任务");
                             } else {
                                 ActivateMission();
-                                _barCodePopUpForm.Dispose();
                             }
                         } else {
                             _barCodePopUpForm.Dispose();
@@ -1270,14 +1275,24 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             // 1. Check can activate mission
             if (await ValidationBeforeActivatingMission()) {
-                // 2. Initialize variables
-                InitializeBeforeActivatingMission();
-
-                // 3. Activate mission
+                // 2. Activate mission — must precede InitializeBeforeActivatingMission
+                // so CheckBoltBoundPartsBarCode -> OpenBarCodePopUpForm sees _activated=true
                 _activated = true;
+                _isActivating = true;
+
+                // 3. Initialize variables
+                InitializeBeforeActivatingMission();
 
                 // 4. Action after activating mission
                 await ActionAfterActivatingMission();
+
+                _isActivating = false;
+                _barCodePopUpForm?.Dispose();
+                if (_pendingBoltBarCodePopup) {
+                    _pendingBoltBarCodePopup = false;
+                    // 关闭激活前的弹窗，用当前点位的物料码规则重建
+                    OpenBarCodePopUpForm(null);
+                }
             } else {
                 // Clear current bolts
                 _currentWorkingBolt = null;
@@ -1460,20 +1475,22 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 foreach (int key in _allBoltsIndependence[_sides[_currentSideIndex].id].Keys) {
                     BoltButton boltButton = SwitchBolt(key, 0);
 
+                    // Cache it — must precede ChangeBoltStatusToWorking so
+                    // OpenBarCodePopUpForm sees the current bolt for _rulesExcluded
+                    _currentWorkingBoltIndependence.Add(key, boltButton);
+
                     // Change status of bolt
                     ChangeBoltStatusToWorking(boltButton);
-
-                    // Cache it
-                    _currentWorkingBoltIndependence.Add(key, boltButton);
                 }
             } else {
                 BoltButton boltButton = SwitchBolt(0);
 
+                // Cache it — must precede ChangeBoltStatusToWorking so
+                // OpenBarCodePopUpForm sees the current bolt for _rulesExcluded
+                _currentWorkingBolt = boltButton;
+
                 // Change status of bolt
                 ChangeBoltStatusToWorking(boltButton);
-
-                // Cache it
-                _currentWorkingBolt = boltButton;
             }
 
             // Reset current operation data
@@ -1506,13 +1523,27 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         protected virtual async Task<bool> ActionAfterActivatingMission() {
+            // 重置扫码计数
+            ProductScanCount = 0;
+            PartsScanCount = 0;
             // Add a new record into: mission_record
+            // 从任务的螺栓点位中获取站点信息
+            int? workstationId = _allBolts.Values
+                .SelectMany(b => b)
+                .Select(b => b.BoltDTO.workstation_id)
+                .FirstOrDefault();
+            string? workstationName = workstationId != null
+                ? _workstationsDTOs.FirstOrDefault(dto => dto.id == workstationId.Value)?.name
+                : null;
+
             _missionRecord = new() {
                 mission_id = _mission.id,
                 product_bar_code = _barCodeObj.ProductBarCode,
                 parts_bar_code = string.Join(",", _barCodeObj.PartsBarCodes),
                 mission_result = (int) TighteningStatus.NG,
                 is_redo = _isRedo,
+                workstation_id = workstationId,
+                workstation_name = workstationName,
             };
             var rsp = _apis.AddOrUpdateMissionRecord(new(_missionRecord));
 
@@ -1616,6 +1647,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Start looping task if setter selector is needed
             StartSetterSelectorTask();
 
+            logger.Debug($"[Workplace:{_mission.name}] ActionAfterActivatingMission end — _missionRecord.id={_missionRecord.id}");
             return true;
         }
 
@@ -1642,6 +1674,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
 
             BeginInvoke(() => {
                 Task.Run(async () => {
+                    bool lastIterationWasLock = false;
                     while (!IsDisposed && _activated && !cts.Token.IsCancellationRequested) {
                         try {
                             // Skip if _currentWorkingBolt is null
@@ -1656,8 +1689,16 @@ namespace OperationGuidance_new.Views.AbstractViews {
                             CheckCurrentPSetForLockMsg();
                             CheckAdminConfirmationForLockMsg();
 
+                            bool shouldLock = lockMsgs.Count > 0;
+
+                            // Log only on state change to avoid log spam (50ms loop)
+                            if (shouldLock != lastIterationWasLock) {
+                                logger.Debug($"[LockCheck:{_mission?.name}] lockMsgs={(shouldLock ? $"【{string.Join(" | ", lockMsgs)}】" : "empty")} → calling {(shouldLock ? "SendLock" : "SendUnlock")}, tool locked={toolTask.Locked}");
+                                lastIterationWasLock = shouldLock;
+                            }
+
                             string statusDesc = string.Empty;
-                            if (lockMsgs.Count > 0) {
+                            if (shouldLock) {
                                 statusDesc = string.Join("\r\n", lockMsgs);
                                 statusDesc = string.Format(statusDesc, _workingProcessPanel.BoltSerialNum);
                                 // Set status to working proccess panel
@@ -1997,18 +2038,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
         }
 
         // Check if any parts bar code bound to current bolt
-        protected virtual async void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
-            await Task.Run(() => {
-                BeginInvoke(() => {
-                    if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
-                        List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
-                        if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
-                            AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
-                            OpenBarCodePopUpForm(null);
-                        }
+        protected virtual void CheckBoltBoundPartsBarCode(BoltButton boltButton) {
+            if (!string.IsNullOrEmpty(boltButton.BoltDTO.parts_bar_code_ids)) {
+                List<int> list = CommonUtils.StringToList(boltButton.BoltDTO.parts_bar_code_ids);
+                if (!list.All(_barCodeObj.PartsMatchingRulesCached.Contains)) {
+                    AddLockMsg(WorkingProcessPanel.LockedBoltBarCode);
+                    if (_isActivating) {
+                        _pendingBoltBarCodePopup = true;
+                    } else {
+                        OpenBarCodePopUpForm(null);
                     }
-                });
-            });
+                }
+            }
         }
 
         // Send pset to controller
@@ -2040,57 +2081,76 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     return;
                 }
 
-                // === 使用新的通用重试策略 ===
-                var retryStrategy = RetryStrategy.IncrementalDelay(_resendPsetMaxTimes, 200);
+                // === 每次尝试前断连+重连，保证干净连接 ===
+                var retryStrategy = RetryStrategy.FixedDelay(_resendPsetMaxTimes, 0);
 
-                bool success = false;
-                try {
-                    success = await retryStrategy.ExecuteAsync(
-                        async () => await task.SendPSetAsync(pset.Value),
-                        (currentAttempt, maxAttempts) => {
-                            // === 实时显示重试进度 ===
-                            this.SafeInvoke(() => {
-                                _pset.SetValue(0, $"程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
-                                logger.Info($"【工作台】程序号[{pset}]下发中... 第{currentAttempt}次尝试 (共{maxAttempts}次)");
-                            });
-                        },
-                        () => {
-                            this.SafeInvoke(() => {
-                                // === 下发成功 ===
-                                RemoveLockMsg(lockFailedMsg);
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                boltButton.CurrentParameterSet = pset;
-                                _pset.SetValue(0, $"程序号 {pset} (发送成功)");
-                                logger.Info($"【工作台】程序号[{pset}]发送成功");
-                            });
-                        },
-                        () => {
-                            // === 每次失败时更新UI（但不阻塞） ===
-                            this.SafeInvoke(() => {
-                                RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                                AddLockMsg(lockFailedMsg);
-                                _pset.SetValue(0, $"程序号[{pset}]下发失败...");
-                                logger.Info($"【工作台】程序号[{pset}]下发失败...");
-                            });
-                        },
-                        _activeMissionCts.Token);
-                } catch (RetryException ex) {
-                    // 处理重试异常
-                    logger.Warn($"程序号{pset}发送失败，已重试{_resendPsetMaxTimes}次: {ex.Message}");
-                    success = false;
+                // 提取共享的 UI 回调，避免快速路径与重试轮中重复
+                void OnPsetSuccess(string label) {
+                    this.SafeInvoke(() => {
+                        RemoveLockMsg(lockFailedMsg);
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                        boltButton.CurrentParameterSet = pset;
+                        _pset.SetValue(0, $"程序号 {pset} ({label})");
+                        logger.Info($"【工作台】程序号[{pset}]{label}");
+                    });
+                }
+                void OnPsetFailure(string label) {
+                    this.SafeInvoke(() => {
+                        RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
+                        AddLockMsg(lockFailedMsg);
+                        _pset.SetValue(0, $"程序号[{pset}]{label}");
+                        logger.Info($"【工作台】程序号[{pset}]{label}");
+                    });
                 }
 
-                // === 失败后处理（无对话框，改为状态提示） ===
-                if (!success && boltButton.CurrentParameterSet == null) {
-                    RemoveLockMsg(WorkingProcessPanel.LockedPsetSending);
-                    AddLockMsg(lockFailedMsg);
+                async Task<bool> RunPsetRetryRound(string progressLabel, string successLabel, string failLabel) {
+                    try {
+                        return await retryStrategy.ExecuteAsync(
+                            async () => await task.ReconnectAndResendPset(pset.Value, _activeMissionCts.Token),
+                            (currentAttempt, maxAttempts) => {
+                                this.SafeInvoke(() => {
+                                    _pset.SetValue(0, $"程序号[{pset}]{progressLabel} 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                    logger.Info($"【工作台】程序号[{pset}]{progressLabel} 第{currentAttempt}次尝试 (共{maxAttempts}次)");
+                                });
+                            },
+                            () => OnPsetSuccess(successLabel),
+                            () => OnPsetFailure(failLabel),
+                            _activeMissionCts.Token);
+                    } catch (RetryException ex) {
+                        logger.Warn($"程序号{pset}重试失败: {ex.Message}");
+                        return false;
+                    }
+                }
 
-                    logger.Info($"程序号 {pset} 下发失败，添加阻塞失败提示");
+                // 首次尝试：直接用现有连接，不断连（快速路径）
+                this.SafeInvoke(() => {
+                    _pset.SetValue(0, $"程序号[{pset}]下发中...");
+                    logger.Info($"【工作台】程序号[{pset}]下发中...");
+                });
+                bool success = await task.SendPSetAsync(pset.Value);
 
-                    this.SafeInvoke(() => {
-                        _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)");
-                        WidgetUtils.ShowWarningPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次，请检查设备连接");
-                    });
+                if (success) {
+                    OnPsetSuccess("发送成功");
+                } else {
+                    // 首次失败 → 断连重连重试
+                    success = await RunPsetRetryRound("下发中...", "发送成功", "下发失败，正在重连重试...");
+                }
+
+                // === 自动重试全部失败 → 弹窗让用户选择是否继续 ===
+                while (!success && boltButton.CurrentParameterSet == null && !_activeMissionCts.Token.IsCancellationRequested) {
+                    this.SafeInvoke(() => _pset.SetValue(0, $"程序号 {pset} (失败 - 已达最大重试次数)"));
+                    // 必须用同步 Invoke 捕获返回值，SafeInvoke 是 BeginInvoke（fire-and-forget）
+                    bool userRetry = (bool)this.Invoke(new Func<bool>(() =>
+                        WidgetUtils.ShowConfirmPopUp($"程序号{pset}下发失败，已自动重试{_resendPsetMaxTimes}次。是否重新尝试？")));
+
+                    if (!userRetry) {
+                        OnPsetFailure("失败 - 用户放弃");
+                        logger.Info($"程序号 {pset} 下发失败，用户选择放弃");
+                        break;
+                    }
+
+                    logger.Info($"程序号 {pset} 用户选择重试，开始额外一轮...");
+                    success = await RunPsetRetryRound("重试中...", "重试后发送成功", "重试失败...");
                 }
             } catch (OperationCanceledException ex) {
                 logger.Info($"SendPSet boltNum={boltButton.BoltDTO.serial_num}, pset={pset} operation was cancelled", ex);
@@ -2645,6 +2705,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
             }
         }
 
+        internal virtual async Task ExportDataAsync(ExportRequest request) {
+            await new DataExportService().ExportAsync(request);
+        }
+
         internal void RefreshTighteningDataPanel(IEnumerable<OperationDataVO> vos) {
             string taskName = _mission?.name ?? "Unknown";
             logger.Debug($"[Workplace:{taskName}] RefreshTighteningDataPanel - Entry");
@@ -2850,7 +2914,7 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
         }
         protected override void OnHandleDestroyed(EventArgs e) {
-            // 取消所有后台任务
+            // 先取消后台任务，释放可能持有的 _storeTighteningDataLock
             _activeMissionCts.Cancel();
             _backgroundTaskCts.ForEach(cts => {
                 cts.Cancel();
@@ -2858,6 +2922,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             });
             _backgroundTaskCts.Clear();
             _activeMissionCts.Dispose();
+
+            // "返回"或"退出登录"时，如果导出从未触发，补充 NG 导出
+            if (_missionRecord != null
+                    && (IsExcelExportEnabled || IsTxtExportEnabled)
+                    && Volatile.Read(ref _exportTriggered) == 0) {
+                OnMissionCompleted(WorkplaceProcessStatus.FINISHED_NG).Wait();
+            }
 
             base.OnHandleDestroyed(e);
 

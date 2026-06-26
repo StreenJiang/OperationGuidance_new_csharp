@@ -57,6 +57,8 @@ namespace OperationGuidance_new.Constants {
 
         public abstract string GetPSetCommand(int pSetNumber);
 
+        public virtual void ClearResidual() { }
+
         public abstract void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null);
     }
 
@@ -517,6 +519,25 @@ namespace OperationGuidance_new.Constants {
         public Command COMMAND_HEART_BEAT = new("AA55070400{0}55AA");
 
         private readonly PacketReassembler _reassembler = new PacketReassembler();
+        private byte[] _frameResidual = Array.Empty<byte>();
+        private int _residualAttempts = 0;
+
+        private const int MaxResidualAttempts = 3;
+        private const int MaxResidualLength = 4096;
+
+        private void DiscardResidual(string reason) {
+            logger.Warn($"[FIT] Residual {reason} ({_frameResidual.Length} bytes), discarding: {MainUtils.ToHexString(_frameResidual)}");
+            _frameResidual = Array.Empty<byte>();
+            _residualAttempts = 0;
+        }
+
+        public override void ClearResidual() {
+            if (_frameResidual.Length > 0) {
+                logger.Debug($"[FIT] Clearing stale frame residual ({_frameResidual.Length} bytes) on connection reset");
+                _frameResidual = Array.Empty<byte>();
+                _residualAttempts = 0;
+            }
+        }
 
         public ToolFIT(int id, string name) : base(id, name) {
             logger = MainUtils.GetLogger(GetType());
@@ -538,9 +559,61 @@ namespace OperationGuidance_new.Constants {
         }
 
         public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
-            List<byte[]> dataList = UnpackData(msgBytes);
-            string originalMsg = MainUtils.ToHexString(msgBytes);
-            logger.Info($"OriginalMsg = {originalMsg}");
+            // ── 跨 Receive 帧残留拼接 ──
+            bool hadResidual = _frameResidual.Length > 0;
+            byte[] combined;
+
+            if (hadResidual) {
+                _residualAttempts++;
+
+                if (_residualAttempts > MaxResidualAttempts || _frameResidual[0] != 0xAA || _frameResidual[1] != 0x55) {
+                    string reason = _residualAttempts > MaxResidualAttempts
+                        ? $"not consumed after {MaxResidualAttempts} attempts"
+                        : "malformed (header not AA55)";
+                    DiscardResidual(reason);
+                    hadResidual = false;
+                    combined = msgBytes;
+                } else {
+                    logger.Info($"[FIT] Prepending residual ({_frameResidual.Length} bytes, attempt {_residualAttempts}/{MaxResidualAttempts})");
+                    combined = new byte[_frameResidual.Length + msgBytes.Length];
+                    Array.Copy(_frameResidual, 0, combined, 0, _frameResidual.Length);
+                    Array.Copy(msgBytes, 0, combined, _frameResidual.Length, msgBytes.Length);
+                }
+            } else {
+                _residualAttempts = 0;
+                combined = msgBytes;
+            }
+
+            List<byte[]> dataList = UnpackData(combined, out byte[] residual);
+
+            // ── 诊断日志：跟踪残留消费结果 ──
+            if (hadResidual) {
+                if (residual.Length == 0) {
+                    logger.Info("[FIT] Frame reassembled successfully from residual");
+                } else {
+                    logger.Debug($"[FIT] Frame still incomplete after attempt {_residualAttempts}/{MaxResidualAttempts}, residual={residual.Length} bytes");
+                }
+            } else if (residual.Length > 0) {
+                logger.Debug($"[FIT] New partial frame detected, residual={residual.Length} bytes");
+            }
+
+            // ── 保存本次残留（带安全上限）──
+            if (residual.Length > MaxResidualLength) {
+                logger.Warn($"[FIT] Residual exceeded {MaxResidualLength} bytes ({residual.Length}), discarding to prevent memory growth");
+                _frameResidual = Array.Empty<byte>();
+                _residualAttempts = 0;
+            } else {
+                _frameResidual = residual;
+            }
+
+            // ── 原有日志（加 IsInfoEnabled 守卫 + 截断，避免热路径上无条件做全量 hex 转换）──
+            if (logger.IsInfoEnabled) {
+                const int maxHexDump = 64;
+                string hex = combined.Length <= maxHexDump
+                    ? MainUtils.ToHexString(combined)
+                    : $"{MainUtils.ToHexString(combined.Take(maxHexDump).ToArray())}...({combined.Length} bytes total)";
+                logger.Info($"OriginalMsg = {hex}");
+            }
 
             foreach (byte[] data in dataList) {
                 try {
@@ -552,6 +625,8 @@ namespace OperationGuidance_new.Constants {
                         dataMessage = MainUtils.ToHexString(data);
                     }
                     logger.Info($"Handling dataMessage = {dataMessage}");
+
+                    if (!headOk) continue; // 非 AA55 帧头的数据不按二进制协议解析
 
                     FitCommandType cmd = (FitCommandType) data[2];
                     logger.Info($"Command type: {cmd}");
@@ -717,8 +792,9 @@ namespace OperationGuidance_new.Constants {
         /// </summary>
         /// <param name="data">原始字节数据</param>
         /// <returns>分割后的数据包列表</returns>
-        private List<byte[]> UnpackData(byte[] data) {
+        private List<byte[]> UnpackData(byte[] data, out byte[] residual) {
             var result = new List<byte[]>();
+            residual = Array.Empty<byte>();
             int i = 0;
 
             while (i < data.Length) {
@@ -764,11 +840,11 @@ namespace OperationGuidance_new.Constants {
                         }
                         i = nextProtocolIndex;
                     } else {
-                        // 剩余全是字符串数据
+                        // 末尾不完整的 AA55 帧 → 作为残留保留，等待下一次 Receive 拼接
                         if (i < data.Length) {
-                            byte[] stringData = new byte[data.Length - i];
-                            Array.Copy(data, i, stringData, 0, stringData.Length);
-                            result.Add(stringData);
+                            residual = new byte[data.Length - i];
+                            Array.Copy(data, i, residual, 0, residual.Length);
+                            logger.Debug($"Partial AA55 frame at stream end, saved {residual.Length} bytes as residual: {MainUtils.ToHexString(residual)}");
                         }
                         break;
                     }

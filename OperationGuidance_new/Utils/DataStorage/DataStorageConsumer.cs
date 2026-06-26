@@ -107,7 +107,7 @@ namespace OperationGuidance_new.Utils.DataStorage {
                                     MissionName = _panel.Mission?.name,
                                     WorkstationName = snapshot.Count > 0 ? snapshot[0].workstation_name : "",
                                 };
-                                await new DataExportService().ExportAsync(request).ConfigureAwait(false);
+                                await _panel.ExportDataAsync(request).ConfigureAwait(false);
                                 _panel.TighteningDataVOs.Clear();
                                 SafeBeginInvoke(() => _panel.RefreshTighteningDataPanel(new List<OperationDataVO>()));
                             }, ct)) continue;

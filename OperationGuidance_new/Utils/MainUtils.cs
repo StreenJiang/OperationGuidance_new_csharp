@@ -134,6 +134,7 @@ namespace OperationGuidance_new.Utils {
                 FormBorderStyle = FormBorderStyle.None,
                 Size = new(300, 100),
             };
+            Form? scriptsPopup = null;
             formPopup.FormClosing += (s, e) => e.Cancel = true;
             string text = "正在连接数据库，请稍后";
             string dotStr = "...";
@@ -151,6 +152,25 @@ namespace OperationGuidance_new.Utils {
 
             // Start timer
             Timer timer = new();
+            DbConnector.BeforeScriptsExecution = (scriptNames) => {
+                formPopup.BeginInvoke(() => {
+                    scriptsPopup = new Form {
+                        StartPosition = FormStartPosition.CenterScreen,
+                        FormBorderStyle = FormBorderStyle.FixedDialog,
+                        Size = new(420, 80),
+                        ControlBox = false,
+                        Text = "数据库升级",
+                    };
+                    Label msgLabel = new() {
+                        Parent = scriptsPopup,
+                        AutoSize = false,
+                        Dock = DockStyle.Fill,
+                        Text = $"正在执行 {scriptNames.Count} 个数据库升级脚本，请勿关闭程序...",
+                        TextAlign = ContentAlignment.MiddleCenter,
+                    };
+                    scriptsPopup.Show();
+                });
+            };
             formPopup.BeginInvoke(() => {
                 timer.Interval = 350;
                 timer.Tick += (s, e) => {
@@ -180,6 +200,9 @@ namespace OperationGuidance_new.Utils {
                 });
                 timer.Stop();
                 formPopup.Dispose();
+                if (scriptsPopup != null && !scriptsPopup.IsDisposed) {
+                    scriptsPopup.Dispose();
+                }
             });
 
             // Show pop up (really)

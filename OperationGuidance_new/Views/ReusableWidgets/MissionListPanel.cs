@@ -96,6 +96,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 var blocks = MissionBlocks;
                 for (int i = 0; i < blocks.Count && i < missionDTOs.Count; i++) {
                     blocks[i].Entity = missionDTOs[i];
+                    if (blocks[i].MissionName != missionDTOs[i].name)
+                    {
+                        blocks[i].MissionName = missionDTOs[i].name;
+                    }
                 }
                 StartLoadingCoverImages(ct);
                 return;

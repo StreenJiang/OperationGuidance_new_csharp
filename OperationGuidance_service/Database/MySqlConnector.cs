@@ -3,6 +3,7 @@ using MySql.Data.MySqlClient;
 using OperationGuidance_service.Database.AbstractClasses;
 using OperationGuidance_service.Models;
 using OperationGuidance_service.Utils;
+using System.Data;
 using System.Data.Common;
 
 namespace OperationGuidance_service.Database {
@@ -26,11 +27,11 @@ namespace OperationGuidance_service.Database {
                     $"user={User}",
                     $"password={Password}",
                     "charset=utf8",
-                    "Connection Timeout=2",
+                    "Connection Timeout=5",
                     "Allow User Variables=True",
                     "AllowBatch=True",
                     "Pooling=true",
-                    "Max Pool Size=200",
+                    "Max Pool Size=50",
                     "Connection Lifetime=300"
                 );
                 MySqlConnection conn = new(connStr);
@@ -38,7 +39,18 @@ namespace OperationGuidance_service.Database {
 
                 if (!ConnectionUtils.HealthChecked) {
                     string sqlScriptPrefix = "modify_mysql";
-                    if (!ConnectionUtils.CheckTableExists(conn, new UserAccountInfo().TableName())) {
+                    bool tableExists;
+                    string tableName = new UserAccountInfo().TableName();
+                    using (MySqlCommand cmd = new MySqlCommand())
+                    {
+                        cmd.Connection = conn;
+                        cmd.CommandText = "SELECT COUNT(1) FROM information_schema.tables WHERE table_schema=@db AND table_name=@name";
+                        cmd.Parameters.AddWithValue("@db", Database);
+                        cmd.Parameters.AddWithValue("@name", tableName);
+                        object? result = cmd.ExecuteScalar();
+                        tableExists = result != null && Convert.ToInt32(result) > 0;
+                    }
+                    if (!tableExists) {
                         if (!doubleChecked) {
                             if (SystemUtils.ShowConfirmPopUp("检测到数据库中不存在【用户信息表】，是否执行数据库初始化操作？\n\n（如数据库连接不稳定，可能会导致此检测出现误判。遇到此情况可重启软件。如若持续出现这个情况，请联系管理员）")) {
                                 if (SystemUtils.GetDBInitEnabled()) {
@@ -73,18 +85,68 @@ namespace OperationGuidance_service.Database {
                     // Execute scripts that didn't execute
                     List<string> newExecutedSqlFileName = new();
                     using (MySqlCommand command = conn.CreateCommand()) {
+                        command.CommandTimeout = 600; // 迁移 DDL 在大表上可能耗时数分钟
                         List<string> fileNames = ConnectionUtils.GetResourcesFileNames();
-                        foreach (string fileName in fileNames) {
-                            try {
-                                if (fileName.Contains(sqlScriptPrefix) && !executedFileNames.Contains(fileName)) {
-                                    string? fileText = Resource.ResourceManager.GetString(fileName);
-                                    if (!string.IsNullOrEmpty(fileText)) {
-                                        logger.Info($"Not executed sql script[{fileName}] found");
-                                        command.CommandText = fileText;
-                                        command.ExecuteNonQuery();
+                        // 收集本轮待执行的脚本
+                        List<string> pendingScripts = fileNames
+                            .Where(f => f.Contains(sqlScriptPrefix) && !executedFileNames.Contains(f))
+                            .ToList();
 
+                        if (pendingScripts.Count > 0) {
+                            DbConnector.BeforeScriptsExecution?.Invoke(pendingScripts);
+                        }
+
+                        foreach (string fileName in pendingScripts) {
+                            try {
+                                string? fileText = Resource.ResourceManager.GetString(fileName);
+                                if (!string.IsNullOrEmpty(fileText)) {
+                                    logger.Info($"Not executed sql script[{fileName}] found");
+                                    bool allOk = true;
+                                    foreach (string stmt in fileText.Split(';')) {
+                                        string s = stmt.Trim();
+                                        if (string.IsNullOrEmpty(s)) continue;
+                                        try {
+                                            command.CommandText = s;
+                                            command.ExecuteNonQuery();
+                                        } catch (MySqlException stmtEx) when (
+                                            stmtEx.Number == 1060  // Duplicate column name
+                                            || stmtEx.Number == 1061  // Duplicate key name
+                                            || stmtEx.Number == 1091  // Can't DROP; column/key doesn't exist
+                                        ) {
+                                            // Idempotency: treat "already exists / already gone" as success.
+                                            // MySQL 5.7 does not support ALTER TABLE in PREPARE, so the
+                                            // engine must tolerate these errors rather than requiring
+                                            // idempotency wrappers in every SQL script.
+                                            logger.Info($"Statement in [{fileName}] is a no-op (already applied): {stmtEx.Message}");
+                                        } catch (MySqlException stmtEx) when (
+                                            conn.State != ConnectionState.Open
+                                        ) {
+                                            // Connection-level fatal error (e.g., timeout on large table).
+                                            // Break out to try reconnect — skip this script, continue next.
+                                            logger.Error($"Connection lost during [{fileName}]: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
+                                            allOk = false;
+                                            break;
+                                        } catch (Exception stmtEx) {
+                                            // Ordinary SQL error (syntax, constraint, etc.) — log and continue.
+                                            logger.Warn($"Statement in [{fileName}] failed: {stmtEx.Message}. SQL: {s.Substring(0, Math.Min(s.Length, 100))}...");
+                                            allOk = false;
+                                        }
+                                    }
+                                    // 连接断开 → 重连一次，跳过当前脚本，继续后续脚本
+                                    if (conn.State != ConnectionState.Open) {
+                                        try {
+                                            conn.Open();
+                                            logger.Info($"Reconnected successfully after connection loss during [{fileName}] — skipping current script, continuing remaining scripts");
+                                        } catch (Exception reconnectEx) {
+                                            logger.Error($"Reconnect failed after connection loss during [{fileName}]: {reconnectEx.Message}. Requires manual intervention.");
+                                            break; // 中止全部脚本
+                                        }
+                                    }
+                                    if (allOk) {
                                         logger.Info($"Execute sql script[{fileName}] successfully");
                                         newExecutedSqlFileName.Add(fileName);
+                                    } else {
+                                        logger.Warn($"Execute sql script[{fileName}] completed with errors — will retry on next startup");
                                     }
                                 }
                             } catch (Exception e) {

@@ -259,4 +259,49 @@
   <data name="modify_sqlserver_20250625" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>sqls\modify_sqlserver_20250625.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
+  <data name="modify_mysql_20260526" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20260526.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlite_20260526" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20260526.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlserver_20260526" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20260526.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_mysql_20260602" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20260602.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlite_20260602" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20260602.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlserver_20260602" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20260602.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_mysql_20260603" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20260603.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlite_20260603" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20260603.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlserver_20260603" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20260603.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_mysql_20260603_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20260603_2.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlite_20260603_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20260603_2.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlserver_20260603_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20260603_2.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_mysql_20260605" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_mysql_20260605.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlite_20260605" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlite_20260605.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="modify_sqlserver_20260605" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>sqls\modify_sqlserver_20260605.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
 </root>

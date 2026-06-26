@@ -31,6 +31,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         private List<CommonButton> _extraButtons;
         // DataGridView panel
         private DataGridViewPanel<T> _voGridView;
+        // Loading overlay
+        private Panel _loadingOverlay;
+        private Label _loadingLabel;
+        private int _isQuerying;
         // Delegates
         private Func<T, List<T>> _queryData;
         private Action<Action> _addNewClick;
@@ -75,6 +79,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             // Initialization
             InitializeContents(initializeColumnHeader);
             InitializeButtonsPanel();
+            InitializeLoadingOverlay();
         }
         #endregion
 
@@ -167,6 +172,79 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
         }
         #endregion
 
+        #region Loading Overlay
+        private void InitializeLoadingOverlay() {
+            _loadingOverlay = new() {
+                Visible = false,
+                BackColor = Color.Black,
+                BackgroundImageLayout = ImageLayout.Stretch,
+            };
+            _loadingLabel = new() {
+                Parent = _loadingOverlay,
+                Text = "加载中...",
+                TextAlign = ContentAlignment.MiddleCenter,
+                AutoSize = false,
+                Font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular),
+            };
+        }
+        internal void HideLoadingOverlay() {
+            if (_loadingOverlay.Visible) {
+                _loadingOverlay.Visible = false;
+                _loadingOverlay.Region?.Dispose();
+                _loadingOverlay.Region = null;
+                _loadingOverlay.BackgroundImage?.Dispose();
+                _loadingOverlay.BackgroundImage = null;
+                _loadingLabel.Visible = true;
+            }
+        }
+        /// <summary>Show loading overlay on the grid area during async operations (query, paging).</summary>
+        internal void ShowLoadingOverlay() {
+            if (_loadingOverlay.Visible) return;
+            // Position overlay using screen coordinates so it works regardless of
+            // whether parent is this DataGridViewGroup or the top-level Form.
+            Form? form = this.FindForm();
+            if (form != null) {
+                if (_loadingOverlay.Parent != form) {
+                    _loadingOverlay.Parent?.Controls.Remove(_loadingOverlay);
+                    form.Controls.Add(_loadingOverlay);
+                }
+                Point gridScreen = _voGridView.PointToScreen(Point.Empty);
+                _loadingOverlay.Location = form.PointToClient(gridScreen);
+            } else {
+                _loadingOverlay.Location = _voGridView.Location;
+            }
+            _loadingOverlay.Size = _voGridView.Size;
+            if (_loadingOverlay.Width > 0 && _loadingOverlay.Height > 0) {
+                try {
+                    // Do NOT dispose bmp — _loadingOverlay.BackgroundImage holds the reference.
+                    // HideLoadingOverlay disposes it when the mask is removed.
+                    Bitmap bmp = new(_loadingOverlay.Width, _loadingOverlay.Height);
+                    _voGridView.DrawToBitmap(bmp, new(0, 0, _loadingOverlay.Width, _loadingOverlay.Height));
+                    using (Graphics g = Graphics.FromImage(bmp)) {
+                        using (Brush brush = new SolidBrush(Color.FromArgb(120, 0, 0, 0))) {
+                            g.FillRectangle(brush, 0, 0, bmp.Width, bmp.Height);
+                        }
+                        using (Font font = new(CustomLibrary.Configs.WidgetsConfigs.SystemFontFamily, 16, FontStyle.Regular))
+                        using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
+                            g.DrawString("加载中...", font, Brushes.White, new RectangleF(0, 0, bmp.Width, bmp.Height), sf);
+                        }
+                    }
+                    _loadingOverlay.BackgroundImage = bmp;
+                } catch {
+                    // DrawToBitmap failed — fallback to label
+                }
+            }
+            if (_loadingOverlay.BackgroundImage == null) {
+                _loadingLabel.Size = new(_loadingOverlay.Width, 40);
+                _loadingLabel.Location = new(0, (_loadingOverlay.Height - 40) / 2);
+            }
+            _loadingLabel.Visible = (_loadingOverlay.BackgroundImage == null);
+            if (_loadingOverlay.Width <= 0 || _loadingOverlay.Height <= 0) return;
+            _loadingOverlay.Visible = true;
+            _loadingOverlay.BringToFront();
+        }
+        #endregion
+
         #region Reusable methods
         public void ResetColumnHeaders() {
             _voGridView.ResetColumnHeaders();
@@ -194,7 +272,29 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             _extraButtons.Add(extraButton);
             return extraButton;
         }
-        private void QueryAndRefresh() => _voGridView.DataSource = _queryData(_filterParametersVO);
+        private async void QueryAndRefresh() {
+            if (Interlocked.CompareExchange(ref _isQuerying, 1, 0) != 0) return;
+            _searchButton.Enabled = false;
+            _resetButton.Enabled = false;
+            try {
+                ShowLoadingOverlay();
+
+                var result = await Task.Run(() => _queryData(_filterParametersVO));
+                if (IsDisposed || !Visible) return;
+                _voGridView.DataSource = result;
+            } catch (Exception ex) {
+                if (!IsDisposed) {
+                    WidgetUtils.ShowErrorPopUp($"查询失败：{ex.Message}");
+                }
+            } finally {
+                if (!IsDisposed) {
+                    _searchButton.Enabled = true;
+                    _resetButton.Enabled = true;
+                    HideLoadingOverlay();
+                }
+                _isQuerying = 0;
+            }
+        }
         public List<int> GetSelectedIds() {
             List<int> ids = new();
             DataGridViewSelectedRowCollection selectedRows = _voGridView.GridView.SelectedRows;
@@ -337,12 +437,18 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             ResizeFiltersPanel(contentSize);
             ResizeButtonsPanel();
         }
+        protected override void OnVisibleChanged(EventArgs e) {
+            base.OnVisibleChanged(e);
+            if (!Visible) {
+                HideLoadingOverlay();
+            }
+        }
         public override bool CheckNeedsScrollBar(int parentNewHeight) {
             return false;
         }
         public override void VisibleToTrue() {
-            QueryAndRefresh();
             ResizeChildren();
+            QueryAndRefresh();
         }
         #endregion
     }

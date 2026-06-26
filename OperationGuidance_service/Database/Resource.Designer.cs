@@ -387,7 +387,19 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("modify_mysql_20250625", resourceCulture);
             }
         }
-        
+
+        internal static string modify_mysql_20260526 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_mysql_20260602 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260602", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to -- ===============
         ///-- 1. 创建数字辅助表 (仅需一次)
@@ -805,7 +817,19 @@ namespace OperationGuidance_service.Database {
                 return ResourceManager.GetString("modify_sqlite_20250625", resourceCulture);
             }
         }
-        
+
+        internal static string modify_sqlite_20260526 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlite_20260602 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260602", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to -- 1. 创建目标表
         ///DROP TABLE IF EXISTS parts_bar_code;
@@ -969,6 +993,54 @@ namespace OperationGuidance_service.Database {
         internal static string modify_sqlserver_20250625 {
             get {
                 return ResourceManager.GetString("modify_sqlserver_20250625", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260526 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260526", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260602 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260602", resourceCulture);
+            }
+        }
+
+        internal static string modify_mysql_20260603 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260603", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlite_20260603 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260603", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260603 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260603", resourceCulture);
+            }
+        }
+
+        internal static string modify_mysql_20260605 {
+            get {
+                return ResourceManager.GetString("modify_mysql_20260605", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlite_20260605 {
+            get {
+                return ResourceManager.GetString("modify_sqlite_20260605", resourceCulture);
+            }
+        }
+
+        internal static string modify_sqlserver_20260605 {
+            get {
+                return ResourceManager.GetString("modify_sqlserver_20260605", resourceCulture);
             }
         }
     }

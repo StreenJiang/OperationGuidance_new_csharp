@@ -103,8 +103,22 @@ namespace OperationGuidance_service.Utils {
                 List<PropertyInfo> props2 = type2.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList();
                 Dictionary<string, PropertyInfo> p1Dict = props1.ToDictionary(p => p.Name);
                 foreach (PropertyInfo p2 in props2) {
-                    if (p1Dict.ContainsKey(p2.Name) && p2.GetType() == p1Dict[p2.Name].GetType()) {
-                        p2.SetValue(objTo, p1Dict[p2.Name].GetValue(objFrom));
+                    if (p1Dict.ContainsKey(p2.Name)) {
+                        Type sourceType = p1Dict[p2.Name].PropertyType;
+                        Type targetType = p2.PropertyType;
+                        bool typesCompatible = targetType.IsAssignableFrom(sourceType);
+                        // Also accept Nullable<T> -> T (unwrap nullable when source is nullable but target is not)
+                        if (!typesCompatible && sourceType.IsGenericType
+                            && sourceType.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+                            typesCompatible = targetType.IsAssignableFrom(Nullable.GetUnderlyingType(sourceType));
+                        }
+                        if (typesCompatible) {
+                            object? value = p1Dict[p2.Name].GetValue(objFrom);
+                            // Skip null source values for non-nullable value types (can't assign null to int)
+                            if (value != null || !targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null) {
+                                p2.SetValue(objTo, value);
+                            }
+                        }
                     } else {
                         IEnumerable<Attribute> enumerable = p2.GetCustomAttributes();
                         foreach (Attribute a in enumerable) {

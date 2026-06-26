@@ -90,12 +90,7 @@ namespace OperationGuidance_new.Views {
             };
             _dataGridView.AddTextBox("任务名称", false, (MissionRecordVO vo, string? value) => vo.mission_name = value);
             _workstationNameComboBox = _dataGridView.AddComboBox("站点名称", (MissionRecordVO vo, List<int?>? value) => {
-                vo.ids = new();
-                if (value != null) {
-                    value.ForEach(v => vo.ids.Add(v));
-                } else {
-                    vo.ids.Add(null);
-                }
+                vo.workstation_id = value?.FirstOrDefault();
             }, new());
             Dictionary<String, bool?> yesOrNos = new() {
                 { "是", true }, { "否", false }
@@ -125,24 +120,30 @@ namespace OperationGuidance_new.Views {
 
             // 按钮逻辑
             _dataGridView.QueryData = (vo) => {
-                _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) {
-                    Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId)
-                }).ProductMissionsDTOs;
-                _workstationInfoCache = new();
-                _dataGridView.VoGridView.ServerFetch = (page, pageSize) => {
-                    var pageReq = BuildQueryMissionRecordListReq(page, pageSize, vo);
-                    var pageRsp = apis.QueryMissionRecordList(pageReq);
-                    var pageVos = new List<MissionRecordVO>();
-                    CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(pageRsp.MissionRecordDTOs, pageVos);
-                    EnrichMissionRecordVOs(pageVos);
-                    return (pageVos, pageRsp.TotalCount);
+                _wsCache.Clear();
+                // Snapshot workstation_id at query time to prevent async mutation by RefreshWorkstationOptions
+                var queryWorkstationId = vo.workstation_id;
+                _dataGridView.VoGridView.ServerFetch = (page, pageSize, afterId) => {
+                    var saved = vo.workstation_id;
+                    vo.workstation_id = queryWorkstationId;
+                    try {
+                        var pageReq = BuildQueryMissionRecordListReq(page, pageSize, vo, afterId);
+                        var pageRsp = apis.QueryMissionRecordList(pageReq);
+                        var pageVos = new List<MissionRecordVO>();
+                        CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(pageRsp.MissionRecordDTOs, pageVos);
+                        FixIsChallengeMission(pageRsp.MissionRecordDTOs, pageVos);
+                        EnrichWorkstationBatch(pageVos);
+                        return (pageVos, pageRsp.TotalCount);
+                    } finally {
+                        vo.workstation_id = saved;
+                    }
                 };
-                var req = BuildQueryMissionRecordListReq(1, _dataGridView.VoGridView.PageSize, vo);
+                var req = BuildQueryMissionRecordListReq(1, _dataGridView.VoGridView.PageSize, vo, null);
                 var rsp = apis.QueryMissionRecordList(req);
-                _dataDTOList = rsp.MissionRecordDTOs;
                 var vos = new List<MissionRecordVO>();
-                CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(_dataDTOList, vos);
-                EnrichMissionRecordVOs(vos);
+                CommonUtils.ObjectConverter<MissionRecordDTO, MissionRecordVO>(rsp.MissionRecordDTOs, vos);
+                FixIsChallengeMission(rsp.MissionRecordDTOs, vos);
+                EnrichWorkstationBatch(vos);
                 _dataGridView.VoGridView.SetServerDataSource(vos, rsp.TotalCount);
                 return vos;
             };
@@ -214,48 +215,43 @@ namespace OperationGuidance_new.Views {
                 }
             }, token);
         }
-        private QueryMissionRecordListReq BuildQueryMissionRecordListReq(int? page, int? pageSize, MissionRecordVO vo) {
+        private Dictionary<int, (int wsId, string wsName)> _wsCache = new();
+        private void EnrichWorkstationBatch(List<MissionRecordVO> vos) {
+            if (vos.Count == 0) return;
+            List<int> ids = vos.Select(v => v.id.Value).Distinct().ToList();
+            List<int> uncached = ids.Where(id => !_wsCache.ContainsKey(id)).ToList();
+            if (uncached.Count > 0) {
+                var fetched = apis.QueryWorkstationInfoByMissionRecordIds(new(uncached)).WorkstationInfos;
+                foreach (var kv in fetched) {
+                    var inner = kv.Value;
+                    _wsCache[kv.Key] = (inner.Keys.FirstOrDefault(), inner.Values.FirstOrDefault() ?? "");
+                }
+            }
+            foreach (var vo in vos) {
+                if (vo.id != null && _wsCache.TryGetValue(vo.id.Value, out var ws)) {
+                    vo.workstation_id = ws.wsId;
+                    vo.workstation_name = ws.wsName;
+                }
+            }
+        }
+        private void FixIsChallengeMission(List<MissionRecordDTO> dtos, List<MissionRecordVO> vos) {
+            for (int i = 0; i < vos.Count && i < dtos.Count; i++) {
+                vos[i].is_challenge_mission = dtos[i].is_challenge_mission == (int)YesOrNo.YES;
+            }
+        }
+        private QueryMissionRecordListReq BuildQueryMissionRecordListReq(int? page, int? pageSize, MissionRecordVO vo, int? afterId = null) {
             return new() {
                 Page = page,
                 PageSize = pageSize,
+                AfterId = afterId,
                 ProductBarCode = vo.product_bar_code,
                 PartsBarCode = vo.parts_bar_code,
                 CreateTimeMin = vo.filter_create_time_min,
                 CreateTimeMax = vo.filter_create_time_max,
                 MissionName = vo.mission_name,
                 IsChallengeMission = vo.is_challenge_mission,
-                Ids = (vo.ids != null && vo.ids.Count > 0 && vo.ids[0] != null)
-                    ? vo.ids.Where(i => i.HasValue).Select(i => i.Value).ToList()
-                    : null,
+                WorkstationId = vo.workstation_id,
             };
-        }
-        private void EnrichMissionRecordVOs(List<MissionRecordVO> vos) {
-            if (vos.Count == 0) return;
-            // 查询站点信息（优先从缓存取，未命中的批量查询后写入缓存）
-            List<int> missionRecordIds = vos.Select(vo => (int) vo.id).Distinct().ToList();
-            List<int> uncachedIds = missionRecordIds.Where(id => !_workstationInfoCache.ContainsKey(id)).ToList();
-            if (uncachedIds.Count > 0) {
-                var fetched = apis.QueryWorkstationInfoByMissionRecordIds(new(uncachedIds)).WorkstationInfos;
-                foreach (var kv in fetched) {
-                    _workstationInfoCache[kv.Key] = kv.Value;
-                }
-            }
-            vos.ForEach(vo => {
-                if (_workstationInfoCache.TryGetValue(vo.id.Value, out var dict)) {
-                    vo.workstation_id = dict.Keys.ToList()[0];
-                    vo.workstation_name = dict.Values.ToList()[0];
-                }
-            });
-            // 填充任务名称和挑战任务标识
-            var missionIds = vos.Select(v => v.mission_id).Distinct().ToList();
-            var missions = _missions.Where(m => missionIds.Contains(m.id)).ToList();
-            vos.ForEach(vo => {
-                ProductMissionDTO? mission = missions.SingleOrDefault(m => m.id == vo.mission_id);
-                if (mission != null) {
-                    vo.mission_name = mission.name;
-                    vo.is_challenge_mission = mission.is_challenge_mission == (int) YesOrNo.YES;
-                }
-            });
         }
         private void OpenOperationDataDetailsPopUpForm(List<OperationDataVO> vos) {
             CustomPopUpForm form = new() {
@@ -366,16 +362,6 @@ namespace OperationGuidance_new.Views {
                     Dictionary<int, string> dict = workstationInfos[vo.id.Value];
                     vo.workstation_id = dict.Keys.ToList()[0];
                     vo.workstation_name = dict.Values.ToList()[0];
-                }
-            });
-
-            _missions = apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
-            _missions = _missions.Where(m => vos.Select(v => v.mission_id).Distinct().ToList().Contains(m.id)).ToList();
-            vos.ForEach(vo => {
-                ProductMissionDTO? productMissionDTO = _missions.SingleOrDefault(m => m.id == vo.mission_id);
-                if (productMissionDTO != null) {
-                    vo.mission_name = productMissionDTO.name;
-                    vo.is_challenge_mission = productMissionDTO.is_challenge_mission == (int) YesOrNo.YES;
                 }
             });
 

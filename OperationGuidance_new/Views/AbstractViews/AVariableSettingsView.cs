@@ -445,9 +445,13 @@ namespace OperationGuidance_new.Views.AbstractViews {
             ExportConfig.Instance.SetExcelExportEnabled(_enableExcelExportToggle.Checked);
             ExportConfig.Instance.SetTxtExportEnabled(_enableTxtExportToggle.Checked);
             ExportConfig.Instance.Reload();
+
+            _enableExcelExportOriginal = _enableExcelExportToggle.Checked;
+            _enableTxtExportOriginal = _enableTxtExportToggle.Checked;
         }
         private void UpdateExportControlsEnabled() {
-            bool anyEnabled = _enableExcelExportToggle.Checked || _enableTxtExportToggle.Checked;
+            bool anyEnabled = _enableExcelExportToggle.Checked
+                || (_enableTxtExportToggle.Checked && _enableTxtExportToggle.Visible);
             _storagePathTextBox.Enabled = anyEnabled;
             _storageFieldsButton.Enabled = anyEnabled;
             _exportTestButton.Enabled = anyEnabled;
@@ -509,9 +513,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                 var request = new ExportRequest {
                     Data = fakeData,
                     Fields = fields,
-                    BasePath = ExportConfig.Instance.StoragePath,
+                    BasePath = _storagePathTextBox.GetTextBox(0).Box.Text,
                     ProductBatch = "TEST_BATCH",
                     ProductBarCode = "TEST_BARCODE",
+                    PartsBarCode = null,
                     CompletedAt = DateTime.Now,
                     Result = "OK",
                     EnableExcel = enableExcel,
@@ -520,14 +525,18 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     WorkstationName = "TEST_WORKSTATION",
                 };
 
-                await new DataExportService().ExportAsync(request);
+                await ExportTestAsync(request);
 
                 string type = enableExcel ? "Excel" : "Txt";
-                WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{ExportConfig.Instance.StoragePath}");
+                WidgetUtils.ShowNoticePopUp($"导出测试完成 — {type} 文件已保存至:\n{_storagePathTextBox.GetTextBox(0).Box.Text}");
             } catch (Exception ex) {
                 logger.Error($"导出测试失败: {ex.Message}", ex);
                 WidgetUtils.ShowErrorPopUp($"导出测试失败: {ex.Message}");
             }
+        }
+
+        protected virtual async Task ExportTestAsync(ExportRequest request) {
+            await new DataExportService().ExportAsync(request);
         }
 
         private void PopUpFieldsConfigurationForm(List<OperationDataField> fields) {
@@ -742,8 +751,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     _upImageRect = new(imageUpLocation, imageSize);
                     _downImageRect = new(imageDownLocation, imageSize);
 
-                    _upImageShowing = WidgetUtils.ResizeImage(_upImage, imageSize);
-                    _downImageShowing = WidgetUtils.ResizeImage(_downImage, imageSize);
+                    var newUp = WidgetUtils.ResizeImage(_upImage, imageSize);
+                    var newDown = WidgetUtils.ResizeImage(_downImage, imageSize);
+                    _upImageShowing?.Dispose();
+                    _downImageShowing?.Dispose();
+                    _upImageShowing = newUp;
+                    _downImageShowing = newDown;
                 }
                 private void ClickUpAnimation(bool goDown) {
                     if (_upImageRect != null) {
@@ -779,7 +792,9 @@ namespace OperationGuidance_new.Views.AbstractViews {
                     base.OnMouseLeave(e);
                     _upImageRect = null;
                     _downImageRect = null;
+                    _upImageShowing?.Dispose();
                     _upImageShowing = null;
+                    _downImageShowing?.Dispose();
                     _downImageShowing = null;
                     Invalidate();
                 }

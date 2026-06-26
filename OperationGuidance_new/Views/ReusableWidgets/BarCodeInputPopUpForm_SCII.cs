@@ -7,6 +7,8 @@ using OperationGuidance_service.Models.DTOs;
 namespace OperationGuidance_new.Views.ReusableWidgets {
     public class BarCodeInputPopUpForm_SCII: ABarCodeInputPopUpForm {
 
+        private HashSet<int> _boltBoundRuleIds = new();
+
         public BarCodeInputPopUpForm_SCII(AWorkplaceContentPanel workplace,
                 string initStr, ProductMissionDTO mission, bool activated,
                 Dictionary<int, List<BarCodeMatchingRuleDTO>> productBarCodeRules,
@@ -14,10 +16,19 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                 string? barCode, List<BarCodeMatchingRuleDTO> boltRules, bool isForBolt)
             : base(workplace, initStr, mission, activated, productBarCodeRules, partsBarCodeRules, barCode, boltRules, isForBolt) { }
 
+        public void SetBoltBoundRuleIds(HashSet<int> ruleIds) {
+            _boltBoundRuleIds = ruleIds;
+        }
+
         protected override bool PartsBarCodeExtraCheck(int ruleId) {
             // 1. 基础检查
             if (!base.PartsBarCodeExtraCheck(ruleId)) {
                 return false;
+            }
+
+            // 螺丝点位绑定的物料码，跳过顺序校验
+            if (_boltBoundRuleIds.Contains(ruleId)) {
+                return true;
             }
 
             // 2. 获取"所有有效规则"（按顺序），排除绑定的螺栓规则

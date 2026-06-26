@@ -7,5 +7,6 @@ namespace OperationGuidance_new.Constants {
         WHYC = 4, // 芜湖毅昌
         TZYX = 5, // 台州永欣
         SCII_XT = 6, // 西艾爱 - 线体商
+        YMT = 7, // 永茂泰
     }
 }

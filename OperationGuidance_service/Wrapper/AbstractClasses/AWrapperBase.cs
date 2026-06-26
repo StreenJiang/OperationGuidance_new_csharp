@@ -11,16 +11,21 @@ using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Common;
 using System.Reflection;
+using Newtonsoft.Json;
+using System.Diagnostics;
+using OperationGuidance_service.Services;
 
 namespace OperationGuidance_service.Wrapper.AbstractClasses {
     [Wrapper]
     public abstract class AWrapperBase<T> where T : AEntityBase, new() {
         protected ILog logger = SystemUtils.GetLogger(typeof(T));
 
+        private static readonly LocalDataCache _localCache = LocalCacheHolder.Instance;
         private string _tabelName;
         private DbConnection? _conn;
         private DbTransaction? _transaction;
         private const int commandTimeout = 10;
+        private const int fastCommandTimeout = 3;   // INSERT / ID queries — fast path
 
         public string TableName { get => _tabelName; }
 
@@ -45,6 +50,8 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
 
         public T? Add(T entity) {
             try {
+                FlushCache();
+
                 string sql = GenerateInsertSql();
                 logger.Info("sql: " + sql);
                 string idSql = LastInsertIdSql;
@@ -75,9 +82,68 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
                 return entity;
             } catch (Exception e) {
                 logger.Error($"Failed to add entity to table {_tabelName}, please check error: e = {e}");
+                try {
+                    _localCache.Enqueue(GetTableName(), entity);
+                    logger.Info($"Entity saved to local cache, table={GetTableName()}");
+                } catch (Exception cacheEx) {
+                    logger.Error($"CRITICAL: Failed to save entity to local cache: {cacheEx}", cacheEx);
+                }
                 return null;
             }
         }
+
+        /// <summary>
+        /// Before each Add(), try to flush any pending cached items for this entity type.
+        /// Respects backoff — if previous flush timed out, wait before retrying.
+        /// </summary>
+        private void FlushCache() {
+            string tableName = GetTableName();
+            var pending = _localCache.DequeuePending(10, tableName);
+            if (pending.Count == 0) {
+                _localCache.ResetBackoff();
+                return;
+            }
+
+            int backoff = _localCache.GetBackoffMs();
+            if (backoff > 0) {
+                Thread.Sleep(backoff);
+            }
+
+            var confirmed = new List<int>();
+            var sw = Stopwatch.StartNew();
+            string sql = InsertSql;
+            string combinedSql = sql + "; " + LastInsertIdSql;
+            using (var conn = DbConnector.GetConnection()) {
+                foreach (var (id, _, entityJson) in pending) {
+                    if (sw.ElapsedMilliseconds > 500) break;
+                    try {
+                        var entity = JsonConvert.DeserializeObject<T>(entityJson);
+                        using (var tx = conn.BeginTransaction()) {
+                            conn.ExecuteScalar<int>(combinedSql, entity, tx, commandTimeout: fastCommandTimeout);
+                            tx.Commit();
+                        }
+                        confirmed.Add(id);
+                    } catch (Exception ex) {
+                        logger.Warn(
+                            $"[LocalCache] Flush item {id} failed: {ex.Message}, stopping batch");
+                        break;
+                    }
+                }
+            }
+
+            _localCache.ConfirmDequeued(confirmed);
+            if (confirmed.Count < pending.Count) {
+                _localCache.IncreaseBackoff();
+            } else {
+                _localCache.ResetBackoff();
+            }
+        }
+
+        private static readonly ConcurrentDictionary<Type, string> _insertSqlCache = new();
+
+        /// <summary>Cached INSERT SQL (table schema is immutable at runtime).</summary>
+        private string InsertSql =>
+            _insertSqlCache.GetOrAdd(typeof(T), _ => GenerateInsertSql());
 
         public int AddBatch(List<T> entities) {
             int result = 0;
@@ -504,5 +570,10 @@ namespace OperationGuidance_service.Wrapper.AbstractClasses {
             // }
             return false;
         }
+    }
+
+    /// <summary>Holds the single LocalDataCache instance shared by all AWrapperBase&lt;T&gt; specializations.</summary>
+    internal static class LocalCacheHolder {
+        public static readonly LocalDataCache Instance = new();
     }
 }

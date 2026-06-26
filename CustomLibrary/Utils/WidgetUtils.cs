@@ -201,7 +201,7 @@ namespace CustomLibrary.Utils {
         /// <param name="image">Image will be rescaled.</param>
         /// <param name="newWidth">New width of new Image.</param>
         /// <param name="newHeight">New height of new Image.</param>
-        /// <returns>New image witdh new size.</returns>        
+        /// <returns>New image witdh new size.</returns>
         public static Image ResizeImage(Image image, int newWidth, int newHeight, bool dispose = false) {
             lock (_resizeLocker) {
                 if (newWidth <= 0 || newHeight <= 0) {
@@ -276,6 +276,21 @@ namespace CustomLibrary.Utils {
                 newSize.Height = 1;
             }
             return WidgetUtils.ResizeImage(image, newSize);
+        }
+
+        public static Image? NormalizeImageHandle(Image image, ILog? logger) {
+            try {
+                using (var ms = new MemoryStream()) {
+                    image.Save(ms, ImageFormat.Png);
+                    ms.Position = 0;
+                    using (var temp = Image.FromStream(ms)) {
+                        return new Bitmap(temp);
+                    }
+                }
+            } catch (Exception ex) {
+                logger?.Warn($"NormalizeImageHandle: PNG stream round-trip failed. ex = {ex}");
+                return null;
+            }
         }
 
         /// <summary>
@@ -363,21 +378,6 @@ namespace CustomLibrary.Utils {
         public static Rectangle ResizeRectangleByRatio(Rectangle rect, float ratio) {
             Size newSize = (rect.Size * ratio).ToSize();
             return new(rect.Location, newSize);
-        }
-
-        public static Image? NormalizeImageHandle(Image image, ILog? logger) {
-            try {
-                using (var ms = new MemoryStream()) {
-                    image.Save(ms, ImageFormat.Png);
-                    ms.Position = 0;
-                    using (var temp = Image.FromStream(ms)) {
-                        return new Bitmap(temp);
-                    }
-                }
-            } catch (Exception ex) {
-                logger?.Warn($"NormalizeImageHandle: PNG stream round-trip failed. ex = {ex}");
-                return null;
-            }
         }
 
         public static Image RotateImage(Image image, float angle, ILog? logger = null, bool dispose = true) {
