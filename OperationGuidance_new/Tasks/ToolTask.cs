@@ -138,7 +138,7 @@ namespace OperationGuidance_new.Tasks {
                             if (pSetSendingOk != null && _sendingPSet != -1) {
                                 if (pSetSendingOk.HasValue) {
                                     _psetSentOk = pSetSendingOk.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {(_psetSentOk ? "Accepted" : "Rejected")}");
                                 }
                             }
                             if (locked != null && locked.HasValue) {
@@ -157,7 +157,7 @@ namespace OperationGuidance_new.Tasks {
                             if (pSetSendingOk != null && _sendingPSet != -1) {
                                 if (pSetSendingOk.HasValue) {
                                     _psetSentOk = pSetSendingOk.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {(_psetSentOk ? "Accepted" : "Rejected")}");
                                 }
                             }
                             if (dataReceived != null && dataReceived.Value) {
@@ -178,7 +178,7 @@ namespace OperationGuidance_new.Tasks {
                             if (pSetSendingOk != null && _sendingPSet != -1) {
                                 if (pSetSendingOk.HasValue) {
                                     _psetSentOk = pSetSendingOk.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {_psetSentOk}");
+                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {(_psetSentOk ? "Accepted" : "Rejected")}");
                                 }
                             }
                             if (locked != null && locked.HasValue) {
