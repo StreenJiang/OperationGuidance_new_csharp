@@ -704,6 +704,9 @@ namespace OperationGuidance_new.Utils {
         }
         public static string GetDefaultAutoLoginInfo() => "";
         public static void SetAutoLoginInfo(string autoLoginInfo) => Settings.Write(IniFileKeys.AutoLoginInfo, autoLoginInfo);
+        public static void SetAutoLoginInfoFromUser(UserAccountInfoDTO userInfo) {
+            SetAutoLoginInfo($"{userInfo.account},{userInfo.password ?? ""}");
+        }
 
         // Logs retention days
         public static int GetLogsRetentionDays() {

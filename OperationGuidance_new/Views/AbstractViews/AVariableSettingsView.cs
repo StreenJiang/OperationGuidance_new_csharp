@@ -15,6 +15,7 @@ using OperationGuidance_new.Utils;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.ViewObjects;
 using OperationGuidance_service.Constants;
+using OperationGuidance_service.Utils;
 using OperationGuidance_new.Views.ReusableWidgets;
 
 namespace OperationGuidance_new.Views.AbstractViews {
@@ -321,7 +322,12 @@ namespace OperationGuidance_new.Views.AbstractViews {
             // Auto login
             MainUtils.SetAutoLoginEnabled(_autoLoginToggle.Checked);
             _autoLoginOriginal = _autoLoginToggle.Checked;
-            if (!_autoLoginOriginal) {
+            if (_autoLoginOriginal) {
+                var userInfo = SystemUtils.UserInfo;
+                if (userInfo != null) {
+                    MainUtils.SetAutoLoginInfoFromUser(userInfo);
+                }
+            } else {
                 MainUtils.SetAutoLoginInfo(MainUtils.GetDefaultAutoLoginInfo());
             }
 

@@ -88,8 +88,7 @@ namespace OperationGuidance_new.Views {
 
                     // Store current account info
                     if (MainUtils.IsAutoLoginEnabled()) {
-                        String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
-                        MainUtils.SetAutoLoginInfo(loginInfo);
+                        MainUtils.SetAutoLoginInfoFromUser(SystemUtils.UserInfo);
                     }
                 }
             }

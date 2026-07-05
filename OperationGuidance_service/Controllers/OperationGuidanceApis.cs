@@ -367,13 +367,14 @@ namespace OperationGuidance_service.Controllers {
 
             Roles? role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId);
             if (role != null && role != Roles.DEVELOPER) {
-                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id";
+                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted and macs_id = @macs_id order by create_time asc";
                 Dictionary<string, object> parameters = new();
                 parameters.Add("deleted", (int) YesOrNo.NO);
                 parameters.Add("macs_id", req.MacsId);
                 missions = _productMissionService.FindBySql(sql, parameters);
             } else {
-                missions = _productMissionService.QueryListWithoutUserId();
+                string sql = $"select * from {_productMissionService.TableName} where deleted = @deleted order by create_time asc";
+                missions = _productMissionService.FindBySql(sql, new() { { "@deleted", (int)YesOrNo.NO } });
             }
 
             // 根据任务清单查询对应的封面 side
