@@ -203,16 +203,23 @@ namespace OperationGuidance_new.Views {
                     _missionName.GetTextBox(0).IsError = true;
                     WidgetUtils.ShowErrorPopUp("任务名称不能为空！");
                     return;
-                } else if (allOtherMissions.Find(m => m.name == missionName) != null) {
+                }
+                // 重名检查：比较基础名（去掉 ID 前缀）
+                string baseName = MissionNameHelper.StripPrefix(missionName, _missionDTO.id);
+                if (allOtherMissions.Find(m => MissionNameHelper.StripPrefix(m.name, m.id) == baseName) != null) {
                     _missionName.GetTextBox(0).IsError = true;
-                    WidgetUtils.ShowErrorPopUp("任务名称不能与现有任务名称重复！");
+                    WidgetUtils.ShowWarningPopUp("任务名称不能与现有任务名称重复！");
                     return;
                 }
                 _missionDTO.name = missionName;
                 _missionName.GetTextBox(0).IsError = false;
 
+                // 保存前确保名称带前缀
+                _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
+
                 _currentProductImageFile.SaveSideInfo();
                 // Store to database
+                int oldId = _missionDTO.id;  // 记录保存前 ID，判断是否新建任务
                 var req = new AddOrUpdateProductMissionReq(_missionDTO);
                 var rsp = _apis.AddOrUpdateProductMission(req);
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
@@ -221,6 +228,16 @@ namespace OperationGuidance_new.Views {
 
                     Modified = false;
                     _missionDTO = rsp.ProductMissionDTO;
+
+                    // 新建任务首次保存成功后，用真实 ID 更新前缀
+                    if (oldId <= 0 && _missionDTO.id > 0) {
+                        _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
+                        AddOrUpdateProductMissionReq updateReq = new(_missionDTO);
+                        var updateRsp = _apis.AddOrUpdateProductMission(updateReq);
+                        if (updateRsp.RsponseCode == HttpResponseCode.OK) {
+                            _missionDTO = updateRsp.ProductMissionDTO;
+                        }
+                    }
 
                     // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                     foreach (SideButton sideBtn in _sideButtons) {

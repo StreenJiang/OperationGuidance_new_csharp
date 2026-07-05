@@ -119,8 +119,7 @@ namespace OperationGuidance_new.Views {
                 _afterLogin(_mainFormSize);
 
                 if (MainUtils.IsAutoLoginEnabled()) {
-                    String loginInfo = $"{SystemUtils.UserInfo.account},{SystemUtils.UserInfo.password}";
-                    MainUtils.SetAutoLoginInfo(loginInfo);
+                    MainUtils.SetAutoLoginInfoFromUser(SystemUtils.UserInfo);
                 }
             }
         }

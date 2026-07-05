@@ -1,0 +1,588 @@
+有关调用实时(JIT)调试而不是此对话框的详细信息，
+请参见此消息的结尾。
+
+************** 异常文本 **************
+System.OutOfMemoryException: Out of memory.
+   at CustomLibrary.Utils.WidgetUtils.RotateImage(Image image, Single angle, ILog logger) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Utils\WidgetUtils.cs:line 369
+   at OperationGuidance_new.Views.ReusableWidgets.MissionListPanel.RefreshMissionBlocks(List`1 missionDTOs, Action`1 blockClickAction, Boolean toggleBlock) in D:\AllProjects\CsharpProjects\OperationGuidance_new\OperationGuidance_new\Views\ReusableWidgets\MissionListPanel.cs:line 0
+   at OperationGuidance_new.Views.MissionManagementView_SCII.CheckAndDisplay() in D:\AllProjects\CsharpProjects\OperationGuidance_new\OperationGuidance_new\Views\MissionManagementView_SCII.cs:line 42
+   at OperationGuidance_new.Views.MissionManagementView_SCII.VisibleToTrue() in D:\AllProjects\CsharpProjects\OperationGuidance_new\OperationGuidance_new\Views\MissionManagementView_SCII.cs:line 47
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomPanel.OnVisibleChanged(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomPanel.cs:line 43
+   at System.Windows.Forms.Control.OnParentVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.ScrollableControl.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnParentVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.ScrollableControl.OnVisibleChanged(EventArgs e)
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomPanel.OnVisibleChanged(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomPanel.cs:line 43
+   at System.Windows.Forms.Control.OnParentVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.ScrollableControl.OnVisibleChanged(EventArgs e)
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomPanel.OnVisibleChanged(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomPanel.cs:line 43
+   at System.Windows.Forms.Control.OnParentVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.ScrollableControl.OnVisibleChanged(EventArgs e)
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomPanel.OnVisibleChanged(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomPanel.cs:line 43
+   at System.Windows.Forms.Control.OnParentVisibleChanged(EventArgs e)
+   at System.Windows.Forms.Control.OnVisibleChanged(EventArgs e)
+   at System.Windows.Forms.ScrollableControl.OnVisibleChanged(EventArgs e)
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomPanel.OnVisibleChanged(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomPanel.cs:line 43
+   at System.Windows.Forms.Control.SetVisibleCore(Boolean value)
+   at System.Windows.Forms.Control.set_Visible(Boolean value)
+   at CustomLibrary.Buttons.CustomMenuButton.ShowContentPanel(Boolean flag) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Buttons\CustomMenuButton.cs:line 49
+   at CustomLibrary.Panels.AbstractClasses.AbstractCustomMenuPanel`1.<>c__DisplayClass18_0.<OnControlAdded>b__0(Object sender, EventArgs eventArgs) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Panels\AbstractClasses\AbstractCustomMenuPanel.cs:line 79
+   at System.Windows.Forms.Control.OnClick(EventArgs e)
+   at System.Windows.Forms.Button.OnClick(EventArgs e)
+   at CustomLibrary.Buttons.AbstractClasses.AbstractCustomButton.OnClick(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Buttons\AbstractClasses\AbstractCustomButton.cs:line 327
+   at CustomLibrary.Buttons.CustomMenuButton.OnClick(EventArgs e) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Buttons\CustomMenuButton.cs:line 30
+   at System.Windows.Forms.Button.OnMouseUp(MouseEventArgs mevent)
+   at CustomLibrary.Buttons.AbstractClasses.AbstractCustomButton.OnMouseUp(MouseEventArgs mevent) in D:\AllProjects\CsharpProjects\OperationGuidance_new\CustomLibrary\Buttons\AbstractClasses\AbstractCustomButton.cs:line 340
+   at System.Windows.Forms.Control.WmMouseUp(Message& m, MouseButtons button, Int32 clicks)
+   at System.Windows.Forms.Control.WndProc(Message& m)
+   at System.Windows.Forms.ButtonBase.WndProc(Message& m)
+   at System.Windows.Forms.Button.WndProc(Message& m)
+   at System.Windows.Forms.Control.ControlNativeWindow.OnMessage(Message& m)
+   at System.Windows.Forms.Control.ControlNativeWindow.WndProc(Message& m)
+   at System.Windows.Forms.NativeWindow.Callback(IntPtr hWnd, WM msg, IntPtr wparam, IntPtr lparam)
+
+
+************** 已加载的程序集 **************
+System.Private.CoreLib
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Private.CoreLib.dll
+----------------------------------------
+OperationGuidance_new
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/OperationGuidance_new.dll
+----------------------------------------
+System.Runtime
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.dll
+----------------------------------------
+System.Threading
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Threading.dll
+----------------------------------------
+OperationGuidance_service
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/OperationGuidance_service.dll
+----------------------------------------
+System.Windows.Forms
+    程序集版本:6.0.2.0
+    Win32 版本:6.0.3224.31405
+    代码库:file:///D:/OperationGuidanceNew/System.Windows.Forms.dll
+----------------------------------------
+System.ComponentModel.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ComponentModel.Primitives.dll
+----------------------------------------
+System.Windows.Forms.Primitives
+    程序集版本:6.0.2.0
+    Win32 版本:6.0.3224.31405
+    代码库:file:///D:/OperationGuidanceNew/System.Windows.Forms.Primitives.dll
+----------------------------------------
+System.Runtime.InteropServices
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.InteropServices.dll
+----------------------------------------
+System.Drawing.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Drawing.Primitives.dll
+----------------------------------------
+System.Collections.Specialized
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Collections.Specialized.dll
+----------------------------------------
+log4net
+    程序集版本:2.0.17.0
+    Win32 版本:2.0.17.0
+    代码库:file:///D:/OperationGuidanceNew/log4net.dll
+----------------------------------------
+System.Console
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Console.dll
+----------------------------------------
+CustomLibrary
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/CustomLibrary.dll
+----------------------------------------
+System.ComponentModel.TypeConverter
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ComponentModel.TypeConverter.dll
+----------------------------------------
+System.Diagnostics.TraceSource
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.TraceSource.dll
+----------------------------------------
+System.Collections
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Collections.dll
+----------------------------------------
+System.Drawing.Common
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Drawing.Common.dll
+----------------------------------------
+Microsoft.Extensions.DependencyInjection.Abstractions
+    程序集版本:7.0.0.0
+    Win32 版本:7.0.22.51805
+    代码库:file:///D:/OperationGuidanceNew/Microsoft.Extensions.DependencyInjection.Abstractions.dll
+----------------------------------------
+Microsoft.Extensions.DependencyInjection
+    程序集版本:7.0.0.0
+    Win32 版本:7.0.22.51805
+    代码库:file:///D:/OperationGuidanceNew/Microsoft.Extensions.DependencyInjection.dll
+----------------------------------------
+System.ComponentModel
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ComponentModel.dll
+----------------------------------------
+System.Resources.Writer
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Resources.Writer.dll
+----------------------------------------
+System.Runtime.Serialization.Formatters
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.Serialization.Formatters.dll
+----------------------------------------
+Accessibility
+    程序集版本:4.0.0.0
+    Win32 版本:6.0.3224.31405
+    代码库:file:///D:/OperationGuidanceNew/Accessibility.dll
+----------------------------------------
+System.Collections.NonGeneric
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Collections.NonGeneric.dll
+----------------------------------------
+System.Configuration.ConfigurationManager
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Configuration.ConfigurationManager.dll
+----------------------------------------
+System.ObjectModel
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ObjectModel.dll
+----------------------------------------
+System.Numerics.Vectors
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Numerics.Vectors.dll
+----------------------------------------
+Gma.System.MouseKeyHook
+    程序集版本:5.7.1.0
+    Win32 版本:5.7.1.0
+    代码库:file:///D:/OperationGuidanceNew/Gma.System.MouseKeyHook.dll
+----------------------------------------
+System.ComponentModel.EventBasedAsync
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ComponentModel.EventBasedAsync.dll
+----------------------------------------
+System.Net.NetworkInformation
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.NetworkInformation.dll
+----------------------------------------
+System.Diagnostics.Tracing
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.Tracing.dll
+----------------------------------------
+System.Net.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Primitives.dll
+----------------------------------------
+Microsoft.Win32.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/Microsoft.Win32.Primitives.dll
+----------------------------------------
+System.ComponentModel.Annotations
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.ComponentModel.Annotations.dll
+----------------------------------------
+netstandard
+    程序集版本:2.1.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/netstandard.dll
+----------------------------------------
+System.Xml.ReaderWriter
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Xml.ReaderWriter.dll
+----------------------------------------
+System.Private.Xml
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Private.Xml.dll
+----------------------------------------
+System.Data.Common
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Data.Common.dll
+----------------------------------------
+System.Net.Mail
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Mail.dll
+----------------------------------------
+System.Linq
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Linq.dll
+----------------------------------------
+RJCP.SerialPortStream
+    程序集版本:2.4.2.0
+    Win32 版本:2.4.2.0
+    代码库:file:///D:/OperationGuidanceNew/RJCP.SerialPortStream.dll
+----------------------------------------
+System.Threading.Tasks
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Threading.Tasks.dll
+----------------------------------------
+System.IO
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.IO.dll
+----------------------------------------
+System.Runtime.Handles
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.Handles.dll
+----------------------------------------
+System.Diagnostics.Debug
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.Debug.dll
+----------------------------------------
+S7.Net
+    程序集版本:0.20.0.0
+    Win32 版本:0.20.0.0
+    代码库:file:///D:/OperationGuidanceNew/S7.Net.dll
+----------------------------------------
+System.Net.Sockets
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Sockets.dll
+----------------------------------------
+LiveChartsCore.SkiaSharpView.WinForms
+    程序集版本:2.0.0.0
+    Win32 版本:2.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/LiveChartsCore.SkiaSharpView.WinForms.dll
+----------------------------------------
+LiveChartsCore
+    程序集版本:2.0.0.0
+    Win32 版本:2.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/LiveChartsCore.dll
+----------------------------------------
+LiveChartsCore.SkiaSharpView
+    程序集版本:2.0.0.0
+    Win32 版本:2.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/LiveChartsCore.SkiaSharpView.dll
+----------------------------------------
+SkiaSharp
+    程序集版本:2.88.0.0
+    Win32 版本:2.88.6.0
+    代码库:file:///D:/OperationGuidanceNew/SkiaSharp.dll
+----------------------------------------
+Microsoft.Win32.Registry
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/Microsoft.Win32.Registry.dll
+----------------------------------------
+System.Security.AccessControl
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.AccessControl.dll
+----------------------------------------
+System.Security.Principal.Windows
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.Principal.Windows.dll
+----------------------------------------
+System.Net.Http
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Http.dll
+----------------------------------------
+System.Net.NameResolution
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.NameResolution.dll
+----------------------------------------
+System.Net.Security
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Security.dll
+----------------------------------------
+System.Net.Quic
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Quic.dll
+----------------------------------------
+System.Private.Uri
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Private.Uri.dll
+----------------------------------------
+LicenseLib
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/LicenseLib.dll
+----------------------------------------
+System.Net.Ping
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.Ping.dll
+----------------------------------------
+System.Runtime.Numerics
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.Numerics.dll
+----------------------------------------
+ClosedXML
+    程序集版本:0.104.0.0
+    Win32 版本:0.104.0.3364
+    代码库:file:///D:/OperationGuidanceNew/ClosedXML.dll
+----------------------------------------
+DocumentFormat.OpenXml
+    程序集版本:2.16.0.0
+    Win32 版本:2.16.0
+    代码库:file:///D:/OperationGuidanceNew/DocumentFormat.OpenXml.dll
+----------------------------------------
+SixLabors.Fonts
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/SixLabors.Fonts.dll
+----------------------------------------
+ClosedXML.Parser
+    程序集版本:1.0.0.0
+    Win32 版本:1.0.0.0
+    代码库:file:///D:/OperationGuidanceNew/ClosedXML.Parser.dll
+----------------------------------------
+RBush
+    程序集版本:3.0.0.0
+    Win32 版本:3.2.0.0
+    代码库:file:///D:/OperationGuidanceNew/RBush.dll
+----------------------------------------
+System.Diagnostics.Process
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.Process.dll
+----------------------------------------
+Newtonsoft.Json
+    程序集版本:13.0.0.0
+    Win32 版本:13.0.3.27908
+    代码库:file:///D:/OperationGuidanceNew/Newtonsoft.Json.dll
+----------------------------------------
+System.Linq.Expressions
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Linq.Expressions.dll
+----------------------------------------
+System.IO.Ports
+    程序集版本:8.0.0.0
+    Win32 版本:8.0.23.53103
+    代码库:file:///D:/OperationGuidanceNew/System.IO.Ports.dll
+----------------------------------------
+System.Threading.Thread
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Threading.Thread.dll
+----------------------------------------
+System.Collections.Concurrent
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Collections.Concurrent.dll
+----------------------------------------
+System.Runtime.InteropServices.RuntimeInformation
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.InteropServices.RuntimeInformation.dll
+----------------------------------------
+System.Net.WebClient
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Net.WebClient.dll
+----------------------------------------
+System.Memory
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Memory.dll
+----------------------------------------
+System.Text.Encoding.Extensions
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Text.Encoding.Extensions.dll
+----------------------------------------
+System.Resources.Extensions
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Resources.Extensions.dll
+----------------------------------------
+System.Drawing
+    程序集版本:6.0.2.0
+    Win32 版本:6.0.3224.31405
+    代码库:file:///D:/OperationGuidanceNew/System.Drawing.dll
+----------------------------------------
+Microsoft.Win32.SystemEvents
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/Microsoft.Win32.SystemEvents.dll
+----------------------------------------
+MySql.Data
+    程序集版本:8.3.0.0
+    Win32 版本:8.3.0.0
+    代码库:file:///D:/OperationGuidanceNew/MySql.Data.dll
+----------------------------------------
+System.Transactions.Local
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Transactions.Local.dll
+----------------------------------------
+System.Text.RegularExpressions
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Text.RegularExpressions.dll
+----------------------------------------
+System.Reflection.Emit.ILGeneration
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Reflection.Emit.ILGeneration.dll
+----------------------------------------
+System.Reflection.Emit.Lightweight
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Reflection.Emit.Lightweight.dll
+----------------------------------------
+System.Reflection.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Reflection.Primitives.dll
+----------------------------------------
+System.Diagnostics.DiagnosticSource
+    程序集版本:7.0.0.0
+    Win32 版本:7.0.423.11508
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.DiagnosticSource.dll
+----------------------------------------
+System.Security.Permissions
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.Permissions.dll
+----------------------------------------
+System.Runtime.Loader
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.Loader.dll
+----------------------------------------
+System.Security.Cryptography.Algorithms
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.Cryptography.Algorithms.dll
+----------------------------------------
+System.Security.Cryptography.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.Cryptography.Primitives.dll
+----------------------------------------
+System.Security.Claims
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Security.Claims.dll
+----------------------------------------
+System.Threading.Overlapped
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Threading.Overlapped.dll
+----------------------------------------
+System.Threading.ThreadPool
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Threading.ThreadPool.dll
+----------------------------------------
+System.Text.Encoding.CodePages
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Text.Encoding.CodePages.dll
+----------------------------------------
+System.Private.Xml.Linq
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Private.Xml.Linq.dll
+----------------------------------------
+System.Runtime.Serialization.Primitives
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.Serialization.Primitives.dll
+----------------------------------------
+Anonymously Hosted DynamicMethods Assembly
+    程序集版本:0.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Private.CoreLib.dll
+----------------------------------------
+Dapper
+    程序集版本:2.0.0.0
+    Win32 版本:2.1.24.50284
+    代码库:file:///D:/OperationGuidanceNew/Dapper.dll
+----------------------------------------
+System.Xml.XDocument
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Xml.XDocument.dll
+----------------------------------------
+System.Runtime.CompilerServices.Unsafe
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Runtime.CompilerServices.Unsafe.dll
+----------------------------------------
+WmiLight
+    程序集版本:5.1.1.0
+    Win32 版本:5.1.1.0
+    代码库:file:///D:/OperationGuidanceNew/WmiLight.dll
+----------------------------------------
+System.Windows.Forms.resources
+    程序集版本:6.0.2.0
+    Win32 版本:6.0.3224.31405
+    代码库:file:///D:/OperationGuidanceNew/zh-Hans/System.Windows.Forms.resources.dll
+----------------------------------------
+System.Diagnostics.StackTrace
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Diagnostics.StackTrace.dll
+----------------------------------------
+System.Reflection.Metadata
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Reflection.Metadata.dll
+----------------------------------------
+System.Collections.Immutable
+    程序集版本:6.0.0.0
+    Win32 版本:6.0.3224.31407
+    代码库:file:///D:/OperationGuidanceNew/System.Collections.Immutable.dll
+----------------------------------------
+
+************** JIT 调试 **************
+
+

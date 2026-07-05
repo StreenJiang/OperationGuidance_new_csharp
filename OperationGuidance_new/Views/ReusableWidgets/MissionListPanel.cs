@@ -171,6 +171,12 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
             }
         }
 
+        /// <summary>
+        /// 封面图长边最大尺寸。超过此值先缩放再旋转，避免全尺寸原图旋转导致 OOM。
+        /// 封面显示高度约 60% 块高度（~72-120px），600px 提供 5-8x 过采样余量。
+        /// </summary>
+        private const int MAX_COVER_DIMENSION = 600;
+
         private async Task LoadOneCoverAsync(ProductMissionBlock<ProductMissionDTO> block, CancellationToken ct) {
             await _loadSemaphore.WaitAsync(ct);
             try {
@@ -184,8 +190,10 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                                 loaded = ProductImageCache.GetOrLoad(side.image);
                                 if (loaded != null) {
                                     capturedFileName = side.image;
+                                    // 先缩放再旋转（对齐编辑视图 ProductImageFile.TryCreateDisplayImage 的处理顺序）
+                                    bool didResize = ResizeForCover(ref loaded);
                                     if (side.rotate_angle != null) {
-                                        loaded = WidgetUtils.RotateImage(loaded, side.rotate_angle.Value, dispose: false);
+                                        loaded = WidgetUtils.RotateImage(loaded, side.rotate_angle.Value, dispose: didResize);
                                     }
                                     break;
                                 }
@@ -204,9 +212,33 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                     });
                 }
             } catch (OperationCanceledException) {
+            } catch (Exception ex) {
+                logger?.Warn($"LoadOneCoverAsync: cover image load failed, block will show placeholder. ex = {ex}");
             } finally {
                 _loadSemaphore.Release();
             }
+        }
+
+        /// <summary>
+        /// 如果图片长边超过 MAX_COVER_DIMENSION，缩放至安全尺寸。
+        /// </summary>
+        /// <returns>true 表示 loaded 已被替换为新对象（调用方需负责 dispose）</returns>
+        private static bool ResizeForCover(ref Image loaded) {
+            int w, h;
+            try {
+                w = loaded.Width;
+                h = loaded.Height;
+            } catch (ArgumentException) {
+                // 图片句柄无效，不做缩放，交给后续 RotateImage 的 NormalizeImageHandle 处理
+                return false;
+            }
+            int maxDim = Math.Max(w, h);
+            if (maxDim <= MAX_COVER_DIMENSION) return false;
+            float ratio = (float)MAX_COVER_DIMENSION / maxDim;
+            int newW = Math.Max(1, (int)(w * ratio));
+            int newH = Math.Max(1, (int)(h * ratio));
+            loaded = WidgetUtils.ResizeImage(loaded, newW, newH, dispose: false);
+            return true;
         }
 
         protected override void Dispose(bool disposing) {
