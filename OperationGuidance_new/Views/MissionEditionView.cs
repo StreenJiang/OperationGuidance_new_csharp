@@ -196,7 +196,7 @@ namespace OperationGuidance_new.Views {
                     NameAlignment = HorizontalAlignment.Left,
                 };
                 CustomTextBox missionNameBox = _missionName.GetTextBox(0);
-                missionNameBox.Text = _missionDTO.name;
+                missionNameBox.Text = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id);
                 missionNameBox.SizeChanged += (sender, eventArgs) => missionNameBox.Box.SelectionStart = 0;
                 missionNameBox.TextChanged += (sender, eventArgs) => {
                     if (!_missionName.HasError) {
@@ -293,17 +293,33 @@ namespace OperationGuidance_new.Views {
                 };
                 _buttonSave.Click += (sender, eventArgs) => {
                     _currentProductImageFile.SaveSideInfo();
+
+                    // 保存前确保名称带前缀
+                    _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
+
                     List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
                     if (allMissions.Any(m => m.name == _missionDTO.name && m.id != _missionDTO.id)) {
                         WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
                         return;
                     }
                     // Store to database
+                    int oldId = _missionDTO.id;  // 记录保存前 ID，判断是否新建任务
                     AddOrUpdateProductMissionReq req = new(_missionDTO);
                     AddOrUpdateProductMissionRsp rsp = _apis.AddOrUpdateProductMission(req);
                     if (rsp.RsponseCode == HttpResponseCode.OK) {
                         Modified = false;
                         _missionDTO = rsp.ProductMissionDTO;
+
+                        // 新建任务首次保存成功后，用真实 ID 更新前缀
+                        if (oldId <= 0 && _missionDTO.id > 0) {
+                            _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
+                            AddOrUpdateProductMissionReq updateReq = new(_missionDTO);
+                            AddOrUpdateProductMissionRsp updateRsp = _apis.AddOrUpdateProductMission(updateReq);
+                            if (updateRsp.RsponseCode == HttpResponseCode.OK) {
+                                _missionDTO = updateRsp.ProductMissionDTO;
+                            }
+                        }
+
                         // 数据保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                         foreach (SideButton sideBtn in _sideButtons) {
                             MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
@@ -373,7 +389,7 @@ namespace OperationGuidance_new.Views {
                         DialogResult result = MessageBox.Show(null, "是否执行复制操作？", "复制任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                         if (result == DialogResult.Yes) {
                             ProductMissionDTO duplicatedMissionDTO = new() {
-                                name = _missionDTO.name + "_copy",
+                                name = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id) + "_copy",
                                 pn_code = _missionDTO.pn_code,
                                 max_ng_num = _missionDTO.max_ng_num,
                                 password_need_time = _missionDTO.password_need_time,
@@ -449,6 +465,17 @@ namespace OperationGuidance_new.Views {
                             if (rsp.RsponseCode == HttpResponseCode.OK) {
                                 Modified = false;
                                 _missionDTO = rsp.ProductMissionDTO;
+
+                                // 复制的新任务首次保存成功后，用真实 ID 更新前缀
+                                if (_missionDTO.id > 0) {
+                                    _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
+                                    AddOrUpdateProductMissionReq updateReq = new(_missionDTO);
+                                    AddOrUpdateProductMissionRsp updateRsp = _apis.AddOrUpdateProductMission(updateReq);
+                                    if (updateRsp.RsponseCode == HttpResponseCode.OK) {
+                                        _missionDTO = updateRsp.ProductMissionDTO;
+                                    }
+                                }
+
                                 // 数据复制并保存成功后，保存图片到本地（需要循环保存每一个side的图片）
                                 foreach (SideButton sideBtn in _sideButtons) {
                                     MainUtils.SaveProductImage(sideBtn.ProductImageFileNew.Image, sideBtn.ProductImageFileNew.ImageFileName);
@@ -1445,7 +1472,7 @@ namespace OperationGuidance_new.Views {
                 };
 
                 // 数据回填
-                _missionName.SetValue(0, missionDTO.name);
+                _missionName.SetValue(0, MissionNameHelper.StripPrefix(missionDTO.name, missionDTO.id));
                 if (missionDTO.predecessor_mission_id != null) {
                     _predecessorMission.SetCurrent(_predecessorMission.IndexOf(missionDTO.predecessor_mission_id.Value));
                 }

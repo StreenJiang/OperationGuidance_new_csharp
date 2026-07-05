@@ -19,7 +19,7 @@ A manufacturing task assigned to a station. The central entity of the system. Ea
 
 Missions can have dependencies: predecessor missions (`predecessor_mission_id`), challenge missions (`challenge_mission_id`), and part-specific predecessor missions.
 
-Mission names must be **unique within a machine** (`macs_id` scope).
+Mission names must be **unique within a machine** (`macs_id` scope). Names are stored with an `{id} - ` prefix (e.g., `123 - 拧紧任务A`), which is automatically added on save and stripped for display in edit fields.
 
 ### Barcode Matching Rule (条码匹配规则)
 A rule that matches scanned barcodes to missions. Configurable by barcode type (product/traceability code or parts code), length, end character, and key position matching.
