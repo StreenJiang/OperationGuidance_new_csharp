@@ -197,34 +197,30 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void SaveClick(object? sender, EventArgs eventArgs) {
-                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
                 string missionName = _missionName.GetTextBox(0).Box.Text;
                 if (string.IsNullOrEmpty(missionName)) {
                     _missionName.GetTextBox(0).IsError = true;
                     WidgetUtils.ShowErrorPopUp("任务名称不能为空！");
                     return;
                 }
-                // 重名检查：比较基础名（去掉 ID 前缀）
-                string baseName = MissionNameHelper.StripPrefix(missionName, _missionDTO.id);
-                if (allOtherMissions.Find(m => MissionNameHelper.StripPrefix(m.name, m.id) == baseName) != null) {
-                    _missionName.GetTextBox(0).IsError = true;
-                    WidgetUtils.ShowWarningPopUp("任务名称不能与现有任务名称重复！");
-                    return;
-                }
                 _missionDTO.name = missionName;
                 _missionName.GetTextBox(0).IsError = false;
+
+                _currentProductImageFile.SaveSideInfo();
 
                 // 保存前确保名称带前缀
                 _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
 
-                _currentProductImageFile.SaveSideInfo();
                 // Store to database
                 int oldId = _missionDTO.id;  // 记录保存前 ID，判断是否新建任务
                 var req = new AddOrUpdateProductMissionReq(_missionDTO);
                 var rsp = _apis.AddOrUpdateProductMission(req);
                 if (rsp.RsponseCode == HttpResponseCode.OK) {
                     // Save screw bit counters
-                    _screwBitCounterDTOs.ForEach(dto => _apis.AddOrUpdateScrewBitCounter(new(dto)));
+                    _screwBitCounterDTOs.ForEach(dto => {
+                        dto.mission_id = rsp.ProductMissionDTO.id;
+                        _apis.AddOrUpdateScrewBitCounter(new(dto));
+                    });
 
                     Modified = false;
                     _missionDTO = rsp.ProductMissionDTO;
@@ -340,7 +336,7 @@ namespace OperationGuidance_new.Views {
             }
 
             protected override void AfterShown() {
-                _missionName.SetValue(0, _missionDTO.name);
+                _missionName.SetValue(0, MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id));
                 _isChallengeMission.Checked = _missionDTO.is_challenge_mission == (int) YesOrNo.YES;
                 _maxNGNum.SetValue(0, _missionDTO.max_ng_num + "");
                 _passwordNeedTime.SetValue(0, _missionDTO.password_need_time + "");

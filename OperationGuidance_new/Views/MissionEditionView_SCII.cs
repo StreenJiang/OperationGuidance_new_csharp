@@ -448,14 +448,6 @@ namespace OperationGuidance_new.Views {
 
                 _currentProductImageFile.SaveSideInfo();
 
-                // 重名检查：比较基础名（去掉 ID 前缀），避免不同 ID 前缀绕过检查
-                string baseName = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id);
-                List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
-                if (allMissions.Any(m => MissionNameHelper.StripPrefix(m.name, m.id) == baseName && m.id != _missionDTO.id)) {
-                    WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
-                    return;
-                }
-
                 // 跳过螺丝点位时，必须至少配置一个点位以获取站点信息
                 if (_missionDTO.skip_screw_points == (int)YesOrNo.YES) {
                     bool hasAnyBolt = _sideButtons.Count > 0 && _sideButtons.Any(side =>

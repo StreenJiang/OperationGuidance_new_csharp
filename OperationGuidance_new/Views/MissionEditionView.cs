@@ -515,14 +515,6 @@ namespace OperationGuidance_new.Views {
 
                 _currentProductImageFile.SaveSideInfo();
 
-                // 重名检查：比较基础名（去掉 ID 前缀），避免不同 ID 前缀绕过检查
-                string baseName = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id);
-                List<ProductMissionDTO> allMissions = _apis.QueryProductMissions(new(SystemUtils.MacAddressesDTO.id) { Role = SystemUtils.GetRoleNameByUserId(SystemUtils.LoggedUserId) }).ProductMissionsDTOs;
-                if (allMissions.Any(m => MissionNameHelper.StripPrefix(m.name, m.id) == baseName && m.id != _missionDTO.id)) {
-                    WidgetUtils.ShowWarningPopUp("任务名称已存在，请修改后再保存");
-                    return;
-                }
-
                 // 保存前确保名称带前缀
                 _missionDTO.name = MissionNameHelper.ApplyPrefix(_missionDTO.name, _missionDTO.id);
 

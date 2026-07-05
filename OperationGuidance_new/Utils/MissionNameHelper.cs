@@ -2,7 +2,7 @@ namespace OperationGuidance_new.Utils
 {
     public static class MissionNameHelper
     {
-        public static string MakePrefix(int id) => $"{id} - ";
+        private static string MakePrefix(int id) => $"{id} - ";
 
         /// <summary>加载显示时去掉前缀。id ≤ 0 或名称为空时原样返回。</summary>
         public static string StripPrefix(string name, int id)
