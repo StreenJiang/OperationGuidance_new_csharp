@@ -239,11 +239,16 @@ namespace CustomLibrary.Forms {
             });
             base.Hide();
             _popUpFormBackboard.Show();
+            var previousPopUpForm = EventFuncs.CurrentPopUpForm;
             if (_clickOutsideToClose) {
                 EventFuncs.CurrentPopUpForm = this;
+            } else {
+                EventFuncs.CurrentPopUpForm = null;
             }
             Opacity = 1D;
-            return base.ShowDialog();
+            var result = base.ShowDialog();
+            EventFuncs.CurrentPopUpForm = previousPopUpForm;
+            return result;
         }
 
         protected virtual void AfterShown() { }

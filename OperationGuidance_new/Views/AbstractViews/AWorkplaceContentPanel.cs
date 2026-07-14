@@ -1092,6 +1092,10 @@ namespace OperationGuidance_new.Views.AbstractViews {
                         WidgetUtils.ShowErrorPopUp("任务未激活或已完成，无法切换点位！");
                         _boltPopUpForm.Dispose();
                     } else {
+                        if (!OpenAdminPasswordPopUpForm("切换点位需要管理员操作密码")) {
+                            _adminConfirmed = null;
+                            return;
+                        }
                         BoltButton? currentBoltBtn;
                         int sideId = _sides[_currentSideIndex].id;
                         int selectingBoltWorkstationId = boltBtn.BoltDTO.workstation_id;
