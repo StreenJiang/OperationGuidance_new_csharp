@@ -37,3 +37,6 @@ This applies to mission queries and duplicate name validation.
 
 ### Multi-site support
 The system supports multiple factory sites (WHYC, SCII, GLB, YF, TZYX), each with its own machines.
+
+### TCP connection vs. session readiness (TCP 连接 vs. 会话就绪)
+For tool controllers (e.g. Atlas PF series), a raw TCP connection is not enough to exchange commands: the application-layer handshake (connect / data enable / curve enable) must complete and the receive loop must be running. This state is called **session readiness (会话就绪)**. A TCP connection that is not session-ready silently drops or misroutes command responses; conversely a session can die (controller stops responding to commands) while the TCP connection stays alive — detectable only by a command timeout.

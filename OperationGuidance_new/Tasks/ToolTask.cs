@@ -46,6 +46,8 @@ namespace OperationGuidance_new.Tasks {
         public override bool Connected => socketClient != null && socketClient.Connected && !CloseConnectionManually;
         // Other properties
         public bool Locked => _locked;
+        /// <summary>握手单次接收的总超时（毫秒）。测试可注入较小值以缩短用例时长。</summary>
+        public int HandshakeTimeoutMs { get; set; } = 5000;
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
@@ -261,7 +263,6 @@ namespace OperationGuidance_new.Tasks {
             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] CloseToTriggerReconnectionAsync start, _currentPSet={_currentPSet}, hasRunTask={_runTaskTask != null}");
             socketClient?.Close();
             socketClient = null;
-            _connectInProgress = 0;
 
             if (_runTaskTask != null) {
                 var runTask = _runTaskTask;
@@ -313,44 +314,28 @@ namespace OperationGuidance_new.Tasks {
 
                         // 3. send connecting message
                         if (connectSuccess && _toolType is ToolPFSeries toolPF) {
-                            if (toolPF.COMMAND_CONNECT_ASCII != null) {
-                                SendMessageRecevingCount = 0;
-                                string? result1 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CONNECT_ASCII.GetMessage());
-                                if (result1 != null) {
-                                    string mid1 = toolPF.GetMid(result1);
-                                    sendConnectMsgSuceess = mid1 == "0002" || mid1 == "0005";
-                                    if (sendConnectMsgSuceess) {
-                                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake OK, MID={mid1}");
-                                    } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: expected MID 0002/0005, got {mid1}");
+                            Command? connectCmd = toolPF.COMMAND_CONNECT_ASCII;
+                            if (connectCmd != null) {
+                                // 三连握手公共步骤：发送命令并等待响应；predicate 为空表示不校验 MID（curve enable 宽松）
+                                async Task<bool> PrepareAsync(Command cmd, string step, Func<string, bool>? predicate) {
+                                    SendMessageRecevingCount = 0;
+                                    string? result = await SendAndReceiveOnlyForPreparingAsync(cmd.GetMessage(), predicate);
+                                    if (result != null) {
+                                        if (predicate != null) {
+                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] {step} handshake OK, MID={toolPF.GetMid(result)}");
+                                        }
+                                        return true;
                                     }
-                                } else {
-                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect handshake failed: no response from device");
-                                    sendConnectMsgSuceess = false;
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] {step} handshake failed: no response from device");
+                                    return false;
                                 }
 
-                                // 4. send data receving enable message
+                                sendConnectMsgSuceess = await PrepareAsync(connectCmd, "Connect", toolPF.IsHandshakeAck);
                                 if (sendConnectMsgSuceess) {
-                                    SendMessageRecevingCount = 0;
-                                    string? result2 = await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_DATA_ASCII.GetMessage());
-                                    if (result2 != null) {
-                                        string mid2 = toolPF.GetMid(result2);
-                                        dataEnableMsgSuccess = mid2 == "0002" || mid2 == "0005";
-                                        if (dataEnableMsgSuccess) {
-                                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake OK, MID={mid2}");
-                                        } else {
-                                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: expected MID 0002/0005, got {mid2}");
-                                        }
-                                    } else {
-                                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Data enable handshake failed: no response from device");
-                                        dataEnableMsgSuccess = false;
-                                    }
-
-                                    // 5. send curve data receving enable message
-                                    if (dataEnableMsgSuccess) {
-                                        SendMessageRecevingCount = 0;
-                                        await SendAndReceiveOnlyForPreparingAsync(toolPF.COMMAND_CURVE_ASCII.GetMessage());
-                                    }
+                                    dataEnableMsgSuccess = await PrepareAsync(toolPF.COMMAND_DATA_ASCII, "Data enable", toolPF.IsHandshakeAck);
+                                }
+                                if (dataEnableMsgSuccess) {
+                                    dataEnableMsgSuccess = await PrepareAsync(toolPF.COMMAND_CURVE_ASCII, "Curve enable", null);
                                 }
                             } else {
                                 sendConnectMsgSuceess = true;
@@ -424,7 +409,7 @@ namespace OperationGuidance_new.Tasks {
 
             return false;
         }
-        private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command) {
+        private async Task<string?> SendAndReceiveOnlyForPreparingAsync(string command, Func<string, bool>? responsePredicate = null) {
             SendMessageRecevingCount++;
 
             if (Connected && SendMessageRecevingCount < SendMessageRecevingTimes) {
@@ -446,17 +431,37 @@ namespace OperationGuidance_new.Tasks {
                     lock (_sendLock) {
                         socketClient.Send(data);
                     }
-                    int msgLen = await socketClient.ReceiveAsync(new ArraySegment<byte>(msgBytes), SocketFlags.None);
-                    logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake response received, len={msgLen}");
-                    string result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
-                    if (_toolType is ToolPFSeries) {
-                        result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
-                    } else if (_toolType is ToolFITFTC6) {
-                        result = Encoding.GetEncoding("GBK").GetString(msgBytes.Take(msgLen).ToArray());
-                    } else {
-                        result = Encoding.ASCII.GetString(msgBytes.Take(msgLen).ToArray());
+
+                    // 带总超时的接收；响应不匹配预期 MID 时丢弃并继续等待。
+                    // 注意：取消挂起的 ReceiveAsync 后该 socket 不可复用，
+                    // 因此取消/超时一律返回 null，由 ConnectToServer 失败清理关闭 socket 并重建。
+                    using var cts = new CancellationTokenSource(HandshakeTimeoutMs);
+                    while (true) {
+                        int msgLen;
+                        try {
+                            msgLen = await socketClient.ReceiveAsync(msgBytes.AsMemory(), SocketFlags.None, cts.Token);
+                        } catch (OperationCanceledException) {
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake receive timeout after {HandshakeTimeoutMs}ms");
+                            return null;
+                        }
+                        if (msgLen <= 0) {
+                            logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake receive aborted - connection closed by remote");
+                            return null;
+                        }
+
+                        // 保留原实现的解码分支（FIT 用 GBK）
+                        string result;
+                        if (_toolType is ToolFITFTC6) {
+                            result = Encoding.GetEncoding("GBK").GetString(msgBytes, 0, msgLen);
+                        } else {
+                            result = Encoding.ASCII.GetString(msgBytes, 0, msgLen);
+                        }
+                        if (responsePredicate == null || responsePredicate(result)) {
+                            logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake response received, len={msgLen}");
+                            return result;
+                        }
+                        logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake received unexpected response, discarding and waiting (len={msgLen})");
                     }
-                    return result;
                 } catch (Exception e) {
                     logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] Handshake send/receive error", e);
                     return null;
@@ -475,8 +480,8 @@ namespace OperationGuidance_new.Tasks {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - pset can not set to -1");
                 return false;
             }
-            if (!Connected) {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - not connected");
+            if (Status != ATaskBase.CONNECTED || !Connected) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - session not ready (Status={Status}, Connected={Connected})");
                 return false;
             }
             if (_sendingPSet != -1) {
@@ -578,7 +583,7 @@ namespace OperationGuidance_new.Tasks {
             // 5. 轮询等待重连完成（200ms × 50 = 10s）
             int pollCount = 0;
             int pollMax = 50;
-            while (!Connected && pollCount < pollMax && !token.IsCancellationRequested) {
+            while (Status != ATaskBase.CONNECTED && pollCount < pollMax && !token.IsCancellationRequested) {
                 pollCount++;
                 try {
                     await Task.Delay(200, token);
@@ -588,6 +593,7 @@ namespace OperationGuidance_new.Tasks {
                 }
             }
 
+            // 轮询通过后仍补查 Connected：专防"Status 刚置 CONNECTED、socket 即被并发关闭"的窄窗口
             if (!Connected) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] ReconnectAndResendPset reconnect timeout after {pollMax * 200}ms");
                 Status = DISCONNECTED;  // 恢复状态，让 TaskCheckingLoop 接管

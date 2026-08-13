@@ -98,6 +98,12 @@ namespace OperationGuidance_new.Constants {
             return mid;
         }
 
+        /// <summary>判断完整响应报文是否为 PF 握手成功 ACK（MID ∈ {0002, 0005}，connect/data/curve 三连通用）。</summary>
+        public bool IsHandshakeAck(string result) {
+            string mid = GetMid(result);
+            return mid == "0002" || mid == "0005";
+        }
+
         public string GetTail(string result) {
             string tail = "";
             try {

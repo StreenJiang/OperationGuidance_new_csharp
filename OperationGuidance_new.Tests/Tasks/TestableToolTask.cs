@@ -1,6 +1,7 @@
 using System.Reflection;
 using OperationGuidance_new.Constants;
 using OperationGuidance_new.Tasks;
+using OperationGuidance_new.Tasks.AbstractClasses;
 using Xunit;
 
 namespace OperationGuidance_new.Tests.Tasks;
@@ -17,7 +18,8 @@ public class TestableToolTask : ToolTask
     public TestableToolTask(int deviceId = 1, string? name = "TEST", string ip = "127.0.0.1", int port = 4545)
         : base(deviceId, name, ip, port, DeviceType_Tool.PF6000_OP, workstationId: 1)
     {
-        // Access private fields via reflection for assertions
+        // Align with the default Connected=true role: a connected tool with a ready session
+        Status = ATaskBase.CONNECTED;
     }
 
     /// <summary>Control the Connected state from tests.</summary>

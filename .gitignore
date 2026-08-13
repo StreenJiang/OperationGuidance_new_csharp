@@ -394,3 +394,6 @@ omnisharp.json
 
 # Ignore Cursor IDE config
 .cursor/
+
+# Ignore WorkBuddy workspace memory
+.workbuddy/

@@ -16,7 +16,8 @@ namespace OperationGuidance_new.Tasks.AbstractClasses {
         public int? WorkstationId { get => _workstationId; set => _workstationId = value; }
         public string Name => _device_name ?? "";
         public abstract bool Connected { get; }
-        public int Status { get; set; }
+        private volatile int _status;
+        public int Status { get => _status; set => _status = value; }
         public bool CloseConnectionManually { get; set; } = false;
         #endregion
 
