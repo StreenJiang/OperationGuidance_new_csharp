@@ -12,6 +12,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
         public string manufacture_location { get; set; }
         // 物料号
         public string part_number { get; set; }
+        // 状态号
+        public string status_number { get; set; }
         // 流水号
         [ConfigIgnore]
         public int sn { get; set; }
@@ -53,6 +55,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
             project_name = "NE17";
             manufacture_location = "XA";
             part_number = "12296650";
+            status_number = "0000";
             sn = 0;
 
             text_1 = "^FT50,90^A0N,33,31^FH\\^FD";   // supplier name

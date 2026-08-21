@@ -58,6 +58,8 @@ namespace OperationGuidance_new.Views {
         private string _manufactureLocationOriginal;
         private CustomTextBoxGroup _partNumberBox;
         private string _partNumberOriginal;
+        private CustomTextBoxGroup _statusNumberBox;
+        private string _statusNumberOriginal;
 
         // MES settings panel
         private CustomContentPanel _mesSettingsPanel;
@@ -368,6 +370,15 @@ namespace OperationGuidance_new.Views {
                 Ratio = 6.95,
             };
 
+            _statusNumberBox = new("状态号") {
+                Parent = _printerSettingsContentPanel,
+                Ratio = 6.95,
+                PositiveIntOnly = true,
+            };
+
+            // 状态号独占一行（左侧半列），SetFlowBreak 强制换行，"启用第二打印机"从新一行开始
+            _printerSettingsContentPanel.SetFlowBreak(_statusNumberBox, true);
+
             _enableSecondPrinter = new("启用第二打印机") {
                 Parent = _printerSettingsContentPanel,
                 Ratio = 6.95,
@@ -399,6 +410,7 @@ namespace OperationGuidance_new.Views {
                 _projectNameBox.Enabled = _enablePrinter.Checked;
                 _manufactureLocationBox.Enabled = _enablePrinter.Checked;
                 _partNumberBox.Enabled = _enablePrinter.Checked;
+                _statusNumberBox.Enabled = _enablePrinter.Checked;
             };
             _enableSecondPrinter.CheckedChanged += (s, e) => {
                 _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
@@ -438,6 +450,7 @@ namespace OperationGuidance_new.Views {
             printerConfig.project_name = _projectNameBox.GetTextBox(0).Box.Text;
             printerConfig.manufacture_location = _manufactureLocationBox.GetTextBox(0).Box.Text;
             printerConfig.part_number = _partNumberBox.GetTextBox(0).Box.Text;
+            printerConfig.status_number = _statusNumberBox.GetTextBox(0).Box.Text;
 
             ConfigUtils.SaveConfig(printerConfig);
 
@@ -452,6 +465,7 @@ namespace OperationGuidance_new.Views {
             _projectNameOriginal = printerConfig.project_name;
             _manufactureLocationOriginal = printerConfig.manufacture_location;
             _partNumberOriginal = printerConfig.part_number;
+            _statusNumberOriginal = printerConfig.status_number;
 
             // Save MES settings
             SaveMesSettings();
@@ -586,19 +600,22 @@ namespace OperationGuidance_new.Views {
             _manufactureLocationBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _partNumberBox.Size = new(boxWidth, BoxNBtnHeight);
             _partNumberBox.Margin = new(0, boxVMargin, 0, 0);
-            // Resize box - fourth row
+            // Resize box - fourth row (状态号独占一行，SetFlowBreak 换行)
+            _statusNumberBox.Size = new(boxWidth, BoxNBtnHeight);
+            _statusNumberBox.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
+            // Resize box - fifth row
             _enableSecondPrinter.Size = new(boxWidth, BoxNBtnHeight);
             _enableSecondPrinter.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
             _secondPrinterName.Size = new(boxWidth, BoxNBtnHeight);
             _secondPrinterName.Margin = new(0, boxVMargin, 0, 0);
-            // Resize box - fifth row
+            // Resize box - sixth row
             _secondBarcodeLength.Size = new(boxWidth, BoxNBtnHeight);
             _secondBarcodeLength.Margin = new(0, boxVMargin, ContentHGap / 2, 0);
-            // Resize box - sixth row (printer test button group)
+            // Resize box - seventh row (printer test button group)
             _printerTestBtnGroup.Size = new(boxWidth, BoxNBtnHeight);
             _printerTestBtnGroup.Margin = new(0, boxVMargin, 0, 0);
-            // Resize Content with padding (6 rows now)
-            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 5 + ContentVPadding * 2 + boxVMargin * 5);
+            // Resize Content with padding (7 rows now)
+            _printerSettingsContentPanel.Size = new(Width, BoxNBtnHeight * 6 + ContentVPadding * 2 + boxVMargin * 6);
             _printerSettingsContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
             // Resize outer panel
             _printerSettingsPanel.Size = new(Width, _printerSettingsTitlePanel.Height + _printerSettingsContentPanel.Height);
@@ -739,6 +756,7 @@ namespace OperationGuidance_new.Views {
                     _projectNameBox.Enabled = _enablePrinter.Checked;
                     _manufactureLocationBox.Enabled = _enablePrinter.Checked;
                     _partNumberBox.Enabled = _enablePrinter.Checked;
+                    _statusNumberBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
@@ -763,6 +781,7 @@ namespace OperationGuidance_new.Views {
                     _projectNameBox.GetTextBox(0).Box.Text = printerConfig.project_name;
                     _manufactureLocationBox.GetTextBox(0).Box.Text = printerConfig.manufacture_location;
                     _partNumberBox.GetTextBox(0).Box.Text = printerConfig.part_number;
+                    _statusNumberBox.GetTextBox(0).Box.Text = printerConfig.status_number;
 
                     // Initialize Original values for unsaved change detection
                     _enablePrinterOriginal = printerConfig.enabled.ToYesOrNoBool();
@@ -774,6 +793,7 @@ namespace OperationGuidance_new.Views {
                     _projectNameOriginal = printerConfig.project_name;
                     _manufactureLocationOriginal = printerConfig.manufacture_location;
                     _partNumberOriginal = printerConfig.part_number;
+                    _statusNumberOriginal = printerConfig.status_number;
 
                     // Load HTTP server config
                     var httpConfig = MainUtils.HttpConfig;
@@ -865,6 +885,7 @@ namespace OperationGuidance_new.Views {
                     _projectNameBox.Enabled = _enablePrinter.Checked;
                     _manufactureLocationBox.Enabled = _enablePrinter.Checked;
                     _partNumberBox.Enabled = _enablePrinter.Checked;
+                    _statusNumberBox.Enabled = _enablePrinter.Checked;
                     _secondPrinterName.Enabled = _enableSecondPrinter.Checked;
                     _printerTestBtnGroup.GetButton(1).Enabled = _enableSecondPrinter.Checked;
                     _secondBarcodeLength.Enabled = _enableSecondPrinter.Checked;
@@ -891,6 +912,7 @@ namespace OperationGuidance_new.Views {
                     _projectNameBox.GetTextBox(0).Box.Text = defaultConfig.project_name;
                     _manufactureLocationBox.GetTextBox(0).Box.Text = defaultConfig.manufacture_location;
                     _partNumberBox.GetTextBox(0).Box.Text = defaultConfig.part_number;
+                    _statusNumberBox.GetTextBox(0).Box.Text = defaultConfig.status_number;
 
                     // Reset HTTP server config to default (empty = use runtime fallback)
                     int.TryParse(MainUtils.HttpConfig.Read(ConfigName_Http.IsHost), out int isHostDefault);
@@ -932,6 +954,12 @@ namespace OperationGuidance_new.Views {
         protected override string? CheckBeforeSave() {
             // Check printer settings if enabled
             if (_printerSettingsPanel != null) {
+                // 状态号校验（必须为4位纯数字）
+                string? statusNumberText = _statusNumberBox?.GetTextBox(0)?.Box?.Text;
+                if (string.IsNullOrEmpty(statusNumberText) || statusNumberText.Length != 4
+                    || !int.TryParse(statusNumberText, out int statusValue) || statusValue < 0 || statusValue > 9999) {
+                    return "状态号必须为4位数字";
+                }
                 if (_enablePrinter?.Checked == true && string.IsNullOrEmpty(_printerName?.Value)) {
                     return "请选择打印机名称";
                 }
@@ -995,6 +1023,7 @@ namespace OperationGuidance_new.Views {
                     || CheckSvedFuncSeparately(_projectNameBox.GetTextBox(0).Box.Text != _projectNameOriginal, "项目名称")
                     || CheckSvedFuncSeparately(_manufactureLocationBox.GetTextBox(0).Box.Text != _manufactureLocationOriginal, "制造地代码")
                     || CheckSvedFuncSeparately(_partNumberBox.GetTextBox(0).Box.Text != _partNumberOriginal, "零件号")
+                    || CheckSvedFuncSeparately(_statusNumberBox.GetTextBox(0).Box.Text != _statusNumberOriginal, "状态号")
                     || CheckSvedFuncSeparately(_httpHostBox.GetTextBox(0).Box.Text != _httpHostOriginal, "HTTP地址")
                     || CheckSvedFuncSeparately(_procedureCodeBox.GetTextBox(0).Box.Text != _procedureCodeOriginal, "工序编码")
                     || CheckSvedFuncSeparately(_equipmentCodeBox.GetTextBox(0).Box.Text != _equipmentCodeOriginal, "设备编码")

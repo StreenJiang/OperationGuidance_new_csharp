@@ -22,13 +22,16 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
         /// <summary>
         /// 生成24位追溯码
-        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 0000(4) + 零件号(8)
+        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 状态号(4) + 零件号(8)
         /// </summary>
-        public string Generate24BitTraceCode(string manufactureLocation, string partNumber, int serialNumber) {
+        public string Generate24BitTraceCode(string manufactureLocation, string partNumber, string statusNumber, int serialNumber) {
             if (string.IsNullOrEmpty(manufactureLocation) || manufactureLocation.Length != 2)
                 throw new ArgumentException("制造地代码必须为2位", nameof(manufactureLocation));
             if (string.IsNullOrEmpty(partNumber) || partNumber.Length != 8)
                 throw new ArgumentException("零件号必须为8位", nameof(partNumber));
+            if (string.IsNullOrEmpty(statusNumber) || statusNumber.Length != 4
+                || !int.TryParse(statusNumber, out int statusValue) || statusValue < 0 || statusValue > 9999)
+                throw new ArgumentException("状态号必须为4位数字", nameof(statusNumber));
             if (serialNumber < 0 || serialNumber > 9999)
                 throw new ArgumentOutOfRangeException(nameof(serialNumber), "流水号必须在0-9999之间");
 
@@ -37,7 +40,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
             string dayOfYear = now.DayOfYear.ToString().PadLeft(3, '0');
             string serial = serialNumber.ToString().PadLeft(4, '0');
 
-            return $"00{manufactureLocation}{yearDigit}{dayOfYear}{serial}0000{partNumber}";
+            return $"00{manufactureLocation}{yearDigit}{dayOfYear}{serial}{statusNumber}{partNumber}";
         }
 
         public string GenerateZplCommand(SciiXtPrinterConfig sProfile, string traceCode, int moduleSize = 5) {
@@ -128,8 +131,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
         }
 
         /// <summary>
-        /// 解析24位追溯码，提取流水号和日期。校验失败抛 ArgumentException。
-        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 0000(4) + 零件号(8)
+        /// 解析24位追溯码，提取流水号和日期，校验状态号。校验失败抛 ArgumentException。
+        /// 格式: 00(2) + 制造地(2) + 年份尾号(1) + 自然日(3) + 流水号(4) + 状态号(4) + 零件号(8)
         /// </summary>
         private static (int serialNumber, DateTime date) ParseTraceCode(string traceCode) {
             if (string.IsNullOrEmpty(traceCode) || traceCode.Length != TRACE_CODE_LENGTH)
@@ -137,8 +140,8 @@ namespace OperationGuidance_new.Utils.IIPSC {
 
             if (traceCode.Substring(0, 2) != "00")
                 throw new ArgumentException("追溯码前两位必须为\"00\"");
-            if (traceCode.Substring(12, 4) != "0000")
-                throw new ArgumentException("追溯码第13-16位必须为\"0000\"");
+            if (!int.TryParse(traceCode.Substring(12, 4), out int statusNumber) || statusNumber < 0 || statusNumber > 9999)
+                throw new ArgumentException("追溯码第13-16位状态号格式不正确");
 
             if (!int.TryParse(traceCode.Substring(4, 1), out int yearDigit) || yearDigit < 0 || yearDigit > 9)
                 throw new ArgumentException("追溯码第5位年份尾号格式不正确");
@@ -196,7 +199,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
             try {
                 printerName = config.printer_name;
                 string traceCode = Generate24BitTraceCode(
-                    config.manufacture_location, config.part_number, config.sn);
+                    config.manufacture_location, config.part_number, config.status_number, config.sn);
                 string zpl = GenerateZplCommand(config, traceCode);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
@@ -226,7 +229,7 @@ namespace OperationGuidance_new.Utils.IIPSC {
             try {
                 config.sn = sn;
                 string traceCode = Generate24BitTraceCode(
-                    config.manufacture_location, config.part_number, sn);
+                    config.manufacture_location, config.part_number, config.status_number, sn);
                 string zpl = GenerateZplCommand(config, traceCode);
                 return PrintViaZpl(printerName, zpl);
             } catch (Exception ex) {
