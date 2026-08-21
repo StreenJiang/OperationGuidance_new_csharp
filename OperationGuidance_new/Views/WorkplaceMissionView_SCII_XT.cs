@@ -902,6 +902,7 @@ namespace OperationGuidance_new.Views {
             QueryMissionRecordListReq req = new() {
                 MissionId = mId,
                 Date = DateTime.Now,
+                PageSize = int.MaxValue,
             };
 
             List<MissionRecordDTO> result = _apis.QueryMissionRecordList(req).MissionRecordDTOs;
