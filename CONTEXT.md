@@ -24,6 +24,9 @@ Mission names must be **unique within a machine** (`macs_id` scope). Names are s
 ### Barcode Matching Rule (条码匹配规则)
 A rule that matches scanned barcodes to missions. Configurable by barcode type (product/traceability code or parts code), length, end character, and key position matching.
 
+### Open-Lid Group (开盖组)
+A named configuration associating one screw feeder with one lid-opening control point and its opening barcode. Operators select the group and scan its matching barcode to request lid opening.
+
 ## Key Concepts
 
 ### deleted field

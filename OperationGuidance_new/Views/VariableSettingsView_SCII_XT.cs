@@ -4,17 +4,11 @@ using CustomLibrary.Configs;
 using CustomLibrary.Panels;
 using CustomLibrary.TextBoxes;
 using CustomLibrary.Utils;
-using Newtonsoft.Json;
 using OperationGuidance_new.Configs;
-using OperationGuidance_new.Configs.DTOs;
 using OperationGuidance_new.Utils;
 using OperationGuidance_new.Utils.IIPSC;
 using OperationGuidance_new.Views.ReusableWidgets;
 using OperationGuidance_service.Constants;
-using OperationGuidance_service.Controllers;
-using OperationGuidance_service.Models.DTOs;
-using OperationGuidance_service.Utils;
-using OperationGuidance_new.Constants;
 
 namespace OperationGuidance_new.Views {
     public class VariableSettingsView_SCII_XT: VariableSettingsView_SCII {
@@ -82,15 +76,6 @@ namespace OperationGuidance_new.Views {
         private CustomTextBoxGroup _plcRegisterAddrBox;
         private string _plcRegisterAddrOriginal;
 
-        // Arranger open-lid config panel
-        private CustomContentPanel _arrangerConfigPanel;
-        private TitlePanel _arrangerConfigTitlePanel;
-        private CustomContentPanel _arrangerConfigContentPanel;
-        private List<ArrangerGroupRow> _arrangerGroupRows;
-        private string _arrangerGroupsOriginal;
-        private List<DeviceIoDTO> _deviceIoDTOs;
-        private List<DeviceIoDTO> _arrangerDTOs;
-
         public VariableSettingsView_SCII_XT() {
             MissionSelfLoopingModeToggle.Hide();
             StoreLooseningDataToggle.Hide();
@@ -106,18 +91,12 @@ namespace OperationGuidance_new.Views {
         protected CustomComboBoxButtonGroup<string> PrinterNameBox { get => _printerName; set => _printerName = value; }
         protected CustomComboBoxButtonGroup<string> SecondPrinterNameBox { get => _secondPrinterName; set => _secondPrinterName = value; }
 
-        public override void VisibleToTrue() {
-            base.VisibleToTrue();
-            // Set as current panel for unsaved check
-            WidgetUtils.CurrentPanel = this;
-        }
-
         protected override void InitializeMissionSettings() {
             base.InitializeMissionSettings();
             InitializePrinterSettingsPanel();
             InitializeHttpServerSettingsPanel();
             InitializeMesSettingsPanel();
-            InitializeArrangerConfigPanel();
+            WorkPanel.Controls.SetChildIndex(_arrangerConfigPanel, WorkPanel.Controls.Count - 1);
         }
 
         protected virtual void InitializeMesSettingsPanel() {
@@ -169,127 +148,6 @@ namespace OperationGuidance_new.Views {
                 Parent = _mesSettingsContentPanel,
                 Ratio = 6.95,
             };
-        }
-
-        protected virtual void InitializeArrangerConfigPanel() {
-            _arrangerConfigPanel = new() {
-                Parent = WorkPanel,
-                FlowDirection = FlowDirection.TopDown,
-            };
-            _arrangerConfigTitlePanel = new("螺丝机开盖配置") {
-                Parent = _arrangerConfigPanel,
-                UnderlineColor = ColorConfigs.COLOR_TITLE_UNDERLINE,
-            };
-            _arrangerConfigContentPanel = new() {
-                Parent = _arrangerConfigPanel,
-            };
-
-            _arrangerGroupRows = new();
-
-            // Load device list and filter arranger-type devices
-            OperationGuidanceApis apis = SystemUtils.GetApis();
-            _deviceIoDTOs = apis.QueryDeviceIoList(
-                new(SystemUtils.MacAddressesDTO.id)).DeviceIoDTOs
-                .Where(dto => dto.macs_id == SystemUtils.MacAddressesDTO.id)
-                .ToList();
-            _arrangerDTOs = _deviceIoDTOs
-                .Where(dto => dto.type == DeviceType_IoBox.Arranger.Id && dto.deleted == (int) YesOrNo.NO)
-                .ToList();
-
-            var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
-            var groups = config.GroupList;
-            if (groups.Count == 0) {
-                AddArrangerGroup(isFirst: true);
-            } else {
-                for (int i = 0; i < groups.Count; i++) {
-                    AddArrangerGroup(isFirst: i == 0);
-                }
-            }
-        }
-
-        private string GetBoxRealText(CustomTextBox textBox) {
-            string text = textBox.Box.Text?.Trim() ?? "";
-            return text == textBox.DefaultText ? "" : text;
-        }
-
-        private bool HasIncompleteArrangerGroup() {
-            foreach (var row in _arrangerGroupRows) {
-                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
-                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
-                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
-                bool arrangerSelected = !row.ArrangerBox.IsDefaultValue();
-                bool nameFilled = !string.IsNullOrEmpty(name);
-                bool barcodeFilled = !string.IsNullOrEmpty(barcode);
-                bool posFilled = !string.IsNullOrEmpty(posText);
-                // 任一有值则四个全必填
-                if ((nameFilled || barcodeFilled || posFilled || arrangerSelected)
-                    && !(nameFilled && barcodeFilled && posFilled && arrangerSelected))
-                    return true;
-            }
-            return false;
-        }
-
-        private void AddArrangerGroup(bool isFirst) {
-            int index = _arrangerGroupRows.Count;
-            ArrangerGroupRow row = new($"开盖组{index + 1}");
-
-            // Set parent (Panel goes into the content panel's FlowLayoutPanel)
-            row.Panel.Parent = _arrangerConfigContentPanel;
-
-            // Configure text boxes
-            row.TextBoxGroup.SetDefaultText(0, "名称");
-            row.TextBoxGroup.SetDefaultText(1, "条码");
-            row.TextBoxGroup.SetDefaultText(2, "点位(1-8)");
-            row.TextBoxGroup.GetTextBox(2).PositiveIntOnly = true;
-
-            // Populate arranger combobox
-            foreach (DeviceIoDTO dto in _arrangerDTOs) {
-                row.ArrangerBox.AddItem(CommonUtils.CannotBeNull(dto.name), dto);
-            }
-
-            // Add/remove buttons (standalone, placed after ArrangerBox)
-            if (isFirst) {
-                SignButton addButton = new() {
-                    Parent = row.Panel,
-                    Icon = Properties.Resources.sign_plus,
-                };
-                row.ActionButton = addButton;
-                addButton.Click += (s, e) => {
-                    if (HasIncompleteArrangerGroup()) {
-                        WidgetUtils.ShowWarningPopUp("请先完成当前开盖组的配置（名称、条码、点位和螺丝机组均不可为空），或清空不完整的组后再新增");
-                        return;
-                    }
-                    AddArrangerGroup(false);
-                };
-            } else {
-                SignButton minusButton = new() {
-                    Parent = row.Panel,
-                    Icon = Properties.Resources.sign_minus,
-                };
-                row.ActionButton = minusButton;
-                minusButton.Click += (s, e) => {
-                    _arrangerGroupRows.Remove(row);
-                    row.Dispose();
-                    for (int i = 0; i < _arrangerGroupRows.Count; i++) {
-                        _arrangerGroupRows[i].TextName = $"开盖组{i + 1}";
-                        _arrangerGroupRows[i].TextBoxGroup.ResizeChildren();
-                    }
-                    if (IsHandleCreated) {
-                        ResizeMissionSettings();
-                        OuterVScrollPanel?.ResizeChildren();
-                    }
-                };
-            }
-
-            _arrangerGroupRows.Add(row);
-            for (int i = 0; i < _arrangerGroupRows.Count; i++) {
-                _arrangerGroupRows[i].TextName = $"开盖组{i + 1}";
-            }
-
-            if (IsHandleCreated) {
-                ResizeMissionSettings();
-                OuterVScrollPanel?.ResizeChildren();
-            }
         }
 
         protected virtual void InitializeHttpServerSettingsPanel() {
@@ -471,62 +329,8 @@ namespace OperationGuidance_new.Views {
             SaveMesSettings();
             SaveHttpServerSettings();
 
-            // Save arranger config
-            SaveArrangerConfig();
-
             // Reset unsaved changes check state
             WidgetUtils.CheckSaved = true;
-        }
-
-        protected virtual void SaveArrangerConfig() {
-            var config = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
-            var groups = new List<ArrangerGroupDTO>();
-            foreach (var row in _arrangerGroupRows) {
-                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
-                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
-                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
-                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
-                bool hasContent = !string.IsNullOrEmpty(name)
-                    || !string.IsNullOrEmpty(barcode)
-                    || !string.IsNullOrEmpty(posText)
-                    || (arrangerDto != null);
-                if (!hasContent)
-                    continue;
-                int.TryParse(posText, out int position);
-                if (position < 1 || position > 8)
-                    position = 1;
-                groups.Add(new ArrangerGroupDTO {
-                    name = name,
-                    barcode = barcode,
-                    position = position,
-                    arranger_id = arrangerDto?.id
-                });
-            }
-            config.GroupList = groups;
-            ConfigUtils.SaveConfig(config);
-            _arrangerGroupsOriginal = config.groups;
-        }
-
-        private string GetCurrentArrangerGroupsJson() {
-            var groups = new List<ArrangerGroupDTO>();
-            foreach (var row in _arrangerGroupRows) {
-                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
-                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
-                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
-                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
-                int.TryParse(posText, out int position);
-                if (position < 1 || position > 8)
-                    position = 1;
-                if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode)
-                    || position != 1 || arrangerDto != null)
-                    groups.Add(new ArrangerGroupDTO {
-                        name = name,
-                        barcode = barcode,
-                        position = position,
-                        arranger_id = arrangerDto?.id
-                    });
-            }
-            return JsonConvert.SerializeObject(groups);
         }
 
         protected virtual void SaveMesSettings() {
@@ -643,7 +447,7 @@ namespace OperationGuidance_new.Views {
 
             // Position and size MES panel and arranger config panel
             ResizeMesSettings();
-            ResizeArrangerConfigPanel();
+            ResizeArrangerConfigPanel(_mesSettingsPanel.Bottom);
         }
 
         protected virtual void ResizeMesSettings() {
@@ -686,44 +490,6 @@ namespace OperationGuidance_new.Views {
 
             // Outer panel
             _mesSettingsPanel.Size = new(Width, _mesSettingsTitlePanel.Height + _mesSettingsContentPanel.Height);
-        }
-
-        protected virtual void ResizeArrangerConfigPanel() {
-            _arrangerConfigPanel.Location = new(0, _mesSettingsPanel.Location.Y + _mesSettingsPanel.Height);
-            _arrangerConfigPanel.Size = new(Width, 0);
-
-            _arrangerConfigTitlePanel.Size = new(Width, TitleHeight);
-
-            int boxVMargin = BoxNBtnHeight / 2;
-            int contentInnerWidth = Width - ContentHPadding * 2;
-            int gap = BoxNBtnHeight / 4;
-            int btnWidth = BoxNBtnHeight;
-            int textBoxWidth = (int) ((contentInnerWidth - gap * 2 - btnWidth) * 0.68);
-            int arrangerWidth = contentInnerWidth - textBoxWidth - btnWidth - gap * 2;
-
-            foreach (ArrangerGroupRow row in _arrangerGroupRows) {
-                row.Panel.Size = new(contentInnerWidth, BoxNBtnHeight);
-                row.Panel.Margin = new(0, boxVMargin, 0, 0);
-                row.TextBoxGroup.Size = new(textBoxWidth, BoxNBtnHeight);
-                row.ArrangerBox.Size = new(arrangerWidth, BoxNBtnHeight);
-                row.ArrangerBox.Location = new(textBoxWidth + gap, 0);
-                if (row.ActionButton != null) {
-                    row.ActionButton.Size = new(btnWidth, BoxNBtnHeight);
-                    row.ActionButton.Location = new(textBoxWidth + gap + arrangerWidth + gap, 0);
-                }
-            }
-
-            int groupCount = _arrangerGroupRows.Count;
-            _arrangerConfigContentPanel.Size = new(Width,
-                BoxNBtnHeight * groupCount + ContentVPadding * 2 + boxVMargin * groupCount);
-            _arrangerConfigContentPanel.Padding = new(ContentHPadding, ContentVPadding, ContentHPadding, ContentVPadding);
-
-            _arrangerConfigPanel.Size = new(Width,
-                _arrangerConfigTitlePanel.Height + _arrangerConfigContentPanel.Height);
-
-            WorkPanel.Size = new(Width, WorkTitlePanel.Height + WorkContentPanel.Height
-                + _printerSettingsPanel.Height + _httpServerSettingsPanel.Height
-                + _mesSettingsPanel.Height + _arrangerConfigPanel.Height);
         }
 
         protected override async void LoadSettings() {
@@ -829,42 +595,6 @@ namespace OperationGuidance_new.Views {
                     _plcIsReadyAddrOriginal = mesConfig.plc_is_ready_addr;
                     _plcRegisterAddrOriginal = mesConfig.plc_register_addr;
 
-                    // Load arranger config
-                    var arrangerConfig = ConfigUtils.LoadConfig<SciiXtArrangerConfig>();
-                    var arrangerGroups = arrangerConfig.GroupList;
-                    for (int i = 0; i < arrangerGroups.Count && i < _arrangerGroupRows.Count; i++) {
-                        var group = arrangerGroups[i];
-                        var row = _arrangerGroupRows[i];
-                        row.TextBoxGroup.GetTextBox(0).Box.Text = group.name;
-                        row.TextBoxGroup.GetTextBox(1).Box.Text = group.barcode;
-                        row.TextBoxGroup.GetTextBox(2).Box.Text = group.position > 0 ? group.position.ToString() : "";
-
-                        // Set arranger combobox
-                        if (group.arranger_id != null) {
-                            DeviceIoDTO? deviceIoDTO = _deviceIoDTOs
-                                .Where(dto => dto.deleted == (int) YesOrNo.NO)
-                                .FirstOrDefault(dto => dto.id == group.arranger_id.Value);
-                            if (deviceIoDTO != null) {
-                                int idx = row.ArrangerBox.IndexOf(deviceIoDTO);
-                                if (idx >= 0) {
-                                    row.ArrangerBox.SetCurrent(idx);
-                                } else {
-                                    // Device found but not arranger type (type changed)
-                                    row.ArrangerBox.SetError(true);
-                                    WidgetUtils.ShowWarningPopUp(
-                                        $"螺丝机开盖配置「{group.name}」：螺丝机组设备（ID={group.arranger_id}）" +
-                                        "不是螺丝机组类型，可能已被修改");
-                                }
-                            } else {
-                                // Device not found (deleted or missing)
-                                row.ArrangerBox.SetError(true);
-                                WidgetUtils.ShowWarningPopUp(
-                                    $"螺丝机开盖配置「{group.name}」：螺丝机组设备（ID={group.arranger_id}）" +
-                                    "找不到指定设备，可能已被删除");
-                            }
-                        }
-                    }
-                    _arrangerGroupsOriginal = arrangerConfig.groups;
                 });
             });
         }
@@ -932,21 +662,6 @@ namespace OperationGuidance_new.Views {
                     _plcIsReadyAddrBox.GetTextBox(0).Box.Text = defaultMesConfig.plc_is_ready_addr;
                     _plcRegisterAddrBox.GetTextBox(0).Box.Text = defaultMesConfig.plc_register_addr;
 
-                    // Reset arranger config to default (empty)
-                    while (_arrangerGroupRows.Count > 1) {
-                        var last = _arrangerGroupRows[_arrangerGroupRows.Count - 1];
-                        _arrangerGroupRows.Remove(last);
-                        last.Dispose();
-                    }
-                    if (_arrangerGroupRows.Count == 1) {
-                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(0).Box.Text = "";
-                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(1).Box.Text = "";
-                        _arrangerGroupRows[0].TextBoxGroup.GetTextBox(2).Box.Text = "";
-                        _arrangerGroupRows[0].ArrangerBox.Reset();
-                    }
-                    _arrangerGroupsOriginal = "[]";
-                    ResizeMissionSettings();
-                    OuterVScrollPanel?.ResizeChildren();
                 });
             });
         }
@@ -979,36 +694,6 @@ namespace OperationGuidance_new.Views {
                     return "请输入有效的监听端口（大于0的整数）";
                 }
             }
-            // Validate arranger config
-            var arrangerPositions = new Dictionary<int, List<int>>(); // arranger_id -> list of positions
-            foreach (var row in _arrangerGroupRows) {
-                string name = GetBoxRealText(row.TextBoxGroup.GetTextBox(0));
-                string barcode = GetBoxRealText(row.TextBoxGroup.GetTextBox(1));
-                string posText = GetBoxRealText(row.TextBoxGroup.GetTextBox(2));
-                DeviceIoDTO? arrangerDto = row.ArrangerBox.Value;
-                bool hasAny = !string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(barcode)
-                    || !string.IsNullOrEmpty(posText) || arrangerDto != null;
-                if (hasAny) {
-                    if (string.IsNullOrEmpty(name))
-                        return "螺丝机开盖配置：名称不能为空";
-                    if (string.IsNullOrEmpty(barcode))
-                        return "螺丝机开盖配置：条码不能为空";
-                    if (!int.TryParse(posText, out int pos) || pos < 1 || pos > 8)
-                        return "螺丝机开盖配置：点位必须是1-8之间的整数";
-                    if (arrangerDto == null)
-                        return "螺丝机开盖配置：螺丝机组不能为空";
-
-                    // Track position per arranger for uniqueness check
-                    int arrangerId = arrangerDto.id;
-                    if (!arrangerPositions.ContainsKey(arrangerId)) {
-                        arrangerPositions[arrangerId] = new List<int>();
-                    }
-                    if (arrangerPositions[arrangerId].Contains(pos)) {
-                        return $"螺丝机开盖配置：螺丝机组「{arrangerDto.name}」的点位 {pos} 重复，同一个螺丝机组的点位不能重复";
-                    }
-                    arrangerPositions[arrangerId].Add(pos);
-                }
-            }
             return base.CheckBeforeSave();
         }
 
@@ -1033,8 +718,7 @@ namespace OperationGuidance_new.Views {
                     || CheckSvedFuncSeparately(_plcRegisterAddrBox.GetTextBox(0).Box.Text != _plcRegisterAddrOriginal, "PLC寄存器地址")
                     || CheckSvedFuncSeparately(_enableHttpServer.Checked != _enableHttpServerOriginal, "HTTP服务器启用")
                     || CheckSvedFuncSeparately(_httpIpBox.GetTextBox(0).Box.Text != _httpIpOriginal, "监听IP")
-                    || CheckSvedFuncSeparately(_httpPortBox.GetTextBox(0).Box.Text != _httpPortOriginal, "监听端口")
-                    || CheckSvedFuncSeparately(GetCurrentArrangerGroupsJson() != _arrangerGroupsOriginal, "螺丝机开盖配置"));
+                    || CheckSvedFuncSeparately(_httpPortBox.GetTextBox(0).Box.Text != _httpPortOriginal, "监听端口"));
         }
     }
 }

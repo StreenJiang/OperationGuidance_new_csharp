@@ -132,6 +132,10 @@ namespace OperationGuidance_new.Views {
                                 logger.Debug($"[SCII:InitSerialPortTask] Removed invalid characters from message for device ID {pair.Key}");
                             }
 
+                            if (ActiveBarcodeInterceptor?.Invoke(msg) == true) {
+                                return;
+                            }
+
                             // 交给弹窗处理
                             if (_barCodePopUpForm == null || _barCodePopUpForm.IsDisposed) {
                                 logger.Info($"[SCII:InitSerialPortTask] Opening barcode popup form with message for device ID {pair.Key}");
