@@ -512,6 +512,19 @@ namespace OperationGuidance_new.Utils {
                 Settings.Write(IniFileKeys.AutoLockTool, (int) YesOrNo.NO + "");
             }
         }
+        /// <summary>X7 程序号下发前的静默窗口（毫秒）。0 = 关闭。默认 1200ms。</summary>
+        public static int GetPSetQuietWindowMs() {
+            try {
+                string value = Settings.Read(IniFileKeys.PSetQuietWindowMs);
+                if (!int.TryParse(value, out int ms)) {
+                    return 1200;
+                }
+                return Math.Clamp(ms, 0, 10000);
+            } catch {
+                // ini 缺失/损坏不得影响工具创建
+                return 1200;
+            }
+        }
         // PLC bar code self looping
         public static bool IsPLCBarCodeSelfLoopingEnabled() {
             string plcBarCodeSelfLoopingEnabled = Settings.Read(IniFileKeys.PLCBarCodeSelfLooping);
@@ -750,6 +763,7 @@ namespace OperationGuidance_new.Utils {
         public static Dictionary<int, ToolTask> ToolTasks => _toolTasks;
         public static void NewToolTask(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolId, toolName, ip, port, tool);
+            task.PSetQuietWindowMs = GetPSetQuietWindowMs();
             task.Connect();
             if (IsAutoLockToolEnabled()) {
                 task.ForceSendLock();
@@ -758,6 +772,7 @@ namespace OperationGuidance_new.Utils {
         }
         public static async Task<ToolTask> NewToolTaskAsync(int toolId, string? toolName, string ip, int port, DeviceTypeTool tool) {
             ToolTask task = new(toolId, toolName, ip, port, tool);
+            task.PSetQuietWindowMs = GetPSetQuietWindowMs();
             await task.ConnectAsync();
             _toolTasks.Add(toolId, task);
             return task;

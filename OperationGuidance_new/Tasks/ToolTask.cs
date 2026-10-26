@@ -31,14 +31,28 @@ namespace OperationGuidance_new.Tasks {
         private volatile int _sendingPSet = -1;
         private volatile int _currentPSet = -1;
         private volatile bool _psetSentOk = false;
+        // ACK 计入窗口：只有在真正下发之后才接受 PSet ACK，避免静默等待期间的迟到/重复 ACK 被误计入本次
+        private volatile bool _psetAckArmed = false;
         private Socket? socketClient = null;
         private string _ip;
         private int _port;
         private DeviceTypeTool _toolType;
+        private readonly SudongFrameCodec _sudongCodec = new();
         private volatile int HeartBeatCounter;
         private volatile PendingLockCommand _pendingLockCommand = PendingLockCommand.None;
         private Action<TighteningData, int>? _actionAfterAnalysis;
         private Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived;
+        // X7 接收回调：构造时创建一次，避免每帧分配委托
+        private readonly Action<bool?, bool?, bool?, bool?, bool?> _sudongToolAction;
+        private const long NeverMs = long.MinValue / 2;
+        private long _lastRundownAtMs = NeverMs;
+        private long _lastDeviceCommandAtMs = NeverMs;
+        // 命令闸门：保证 X7 的锁/解锁序列与 PSet 发送不交叠
+        private readonly SemaphoreSlim _commandGate = new(1, 1);
+        // 诊断用：连接世代号与本地端口（每次 TCP 建连递增）
+        private int _connectionEpoch;
+        private int _localPort;
+        private string Tag() => $"[TOOL:{_device_name}-{_ip}:{_port}][epoch={_connectionEpoch},lport={_localPort}]";
         #endregion
 
         #region Properties
@@ -48,6 +62,16 @@ namespace OperationGuidance_new.Tasks {
         public bool Locked => _locked;
         /// <summary>握手单次接收的总超时（毫秒）。测试可注入较小值以缩短用例时长。</summary>
         public int HandshakeTimeoutMs { get; set; } = 5000;
+        /// <summary>PSet 前要求的静默窗口（毫秒）。距最近一次拧紧结果与最近一次指令发送均需超过该值。0 = 关闭。</summary>
+        public int PSetQuietWindowMs { get; set; } = 1200;
+        /// <summary>是否启用静默窗口与命令闸门（X7 专属；0 = 关闭，回到改动前行为）。</summary>
+        private bool UsesCommandPacing => _toolType is ToolSudongX7 && PSetQuietWindowMs > 0;
+        protected virtual long NowMs => Environment.TickCount64;
+        protected void NoteDeviceCommandSent() => Interlocked.Exchange(ref _lastDeviceCommandAtMs, NowMs);
+        private void NoteRundown() => Interlocked.Exchange(ref _lastRundownAtMs, NowMs);
+        private long ReadLastRundown() => Interlocked.Read(ref _lastRundownAtMs);
+        private long ReadLastCommand() => Interlocked.Read(ref _lastDeviceCommandAtMs);
+        private long SinceMs(long then) => then == NeverMs ? -1 : NowMs - then;
         public string Ip { get => _ip; set => _ip = value; }
         public int Port { get => _port; set => _port = value; }
         public DeviceTypeTool ToolType { get => _toolType; set => _toolType = value; }
@@ -61,6 +85,7 @@ namespace OperationGuidance_new.Tasks {
             _ip = ip;
             _port = port;
             _toolType = tool;
+            _sudongToolAction = OnSudongToolAction;
             Status = DISCONNECTED;
         }
         #endregion
@@ -155,20 +180,16 @@ namespace OperationGuidance_new.Tasks {
                             }
                         }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
                     } else if (_toolType is ToolSudongX7 toolX7) {
-                        toolX7.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
-                            if (pSetSendingOk != null && _sendingPSet != -1) {
-                                if (pSetSendingOk.HasValue) {
-                                    _psetSentOk = pSetSendingOk.Value;
-                                    logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSet sending to {_sendingPSet} result: {(_psetSentOk ? "Accepted" : "Rejected")}");
-                                }
-                            }
-                            if (dataReceived != null && dataReceived.Value) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
-                            }
-                            if (curveReceived != null && curveReceived.Value) {
-                                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received");
-                            }
-                        }), _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                        long droppedBefore = _sudongCodec.DroppedBytes;
+                        IReadOnlyList<byte[]> frames = _sudongCodec.Feed(msgBytes);
+                        if (_sudongCodec.DroppedBytes != droppedBefore) {
+                            logger.Warn($"{Tag()} frame buffer overflow, dropped {_sudongCodec.DroppedBytes - droppedBefore}B");
+                        }
+                        // 每个接收块一条原始字节（与改动前的 dataMessage 粒度一致）；拆出的单帧在 AnalyzeSingleFrame 里按 Debug 记录
+                        logger.Info($"{Tag()} dataMessage = {MainUtils.ToHexString(msgBytes)}");
+                        foreach (byte[] frame in frames) {
+                            toolX7.AnalyzeSingleFrame(frame, _sudongToolAction, _actionAfterAnalysis, _actionAfterCurveDataReceived, DeviceId);
+                        }
                     } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
                         toolFitFTC6.AnalyzeData(msgBytes, (Action<bool?, bool?, bool?, bool?, bool?>) (async (heartIsBeating, pSetSendingOk, locked, dataReceived, curveReceived) => {
                             if (heartIsBeating != null) {
@@ -201,6 +222,27 @@ namespace OperationGuidance_new.Tasks {
             }
         }
 
+        /// <summary>X7 接收回调（构造时缓存为委托，避免每帧分配）。</summary>
+        private void OnSudongToolAction(bool? heartIsBeating, bool? pSetSendingOk, bool? locked, bool? dataReceived, bool? curveReceived) {
+            if (pSetSendingOk != null) {
+                if (_sendingPSet == -1) {
+                    logger.Warn($"{Tag()} PSet ACK received with no PSet in flight (late/stale ACK), ignored");
+                } else if (!_psetAckArmed) {
+                    logger.Warn($"{Tag()} PSet ACK before send, ignored");
+                } else if (pSetSendingOk.HasValue) {
+                    _psetSentOk = pSetSendingOk.Value;
+                    logger.Info($"{Tag()} PSet sending to {_sendingPSet} result: {(_psetSentOk ? "Accepted" : "Rejected")}");
+                }
+            }
+            if (dataReceived != null && dataReceived.Value) {
+                NoteRundown();
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Data received");
+            }
+            if (curveReceived != null && curveReceived.Value) {
+                logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] Curve data received");
+            }
+        }
+
         public override void Connect() {
             if (Interlocked.Exchange(ref _connectInProgress, 1) == 1) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Connect already in progress, skipping");
@@ -220,7 +262,9 @@ namespace OperationGuidance_new.Tasks {
 
                         if (await ConnectToServer()) {
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Connection established");
+                            logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] PSetQuietWindowMs={PSetQuietWindowMs}ms");
                             _toolType.ClearResidual();  // 清除旧连接残留
+                            _sudongCodec.Reset();
                             RunTask();
                             Status = CONNECTED;
                             logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Status: CONNECTED");
@@ -310,7 +354,9 @@ namespace OperationGuidance_new.Tasks {
                         socketClient.SendTimeout = 500;
                         socketClient.Connect(IPAddress.Parse(_ip), _port);
                         connectSuccess = true;
-                        logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Socket connected");
+                        _connectionEpoch++;
+                        _localPort = ((IPEndPoint) socketClient.LocalEndPoint!).Port;
+                        logger.Info($"{Tag()} Socket connected");
 
                         // 3. send connecting message
                         if (connectSuccess && _toolType is ToolPFSeries toolPF) {
@@ -393,11 +439,16 @@ namespace OperationGuidance_new.Tasks {
                     data = new byte[0];
                 }
 
+                logger.Debug($"{Tag()} TX {command} ({data.Length}B)");
                 int? num;
                 lock (_sendLock) {
                     num = socketClient?.Send(data);
                 }
                 if (num.HasValue && num.Value > 0) {
+                    if (num.Value < data.Length) {
+                        logger.Warn($"{Tag()} Partial send {num.Value}/{data.Length}B");
+                    }
+                    NoteDeviceCommandSent();
                     HeartBeatCounter = 0;
                     return true;
                 }
@@ -475,6 +526,39 @@ namespace OperationGuidance_new.Tasks {
             }
             return null;
         }
+        /// <summary>X7 专属：两个静默条件是否同时满足。</summary>
+        private bool IsQuietWindowSatisfied() {
+            if (!UsesCommandPacing) {
+                return true;
+            }
+            long now = NowMs;
+            long lastRundown = ReadLastRundown();
+            long lastCommand = ReadLastCommand();
+            // 「从未发生」视为已静默无限久（注意不能用 SinceMs 的 -1 语义）
+            long sinceRundown = lastRundown == NeverMs ? long.MaxValue : now - lastRundown;
+            long sinceCommand = lastCommand == NeverMs ? long.MaxValue : now - lastCommand;
+            return Math.Min(sinceRundown, sinceCommand) >= PSetQuietWindowMs;
+        }
+
+        /// <summary>X7 专属：等待设备进入可接收指令的静默窗口（不持有命令闸门）。返回 false = 超时，调用方按失败处理。</summary>
+        private async Task<bool> WaitForQuietWindowAsync() {
+            long start = NowMs;
+            long deadline = start + Math.Max(PSetQuietWindowMs * 3, 3000);
+            while (!IsQuietWindowSatisfied()) {
+                if (!Connected) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet aborted - disconnected while waiting for quiet window");
+                    return false;
+                }
+                if (NowMs > deadline) {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet quiet window exceeded {deadline - start}ms, giving up");
+                    return false;
+                }
+                // 50ms 轮询：等待期间若有新指令发出，_lastDeviceCommandAtMs 会被刷新
+                await Task.Delay(50);
+            }
+            return true;
+        }
+
         public async Task<bool> SendPSetAsync(int pSetNumber) {
             if (pSetNumber == -1) {
                 logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet failed - pset can not set to -1");
@@ -498,6 +582,9 @@ namespace OperationGuidance_new.Tasks {
                 _psetSentOk = false;
 
                 if (Connected) {
+                    logger.Info($"{Tag()} PSet attempt pset={pSetNumber}, status={Status}, connected={Connected}, "
+                        + $"sinceRundownMs={SinceMs(ReadLastRundown())}, sinceCmdMs={SinceMs(ReadLastCommand())}, "
+                        + $"cachedPSet={_currentPSet}, quietMs={PSetQuietWindowMs}");
                     logger.Info($"[TOOL:{_device_name}-{_ip}:{_port}] Sending PSet {pSetNumber}");
 
                     string command = "";
@@ -518,7 +605,43 @@ namespace OperationGuidance_new.Tasks {
 
                     bool sendResult = false;
                     try {
-                        sendResult = SendCommand(command);
+                        // 0 = 回退到改动前的行为：静默窗口与命令闸门同时关闭（帧解析修复保留）
+                        if (UsesCommandPacing) {
+                            long startMs = NowMs;
+                            int epochAtWaitStart = _connectionEpoch;
+                            bool sent = false;
+                            while (!sent) {
+                                if (!await WaitForQuietWindowAsync()) {   // 闸门外等待，超时 fail-open
+                                    return false;
+                                }
+                                if (!await _commandGate.WaitAsync(2000)) {
+                                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] PSet aborted — command gate timeout");
+                                    return false;
+                                }
+                                try {
+                                    // 拿到闸门后复核：等待期间可能有 ForceSendLock/ForceSendUnlock 或重连
+                                    if (!IsQuietWindowSatisfied()) {
+                                        continue;
+                                    }
+                                    if (!Connected || Status != ATaskBase.CONNECTED || _connectionEpoch != epochAtWaitStart) {
+                                        logger.Warn($"{Tag()} PSet aborted - connection changed during quiet wait");
+                                        return false;
+                                    }
+                                    _psetAckArmed = true;
+                                    logger.Info($"{Tag()} PSet go pset={pSetNumber}, sinceRundownMs={SinceMs(ReadLastRundown())}, "
+                                        + $"sinceCmdMs={SinceMs(ReadLastCommand())}, waitedMs={NowMs - startMs}");
+                                    sendResult = SendCommand(command);
+                                    sent = true;
+                                } finally {
+                                    _commandGate.Release();
+                                }
+                            }
+                        } else {
+                            if (_toolType is ToolSudongX7) {
+                                _psetAckArmed = true;
+                            }
+                            sendResult = SendCommand(command);
+                        }
                     } catch (Exception e) {
                         logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet send error", e);
                     }
@@ -552,6 +675,7 @@ namespace OperationGuidance_new.Tasks {
             } catch (Exception e) {
                 logger.Error($"[TOOL:{_device_name}-{_ip}:{_port}] PSet error", e);
             } finally {
+                _psetAckArmed = false;
                 _sendingPSet = -1;
                 logger.Debug($"[TOOL:{_device_name}-{_ip}:{_port}] SendPSetAsync finally, _sendingPSet reset to -1");
             }
@@ -647,27 +771,41 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformLock() {
-            bool sent = false;
-            if (_toolType is ToolPFSeries toolPF) {
-                sent = SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 toolX7) {
-                string cmd = toolX7.GetLockCommand();
-                SendCommand(cmd);
-                Thread.Sleep(200);
-                sent = SendCommand(cmd);
-
-                if (sent) {
-                    // 速动没有 解/锁枪 反馈，因此发完就自己设置
-                    UpdateInternalLockState(true);
-                }
-            } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
-                _lockStatusSending = true;
-                sent = SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
-            } else {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+            // 命令闸门只对 X7 且静默窗口 > 0 时启用；PF/FIT 与 0（A/B 基线）都不受影响
+            bool gated = UsesCommandPacing;
+            if (gated && !_commandGate.Wait(2000)) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Lock skipped — command gate timeout");
+                // 回滚 pending，否则后续 SendLock 会被「pending Lock already in flight」永久拦截
+                ClearPendingOnSendFailure(false, PendingLockCommand.Lock);
+                return;
             }
+            try {
+                bool sent = false;
+                if (_toolType is ToolPFSeries toolPF) {
+                    sent = SendCommand(toolPF.COMMAND_LOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    string cmd = toolX7.GetLockCommand();
+                    SendCommand(cmd);
+                    Thread.Sleep(200);
+                    sent = SendCommand(cmd);
 
-            ClearPendingOnSendFailure(sent, PendingLockCommand.Lock);
+                    if (sent) {
+                        // 速动没有 解/锁枪 反馈，因此发完就自己设置
+                        UpdateInternalLockState(true);
+                    }
+                } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                    _lockStatusSending = true;
+                    sent = SendCommand(toolFitFTC6.COMMAND_LOCK_ASCII.GetMessage());
+                } else {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+                }
+
+                ClearPendingOnSendFailure(sent, PendingLockCommand.Lock);
+            } finally {
+                if (gated) {
+                    _commandGate.Release();
+                }
+            }
         }
 
         public void SendUnlock() {
@@ -706,27 +844,41 @@ namespace OperationGuidance_new.Tasks {
         }
 
         private void PerformUnlock() {
-            bool sent = false;
-            if (_toolType is ToolPFSeries toolPF) {
-                sent = SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
-            } else if (_toolType is ToolSudongX7 toolX7) {
-                string cmd = toolX7.GetUnlockCommand();
-                SendCommand(cmd);
-                Thread.Sleep(200);
-                sent = SendCommand(cmd);
-
-                if (sent) {
-                    // 速动没有 解/锁枪 反馈，因此发完就自己设置
-                    UpdateInternalLockState(false);
-                }
-            } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
-                _lockStatusSending = false;
-                sent = SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
-            } else {
-                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+            // 命令闸门只对 X7 且静默窗口 > 0 时启用；PF/FIT 与 0（A/B 基线）都不受影响
+            bool gated = UsesCommandPacing;
+            if (gated && !_commandGate.Wait(2000)) {
+                logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unlock skipped — command gate timeout");
+                // 回滚 pending，否则后续 SendUnlock 会被「pending Unlock already in flight」永久拦截
+                ClearPendingOnSendFailure(false, PendingLockCommand.Unlock);
+                return;
             }
+            try {
+                bool sent = false;
+                if (_toolType is ToolPFSeries toolPF) {
+                    sent = SendCommand(toolPF.COMMAND_UNLOCK_ASCII.GetMessage());
+                } else if (_toolType is ToolSudongX7 toolX7) {
+                    string cmd = toolX7.GetUnlockCommand();
+                    SendCommand(cmd);
+                    Thread.Sleep(200);
+                    sent = SendCommand(cmd);
 
-            ClearPendingOnSendFailure(sent, PendingLockCommand.Unlock);
+                    if (sent) {
+                        // 速动没有 解/锁枪 反馈，因此发完就自己设置
+                        UpdateInternalLockState(false);
+                    }
+                } else if (_toolType is ToolFITFTC6 toolFitFTC6) {
+                    _lockStatusSending = false;
+                    sent = SendCommand(toolFitFTC6.COMMAND_UNLOCK_ASCII.GetMessage());
+                } else {
+                    logger.Warn($"[TOOL:{_device_name}-{_ip}:{_port}] Unknown tool type");
+                }
+
+                ClearPendingOnSendFailure(sent, PendingLockCommand.Unlock);
+            } finally {
+                if (gated) {
+                    _commandGate.Release();
+                }
+            }
         }
 
         /// <summary>Rollback _pendingLockCommand on send failure, only if it still matches expected (guards against race with concurrent lock/unlock).</summary>

@@ -16,7 +16,11 @@ public class TestableToolTask : ToolTask
     private Func<string, bool>? _sendHandler;
 
     public TestableToolTask(int deviceId = 1, string? name = "TEST", string ip = "127.0.0.1", int port = 4545)
-        : base(deviceId, name, ip, port, DeviceType_Tool.PF6000_OP, workstationId: 1)
+        : this(DeviceType_Tool.PF6000_OP, deviceId, name, ip, port) { }
+
+    public TestableToolTask(DeviceTypeTool tool, int deviceId = 1, string? name = "TEST",
+        string ip = "127.0.0.1", int port = 4545)
+        : base(deviceId, name, ip, port, tool, workstationId: 1)
     {
         // Align with the default Connected=true role: a connected tool with a ready session
         Status = ATaskBase.CONNECTED;
@@ -38,10 +42,13 @@ public class TestableToolTask : ToolTask
 
     protected override bool SendCommand(string command)
     {
-        if (_sendHandler != null)
-            return _sendHandler(command);
-        return true;
+        bool ok = _sendHandler?.Invoke(command) ?? true;
+        if (ok) NoteDeviceCommandSent();
+        return ok;
     }
+
+    public long NowForTest => NowMs;
+    public void SetLastRundownForTest(long ms) => SetField("_lastRundownAtMs", ms);
 
     // --- Reflection-based state accessors for assertions ---
 

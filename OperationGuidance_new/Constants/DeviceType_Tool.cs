@@ -374,10 +374,19 @@ namespace OperationGuidance_new.Constants {
             return psetCommand + CrcStr + "0D0A";
         }
 
-        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction, Action<TighteningData, int>? actionAfterAnalysis = null, Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
-            string dataMessage = MainUtils.ToHexString(msgBytes);
+        public override void AnalyzeData(byte[] msgBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction,
+            Action<TighteningData, int>? actionAfterAnalysis = null,
+            Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+            AnalyzeSingleFrame(msgBytes, toolAction, actionAfterAnalysis, _actionAfterCurveDataReceived, deviceId);
+        }
+
+        /// <summary>分析一个完整帧（由 SudongFrameCodec 重组后传入）。</summary>
+        public void AnalyzeSingleFrame(byte[] frameBytes, Action<bool?, bool?, bool?, bool?, bool?> toolAction,
+            Action<TighteningData, int>? actionAfterAnalysis = null,
+            Func<CurveDataTemp, int, Task>? _actionAfterCurveDataReceived = null, int? deviceId = null) {
+            string dataMessage = MainUtils.ToHexString(frameBytes);
             string head = GetHead(dataMessage);
-            logger.Info($"dataMessage = {dataMessage}");
+            logger.Debug($"frame = {dataMessage}");
 
             if (dataMessage == ERROR_RSP) {
                 // TODO: 后续补充逻辑
@@ -441,6 +450,10 @@ namespace OperationGuidance_new.Constants {
                     }
                     int tighteningErrorStatus = GetIntData(GetData(dataMessage, 44, 2));
 
+                    logger.Info($"frame=RESULT torque={torque} torqueLimits=[{torqueMin},{torqueMax}] "
+                        + $"angle={angle} angleLimits=[{angleMin},{angleMax}] "
+                        + $"status={tighteningStatus} error={tighteningErrorStatus}");
+
                     string resultTypeTemp = GetData(dataMessage, 34, 2);
                     int resultType;
                     if (resultTypeTemp == "00") {
@@ -499,6 +512,10 @@ namespace OperationGuidance_new.Constants {
                 //
                 //         _actionAfterCurveDataReceived(curveData, deviceId.Value);
                 //     }
+            } else if (head == "55AA0585") {
+                // IS_TIGHTENING（55AA0585007B450D0A）：拧紧进行中，保持原有静默行为
+            } else {
+                logger.Warn($"frame=UNKNOWN hex={dataMessage}");
             }
 
             string GetData(string dataMessage, int start, int len) => new(dataMessage.Skip(start).Take(len).ToArray());
