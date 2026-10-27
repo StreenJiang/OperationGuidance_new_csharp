@@ -90,13 +90,15 @@ namespace OperationGuidance_new.Views {
 
         protected override void ActivateMissionAutomatically() {
             string recipeCode = _getRecipeCode();
-            if (!string.IsNullOrEmpty(recipeCode)) {
-                var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
-                if (rsp != null && rsp.ProductMissionDTO != null) {
-                    if (_mission != null && _mission.id == rsp.ProductMissionDTO.id) {
-                        base.ActivateMissionAutomatically();
-                    }
-                }
+            if (string.IsNullOrEmpty(recipeCode)) return;
+            // 当前任务已匹配配方时无需查询数据库
+            if (_mission != null && MissionNameHelper.NameEquals(_mission.name, recipeCode)) {
+                base.ActivateMissionAutomatically();
+                return;
+            }
+            ProductMissionDTO? mission = QueryMissionByRecipeCode(recipeCode);
+            if (mission != null && _mission != null && _mission.id == mission.id) {
+                base.ActivateMissionAutomatically();
             }
         }
 
@@ -160,7 +162,7 @@ namespace OperationGuidance_new.Views {
             var req = new SCII_XT_InOrOutBoundStationReq() {
                 productCode = barCode,
                 passType = (int) SCII_XT_PassType.PRODUCT,
-                recipeCode = _mission.name,
+                recipeCode = MissionNameHelper.StripPrefix(_mission.name, _mission.id),
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),
                 batchNo = batchCode,
@@ -184,7 +186,7 @@ namespace OperationGuidance_new.Views {
             SCII_XT_InOrOutBoundStationReq req = new() {
                 productCode = _missionRecord.product_bar_code,
                 passType = (int) SCII_XT_PassType.PRODUCT,
-                recipeCode = _mission.name,
+                recipeCode = MissionNameHelper.StripPrefix(_mission.name, _mission.id),
                 procedureCode = _getProcedureCode(),
                 equipmentCode = _getEquipmentCode(),
                 batchNo = _missionRecord.product_batch,
@@ -245,7 +247,7 @@ namespace OperationGuidance_new.Views {
             if (_mission != null && _mission.is_challenge_mission == (int) YesOrNo.YES) {
                 return;
             }
-            if (string.IsNullOrEmpty(recipeCode) || (_mission != null && _mission.name == recipeCode)) {
+            if (string.IsNullOrEmpty(recipeCode) || (_mission != null && MissionNameHelper.NameEquals(_mission.name, recipeCode))) {
                 return;
             }
             if (_activated) {
@@ -253,16 +255,26 @@ namespace OperationGuidance_new.Views {
                 return;
             }
 
-            var rsp = _apis.QueryProductMissionDetail(new(recipeCode));
-            if (rsp != null && rsp.ProductMissionDTO != null) {
-                if (_mission == null || _mission.id != rsp.ProductMissionDTO.id) {
-                    BeginInvoke(() => {
-                        SwitchToMission(rsp.ProductMissionDTO);
-                    });
-                }
-            } else {
+            ProductMissionDTO? mission = QueryMissionByRecipeCode(recipeCode);
+            if (mission == null) {
                 WidgetUtils.ShowWarningPopUp($"未找到配方[{recipeCode}]对应的任务，请检查是否配置了该任务。");
+                return;
             }
+            if (_mission == null || _mission.id != mission.id) {
+                BeginInvoke(() => SwitchToMission(mission));
+            }
+        }
+
+        /// <summary>
+        /// 按配方编码查找任务。配方编码可能来自配置或 MES，不带任务名称的 id 前缀，
+        /// 因此先按全名精确查找，未命中再忽略前缀匹配（兼容存量任务）。
+        /// </summary>
+        private ProductMissionDTO? QueryMissionByRecipeCode(string recipeCode) {
+            ProductMissionDTO? mission = _apis.QueryProductMissionDetail(new(recipeCode)).ProductMissionDTO;
+            if (mission != null) return mission;
+
+            return _apis.QueryProductMissions(new()).ProductMissionsDTOs
+                       .FirstOrDefault(m => MissionNameHelper.NameEquals(m.name, recipeCode));
         }
 
         private async Task ActionAfterReceivedRecipe(string recipeCode) {
@@ -411,11 +423,13 @@ namespace OperationGuidance_new.Views {
 
         private async Task SendDataToMES(List<OperationDataDTO> operationDataDTOs) {
             if (operationDataDTOs.Count > 0) {
+                // 对外发送使用基础名，不带任务 id 前缀
+                string missionName = MissionNameHelper.StripPrefix(_mission.name, _mission.id);
                 SCII_XT_BindProductDataReq req = new() {
                     bingType = (int) SCII_XT_BindType.PRODUCT,
                     productInfos = new(),
                     procedureCode = _getProcedureCode(),
-                    recipeCode = _mission.name,
+                    recipeCode = missionName,
                 };
                 SCII_XT_BindProductDataReq.ProductInfo productInfos = new() {
                     productCode = operationDataDTOs[0].vin_number ?? "NULL",
@@ -424,8 +438,8 @@ namespace OperationGuidance_new.Views {
 
                 var value = BuildAttributeValues(operationDataDTOs);
                 productInfos.attributeList.Add(new() {
-                    attributeName = $"{_mission.name}_拧紧数据",
-                    attributeCode = $"{_mission.name}_Screw",
+                    attributeName = $"{missionName}_拧紧数据",
+                    attributeCode = $"{missionName}_Screw",
                     attributeUnit = "json",
                     attributeType = 2,
                     value = JsonConvert.SerializeObject(value),

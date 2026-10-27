@@ -83,7 +83,7 @@ namespace OperationGuidance_new.Views.ReusableWidgets {
                         var req = new SCII_XT_BindAccessoryReq() {
                             productCode = _workplace.BarCodeObj.ProductBarCode,
                             procedureCode = config.procedure_code,
-                            recipeCode = _mission.name,
+                            recipeCode = MissionNameHelper.StripPrefix(_mission.name, _mission.id),
                             accessorys = accessories,
                             createBy = SystemUtils.UserInfo.staff_id,
                             employeeNumber = SystemUtils.UserInfo.account,

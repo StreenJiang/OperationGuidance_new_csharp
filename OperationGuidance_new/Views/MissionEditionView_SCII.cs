@@ -278,8 +278,12 @@ namespace OperationGuidance_new.Views {
                     if (_missionDTO.id > 0) {
                         DialogResult result = MessageBox.Show(null, "是否执行复制操作？", "复制任务", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                         if (result == DialogResult.Yes) {
+                            string duplicatedName = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id) + "_copy";
+                            if (!ValidateMissionNameUnique(duplicatedName)) {
+                                return;
+                            }
                             ProductMissionDTO duplicatedMissionDTO = new() {
-                                name = MissionNameHelper.StripPrefix(_missionDTO.name, _missionDTO.id) + "_copy",
+                                name = duplicatedName,
                                 pn_code = _missionDTO.pn_code,
                                 max_ng_num = _missionDTO.max_ng_num,
                                 password_need_time = _missionDTO.password_need_time,
@@ -435,6 +439,11 @@ namespace OperationGuidance_new.Views {
                     _currentSideButton.ImageReset();
                 });
             }
+
+            /// <summary>
+            /// 校验任务名称是否可用。默认不限制重名，SCII_XT 覆写后要求名称唯一。
+            /// </summary>
+            protected virtual bool ValidateMissionNameUnique(string missionName) => true;
 
             protected virtual void SaveClick(object? sender, EventArgs eventArgs) {
                 string missionName = _missionName.GetTextBox(0).Box.Text;

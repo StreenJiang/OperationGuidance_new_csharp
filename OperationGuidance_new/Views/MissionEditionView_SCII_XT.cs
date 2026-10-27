@@ -67,9 +67,15 @@ namespace OperationGuidance_new.Views {
         public class MissionEditionPage_SCII_XT: MissionEditionPage_SCII {
             public MissionEditionPage_SCII_XT(MissionEditionView_SCII_XT parent, ProductMissionDTO missionDTO) : base(parent, missionDTO) { }
 
+            private List<ProductMissionDTO> QueryOtherMissions() =>
+                _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+
+            private static bool ContainsMissionName(IEnumerable<ProductMissionDTO> missions, string missionName) =>
+                missions.Any(m => MissionNameHelper.NameEquals(m.name, missionName));
+
             protected override void OpenMissionDetailPopUp(object? s, EventArgs e) {
                 List<BarCodeMatchingRuleDTO> barCodeMatchingRuleDTOs = _apis.QueryBarCodeMatchingRuleList(new(SystemUtils.MacAddressesDTO.id) { MissionId = _missionDTO.id }).BarCodeMatchingRuleDTOs;
-                List<ProductMissionDTO> allOtherMissions = _apis.QueryProductMissions(new()).ProductMissionsDTOs.Where(m => m.id != _missionDTO.id).ToList();
+                List<ProductMissionDTO> allOtherMissions = QueryOtherMissions();
                 _detialPopUpForm = new MissionDetailPopUpForm_SCII_XT(_missionDTO, allOtherMissions, barCodeMatchingRuleDTOs, _screwBitCounterDTOs) {
                     Title = "编辑任务详情",
                 };
@@ -84,7 +90,7 @@ namespace OperationGuidance_new.Views {
                         check = false;
                         _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 任务名称不能为空\r\n";
-                    } else if (allOtherMissions.Find(m => m.name == missionName) != null) {
+                    } else if (ContainsMissionName(allOtherMissions, missionName)) {
                         check = false;
                         _detialPopUpForm.MissionName.GetTextBox(0).IsError = true;
                         warningMsg += $"{warningIndex++}. 任务名称不能与现有任务名称重复\r\n";
@@ -196,11 +202,22 @@ namespace OperationGuidance_new.Views {
                 _detialPopUpForm.Show();
             }
 
+            protected override bool ValidateMissionNameUnique(string missionName) {
+                // SCII_XT 任务名称不允许重复（比较时忽略 id 前缀）
+                if (!ContainsMissionName(QueryOtherMissions(), missionName)) return true;
+                WidgetUtils.ShowWarningPopUp("任务名称不能与现有任务名称重复！");
+                return false;
+            }
+
             protected override void SaveClick(object? sender, EventArgs eventArgs) {
                 string missionName = _missionName.GetTextBox(0).Box.Text;
                 if (string.IsNullOrEmpty(missionName)) {
                     _missionName.GetTextBox(0).IsError = true;
                     WidgetUtils.ShowErrorPopUp("任务名称不能为空！");
+                    return;
+                }
+                if (!ValidateMissionNameUnique(missionName)) {
+                    _missionName.GetTextBox(0).IsError = true;
                     return;
                 }
                 _missionDTO.name = missionName;

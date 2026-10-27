@@ -532,7 +532,7 @@ namespace OperationGuidance_new.Views {
                     MESMessage_TZYX mESMessage = new() {
                         StationCode = MainUtils.MesConfig_TZYX.Read(Config_TZYX.StationCode),
                         BarCode = _missionRecord.product_bar_code,
-                        Product = _mission.name,
+                        Product = MissionNameHelper.StripPrefix(_mission.name, _mission.id),
                         Operator = SystemUtils.LoggedUserName,
                         Result = _missionRecord.mission_result == (int) YesOrNo.YES,
                     };
