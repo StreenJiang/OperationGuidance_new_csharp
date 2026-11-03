@@ -1689,7 +1689,8 @@ namespace OperationGuidance_service.Controllers {
             // Guard against invalid inputs
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
-            if (pageSize > 1000) pageSize = 1000;
+            // int.MaxValue means "fetch all" (e.g. SCII daily production count) — bypass the UI pagination clamp
+            if (pageSize > 1000 && pageSize != int.MaxValue) pageSize = 1000;
             if (string.IsNullOrWhiteSpace(idColumn) || !Regex.IsMatch(idColumn, @"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$")) {
                 SystemUtils.GetLogger(typeof(OperationGuidanceApis)).Warn($"BuildPaginationClause: invalid idColumn '{idColumn}', falling back to 'id'");
                 idColumn = "id";
